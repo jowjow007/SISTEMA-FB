@@ -41,7 +41,10 @@ service cloud.firestore {
     }
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && request.resource.data.role == 'membro'
+                    && request.resource.data.tabs.size() == 0;
+      allow update, delete: if isAdmin();
     }
     match /tabs/{tabId} {
       allow read: if isSignedIn();
@@ -52,6 +55,8 @@ service cloud.firestore {
 ```
 
 4. Clique em **Publicar**.
+
+> A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 
