@@ -135,7 +135,8 @@ const CONFIG = {
   ],
   itemsPerFeed: 10,   // máximo de itens buscados por fonte
   totalItems: 40,     // máximo de itens exibidos na lista, somando todas as fontes
-  refreshMinutes: 15, // intervalo de atualização automática
+  refreshOnTheHour: true, // true = atualiza sempre em HH:00 (12:00, 13:00...); false = usa refreshMinutes
+  refreshMinutes: 60,      // usado apenas se refreshOnTheHour = false
 };
 /* ====================================================================== */
 
@@ -344,8 +345,25 @@ document.querySelectorAll(".chip").forEach(chip => {
 });
 document.getElementById("refreshBtn").addEventListener("click", () => loadNews());
 
+function scheduleNextRefresh(){
+  let delayMs;
+  if(CONFIG.refreshOnTheHour){
+    const now = new Date();
+    const next = new Date(now);
+    next.setMinutes(0, 0, 0);
+    next.setHours(now.getHours() + 1);
+    delayMs = next.getTime() - now.getTime();
+  } else {
+    delayMs = CONFIG.refreshMinutes * 60 * 1000;
+  }
+  setTimeout(() => {
+    loadNews();
+    scheduleNextRefresh();
+  }, delayMs);
+}
+
 loadNews();
-setInterval(loadNews, CONFIG.refreshMinutes * 60 * 1000);
+scheduleNextRefresh();
 </script>
 </body>
 </html>
