@@ -11,10 +11,10 @@
 // ============================================================
 
 const firebaseConfig = {
-  apiKey: "COLE_AQUI_SUA_API_KEY",
-  authDomain: "SEU-PROJETO.firebaseapp.com",
-  projectId: "SEU-PROJETO",
-  storageBucket: "SEU-PROJETO.appspot.com",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyAWClOREaOXYupgzN3t2eJCddm8FcQTjfE",
+  authDomain: "sistema-fb-4cce5.firebaseapp.com",
+  projectId: "sistema-fb-4cce5",
+  storageBucket: "sistema-fb-4cce5.firebasestorage.app",
+  messagingSenderId: "586536122095",
+  appId: "1:586536122095:web:6d4d5c83d63193f2194d1a"
 };
