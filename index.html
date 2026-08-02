@@ -238,6 +238,17 @@
           <label>Senha</label>
           <input type="password" id="register-password" autocomplete="new-password" placeholder="mín. 6 caracteres" required>
         </div>
+        <div class="field">
+          <label>Data de nascimento</label>
+          <input type="date" id="register-birthdate" required>
+        </div>
+        <div class="field">
+          <label>Foto (para o mural de aniversariantes)</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="register-photo-preview" style="width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
+            <input type="file" id="register-photo" accept="image/*" style="flex:1;min-width:0;font-size:.78rem;color:var(--muted);">
+          </div>
+        </div>
         <button type="submit" class="btn" id="register-submit">Criar conta</button>
       </form>
       <p class="hint">Já tem uma conta? <a href="#" id="show-login">Voltar para o login</a>.</p>
@@ -388,6 +399,9 @@
     registerName: document.getElementById('register-name'),
     registerEmail: document.getElementById('register-email'),
     registerPassword: document.getElementById('register-password'),
+    registerBirthdate: document.getElementById('register-birthdate'),
+    registerPhoto: document.getElementById('register-photo'),
+    registerPhotoPreview: document.getElementById('register-photo-preview'),
     registerError: document.getElementById('register-error'),
     registerSubmit: document.getElementById('register-submit'),
     globalSearch: document.getElementById('global-search'),
@@ -468,6 +482,41 @@
     els.loginMode.style.display = 'block';
   });
 
+  // ---------- Redimensionar/comprimir foto no navegador (evita estourar o limite do Firestore) ----------
+  function resizeImageToDataUrl(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        img.onerror = reject;
+        img.onload = function(){
+          const lado = Math.min(img.width, img.height);
+          const sx = (img.width - lado) / 2;
+          const sy = (img.height - lado) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxDim;
+          canvas.height = maxDim;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  let registerPhotoDataUrl = null;
+  els.registerPhoto.addEventListener('change', function(){
+    const file = els.registerPhoto.files[0];
+    if (!file) { registerPhotoDataUrl = null; els.registerPhotoPreview.style.backgroundImage = ''; return; }
+    resizeImageToDataUrl(file, 220, 0.82).then(function(dataUrl){
+      registerPhotoDataUrl = dataUrl;
+      els.registerPhotoPreview.style.backgroundImage = 'url(' + dataUrl + ')';
+    });
+  });
+
   // ---------- Cadastro (auto-atendimento, sem abas por padrão) ----------
   els.registerForm.addEventListener('submit', function(e){
     e.preventDefault();
@@ -475,9 +524,10 @@
     const nome = els.registerName.value.trim();
     const email = els.registerEmail.value.trim();
     const senha = els.registerPassword.value;
+    const nascimento = els.registerBirthdate.value;
 
-    if (!nome || !email || senha.length < 6) {
-      els.registerError.textContent = 'Preencha nome, e-mail e uma senha com pelo menos 6 caracteres.';
+    if (!nome || !email || senha.length < 6 || !nascimento) {
+      els.registerError.textContent = 'Preencha nome, e-mail, senha (mín. 6 caracteres) e data de nascimento.';
       els.registerError.style.display = 'block';
       return;
     }
@@ -486,13 +536,22 @@
     els.registerSubmit.textContent = 'Criando...';
 
     auth.createUserWithEmailAndPassword(email, senha).then(function(cred){
-      return db.collection('users').doc(cred.user.uid).set({
-        email: email,
-        displayName: nome,
-        role: 'membro',
-        tabs: [],
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      const uid = cred.user.uid;
+      return Promise.all([
+        db.collection('users').doc(uid).set({
+          email: email,
+          displayName: nome,
+          role: 'membro',
+          tabs: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        db.collection('perfis').doc(uid).set({
+          displayName: nome,
+          birthDate: nascimento,
+          photoBase64: registerPhotoDataUrl || null,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+      ]);
     }).catch(function(err){
       els.registerError.textContent = traduzErro(err.code);
       els.registerError.style.display = 'block';

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aniversariantes — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --gold:#d8b25a;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:18px 20px 15px;text-align:center;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.5rem;margin:0 0 3px;color:var(--paper);}
+  header .sub{font-size:.82rem;color:var(--muted);margin:0;text-transform:capitalize;}
+
+  main{max-width:960px;margin:0 auto;padding:26px 20px 60px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+  #empty{padding:80px 20px;text-align:center;color:var(--muted);font-size:.95rem;}
+  #empty .big{font-size:2.2rem;margin-bottom:10px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;}
+
+  .card{
+    position:relative;overflow:hidden;background:linear-gradient(160deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line-strong);border-radius:18px;padding:26px 18px 22px;text-align:center;
+  }
+  .card .logo-watermark{
+    position:absolute;top:50%;left:50%;width:220%;transform:translate(-50%,-50%) rotate(-8deg);
+    opacity:.06;pointer-events:none;filter:grayscale(1) brightness(3);
+  }
+  .card .confetti{position:absolute;border-radius:2px;opacity:.85;pointer-events:none;}
+
+  .card .avatar-wrap{position:relative;z-index:2;margin:0 auto 14px;width:96px;height:96px;}
+  .card .avatar{
+    width:96px;height:96px;border-radius:50%;background-size:cover;background-position:center;
+    border:3px solid var(--gold);box-shadow:0 0 0 4px rgba(216,178,90,.18);background-color:var(--panel-2);
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:2.1rem;
+    color:var(--gold);
+  }
+  .card .party-icon{
+    position:absolute;bottom:-4px;right:-4px;font-size:1.5rem;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+  }
+  .card .nome{position:relative;z-index:2;font-family:var(--font-display);font-weight:600;font-size:1.15rem;color:var(--paper);margin:0 0 4px;}
+  .card .data{position:relative;z-index:2;font-size:.8rem;color:var(--gold);font-weight:600;letter-spacing:.02em;margin:0 0 10px;}
+  .card .mensagem{position:relative;z-index:2;font-size:.78rem;color:var(--muted);line-height:1.4;}
+  .card.hoje{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 12px 30px rgba(216,178,90,.15);}
+  .card.hoje .data{color:#fff;background:var(--red);display:inline-block;padding:2px 10px;border-radius:20px;}
+
+  footer{max-width:960px;margin:0 auto;padding:0 20px 40px;text-align:center;color:var(--muted);font-size:.72rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎉 Aniversariantes do mês</h1>
+  <p class="sub" id="mes-atual"></p>
+</header>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+  <div id="empty" style="display:none;">
+    <div class="big">🎂</div>
+    Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<footer>Cadastre sua data de nascimento e foto na aba "Meu Perfil" para aparecer aqui no seu mês.</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const CONFETE_CORES = ['#c9463c','#d8b25a','#a9adb2','#5c1a16','#e8d9a0','#8a2e26'];
+
+  const els = {
+    gate: document.getElementById('gate'),
+    empty: document.getElementById('empty'),
+    grid: document.getElementById('grid'),
+    mesAtual: document.getElementById('mes-atual'),
+  };
+
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const diaHoje = hoje.getDate();
+  els.mesAtual.textContent = MESES[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function gerarConfetes(qtd){
+    let html = '';
+    for (let i = 0; i < qtd; i++) {
+      const top = Math.round(Math.random() * 100);
+      const left = Math.round(Math.random() * 100);
+      const rot = Math.round(Math.random() * 360);
+      const size = 5 + Math.round(Math.random() * 6);
+      const cor = CONFETE_CORES[i % CONFETE_CORES.length];
+      const redonda = i % 2 === 0;
+      html += '<span class="confetti" style="top:' + top + '%;left:' + left + '%;width:' + size + 'px;height:' + size +
+        'px;background:' + cor + ';transform:rotate(' + rot + 'deg);' + (redonda ? 'border-radius:50%;' : '') + '"></span>';
+    }
+    return html;
+  }
+
+  function renderCard(p){
+    const partes = (p.birthDate || '').split('-');
+    const dia = parseInt(partes[2], 10);
+    const avatarInner = p.photoBase64
+      ? '<div class="avatar" style="background-image:url(' + p.photoBase64 + ')"></div>'
+      : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
+    const ehHoje = dia === diaHoje;
+    return '<div class="card' + (ehHoje ? ' hoje' : '') + '">' +
+      '<img class="logo-watermark" src="../../assets/logo-light.png" alt="">' +
+      gerarConfetes(10) +
+      '<div class="avatar-wrap">' + avatarInner + '<span class="party-icon">' + (ehHoje ? '🎂' : '🎈') + '</span></div>' +
+      '<p class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</p>' +
+      '<p class="data">' + (ehHoje ? '🎉 Hoje!' : 'Dia ' + String(dia).padStart(2, '0')) + '</p>' +
+      '<p class="mensagem">Fonseca e Braga deseja um feliz aniversário e muito sucesso!</p>' +
+    '</div>';
+  }
+
+  function renderGrid(perfis){
+    const doMes = perfis
+      .filter(function(p){
+        if (!p.birthDate) return false;
+        const mes = parseInt(p.birthDate.split('-')[1], 10);
+        return mes === mesAtual;
+      })
+      .sort(function(a, b){
+        return parseInt(a.birthDate.split('-')[2], 10) - parseInt(b.birthDate.split('-')[2], 10);
+      });
+
+    if (doMes.length === 0) {
+      els.empty.style.display = 'block';
+      els.grid.innerHTML = '';
+      return;
+    }
+    els.empty.style.display = 'none';
+    els.grid.innerHTML = doMes.map(renderCard).join('');
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para ver os aniversariantes.';
+      return;
+    }
+    els.gate.style.display = 'none';
+    db.collection('perfis').onSnapshot(function(snap){
+      renderGrid(snap.docs.map(function(d){ return d.data(); }));
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meu Perfil — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  button,input{font-family:inherit;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:480px;margin:0 auto;padding:24px 20px 60px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;}
+  .photo-row{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
+  #photo-preview{
+    width:88px;height:88px;border-radius:50%;background:var(--panel-2);border:2px solid var(--line-strong);
+    background-size:cover;background-position:center;flex:0 0 auto;
+  }
+  .photo-actions{flex:1;min-width:0;}
+  .photo-actions input[type=file]{font-size:.78rem;color:var(--muted);width:100%;}
+  .photo-actions .hint{font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.4;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
+  .field input{
+    width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-size:.95rem;outline:none;
+  }
+  .field input:focus{border-color:var(--red);}
+  .field input[readonly]{color:var(--muted);}
+
+  .btn{
+    width:100%;padding:11px 12px;border-radius:8px;border:none;background:var(--red);
+    color:#fff;font-weight:600;font-size:.9rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+
+  .msg-ok{color:var(--ok);font-size:.82rem;margin-top:12px;display:none;text-align:center;}
+  .msg-err{color:#ffb4ae;font-size:.82rem;margin-top:12px;display:none;text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Meu Perfil</h1>
+  <p class="sub">Data de nascimento e foto usadas no mural de aniversariantes do escritório.</p>
+</header>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+  <div class="card" id="app" style="display:none;">
+    <div class="photo-row">
+      <div id="photo-preview"></div>
+      <div class="photo-actions">
+        <input type="file" id="photo-input" accept="image/*">
+        <p class="hint">A foto é usada em tamanho pequeno e circular — recorte automático no centro.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" id="nome-input" readonly>
+    </div>
+    <div class="field">
+      <label>Data de nascimento</label>
+      <input type="date" id="birthdate-input">
+    </div>
+    <button class="btn" id="salvar-btn">Salvar perfil</button>
+    <div class="msg-ok" id="msg-ok">Perfil salvo com sucesso.</div>
+    <div class="msg-err" id="msg-err"></div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const els = {
+    gate: document.getElementById('gate'),
+    appBox: document.getElementById('app'),
+    photoPreview: document.getElementById('photo-preview'),
+    photoInput: document.getElementById('photo-input'),
+    nomeInput: document.getElementById('nome-input'),
+    birthdateInput: document.getElementById('birthdate-input'),
+    salvarBtn: document.getElementById('salvar-btn'),
+    msgOk: document.getElementById('msg-ok'),
+    msgErr: document.getElementById('msg-err'),
+  };
+
+  let currentUid = null;
+  let novaFotoDataUrl = null;
+
+  function resizeImageToDataUrl(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        img.onerror = reject;
+        img.onload = function(){
+          const lado = Math.min(img.width, img.height);
+          const sx = (img.width - lado) / 2;
+          const sy = (img.height - lado) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxDim;
+          canvas.height = maxDim;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.photoInput.addEventListener('change', function(){
+    const file = els.photoInput.files[0];
+    if (!file) return;
+    resizeImageToDataUrl(file, 220, 0.82).then(function(dataUrl){
+      novaFotoDataUrl = dataUrl;
+      els.photoPreview.style.backgroundImage = 'url(' + dataUrl + ')';
+    });
+  });
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para editar seu perfil.';
+      els.appBox.style.display = 'none';
+      return;
+    }
+    currentUid = user.uid;
+    els.gate.style.display = 'none';
+    els.appBox.style.display = 'block';
+
+    Promise.all([
+      db.collection('users').doc(user.uid).get(),
+      db.collection('perfis').doc(user.uid).get()
+    ]).then(function(results){
+      const userDoc = results[0];
+      const perfilDoc = results[1];
+      const nome = (userDoc.exists && userDoc.data().displayName) || user.email;
+      els.nomeInput.value = nome;
+      if (perfilDoc.exists) {
+        const p = perfilDoc.data();
+        if (p.birthDate) els.birthdateInput.value = p.birthDate;
+        if (p.photoBase64) els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
+      }
+    });
+  });
+
+  els.salvarBtn.addEventListener('click', function(){
+    els.msgOk.style.display = 'none';
+    els.msgErr.style.display = 'none';
+
+    if (!els.birthdateInput.value) {
+      els.msgErr.textContent = 'Selecione sua data de nascimento.';
+      els.msgErr.style.display = 'block';
+      return;
+    }
+
+    els.salvarBtn.disabled = true;
+    els.salvarBtn.textContent = 'Salvando...';
+
+    const dados = {
+      displayName: els.nomeInput.value,
+      birthDate: els.birthdateInput.value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (novaFotoDataUrl) dados.photoBase64 = novaFotoDataUrl;
+
+    db.collection('perfis').doc(currentUid).set(dados, { merge: true }).then(function(){
+      els.msgOk.style.display = 'block';
+    }).catch(function(err){
+      els.msgErr.textContent = 'Erro ao salvar: ' + err.message;
+      els.msgErr.style.display = 'block';
+    }).finally(function(){
+      els.salvarBtn.disabled = false;
+      els.salvarBtn.textContent = 'Salvar perfil';
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -50,6 +50,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    match /perfis/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
     match /sugestoes/{sugestaoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -78,6 +82,8 @@ service cloud.firestore {
 ```
 
 4. Clique em **Publicar**.
+
+> A regra de `perfis` acima é usada pelas ferramentas de aniversariantes: cada pessoa só edita o próprio perfil (data de nascimento + foto), admin pode editar qualquer um, e qualquer usuário logado pode ler (para montar o mural do mês).
 
 > A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; excluir exige preencher o motivo; nenhuma sugestão pode ser apagada de verdade — fica tudo registrado, como um arquivo único de histórico.
 
@@ -111,6 +117,8 @@ cadastre, por exemplo:
 | Painel de Notícias | `https://jowjow007.github.io/PAINEL-FB/` |
 | Matriz de Demandas | `https://jowjow007.github.io/demandas-fb/` |
 | Sugestões | `https://jowjow007.github.io/SISTEMA-FB/tools/sugestoes/` |
+| Meu Perfil | `https://jowjow007.github.io/SISTEMA-FB/tools/perfil/` |
+| Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
