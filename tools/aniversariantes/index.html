@@ -47,6 +47,18 @@
     opacity:.06;pointer-events:none;filter:grayscale(1) brightness(3);
   }
   .card .confetti{position:absolute;border-radius:2px;opacity:.85;pointer-events:none;}
+  .card .corner-deco{position:absolute;font-size:1.3rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));pointer-events:none;z-index:1;}
+
+  .card .bandeirinhas{
+    position:relative;z-index:2;display:flex;justify-content:center;gap:3px;height:16px;margin:-6px 0 12px;
+  }
+  .card .bandeirinhas::before{
+    content:"";position:absolute;top:1px;left:8%;right:8%;height:1px;background:var(--line-strong);
+  }
+  .card .bandeira{
+    width:0;height:0;margin-top:2px;border-left:7px solid transparent;border-right:7px solid transparent;
+    border-top:11px solid var(--bandeira-cor,var(--red));
+  }
 
   .card .avatar-wrap{position:relative;z-index:2;margin:0 auto 14px;width:96px;height:96px;}
   .card .avatar{
@@ -58,6 +70,19 @@
   .card .party-icon{
     position:absolute;bottom:-4px;right:-4px;font-size:1.5rem;
     filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+  }
+  .card .party-hat{
+    position:absolute;top:-22px;right:2px;transform:rotate(28deg);z-index:3;
+    width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;
+    border-bottom:30px solid var(--red-bright);filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));
+  }
+  .card .party-hat::before{
+    content:"";position:absolute;top:-34px;left:-6px;width:11px;height:11px;border-radius:50%;
+    background:var(--gold);
+  }
+  .card .party-hat::after{
+    content:"";position:absolute;bottom:-1px;left:-16px;width:32px;height:4px;background:var(--gold);
+    border-radius:2px;
   }
   .card .nome{position:relative;z-index:2;font-family:var(--font-display);font-weight:600;font-size:1.15rem;color:var(--paper);margin:0 0 4px;}
   .card .data{position:relative;z-index:2;font-size:.8rem;color:var(--gold);font-weight:600;letter-spacing:.02em;margin:0 0 10px;}
@@ -139,6 +164,15 @@
     return html;
   }
 
+  function gerarBandeirinhas(qtd){
+    let html = '<div class="bandeirinhas">';
+    for (let i = 0; i < qtd; i++) {
+      const cor = CONFETE_CORES[i % CONFETE_CORES.length];
+      html += '<span class="bandeira" style="--bandeira-cor:' + cor + '"></span>';
+    }
+    return html + '</div>';
+  }
+
   function renderCard(p){
     const partes = (p.birthDate || '').split('-');
     const dia = parseInt(partes[2], 10);
@@ -148,11 +182,16 @@
     const ehHoje = dia === diaHoje;
     return '<div class="card' + (ehHoje ? ' hoje' : '') + '">' +
       '<img class="logo-watermark" src="../../assets/logo-light.png" alt="">' +
-      gerarConfetes(10) +
-      '<div class="avatar-wrap">' + avatarInner + '<span class="party-icon">' + (ehHoje ? '🎂' : '🎈') + '</span></div>' +
+      gerarConfetes(16) +
+      '<span class="corner-deco" style="top:10px;left:10px;transform:rotate(-18deg);">🎁</span>' +
+      '<span class="corner-deco" style="bottom:14px;right:12px;transform:rotate(12deg);">🎈</span>' +
+      '<span class="corner-deco" style="top:14px;right:14px;font-size:1.1rem;transform:rotate(10deg);">🎊</span>' +
+      gerarBandeirinhas(9) +
+      '<div class="avatar-wrap"><span class="party-hat"></span>' + avatarInner +
+        '<span class="party-icon">' + (ehHoje ? '🎂' : '🎈') + '</span></div>' +
       '<p class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</p>' +
       '<p class="data">' + (ehHoje ? '🎉 Hoje!' : 'Dia ' + String(dia).padStart(2, '0')) + '</p>' +
-      '<p class="mensagem">Fonseca e Braga deseja um feliz aniversário e muito sucesso!</p>' +
+      '<p class="mensagem">Fonseca e Braga deseja um feliz aniversário e muito sucesso! 🎁</p>' +
     '</div>';
   }
 
