@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notícias Jurídicas e Condominiais — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  a{color:inherit;text-decoration:none;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{
+    font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);
+  }
+  header .sub{font-size:.8rem;color:var(--muted);margin:0 0 12px;}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .chip{
+    padding:6px 14px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.02em;cursor:pointer;user-select:none;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .chip:hover{color:var(--paper);}
+  .chip.active{background:var(--red-deep);border-color:var(--red);color:#fff;}
+  .toolbar .status{margin-left:auto;font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
+  .toolbar .refresh-btn{
+    border:1px solid var(--line-strong);background:var(--panel-2);color:var(--muted);border-radius:20px;
+    padding:6px 12px;font-size:.75rem;cursor:pointer;
+  }
+  .toolbar .refresh-btn:hover{color:var(--paper);}
+
+  main{max-width:920px;margin:0 auto;padding:18px 20px 60px;}
+  #empty,#error{color:var(--muted);text-align:center;padding:60px 20px;font-size:.9rem;display:none;}
+  #error{color:#ffb4ae;}
+
+  .news-list{display:flex;flex-direction:column;gap:12px;}
+  .news-card{
+    display:flex;gap:14px;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    padding:10px;transition:background .15s,border-color .15s;
+  }
+  .news-card:hover{background:var(--panel-2);border-color:var(--line-strong);}
+  .news-card .thumb{
+    width:150px;height:104px;flex:0 0 auto;border-radius:9px;overflow:hidden;background:var(--panel-2);
+    display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .news-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .news-card .thumb .ph{color:var(--muted);opacity:.5;}
+  .news-card .body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px;}
+  .top-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .badge{
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+    padding:2px 9px;border-radius:20px;flex:0 0 auto;
+  }
+  .badge.juridico{background:rgba(184,54,46,.18);color:#ffb4ae;border:1px solid rgba(184,54,46,.4);}
+  .badge.condominial{background:rgba(169,173,178,.15);color:var(--silver);border:1px solid var(--line-strong);}
+  .top-row .date{font-size:.72rem;color:var(--muted);}
+  .news-card h2{
+    font-family:var(--font-display);font-weight:600;font-size:1rem;line-height:1.32;margin:0;color:var(--paper);
+  }
+  .news-card .lede{
+    font-size:.8rem;color:var(--muted);margin:0;line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .news-card .source-row{
+    font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px;
+  }
+  .news-card .source-row svg{flex:0 0 auto;opacity:.7;}
+
+  .skeleton{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:10px;display:flex;gap:14px;}
+  .skeleton .thumb{width:150px;height:104px;border-radius:9px;background:var(--panel-2);flex:0 0 auto;
+    animation:pulse 1.4s ease-in-out infinite;}
+  .skeleton .lines{flex:1;display:flex;flex-direction:column;justify-content:center;gap:9px;}
+  .skeleton .line{height:11px;border-radius:6px;background:var(--panel-2);animation:pulse 1.4s ease-in-out infinite;}
+  .skeleton .line.w60{width:60%;}
+  .skeleton .line.w90{width:90%;}
+  .skeleton .line.w40{width:40%;}
+  @keyframes pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+
+  @media(max-width:560px){
+    .news-card{flex-direction:column;}
+    .news-card .thumb{width:100%;height:170px;}
+    .toolbar .status{width:100%;margin-left:0;text-align:left;order:5;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Notícias Jurídicas e Condominiais</h1>
+  <p class="sub">Curadoria automática de fontes jurídicas e do mercado condominial — clique numa notícia para abrir a matéria original.</p>
+  <div class="toolbar">
+    <button class="chip active" data-filter="todas">Todas</button>
+    <button class="chip" data-filter="juridico">Direito Geral</button>
+    <button class="chip" data-filter="condominial">Direito Condominial</button>
+    <span class="status" id="status">carregando…</span>
+    <button class="refresh-btn" id="refreshBtn">Atualizar</button>
+  </div>
+</header>
+
+<main>
+  <div class="news-list" id="list"></div>
+  <div id="empty">Nenhuma notícia encontrada no momento.</div>
+  <div id="error">Não foi possível carregar as notícias agora. Tentando novamente em instantes…</div>
+</main>
+
+<script>
+/* ======================================================================
+   CONFIGURAÇÃO
+   ====================================================================== */
+const CONFIG = {
+  feeds: [
+    { url:"https://www.conjur.com.br/rss.xml", category:"juridico", label:"Consultor Jurídico" },
+    { url:"https://res.stj.jus.br/hrestp-c-portalp/RSS.xml", category:"juridico", label:"STJ Notícias" },
+    { url:"https://www.jota.info/feed", category:"juridico", label:"JOTA" },
+    { url:"https://condo.news/category/direito-condominial/feed/", category:"condominial", label:"Condo.news" },
+    { url:"https://jornaldosindico.com.br/feed/", category:"condominial", label:"Jornal do Síndico" },
+  ],
+  itemsPerFeed: 10,   // máximo de itens buscados por fonte
+  totalItems: 40,     // máximo de itens exibidos na lista, somando todas as fontes
+  refreshMinutes: 15, // intervalo de atualização automática
+};
+/* ====================================================================== */
+
+const CATEGORY_LABEL = { juridico:"Direito Geral", condominial:"Direito Condominial" };
+let allItems = [];
+let currentFilter = "todas";
+
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))
+  ]);
+}
+
+function stripHtml(html){
+  return (html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8217;/g, "’")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractImageFromHtml(html){
+  const m = (html || "").match(/<img[^>]+src=["']([^"']+)["']/i);
+  return m ? m[1] : "";
+}
+
+function formatDate(pubDate){
+  const d = new Date(pubDate);
+  if(isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
+}
+
+const EXTERNAL_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+const PLACEHOLDER_ICON = `<svg class="ph" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>`;
+
+function cardHtml(item, index){
+  const badgeClass = item.category === "condominial" ? "condominial" : "juridico";
+  const media = item.image
+    ? `<img src="${item.image}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='${PLACEHOLDER_ICON.replace(/'/g,"\\'")}'">`
+    : PLACEHOLDER_ICON;
+  const lede = item.lede ? `<p class="lede">${item.lede}</p>` : "";
+  const dateStr = formatDate(item.pubDate);
+  return `
+    <a class="news-card" data-category="${item.category}" href="${item.link}" target="_blank" rel="noopener noreferrer">
+      <div class="thumb" id="thumb-${index}">${media}</div>
+      <div class="body">
+        <div class="top-row">
+          <span class="badge ${badgeClass}">${CATEGORY_LABEL[item.category]}</span>
+          ${dateStr ? `<span class="date">${dateStr}</span>` : ""}
+        </div>
+        <h2>${item.title}</h2>
+        ${lede}
+        <div class="source-row">${EXTERNAL_ICON} ${item.source}</div>
+      </div>
+    </a>`;
+}
+
+function skeletonHtml(n){
+  let out = "";
+  for(let i=0;i<n;i++){
+    out += `<div class="skeleton"><div class="thumb"></div><div class="lines">
+      <div class="line w40"></div><div class="line w90"></div><div class="line w60"></div>
+    </div></div>`;
+  }
+  return out;
+}
+
+function render(){
+  const list = document.getElementById("list");
+  const empty = document.getElementById("empty");
+  const error = document.getElementById("error");
+  const filtered = currentFilter === "todas" ? allItems : allItems.filter(i => i.category === currentFilter);
+  if(!filtered.length){
+    list.innerHTML = "";
+    empty.style.display = allItems.length ? "block" : "none";
+    return;
+  }
+  empty.style.display = "none";
+  error.style.display = "none";
+  list.innerHTML = filtered.map(cardHtml).join("");
+}
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.filter === f));
+  render();
+}
+
+const NEWS_CACHE_KEY = "noticiasfb_meta_cache_v1";
+const NEWS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function loadImgCache(){
+  try{
+    const raw = localStorage.getItem(NEWS_CACHE_KEY);
+    if(!raw) return {};
+    const obj = JSON.parse(raw);
+    const now = Date.now();
+    const fresh = {};
+    for(const k in obj){ if(obj[k] && (now - obj[k].ts) < NEWS_CACHE_TTL_MS) fresh[k] = obj[k]; }
+    return fresh;
+  } catch(e){ return {}; }
+}
+function saveImgCache(cache){
+  try{ localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify(cache)); } catch(e){ /* indisponível */ }
+}
+
+async function fetchArticleImage(url){
+  const res = await withTimeout(fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`), 7000);
+  if(!res.ok) throw new Error("microlink http error");
+  const data = await res.json();
+  if(data.status !== "success") throw new Error("microlink status error");
+  return (data.data.image && data.data.image.url) || "";
+}
+
+async function enrichImages(){
+  const cache = loadImgCache();
+  let changed = false;
+  await Promise.all(allItems.map(async (item, index) => {
+    if(item.image || !item.link) return;
+    let cached = cache[item.link];
+    if(!cached){
+      try{
+        const image = await fetchArticleImage(item.link);
+        cached = { image, ts: Date.now() };
+        cache[item.link] = cached;
+        changed = true;
+      } catch(e){ return; }
+    }
+    if(cached.image){
+      item.image = cached.image;
+      const thumb = document.getElementById(`thumb-${allItems.indexOf(item)}`);
+      if(thumb && !thumb.querySelector("img")){
+        const img = document.createElement("img");
+        img.src = cached.image;
+        img.alt = "";
+        img.loading = "lazy";
+        img.onerror = () => { thumb.innerHTML = PLACEHOLDER_ICON; };
+        thumb.innerHTML = "";
+        thumb.appendChild(img);
+      }
+    }
+  }));
+  if(changed) saveImgCache(cache);
+}
+
+async function fetchFeed(feedConfig){
+  try{
+    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedConfig.url)}`;
+    const res = await withTimeout(fetch(apiUrl), 8000);
+    if(!res.ok) throw new Error("rss http error");
+    const data = await res.json();
+    if(data.status !== "ok" || !data.items || !data.items.length) throw new Error("rss empty");
+    return data.items.slice(0, CONFIG.itemsPerFeed).map(it => {
+      const rawDesc = it.description || it.content || "";
+      const lede = stripHtml(rawDesc);
+      const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== (it.title || "").toLowerCase();
+      return {
+        title: stripHtml(it.title || ""),
+        category: feedConfig.category,
+        source: feedConfig.label,
+        link: it.link,
+        image: it.thumbnail || (it.enclosure && it.enclosure.link) || extractImageFromHtml(rawDesc) || "",
+        lede: ledeUsable ? lede.slice(0, 160) : "",
+        pubDate: it.pubDate,
+      };
+    });
+  } catch(e){
+    return [];
+  }
+}
+
+async function loadNews(){
+  const status = document.getElementById("status");
+  const error = document.getElementById("error");
+  const list = document.getElementById("list");
+  document.getElementById("empty").style.display = "none";
+  if(!allItems.length){
+    list.innerHTML = skeletonHtml(6);
+  }
+  status.textContent = "carregando…";
+  try{
+    const perFeed = await Promise.all(CONFIG.feeds.map(fetchFeed));
+    const merged = perFeed.flat().sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+    if(!merged.length) throw new Error("todas as fontes falharam");
+    allItems = merged.slice(0, CONFIG.totalItems);
+    error.style.display = "none";
+    render();
+    enrichImages();
+    status.textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+  } catch(e){
+    if(!allItems.length){
+      list.innerHTML = "";
+      error.style.display = "block";
+    }
+    status.textContent = "falha na atualização";
+  }
+}
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => setFilter(chip.dataset.filter));
+});
+document.getElementById("refreshBtn").addEventListener("click", () => loadNews());
+
+loadNews();
+setInterval(loadNews, CONFIG.refreshMinutes * 60 * 1000);
+</script>
+</body>
+</html>
