@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sugestões — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --green:#4c9a6a;
+    --green-bg:rgba(76,154,106,.15);
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{
+    font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);
+  }
+  header .sub{font-size:.8rem;color:var(--muted);margin:0 0 12px;}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .chip{
+    padding:6px 14px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.02em;cursor:pointer;user-select:none;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .chip:hover{color:var(--paper);}
+  .chip.active{background:var(--red-deep);border-color:var(--red);color:#fff;}
+  .toolbar .status{margin-left:auto;font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
+
+  main{max-width:760px;margin:0 auto;padding:18px 20px 60px;}
+
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+  #gate a{color:var(--silver);text-decoration:underline;}
+
+  .composer{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:14px;margin-bottom:18px;
+  }
+  .composer textarea{
+    width:100%;min-height:80px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:8px;color:var(--paper);font-family:inherit;font-size:.88rem;padding:10px;line-height:1.4;
+  }
+  .composer textarea:focus{outline:none;border-color:var(--red);}
+  .composer-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+  .composer-foot .count{font-size:.7rem;color:var(--muted);}
+  .btn{
+    border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
+    padding:7px 16px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--red);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.secondary{background:var(--panel-2);border-color:var(--line-strong);color:var(--paper);}
+  .btn.secondary:hover{border-color:var(--silver);}
+  .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--muted);}
+  .btn.ghost:hover{color:var(--paper);}
+
+  #empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:.9rem;}
+
+  .sug-list{display:flex;flex-direction:column;gap:10px;}
+  .sug-card{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:14px;
+  }
+  .sug-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .badge{
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+    padding:2px 9px;border-radius:20px;flex:0 0 auto;
+  }
+  .badge.aberta{background:rgba(169,173,178,.15);color:var(--silver);border:1px solid var(--line-strong);}
+  .badge.implantada{background:var(--green-bg);color:#8fd6ab;border:1px solid rgba(76,154,106,.4);}
+  .badge.excluida{background:rgba(184,54,46,.18);color:#ffb4ae;border:1px solid rgba(184,54,46,.4);}
+  .sug-meta{font-size:.72rem;color:var(--muted);}
+  .sug-text{font-size:.9rem;line-height:1.45;color:var(--paper);white-space:pre-wrap;margin:2px 0 8px;}
+  .sug-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .sug-decision{
+    margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted);
+  }
+  .sug-decision b{color:var(--paper);}
+  .motivo-box{
+    margin-top:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:8px 10px;font-size:.82rem;color:var(--paper);white-space:pre-wrap;
+  }
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
+    z-index:50;padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;max-width:440px;
+    width:100%;
+  }
+  .modal h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
+  .modal p{margin:0 0 10px;font-size:.8rem;color:var(--muted);}
+  .modal textarea{
+    width:100%;min-height:90px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:8px;color:var(--paper);font-family:inherit;font-size:.86rem;padding:10px;line-height:1.4;
+  }
+  .modal textarea:focus{outline:none;border-color:var(--red);}
+  .modal .modal-err{color:#ffb4ae;font-size:.75rem;min-height:1.2em;margin-top:4px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+
+  @media(max-width:560px){
+    .toolbar .status{width:100%;margin-left:0;text-align:left;order:5;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sugestões</h1>
+  <p class="sub">Envie ideias para o escritório. Toda sugestão fica visível para a equipe, aberta ou já decidida.</p>
+  <div class="toolbar">
+    <button class="chip active" data-view="abertas">Abertas</button>
+    <button class="chip" data-view="historico">Implantadas e excluídas</button>
+    <span class="status" id="status">carregando…</span>
+  </div>
+</header>
+
+<main>
+  <div id="gate" style="display:none;">
+    Esta ferramenta faz parte do <b>Portal Fonseca e Braga</b>.<br>
+    Faça login pelo portal para enviar ou ver sugestões.
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="composer">
+      <textarea id="novaSugestao" maxlength="2000" placeholder="Descreva sua sugestão..."></textarea>
+      <div class="composer-foot">
+        <span class="count" id="charCount">0/2000</span>
+        <button class="btn" id="enviarBtn">Enviar sugestão</button>
+      </div>
+    </div>
+
+    <div id="empty" style="display:none;"></div>
+    <div class="sug-list" id="list"></div>
+  </div>
+</main>
+
+<div class="modal-backdrop" id="motivoBackdrop">
+  <div class="modal">
+    <h3>Motivo da exclusão</h3>
+    <p>Esse motivo ficará visível para toda a equipe junto com a sugestão.</p>
+    <textarea id="motivoTexto" maxlength="1000" placeholder="Explique por que essa sugestão não será implantada..."></textarea>
+    <div class="modal-err" id="motivoErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="motivoCancelar">Cancelar</button>
+      <button class="btn" id="motivoConfirmar">Confirmar exclusão</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    document.getElementById('status').textContent = 'erro de configuração';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const els = {
+    gate: document.getElementById('gate'),
+    appBox: document.getElementById('app'),
+    status: document.getElementById('status'),
+    novaSugestao: document.getElementById('novaSugestao'),
+    charCount: document.getElementById('charCount'),
+    enviarBtn: document.getElementById('enviarBtn'),
+    empty: document.getElementById('empty'),
+    list: document.getElementById('list'),
+    motivoBackdrop: document.getElementById('motivoBackdrop'),
+    motivoTexto: document.getElementById('motivoTexto'),
+    motivoErr: document.getElementById('motivoErr'),
+    motivoCancelar: document.getElementById('motivoCancelar'),
+    motivoConfirmar: document.getElementById('motivoConfirmar'),
+  };
+
+  let currentProfile = null;
+  let allSugestoes = [];
+  let currentView = 'abertas';
+  let motivoAlvoId = null;
+  let unsubscribe = null;
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function formatDateTime(ts){
+    if (!ts || !ts.toDate) return 'agora';
+    return ts.toDate().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  els.novaSugestao.addEventListener('input', function(){
+    els.charCount.textContent = els.novaSugestao.value.length + '/2000';
+  });
+
+  els.enviarBtn.addEventListener('click', function(){
+    const texto = els.novaSugestao.value.trim();
+    if (!texto) return;
+    if (!currentProfile) return;
+    els.enviarBtn.disabled = true;
+    db.collection('sugestoes').add({
+      texto: texto,
+      autorUid: currentProfile.uid,
+      autorNome: currentProfile.displayName || currentProfile.email,
+      status: 'aberta',
+      motivoExclusao: null,
+      decididoPor: null,
+      decididoEm: null,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      els.novaSugestao.value = '';
+      els.charCount.textContent = '0/2000';
+    }).catch(function(e){
+      alert('Não foi possível enviar a sugestão: ' + e.message);
+    }).finally(function(){
+      els.enviarBtn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.chip[data-view]').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      currentView = chip.dataset.view;
+      document.querySelectorAll('.chip[data-view]').forEach(function(c){
+        c.classList.toggle('active', c === chip);
+      });
+      render();
+    });
+  });
+
+  window.__marcarImplantada = function(id){
+    if (!confirm('Marcar esta sugestão como implantada?')) return;
+    db.collection('sugestoes').doc(id).update({
+      status: 'implantada',
+      motivoExclusao: null,
+      decididoPor: currentProfile.displayName || currentProfile.email,
+      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(e){ alert('Erro: ' + e.message); });
+  };
+
+  window.__abrirMotivoExclusao = function(id){
+    motivoAlvoId = id;
+    els.motivoTexto.value = '';
+    els.motivoErr.textContent = '';
+    els.motivoBackdrop.classList.add('open');
+    els.motivoTexto.focus();
+  };
+
+  els.motivoCancelar.addEventListener('click', function(){
+    els.motivoBackdrop.classList.remove('open');
+    motivoAlvoId = null;
+  });
+
+  els.motivoConfirmar.addEventListener('click', function(){
+    const motivo = els.motivoTexto.value.trim();
+    if (!motivo){
+      els.motivoErr.textContent = 'Informe o motivo da exclusão.';
+      return;
+    }
+    if (!motivoAlvoId) return;
+    els.motivoConfirmar.disabled = true;
+    db.collection('sugestoes').doc(motivoAlvoId).update({
+      status: 'excluida',
+      motivoExclusao: motivo,
+      decididoPor: currentProfile.displayName || currentProfile.email,
+      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      els.motivoBackdrop.classList.remove('open');
+      motivoAlvoId = null;
+    }).catch(function(e){
+      els.motivoErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.motivoConfirmar.disabled = false;
+    });
+  });
+
+  function cardHtml(s){
+    const isAdmin = currentProfile && currentProfile.role === 'admin';
+    let out = '<div class="sug-card">';
+    out += '<div class="sug-top"><span class="badge ' + s.status + '">' +
+      (s.status === 'aberta' ? 'Aberta' : s.status === 'implantada' ? 'Implantada' : 'Excluída') +
+      '</span><span class="sug-meta">' + escapeHtml(s.autorNome) + ' · ' + formatDateTime(s.criadoEm) + '</span></div>';
+    out += '<div class="sug-text">' + escapeHtml(s.texto) + '</div>';
+    if (s.status === 'aberta' && isAdmin){
+      out += '<div class="sug-actions">' +
+        '<button class="btn secondary" onclick="__marcarImplantada(\'' + s.id + '\')">Marcar como implantada</button>' +
+        '<button class="btn ghost" onclick="__abrirMotivoExclusao(\'' + s.id + '\')">Marcar como excluída</button>' +
+        '</div>';
+    }
+    if (s.status !== 'aberta'){
+      out += '<div class="sug-decision"><b>' + escapeHtml(s.decididoPor || '-') + '</b> em ' + formatDateTime(s.decididoEm) + '</div>';
+      if (s.status === 'excluida' && s.motivoExclusao){
+        out += '<div class="motivo-box">' + escapeHtml(s.motivoExclusao) + '</div>';
+      }
+    }
+    out += '</div>';
+    return out;
+  }
+
+  function render(){
+    const filtered = allSugestoes.filter(function(s){
+      return currentView === 'abertas' ? s.status === 'aberta' : s.status !== 'aberta';
+    });
+    if (!filtered.length){
+      els.list.innerHTML = '';
+      els.empty.style.display = 'block';
+      els.empty.textContent = currentView === 'abertas'
+        ? 'Nenhuma sugestão aberta no momento.'
+        : 'Nenhuma sugestão implantada ou excluída ainda.';
+      return;
+    }
+    els.empty.style.display = 'none';
+    els.list.innerHTML = filtered.map(cardHtml).join('');
+  }
+
+  function startListening(){
+    if (unsubscribe) return;
+    unsubscribe = db.collection('sugestoes').orderBy('criadoEm', 'desc')
+      .onSnapshot(function(snap){
+        allSugestoes = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        els.status.textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+        render();
+      }, function(e){
+        els.status.textContent = 'falha ao carregar';
+        els.list.innerHTML = '';
+        els.empty.style.display = 'block';
+        els.empty.textContent = 'Não foi possível carregar as sugestões: ' + e.message;
+      });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.appBox.style.display = 'none';
+      els.status.textContent = 'não conectado';
+      currentProfile = null;
+      return;
+    }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      if (!doc.exists){
+        els.gate.style.display = 'block';
+        els.gate.textContent = 'Seu usuário ainda não tem acesso configurado no portal.';
+        return;
+      }
+      currentProfile = Object.assign({ uid: user.uid, email: user.email }, doc.data());
+      els.gate.style.display = 'none';
+      els.appBox.style.display = 'block';
+      startListening();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

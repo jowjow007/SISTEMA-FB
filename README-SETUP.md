@@ -50,11 +50,36 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    match /sugestoes/{sugestaoId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.autorUid == request.auth.uid
+                    && request.resource.data.status == 'aberta'
+                    && request.resource.data.texto is string
+                    && request.resource.data.texto.size() > 0
+                    && request.resource.data.texto.size() <= 2000
+                    && request.resource.data.motivoExclusao == null;
+      allow update: if isAdmin()
+                    && resource.data.status == 'aberta'
+                    && request.resource.data.texto == resource.data.texto
+                    && request.resource.data.autorUid == resource.data.autorUid
+                    && request.resource.data.autorNome == resource.data.autorNome
+                    && request.resource.data.criadoEm == resource.data.criadoEm
+                    && request.resource.data.status in ['implantada', 'excluida']
+                    && request.resource.data.decididoPor is string
+                    && request.resource.data.decididoEm == request.time
+                    && (request.resource.data.status == 'implantada'
+                        ? request.resource.data.motivoExclusao == null
+                        : (request.resource.data.motivoExclusao is string && request.resource.data.motivoExclusao.size() > 0));
+      allow delete: if false;
+    }
   }
 }
 ```
 
 4. Clique em **Publicar**.
+
+> A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; excluir exige preencher o motivo; nenhuma sugestão pode ser apagada de verdade — fica tudo registrado, como um arquivo único de histórico.
 
 > A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
 
@@ -85,6 +110,7 @@ cadastre, por exemplo:
 |---|---|
 | Painel de Notícias | `https://jowjow007.github.io/PAINEL-FB/` |
 | Matriz de Demandas | `https://jowjow007.github.io/demandas-fb/` |
+| Sugestões | `https://jowjow007.github.io/SISTEMA-FB/tools/sugestoes/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
