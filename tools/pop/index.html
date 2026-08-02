@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POPs — Procedimentos Operacionais Padrão — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  a{color:inherit;text-decoration:none;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{
+    font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);
+  }
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:1240px;margin:0 auto;padding:34px 20px 70px;overflow-x:auto;}
+
+  /* ---- hub ---- */
+  .hub-wrap{display:flex;flex-direction:column;align-items:center;}
+  .hub{
+    background:linear-gradient(160deg,var(--red-deep),var(--red-bright));
+    border:1px solid var(--red-bright);border-radius:14px;
+    padding:16px 30px;text-align:center;box-shadow:0 10px 30px rgba(184,54,46,.25);
+    min-width:280px;
+  }
+  .hub .kicker{font-size:.68rem;letter-spacing:.12em;color:#ffd9d5;text-transform:uppercase;font-weight:700;}
+  .hub h2{font-family:var(--font-display);font-size:1.15rem;margin:4px 0 2px;color:#fff;}
+  .hub .hint{font-size:.74rem;color:#ffe3e0;opacity:.9;}
+  .trunk{width:2px;height:34px;background:var(--line-strong);}
+
+  /* ---- categories row ---- */
+  .categories-row{
+    position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:22px;
+    padding-top:34px;min-width:920px;
+  }
+  .categories-row::before{
+    content:'';position:absolute;top:0;left:12.5%;right:12.5%;height:2px;background:var(--line-strong);
+  }
+  .category-col{position:relative;display:flex;flex-direction:column;align-items:stretch;}
+  .category-col::before{
+    content:'';position:absolute;top:0;left:50%;width:2px;height:34px;background:var(--line-strong);
+    transform:translateX(-50%);
+  }
+
+  .category-head{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;
+    padding:10px 12px;text-align:center;
+  }
+  .category-head .icon{font-size:1.1rem;line-height:1;margin-bottom:4px;}
+  .category-head h3{
+    font-family:var(--font-display);font-size:.86rem;letter-spacing:.02em;margin:0;color:var(--silver);
+    text-transform:uppercase;font-weight:600;
+  }
+
+  .pop-stack{display:flex;flex-direction:column;align-items:stretch;position:relative;}
+  .pop-stack .spine{width:2px;height:22px;background:var(--line-strong);margin:0 auto;}
+
+  .pop-card{
+    display:block;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    padding:12px 14px;margin-top:0;transition:background .15s,border-color .15s,transform .15s;
+    position:relative;
+  }
+  .pop-card + .pop-card{margin-top:22px;}
+  .pop-card + .pop-card::before{
+    content:'';position:absolute;top:-22px;left:50%;width:2px;height:22px;background:var(--line-strong);
+    transform:translateX(-50%);
+  }
+  .pop-card:hover{background:var(--panel-2);border-color:var(--red);transform:translateY(-1px);}
+  .pop-card .badge{
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
+    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    padding:2px 9px;margin-bottom:6px;
+  }
+  .pop-card h4{
+    font-family:var(--font-display);font-weight:600;font-size:.92rem;margin:0 0 4px;color:var(--paper);
+    line-height:1.28;
+  }
+  .pop-card p{font-size:.76rem;color:var(--muted);margin:0;line-height:1.4;}
+  .pop-card .open-hint{
+    display:flex;align-items:center;gap:5px;margin-top:8px;font-size:.68rem;color:var(--silver);
+    opacity:0;transform:translateX(-3px);transition:opacity .15s,transform .15s;
+  }
+  .pop-card:hover .open-hint{opacity:1;transform:translateX(0);}
+  .pop-card .open-hint svg{flex:0 0 auto;}
+
+  footer.note{
+    max-width:1240px;margin:0 auto;padding:0 20px 40px;font-size:.72rem;color:var(--muted);text-align:center;
+  }
+
+  @media(max-width:980px){
+    .categories-row{grid-template-columns:repeat(2,1fr);min-width:0;}
+    .categories-row::before,.category-col::before{display:none;}
+    .categories-row{padding-top:0;}
+    .category-col{margin-top:18px;}
+  }
+  @media(max-width:560px){
+    .categories-row{grid-template-columns:1fr;}
+    main{padding:20px 14px 50px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Procedimentos Operacionais Padrão</h1>
+  <p class="sub">Fluxograma dos POPs do escritório — clique em um procedimento para abrir o PDF completo.</p>
+</header>
+
+<main>
+  <div class="hub-wrap">
+    <div class="hub">
+      <div class="kicker">Fonseca e Braga · Sociedade de Advogados</div>
+      <h2>POPs do Escritório</h2>
+      <div class="hint">8 procedimentos ativos, agrupados por área</div>
+    </div>
+    <div class="trunk"></div>
+  </div>
+
+  <div class="categories-row">
+
+    <div class="category-col">
+      <div class="category-head">
+        <div class="icon">🗂️</div>
+        <h3>Atendimento&nbsp;&amp;&nbsp;Rotina</h3>
+      </div>
+      <div class="pop-stack">
+        <div class="spine"></div>
+        <a class="pop-card" href="pdfs/pop-001-rotinas-diarias.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 001/2019</span>
+          <h4>Rotinas Diárias</h4>
+          <p>Agenda do dia, confirmação com o cliente, recepção, cadastro no sistema e organização de pasta física/digital.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+        <a class="pop-card" href="pdfs/pop-002-sala-reunioes-prospeccao.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 002/2024</span>
+          <h4>Sala de Reuniões (Prospecção)</h4>
+          <p>Como preparar a sala antes de reuniões/audiências: TV, mesa, café, ar-condicionado e itens de apoio.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="category-col">
+      <div class="category-head">
+        <div class="icon">⚖️</div>
+        <h3>Processual&nbsp;&amp;&nbsp;Prazos</h3>
+      </div>
+      <div class="pop-stack">
+        <div class="spine"></div>
+        <a class="pop-card" href="pdfs/pop-002-distribuicao-acoes.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 002/2020</span>
+          <h4>Distribuição de Ações</h4>
+          <p>Cadastro no PROMAD, conferência de documentos juntados e conclusão no Monday após o protocolo.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+        <a class="pop-card" href="pdfs/pop-001-audiencias-virtuais.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 001/2024</span>
+          <h4>Audiências Virtuais</h4>
+          <p>Checklist de preparação: acesso ao processo, teste de link e sala virtual, testemunhas e envio aos participantes.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+        <a class="pop-card" href="pdfs/pop-009-tarefas-prazos-astrea.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 009/2025</span>
+          <h4>Tarefas e Prazos — Astrea</h4>
+          <p>Etiquetas, eventos, audiências e prazos (lançados D-2) no Astrea, com regras de conclusão de tarefa e prazo.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="category-col">
+      <div class="category-head">
+        <div class="icon">📄</div>
+        <h3>Documentos&nbsp;&amp;&nbsp;Petições</h3>
+      </div>
+      <div class="pop-stack">
+        <div class="spine"></div>
+        <a class="pop-card" href="pdfs/pop-008-nomenclatura-documentos.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 008/2023</span>
+          <h4>Nomenclatura de Documentos</h4>
+          <p>Padrão de nome de arquivo para documentos judiciais, administrativos e contratos de honorários (CPSHA).</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+        <a class="pop-card" href="pdfs/pop-011-formatacao-peticoes.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 011</span>
+          <h4>Formatação de Petições</h4>
+          <p>Modelo timbrado, fonte, tópicos, numeração, citações, pedidos e assinatura no Google Docs — passo a passo completo.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="category-col">
+      <div class="category-head">
+        <div class="icon">🔎</div>
+        <h3>Paralegal</h3>
+      </div>
+      <div class="pop-stack">
+        <div class="spine"></div>
+        <a class="pop-card" href="pdfs/pop-010-fluxo-paralegal.pdf" target="_blank" rel="noopener">
+          <span class="badge">POP nº 010/2026</span>
+          <h4>Fluxo de Paralegal</h4>
+          <p>Recebimento da demanda, orçamento e aprovação com o cliente, gestão financeira, nomenclatura e conclusão no Astrea.</p>
+          <span class="open-hint">Abrir PDF
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="note">Fonseca e Braga — Sociedade de Advogados · Documentos internos, uso restrito da equipe.</footer>
+
+</body>
+</html>
