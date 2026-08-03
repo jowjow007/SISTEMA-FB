@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pendências — Fonseca e Braga</title>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --green:#4c9a6a;
+    --green-bg:rgba(76,154,106,.15);
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{
+    font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);
+  }
+  header .sub{font-size:.8rem;color:var(--muted);margin:0 0 12px;}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .toolbar .status{margin-left:auto;font-size:.72rem;color:var(--muted);text-align:right;white-space:nowrap;}
+
+  main{max-width:820px;margin:0 auto;padding:18px 20px 60px;}
+
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+  #gate a{color:var(--silver);text-decoration:underline;}
+
+  .btn{
+    border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
+    padding:7px 16px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--red);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.secondary{background:var(--panel-2);border-color:var(--line-strong);color:var(--paper);}
+  .btn.secondary:hover{border-color:var(--silver);}
+  .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--muted);}
+  .btn.ghost:hover{color:var(--paper);}
+  .btn.ghost.danger{color:#ffb4ae;border-color:rgba(184,54,46,.35);}
+  .btn.ghost.danger:hover{background:rgba(184,54,46,.12);border-color:rgba(184,54,46,.6);color:#ffb4ae;}
+  .btn.small{padding:4px 12px;font-size:.72rem;}
+  .icon-btn{
+    width:26px;height:26px;border-radius:50%;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.85rem;line-height:1;flex:0 0 auto;transition:color .15s,border-color .15s,background .15s;
+  }
+  .icon-btn:hover{color:var(--paper);border-color:var(--silver);}
+  .icon-btn.danger:hover{color:#ffb4ae;border-color:rgba(184,54,46,.6);background:rgba(184,54,46,.12);}
+
+  #empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:.9rem;}
+
+  .grupos-list{display:flex;flex-direction:column;gap:16px;}
+  .grupo-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;}
+  .grupo-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .grupo-emoji{font-size:1.4rem;line-height:1;flex:0 0 auto;}
+  .grupo-nome{font-family:var(--font-display);font-size:1.05rem;font-weight:600;color:var(--paper);flex:1 1 auto;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .grupo-body{padding:10px 16px 16px;}
+
+  .sec{margin-top:6px;}
+  .sec-head{
+    display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;padding:6px 0;color:var(--muted);
+  }
+  .sec-head:hover{color:var(--paper);}
+  .sec-head .chevron{transition:transform .15s;font-size:.7rem;}
+  .sec-head.collapsed .chevron{transform:rotate(-90deg);}
+  .sec-head .sec-title{font-size:.75rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;}
+  .sec-list{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px;}
+
+  .tarefa-row{
+    display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;
+  }
+  .tarefa-check{
+    width:20px;height:20px;border-radius:50%;border:2px solid var(--silver);background:transparent;
+    cursor:pointer;flex:0 0 auto;padding:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;
+  }
+  .tarefa-check:hover{border-color:var(--paper);}
+  .tarefa-check.done{background:var(--green);border-color:var(--green);}
+  .tarefa-texto{flex:1 1 auto;font-size:.88rem;color:var(--paper);word-break:break-word;}
+  .tarefa-texto.done{color:var(--muted);text-decoration:line-through;}
+  .tarefa-move{
+    background:var(--panel-3);border:1px solid var(--line-strong);color:var(--muted);font-size:.7rem;
+    border-radius:8px;padding:4px 6px;max-width:110px;flex:0 0 auto;
+  }
+  .tarefa-actions{display:flex;gap:6px;flex:0 0 auto;}
+
+  .add-tarefa-row{display:flex;gap:8px;margin-top:8px;}
+  .add-tarefa-row input{
+    flex:1 1 auto;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    color:var(--paper);font-family:inherit;font-size:.86rem;padding:8px 10px;
+  }
+  .add-tarefa-row input:focus{outline:none;border-color:var(--red);}
+  .add-tarefa-btn{
+    display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--line-strong);
+    color:var(--muted);border-radius:8px;padding:6px 12px;font-size:.78rem;cursor:pointer;margin-top:8px;
+  }
+  .add-tarefa-btn:hover{color:var(--paper);border-color:var(--silver);}
+  .sec-empty{font-size:.78rem;color:var(--muted);padding:4px 0 2px;}
+
+  .novo-grupo-wrap{margin-bottom:18px;}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
+    z-index:50;padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;max-width:480px;
+    width:100%;max-height:85vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
+  .modal p{margin:0 0 10px;font-size:.8rem;color:var(--muted);}
+  .modal label{display:block;font-size:.72rem;color:var(--muted);margin:10px 0 4px;}
+  .modal input[type="text"]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:8px;color:var(--paper);font-family:inherit;font-size:.88rem;padding:9px 10px;
+  }
+  .modal input[type="text"]:focus{outline:none;border-color:var(--red);}
+  .modal .modal-err{color:#ffb4ae;font-size:.75rem;min-height:1.2em;margin-top:6px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+
+  .emoji-selected{
+    display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:8px;padding:8px 10px;font-size:1.1rem;
+  }
+  .emoji-filter{margin-top:8px;}
+  .emoji-cat{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+    margin:10px 0 4px;}
+  .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:4px;}
+  .emoji-opt{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;font-size:1.15rem;
+    padding:5px 0;cursor:pointer;text-align:center;line-height:1.1;
+  }
+  .emoji-opt:hover{border-color:var(--silver);}
+  .emoji-opt.active{background:var(--red-deep);border-color:var(--red);}
+
+  @media(max-width:560px){
+    .toolbar .status{width:100%;margin-left:0;text-align:left;order:5;}
+    .tarefa-move{max-width:90px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pendências</h1>
+  <p class="sub">Organize suas tarefas em grupos. Só você vê e edita as suas pendências.</p>
+  <div class="toolbar">
+    <span class="status" id="status">carregando…</span>
+  </div>
+</header>
+
+<main>
+  <div id="gate" style="display:none;">
+    Esta ferramenta faz parte do <b>Portal Fonseca e Braga</b>.<br>
+    Faça login pelo portal para ver suas pendências.
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="novo-grupo-wrap">
+      <button class="btn" id="novoGrupoBtn">+ Novo grupo</button>
+    </div>
+
+    <div id="empty" style="display:none;"></div>
+    <div class="grupos-list" id="gruposList"></div>
+  </div>
+</main>
+
+<!-- Modal: novo grupo -->
+<div class="modal-backdrop" id="grupoBackdrop">
+  <div class="modal">
+    <h3>Novo grupo</h3>
+    <p>Dê um nome e escolha um emoji para identificar o grupo.</p>
+
+    <label for="grupoNome">Nome do grupo</label>
+    <input type="text" id="grupoNome" maxlength="80" placeholder="Ex.: Prazos da semana">
+
+    <label>Emoji</label>
+    <div class="emoji-selected"><span id="emojiPreview">📌</span><span id="emojiPreviewLabel" style="font-size:.78rem;color:var(--muted);">selecionado</span></div>
+    <div class="emoji-filter">
+      <input type="text" id="emojiFiltro" placeholder="Filtrar emoji (ex.: dinheiro, tempo, alerta...)">
+    </div>
+    <div id="emojiCatalogo"></div>
+
+    <div class="modal-err" id="grupoErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="grupoCancelar">Cancelar</button>
+      <button class="btn" id="grupoConfirmar">Criar grupo</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    document.getElementById('status').textContent = 'erro de configuração';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const EMOJI_CATALOGO = [
+    { cat: 'Escritório', itens: [
+      ['📁','pasta'], ['📂','pasta aberta'], ['🗂️','arquivo'], ['🗃️','fichario'], ['🗄️','armario'],
+      ['📋','prancheta lista'], ['📌','pin fixar'], ['📎','clipe'], ['🖇️','clipe duplo'], ['📝','anotacao'],
+      ['🖊️','caneta'], ['✏️','lapis'], ['📄','documento'], ['📑','marcador pagina'], ['🧾','recibo nota'],
+      ['📰','jornal'], ['📇','ficha contato'], ['🗞️','jornal rolado']
+    ]},
+    { cat: 'Comunicação', itens: [
+      ['📞','telefone'], ['☎️','telefone fixo'], ['📧','email'], ['✉️','carta email'], ['📤','enviar'],
+      ['📥','receber'], ['📢','anuncio'], ['📣','megafone'], ['🔔','sino aviso'], ['🔕','sino mudo'],
+      ['💬','conversa'], ['🗨️','balao fala'], ['🗣️','falando'], ['📠','fax'], ['📡','antena']
+    ]},
+    { cat: 'Financeiro', itens: [
+      ['💰','dinheiro saco'], ['💵','dolar'], ['💴','iene'], ['💶','euro'], ['💷','libra'],
+      ['💳','cartao'], ['🧮','calculo abaco'], ['📈','grafico subindo'], ['📊','grafico barras'], ['📉','grafico caindo'],
+      ['🏦','banco'], ['💹','grafico ien'], ['🧾','nota fiscal']
+    ]},
+    { cat: 'Tempo e agenda', itens: [
+      ['📅','calendario'], ['🗓️','agenda'], ['⏰','despertador'], ['⏳','ampulheta correndo'], ['⌛','ampulheta parada'],
+      ['⏱️','cronometro'], ['🕐','relogio'], ['📆','calendario bloco']
+    ]},
+    { cat: 'Pessoas e trabalho', itens: [
+      ['👥','pessoas equipe'], ['🧑‍💼','profissional'], ['👔','gravata'], ['🤝','aperto de mao acordo'], ['⚖️','justica balança'],
+      ['🏢','predio empresa'], ['🏛️','tribunal predio'], ['🏬','loja predio'], ['🚪','porta']
+    ]},
+    { cat: 'Status e alertas', itens: [
+      ['✅','concluido'], ['☑️','marcado'], ['✔️','check'], ['❌','erro cancelar'], ['❗','importante'],
+      ['❓','duvida'], ['⚠️','atencao alerta'], ['🚩','bandeira urgente'], ['🔴','vermelho'], ['🟡','amarelo'],
+      ['🟢','verde'], ['🔵','azul'], ['⭐','estrela destaque'], ['🔥','urgente prioridade'], ['🎯','meta objetivo']
+    ]},
+    { cat: 'Tecnologia', itens: [
+      ['💻','notebook computador'], ['🖥️','computador mesa'], ['🖨️','impressora'], ['⌨️','teclado'], ['🖱️','mouse'],
+      ['📱','celular'], ['💾','salvar disco'], ['🔒','cadeado seguranca'], ['🔑','chave senha'], ['🌐','internet rede'], ['☁️','nuvem']
+    ]},
+    { cat: 'Diversos', itens: [
+      ['📦','caixa pacote'], ['🚚','entrega caminhao'], ['✈️','viagem aviao'], ['🚗','carro'], ['🏠','casa'],
+      ['🏗️','obra construcao'], ['🛠️','ferramentas'], ['🔧','ferramenta chave'], ['✂️','tesoura'], ['🎁','presente'],
+      ['📮','correio'], ['🧳','mala viagem'], ['🗳️','urna votacao'], ['📚','livros estudo'], ['🎓','formatura'],
+      ['🏆','troféu'], ['🧭','bussola'], ['🗺️','mapa']
+    ]}
+  ];
+
+  const els = {
+    gate: document.getElementById('gate'),
+    appBox: document.getElementById('app'),
+    status: document.getElementById('status'),
+    novoGrupoBtn: document.getElementById('novoGrupoBtn'),
+    empty: document.getElementById('empty'),
+    gruposList: document.getElementById('gruposList'),
+    grupoBackdrop: document.getElementById('grupoBackdrop'),
+    grupoNome: document.getElementById('grupoNome'),
+    grupoErr: document.getElementById('grupoErr'),
+    grupoCancelar: document.getElementById('grupoCancelar'),
+    grupoConfirmar: document.getElementById('grupoConfirmar'),
+    emojiPreview: document.getElementById('emojiPreview'),
+    emojiFiltro: document.getElementById('emojiFiltro'),
+    emojiCatalogo: document.getElementById('emojiCatalogo'),
+  };
+
+  let currentUser = null;
+  let grupos = [];
+  let tarefas = [];
+  let unsubGrupos = null;
+  let unsubTarefas = null;
+  let emojiSelecionado = '📌';
+  const collapsed = {}; // key: grupoId + ':abertas' | ':concluidas' -> true se recolhido
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---------- Modal novo grupo / catálogo de emoji ----------
+  function renderEmojiCatalogo(filtro){
+    const termo = (filtro || '').trim().toLowerCase();
+    let html = '';
+    EMOJI_CATALOGO.forEach(function(grupo){
+      const itens = grupo.itens.filter(function(it){
+        return !termo || it[1].indexOf(termo) !== -1;
+      });
+      if (!itens.length) return;
+      html += '<div class="emoji-cat">' + escapeHtml(grupo.cat) + '</div>';
+      html += '<div class="emoji-grid">' + itens.map(function(it){
+        const ativo = it[0] === emojiSelecionado ? ' active' : '';
+        return '<button type="button" class="emoji-opt' + ativo + '" data-emoji="' + it[0] + '" title="' + escapeHtml(it[1]) + '">' + it[0] + '</button>';
+      }).join('') + '</div>';
+    });
+    els.emojiCatalogo.innerHTML = html || '<div class="sec-empty">Nenhum emoji encontrado.</div>';
+    Array.prototype.forEach.call(els.emojiCatalogo.querySelectorAll('.emoji-opt'), function(btn){
+      btn.addEventListener('click', function(){
+        emojiSelecionado = btn.dataset.emoji;
+        els.emojiPreview.textContent = emojiSelecionado;
+        renderEmojiCatalogo(els.emojiFiltro.value);
+      });
+    });
+  }
+
+  els.emojiFiltro.addEventListener('input', function(){ renderEmojiCatalogo(els.emojiFiltro.value); });
+
+  function abrirModalGrupo(){
+    els.grupoNome.value = '';
+    els.grupoErr.textContent = '';
+    els.emojiFiltro.value = '';
+    emojiSelecionado = '📌';
+    els.emojiPreview.textContent = emojiSelecionado;
+    renderEmojiCatalogo('');
+    els.grupoBackdrop.classList.add('open');
+    els.grupoNome.focus();
+  }
+
+  els.novoGrupoBtn.addEventListener('click', abrirModalGrupo);
+  els.grupoCancelar.addEventListener('click', function(){
+    els.grupoBackdrop.classList.remove('open');
+  });
+
+  els.grupoConfirmar.addEventListener('click', function(){
+    const nome = els.grupoNome.value.trim();
+    if (!nome){
+      els.grupoErr.textContent = 'Informe um nome para o grupo.';
+      els.grupoNome.focus();
+      return;
+    }
+    if (!currentUser) return;
+    els.grupoConfirmar.disabled = true;
+    db.collection('pendGrupos').add({
+      ownerUid: currentUser.uid,
+      nome: nome,
+      emoji: emojiSelecionado,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      els.grupoBackdrop.classList.remove('open');
+    }).catch(function(e){
+      els.grupoErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.grupoConfirmar.disabled = false;
+    });
+  });
+
+  // ---------- Ações de grupo ----------
+  window.__excluirGrupo = function(grupoId, nome){
+    const tarefasDoGrupo = tarefas.filter(function(t){ return t.grupoId === grupoId; });
+    const aviso = tarefasDoGrupo.length
+      ? 'Excluir o grupo "' + nome + '" também vai apagar ' + tarefasDoGrupo.length + ' tarefa(s) dentro dele. Continuar?'
+      : 'Excluir o grupo "' + nome + '"?';
+    if (!confirm(aviso)) return;
+    const batch = db.batch();
+    tarefasDoGrupo.forEach(function(t){ batch.delete(db.collection('pendTarefas').doc(t.id)); });
+    batch.delete(db.collection('pendGrupos').doc(grupoId));
+    batch.commit().catch(function(e){ alert('Não foi possível excluir o grupo: ' + e.message); });
+  };
+
+  window.__toggleSecao = function(grupoId, secao){
+    const key = grupoId + ':' + secao;
+    collapsed[key] = !collapsed[key];
+    render();
+  };
+
+  // ---------- Ações de tarefa ----------
+  window.__toggleTarefa = function(tarefaId, concluidaAtual){
+    db.collection('pendTarefas').doc(tarefaId).update({
+      concluida: !concluidaAtual,
+      concluidaEm: concluidaAtual ? null : firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(e){ alert('Erro: ' + e.message); });
+  };
+
+  window.__excluirTarefa = function(tarefaId){
+    if (!confirm('Excluir esta tarefa?')) return;
+    db.collection('pendTarefas').doc(tarefaId).delete().catch(function(e){
+      alert('Não foi possível excluir: ' + e.message);
+    });
+  };
+
+  window.__moverTarefa = function(tarefaId, novoGrupoId){
+    if (!novoGrupoId) return;
+    db.collection('pendTarefas').doc(tarefaId).update({ grupoId: novoGrupoId }).catch(function(e){
+      alert('Não foi possível mover: ' + e.message);
+    });
+  };
+
+  window.__abrirComposer = function(grupoId){
+    const row = document.getElementById('composer-' + grupoId);
+    if (!row) return;
+    row.style.display = 'flex';
+    const input = row.querySelector('input');
+    input.focus();
+  };
+
+  window.__criarTarefa = function(grupoId){
+    const input = document.getElementById('composer-input-' + grupoId);
+    const texto = input.value.trim();
+    if (!texto || !currentUser) return;
+    input.disabled = true;
+    db.collection('pendTarefas').add({
+      ownerUid: currentUser.uid,
+      grupoId: grupoId,
+      texto: texto,
+      concluida: false,
+      concluidaEm: null,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      input.value = '';
+      input.disabled = false;
+      input.focus();
+    }).catch(function(e){
+      alert('Não foi possível criar a tarefa: ' + e.message);
+      input.disabled = false;
+    });
+  };
+
+  // ---------- Render ----------
+  function tarefaRowHtml(t, done, outrosGrupos){
+    let out = '<div class="tarefa-row">';
+    out += '<button type="button" class="tarefa-check' + (done ? ' done' : '') + '" onclick="__toggleTarefa(\'' + t.id + '\',' + done + ')" title="' + (done ? 'Reabrir tarefa' : 'Marcar como concluída') + '">' + (done ? '✓' : '') + '</button>';
+    out += '<div class="tarefa-texto' + (done ? ' done' : '') + '">' + escapeHtml(t.texto) + '</div>';
+    if (outrosGrupos.length){
+      out += '<select class="tarefa-move" onchange="__moverTarefa(\'' + t.id + '\', this.value); this.selectedIndex=0;">';
+      out += '<option value="">Mover para…</option>';
+      outrosGrupos.forEach(function(g){
+        out += '<option value="' + g.id + '">' + g.emoji + ' ' + escapeHtml(g.nome) + '</option>';
+      });
+      out += '</select>';
+    }
+    out += '<div class="tarefa-actions"><button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button></div>';
+    out += '</div>';
+    return out;
+  }
+
+  function grupoCardHtml(g){
+    const tarefasGrupo = tarefas.filter(function(t){ return t.grupoId === g.id; });
+    const abertas = tarefasGrupo.filter(function(t){ return !t.concluida; })
+      .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+    const concluidas = tarefasGrupo.filter(function(t){ return t.concluida; })
+      .sort(function(a,b){ return (b.concluidaEm && b.concluidaEm.seconds || 0) - (a.concluidaEm && a.concluidaEm.seconds || 0); });
+    const outrosGrupos = grupos.filter(function(x){ return x.id !== g.id; });
+
+    const abertasKey = g.id + ':abertas';
+    const concluidasKey = g.id + ':concluidas';
+    const abertasColapsado = !!collapsed[abertasKey];
+    const concluidasColapsado = !!collapsed[concluidasKey];
+
+    let out = '<div class="grupo-card">';
+    out += '<div class="grupo-head">';
+    out += '<span class="grupo-emoji">' + g.emoji + '</span>';
+    out += '<span class="grupo-nome">' + escapeHtml(g.nome) + '</span>';
+    out += '<button type="button" class="icon-btn danger" onclick="__excluirGrupo(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir grupo">✕</button>';
+    out += '</div>';
+    out += '<div class="grupo-body">';
+
+    // Abertas
+    out += '<div class="sec">';
+    out += '<div class="sec-head' + (abertasColapsado ? ' collapsed' : '') + '" onclick="__toggleSecao(\'' + g.id + '\',\'abertas\')">';
+    out += '<span class="chevron">▾</span><span class="sec-title">Abertas (' + abertas.length + ')</span>';
+    out += '</div>';
+    if (!abertasColapsado){
+      out += '<div class="sec-list">';
+      if (!abertas.length){
+        out += '<div class="sec-empty">Nenhuma tarefa aberta.</div>';
+      } else {
+        out += abertas.map(function(t){ return tarefaRowHtml(t, false, outrosGrupos); }).join('');
+      }
+      out += '</div>';
+      out += '<button type="button" class="add-tarefa-btn" onclick="__abrirComposer(\'' + g.id + '\')">+ Adicionar tarefa</button>';
+      out += '<div class="add-tarefa-row" id="composer-' + g.id + '" style="display:none;">';
+      out += '<input type="text" id="composer-input-' + g.id + '" maxlength="300" placeholder="Descreva a tarefa e pressione Enter" onkeydown="if(event.key===\'Enter\'){__criarTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
+      out += '<button type="button" class="btn small" onclick="__criarTarefa(\'' + g.id + '\')">Adicionar</button>';
+      out += '</div>';
+    }
+    out += '</div>';
+
+    // Concluídas
+    out += '<div class="sec">';
+    out += '<div class="sec-head' + (concluidasColapsado ? ' collapsed' : '') + '" onclick="__toggleSecao(\'' + g.id + '\',\'concluidas\')">';
+    out += '<span class="chevron">▾</span><span class="sec-title">Concluídas (' + concluidas.length + ')</span>';
+    out += '</div>';
+    if (!concluidasColapsado){
+      out += '<div class="sec-list">';
+      if (!concluidas.length){
+        out += '<div class="sec-empty">Nenhuma tarefa concluída ainda.</div>';
+      } else {
+        out += concluidas.map(function(t){ return tarefaRowHtml(t, true, outrosGrupos); }).join('');
+      }
+      out += '</div>';
+    }
+    out += '</div>';
+
+    out += '</div></div>';
+    return out;
+  }
+
+  function render(){
+    if (!grupos.length){
+      els.gruposList.innerHTML = '';
+      els.empty.style.display = 'block';
+      els.empty.textContent = 'Nenhum grupo cadastrado ainda. Clique em "+ Novo grupo" para começar.';
+      return;
+    }
+    els.empty.style.display = 'none';
+    els.gruposList.innerHTML = grupos.map(grupoCardHtml).join('');
+  }
+
+  function startListening(){
+    if (unsubGrupos || unsubTarefas) return;
+    unsubGrupos = db.collection('pendGrupos').where('ownerUid', '==', currentUser.uid)
+      .onSnapshot(function(snap){
+        grupos = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })
+          .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+        els.status.textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+        render();
+      }, function(e){
+        els.status.textContent = 'falha ao carregar';
+        els.empty.style.display = 'block';
+        els.empty.textContent = 'Não foi possível carregar os grupos: ' + e.message;
+      });
+
+    unsubTarefas = db.collection('pendTarefas').where('ownerUid', '==', currentUser.uid)
+      .onSnapshot(function(snap){
+        tarefas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        render();
+      }, function(e){
+        els.status.textContent = 'falha ao carregar tarefas: ' + e.message;
+      });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.appBox.style.display = 'none';
+      els.status.textContent = 'não conectado';
+      currentUser = null;
+      return;
+    }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      if (!doc.exists){
+        els.gate.style.display = 'block';
+        els.gate.textContent = 'Seu usuário ainda não tem acesso configurado no portal.';
+        return;
+      }
+      currentUser = { uid: user.uid, email: user.email };
+      els.gate.style.display = 'none';
+      els.appBox.style.display = 'block';
+      startListening();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

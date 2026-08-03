@@ -107,6 +107,31 @@ service cloud.firestore {
     match /chatPrefs/{uid}/{document=**} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
+    match /pendGrupos/{grupoId} {
+      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.nome is string
+                    && request.resource.data.nome.size() > 0
+                    && request.resource.data.nome.size() <= 80
+                    && request.resource.data.emoji is string;
+      allow update: if isSignedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == request.auth.uid;
+    }
+    match /pendTarefas/{tarefaId} {
+      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.texto is string
+                    && request.resource.data.texto.size() > 0
+                    && request.resource.data.texto.size() <= 300
+                    && request.resource.data.grupoId is string
+                    && request.resource.data.concluida == false;
+      allow update: if isSignedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == request.auth.uid;
+    }
   }
 }
 ```
@@ -120,6 +145,8 @@ service cloud.firestore {
 > A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
 
 > As regras de `conversas` / `conversas/{id}/mensagens` (usadas pela ferramenta **Chat Interno**) só deixam ler/escrever quem está no array `participantes` daquela conversa — ninguém vê conversas ou grupos dos quais não faz parte. Mensagens não podem ser editadas nem apagadas depois de enviadas (só o campo `lidaPor`, usado para o contador de não lidas, pode ser atualizado). `chatPrefs/{uid}/conversas/{conversaId}` guarda quais etiquetas e a fixação de cada conversa — é sempre pessoal, cada um só lê/escreve a própria pasta (mesmo participante veem etiquetas diferentes na mesma conversa, de propósito). `chatPrefs/{uid}/etiquetas/{etiquetaId}` é o catálogo reutilizável de etiquetas de cada pessoa (nome sempre em maiúsculas + cor), também pessoal. O chat só suporta texto e foto (fotos comprimidas no navegador, como no mural de aniversariantes) — áudio e vídeo ficaram de fora porque exigiriam ativar o Firebase Storage, que só existe no plano pago (Blaze) do Firebase; se um dia quiserem isso, é só pedir.
+
+> As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Pendências**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 
@@ -152,6 +179,7 @@ cadastre, por exemplo:
 | Meu Perfil | `https://jowjow007.github.io/SISTEMA-FB/tools/perfil/` |
 | Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
 | Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
+| Pendências | `https://jowjow007.github.io/SISTEMA-FB/tools/pendencias/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
