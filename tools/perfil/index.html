@@ -84,7 +84,11 @@
     </div>
     <div class="field">
       <label>Nome</label>
-      <input type="text" id="nome-input" readonly>
+      <input type="text" id="nome-input">
+    </div>
+    <div class="field">
+      <label>Sobrenome</label>
+      <input type="text" id="sobrenome-input">
     </div>
     <div class="field">
       <label>Data de nascimento</label>
@@ -120,6 +124,7 @@
     photoPreview: document.getElementById('photo-preview'),
     photoInput: document.getElementById('photo-input'),
     nomeInput: document.getElementById('nome-input'),
+    sobrenomeInput: document.getElementById('sobrenome-input'),
     birthdateInput: document.getElementById('birthdate-input'),
     salvarBtn: document.getElementById('salvar-btn'),
     msgOk: document.getElementById('msg-ok'),
@@ -179,8 +184,13 @@
     ]).then(function(results){
       const userDoc = results[0];
       const perfilDoc = results[1];
-      const nome = (userDoc.exists && userDoc.data().displayName) || user.email;
-      els.nomeInput.value = nome;
+      // Prioriza o nome já salvo no perfil (pode ter sido corrigido/completado aqui);
+      // se ainda não existe, parte do nome da conta como sugestão inicial.
+      let nomeCompleto = (perfilDoc.exists && perfilDoc.data().displayName) ||
+        (userDoc.exists && userDoc.data().displayName) || user.email;
+      const partes = nomeCompleto.trim().split(/\s+/);
+      els.nomeInput.value = partes[0] || '';
+      els.sobrenomeInput.value = partes.slice(1).join(' ') || '';
       if (perfilDoc.exists) {
         const p = perfilDoc.data();
         if (p.birthDate) els.birthdateInput.value = p.birthDate;
@@ -193,8 +203,11 @@
     els.msgOk.style.display = 'none';
     els.msgErr.style.display = 'none';
 
-    if (!els.birthdateInput.value) {
-      els.msgErr.textContent = 'Selecione sua data de nascimento.';
+    const nome = els.nomeInput.value.trim();
+    const sobrenome = els.sobrenomeInput.value.trim();
+
+    if (!nome || !sobrenome || !els.birthdateInput.value) {
+      els.msgErr.textContent = 'Preencha nome, sobrenome e data de nascimento.';
       els.msgErr.style.display = 'block';
       return;
     }
@@ -203,7 +216,7 @@
     els.salvarBtn.textContent = 'Salvando...';
 
     const dados = {
-      displayName: els.nomeInput.value,
+      displayName: (nome + ' ' + sobrenome).trim(),
       birthDate: els.birthdateInput.value,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };

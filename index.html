@@ -231,6 +231,10 @@
           <input type="text" id="register-name" required>
         </div>
         <div class="field">
+          <label>Sobrenome</label>
+          <input type="text" id="register-surname" required>
+        </div>
+        <div class="field">
           <label>E-mail</label>
           <input type="email" id="register-email" autocomplete="username" required>
         </div>
@@ -300,6 +304,8 @@
             <div class="form-grid">
               <div><label style="font-size:.75rem;color:var(--muted);">Nome</label>
                 <input type="text" id="nu-nome" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+              <div><label style="font-size:.75rem;color:var(--muted);">Sobrenome</label>
+                <input type="text" id="nu-sobrenome" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
               <div><label style="font-size:.75rem;color:var(--muted);">Papel</label>
                 <select id="nu-papel" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
                   <option value="membro">Membro</option>
@@ -397,6 +403,7 @@
     showLogin: document.getElementById('show-login'),
     registerForm: document.getElementById('register-form'),
     registerName: document.getElementById('register-name'),
+    registerSurname: document.getElementById('register-surname'),
     registerEmail: document.getElementById('register-email'),
     registerPassword: document.getElementById('register-password'),
     registerBirthdate: document.getElementById('register-birthdate'),
@@ -521,13 +528,15 @@
   els.registerForm.addEventListener('submit', function(e){
     e.preventDefault();
     els.registerError.style.display = 'none';
-    const nome = els.registerName.value.trim();
+    const primeiroNome = els.registerName.value.trim();
+    const sobrenome = els.registerSurname.value.trim();
+    const nome = (primeiroNome + ' ' + sobrenome).trim();
     const email = els.registerEmail.value.trim();
     const senha = els.registerPassword.value;
     const nascimento = els.registerBirthdate.value;
 
-    if (!nome || !email || senha.length < 6 || !nascimento) {
-      els.registerError.textContent = 'Preencha nome, e-mail, senha (mín. 6 caracteres) e data de nascimento.';
+    if (!primeiroNome || !sobrenome || !email || senha.length < 6 || !nascimento) {
+      els.registerError.textContent = 'Preencha nome, sobrenome, e-mail, senha (mín. 6 caracteres) e data de nascimento.';
       els.registerError.style.display = 'block';
       return;
     }
@@ -741,7 +750,9 @@
   }
 
   function criarUsuario(){
-    const nome = document.getElementById('nu-nome').value.trim();
+    const primeiroNome = document.getElementById('nu-nome').value.trim();
+    const sobrenome = document.getElementById('nu-sobrenome').value.trim();
+    const nome = (primeiroNome + ' ' + sobrenome).trim();
     const email = document.getElementById('nu-email').value.trim();
     const senha = document.getElementById('nu-senha').value;
     const papel = document.getElementById('nu-papel').value;
@@ -751,8 +762,8 @@
     okEl.style.display = 'none';
     errEl.style.display = 'none';
 
-    if (!nome || !email || senha.length < 6) {
-      errEl.textContent = 'Preencha nome, e-mail e uma senha com pelo menos 6 caracteres.';
+    if (!primeiroNome || !sobrenome || !email || senha.length < 6) {
+      errEl.textContent = 'Preencha nome, sobrenome, e-mail e uma senha com pelo menos 6 caracteres.';
       errEl.style.display = 'block';
       return;
     }
@@ -771,6 +782,7 @@
     }).then(function(){
       okEl.style.display = 'block';
       document.getElementById('nu-nome').value = '';
+      document.getElementById('nu-sobrenome').value = '';
       document.getElementById('nu-email').value = '';
       document.getElementById('nu-senha').value = '';
       document.querySelectorAll('.nu-tab-cb').forEach(function(c){ c.checked = false; });
