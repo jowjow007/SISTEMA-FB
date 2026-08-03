@@ -46,6 +46,10 @@
     color:var(--paper);font-size:.82rem;padding:8px 12px;outline:none;
   }
   .search-row input:focus{border-color:var(--red);}
+  .tag-filter-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .tag-filter-row .tag-chip{cursor:pointer;opacity:.5;transition:opacity .12s;}
+  .tag-filter-row .tag-chip:hover{opacity:.85;}
+  .tag-filter-row .tag-chip.active{opacity:1;}
   .icon-btn{
     flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--red);background:var(--red-deep);
     color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -82,8 +86,8 @@
   .conv-preview.unread{color:var(--paper);font-weight:600;}
   .conv-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
   .tag-chip{
-    font-size:.65rem;padding:2px 8px;border-radius:20px;background:rgba(216,178,90,.14);color:var(--gold);
-    border:1px solid rgba(216,178,90,.35);
+    font-size:.65rem;padding:2px 8px;border-radius:20px;border:1px solid transparent;font-weight:700;
+    letter-spacing:.02em;
   }
   .pin-mark{color:var(--gold);font-size:.75rem;flex:0 0 auto;}
   .unread-badge{
@@ -130,16 +134,40 @@
   .msg-fwd-label{font-size:.68rem;color:var(--muted);font-style:italic;margin-bottom:3px;}
   .msg-photo{max-width:220px;border-radius:10px;display:block;cursor:pointer;margin-bottom:4px;}
   .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;}
-  .msg-fwd-btn{
+  .msg-fwd-btn,.msg-reply-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;opacity:0;transition:opacity .12s;
     padding:2px 4px;
   }
-  .msg-row:hover .msg-fwd-btn{opacity:1;}
-  .msg-fwd-btn:hover{color:var(--paper);}
+  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn{opacity:1;}
+  .msg-fwd-btn:hover,.msg-reply-btn:hover{color:var(--paper);}
+  .msg-quote{
+    border-left:3px solid var(--gold);background:rgba(255,255,255,.06);border-radius:6px;padding:4px 8px;margin-bottom:6px;
+    cursor:pointer;max-width:220px;
+  }
+  .msg-quote .autor{font-size:.68rem;font-weight:700;color:var(--gold);}
+  .msg-quote .resumo{font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-row.highlight .msg-bubble{outline:2px solid var(--gold);outline-offset:1px;}
 
   .composer{
-    flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:10px 14px;
+    flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:10px 14px;position:relative;
   }
+  .reply-preview-row{
+    display:none;align-items:center;gap:8px;margin-bottom:8px;background:var(--panel-2);
+    border-left:3px solid var(--red);border-radius:8px;padding:6px 10px;
+  }
+  .reply-preview-row.show{display:flex;}
+  .reply-preview-row .info{flex:1;min-width:0;}
+  .reply-preview-row .autor{font-size:.72rem;color:var(--red-bright);font-weight:700;}
+  .reply-preview-row .resumo{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .reply-preview-row button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;flex:0 0 auto;}
+  .emoji-popover{
+    display:none;position:absolute;bottom:58px;left:14px;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:12px;padding:8px;width:248px;max-height:200px;overflow-y:auto;z-index:20;
+    grid-template-columns:repeat(8,1fr);gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.4);
+  }
+  .emoji-popover.open{display:grid;}
+  .emoji-popover button{background:none;border:none;font-size:1.15rem;cursor:pointer;padding:4px;border-radius:6px;line-height:1;}
+  .emoji-popover button:hover{background:var(--panel-3);}
   .photo-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px;}
   .photo-preview-row.show{display:flex;}
   .photo-preview-row img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line-strong);}
@@ -191,8 +219,20 @@
   .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--paper);}
   .btn.ghost:hover{border-color:var(--silver);}
 
-  .tag-editor-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
-  .tag-editor-chips .tag-chip button{background:none;border:none;color:inherit;cursor:pointer;margin-left:4px;font-size:.8rem;}
+  .tag-catalog-list{max-height:260px;overflow-y:auto;margin:4px 0 12px;border-top:1px solid var(--line);}
+  .tag-cat-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);}
+  .tag-cat-row .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto;}
+  .tag-cat-row .nome{flex:1;font-size:.84rem;color:var(--paper);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tag-cat-row .acoes{display:flex;gap:2px;flex:0 0 auto;}
+  .tag-cat-row .acoes button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:3px 6px;}
+  .tag-cat-row .acoes button:hover{color:var(--paper);}
+  .tag-cat-empty{color:var(--muted);font-size:.8rem;padding:14px 2px;text-align:center;}
+  .tag-new-form{border-top:1px solid var(--line-strong);padding-top:12px;}
+  .tag-new-form label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:6px;}
+  .tag-new-form input[type=text]{text-transform:uppercase;}
+  .swatch-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;padding:0;}
+  .swatch.active{border-color:#fff;}
 
   .lightbox-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;
@@ -222,6 +262,7 @@
         <input type="text" id="busca-conversas" placeholder="Buscar por nome ou etiqueta...">
         <button class="icon-btn" id="btn-nova-conversa" title="Nova conversa">+</button>
       </div>
+      <div class="tag-filter-row" id="tag-filter-row"></div>
     </div>
     <div class="conv-list" id="conv-list"></div>
   </aside>
@@ -246,6 +287,13 @@
       </div>
       <div class="msg-list" id="msg-list"></div>
       <div class="composer">
+        <div class="reply-preview-row" id="reply-preview-row">
+          <div class="info">
+            <div class="autor" id="reply-autor"></div>
+            <div class="resumo" id="reply-resumo"></div>
+          </div>
+          <button id="btn-cancelar-resposta" title="Cancelar resposta">×</button>
+        </div>
         <div class="photo-preview-row" id="photo-preview-row">
           <img id="photo-preview-img" src="">
           <button id="btn-remover-foto">Remover foto</button>
@@ -253,6 +301,8 @@
         <div class="composer-row">
           <button class="icon-btn" id="btn-anexar" title="Anexar foto">📷</button>
           <input type="file" id="foto-input" accept="image/*" hidden>
+          <button class="icon-btn" id="btn-emoji" title="Emoji">🙂</button>
+          <div class="emoji-popover" id="emoji-popover"></div>
           <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
           <button class="send-btn" id="btn-enviar" title="Enviar">➤</button>
         </div>
@@ -282,11 +332,18 @@
 <div class="modal-backdrop" id="tags-backdrop">
   <div class="modal">
     <h3>Etiquetas</h3>
-    <p class="hint">Etiquetas são só suas — organizam sua própria lista de conversas.</p>
-    <div class="tag-editor-chips" id="tag-editor-chips"></div>
-    <input type="text" id="tag-input" placeholder="Nova etiqueta e Enter" maxlength="30">
+    <p class="hint">Etiquetas são só suas — crie quantas quiser, escolha a cor e marque quais valem para esta conversa.</p>
+    <div class="tag-catalog-list" id="tag-catalog-list"></div>
+    <div class="tag-new-form">
+      <label id="tag-form-label">Nova etiqueta</label>
+      <input type="text" id="tag-nome-input" placeholder="Nome da etiqueta" maxlength="24">
+      <div class="swatch-row" id="tag-swatch-row"></div>
+      <div class="err" id="tag-form-err"></div>
+    </div>
     <div class="modal-foot">
+      <button class="btn ghost" id="tag-form-cancelar" style="display:none;">Cancelar edição</button>
       <button class="btn ghost" id="tags-fechar">Fechar</button>
+      <button class="btn" id="tag-form-salvar">Criar etiqueta</button>
     </div>
   </div>
 </div>
@@ -345,9 +402,21 @@
     pickerCancelar: document.getElementById('picker-cancelar'),
     pickerConfirmar: document.getElementById('picker-confirmar'),
     tagsBackdrop: document.getElementById('tags-backdrop'),
-    tagEditorChips: document.getElementById('tag-editor-chips'),
-    tagInput: document.getElementById('tag-input'),
+    tagFilterRow: document.getElementById('tag-filter-row'),
+    tagCatalogList: document.getElementById('tag-catalog-list'),
+    tagNomeInput: document.getElementById('tag-nome-input'),
+    tagSwatchRow: document.getElementById('tag-swatch-row'),
+    tagFormErr: document.getElementById('tag-form-err'),
+    tagFormLabel: document.getElementById('tag-form-label'),
+    tagFormCancelar: document.getElementById('tag-form-cancelar'),
+    tagFormSalvar: document.getElementById('tag-form-salvar'),
     tagsFechar: document.getElementById('tags-fechar'),
+    replyPreviewRow: document.getElementById('reply-preview-row'),
+    replyAutor: document.getElementById('reply-autor'),
+    replyResumo: document.getElementById('reply-resumo'),
+    btnCancelarResposta: document.getElementById('btn-cancelar-resposta'),
+    btnEmoji: document.getElementById('btn-emoji'),
+    emojiPopover: document.getElementById('emoji-popover'),
     lightbox: document.getElementById('lightbox'),
     lightboxImg: document.getElementById('lightbox-img')
   };
@@ -364,11 +433,37 @@
   var pickerMode = null;      // 'nova' | 'encaminhar'
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
+  var catalogoEtiquetas = {}; // tagId -> {nome, cor}
+  var tagFilterSelected = {}; // tagId -> true (filtro da lista de conversas)
+  var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
+  var replyTarget = null;     // mensagem sendo respondida
+
+  var PALETA_ETIQUETAS = ['#c9463c','#d8823c','#d8b25a','#4c9a6a','#3c9ea8','#4a7fc9','#8a5cc9','#c95c9e','#8a6a4a','#9c908b'];
+  var novaTagCor = PALETA_ETIQUETAS[0];
+
+  var EMOJIS = ['😀','😂','🙂','😉','😊','😍','😘','😢','😮','😡','🤔','😴','👍','👎','👏','🙏','💪','🎉','🔥','✅','❌','❤️','⭐','📌','📎','📅','⏰','☕','🎂','📄','✍️','🤝','🚀','👀'];
 
   function escapeHtml(s){
     return String(s || '').replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
+  }
+
+  function hexToRgba(hex, alpha){
+    var h = hex.replace('#', '');
+    var r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  function tagChipStyle(hex){
+    hex = hex || '#9c908b';
+    return 'background:' + hexToRgba(hex, .18) + ';border-color:' + hexToRgba(hex, .5) + ';color:' + hex + ';';
+  }
+
+  function tagChipHtml(tagId){
+    var t = catalogoEtiquetas[tagId];
+    if (!t) return '';
+    return '<span class="tag-chip" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '</span>';
   }
 
   function nomeDe(uid){
@@ -440,12 +535,17 @@
 
   function conversaOrdenada(){
     var termo = els.buscaConversas.value.trim().toLowerCase();
+    var filtroAtivo = Object.keys(tagFilterSelected).filter(function(id){ return tagFilterSelected[id]; });
     var lista = conversas.filter(function(c){
+      var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
+      if (filtroAtivo.length && !filtroAtivo.some(function(id){ return tagIds.indexOf(id) !== -1; })) return false;
       if (!termo) return true;
       var nome = tituloConversa(c).toLowerCase();
-      var tags = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetas) || [];
       if (nome.indexOf(termo) !== -1) return true;
-      return tags.some(function(t){ return t.toLowerCase().indexOf(termo) !== -1; });
+      return tagIds.some(function(id){
+        var t = catalogoEtiquetas[id];
+        return t && t.nome.toLowerCase().indexOf(termo) !== -1;
+      });
     });
     lista.sort(function(a, b){
       var pa = (tagsPorConversa[a.id] && tagsPorConversa[a.id].fixada) ? 1 : 0;
@@ -458,14 +558,35 @@
     return lista;
   }
 
+  function renderTagFilterRow(){
+    var ids = Object.keys(catalogoEtiquetas).sort(function(a, b){
+      return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
+    });
+    if (!ids.length){ els.tagFilterRow.innerHTML = ''; return; }
+    els.tagFilterRow.innerHTML = ids.map(function(id){
+      var t = catalogoEtiquetas[id];
+      var ativo = !!tagFilterSelected[id];
+      return '<span class="tag-chip' + (ativo ? ' active' : '') + '" data-filtro="' + id + '" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '</span>';
+    }).join('');
+    Array.prototype.forEach.call(els.tagFilterRow.querySelectorAll('[data-filtro]'), function(el){
+      el.addEventListener('click', function(){
+        var id = el.getAttribute('data-filtro');
+        tagFilterSelected[id] = !tagFilterSelected[id];
+        renderTagFilterRow();
+        renderConvList();
+      });
+    });
+  }
+
   function renderConvList(){
+    renderTagFilterRow();
     var lista = conversaOrdenada();
     if (!lista.length){
       els.convList.innerHTML = '<div class="conv-empty">Nenhuma conversa ainda. Toque em "+" para começar.</div>';
       return;
     }
     els.convList.innerHTML = lista.map(function(c){
-      var tags = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetas) || [];
+      var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
       var fixada = tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada;
       var naoLidas = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
       var preview = c.ultimaMensagemPreview || '';
@@ -480,8 +601,8 @@
       out += '<span class="conv-name">' + escapeHtml(tituloConversa(c)) + '</span>';
       out += '</div>';
       out += '<div class="conv-preview' + (naoLidas > 0 ? ' unread' : '') + '">' + escapeHtml(preview) + '</div>';
-      if (tags.length){
-        out += '<div class="conv-tags">' + tags.map(function(t){ return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+      if (tagIds.length){
+        out += '<div class="conv-tags">' + tagIds.map(tagChipHtml).join('') + '</div>';
       }
       out += '</div>';
       out += '<div class="conv-meta-col">';
@@ -501,6 +622,7 @@
 
   function selecionarConversa(id){
     activeId = id;
+    cancelarResposta();
     els.shell.classList.add('thread-open');
     els.threadEmpty.style.display = 'none';
     els.threadActive.style.display = 'flex';
@@ -552,10 +674,15 @@
         ultimoDia = chaveDia;
       }
       var own = m.autorUid === myUid;
-      out += '<div class="msg-row ' + (own ? 'own' : 'other') + '">';
+      out += '<div class="msg-row ' + (own ? 'own' : 'other') + '" data-msg-id="' + m.id + '">';
       if (!own) out += '<div class="msg-author">' + escapeHtml(nomeDe(m.autorUid)) + '</div>';
       out += '<div class="msg-bubble-wrap">';
       out += '<div class="msg-bubble">';
+      if (m.respondendoA){
+        out += '<div class="msg-quote" data-jump="' + m.respondendoA.mensagemId + '">' +
+          '<div class="autor">' + escapeHtml(m.respondendoA.autorNome) + '</div>' +
+          '<div class="resumo">' + escapeHtml(m.respondendoA.resumo) + '</div></div>';
+      }
       if (m.encaminhada){
         out += '<div class="msg-fwd-label">↪ Encaminhada de ' + escapeHtml(m.encaminhadaDeAutorNome || 'alguém') + '</div>';
       }
@@ -564,6 +691,7 @@
       }
       if (m.texto) out += '<div>' + escapeHtml(m.texto) + '</div>';
       out += '</div>';
+      out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">↩</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">↪</button>';
       out += '</div>';
       out += '<div class="msg-time">' + formatHora(m.criadoEm) + '</div>';
@@ -583,6 +711,23 @@
         var id = btn.getAttribute('data-fwd');
         forwardMsg = mensagensCache.filter(function(m){ return m.id === id; })[0];
         if (forwardMsg) abrirPicker('encaminhar');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-reply]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-reply');
+        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (msg) iniciarResposta(msg);
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-jump]'), function(el){
+      el.addEventListener('click', function(){
+        var id = el.getAttribute('data-jump');
+        var alvo = els.msgList.querySelector('[data-msg-id="' + id + '"]');
+        if (!alvo) return;
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        alvo.classList.add('highlight');
+        setTimeout(function(){ alvo.classList.remove('highlight'); }, 1200);
       });
     });
   }
@@ -642,6 +787,51 @@
   });
   els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
 
+  function resumoMensagem(m){
+    if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
+    return m.texto || '';
+  }
+
+  function iniciarResposta(msg){
+    replyTarget = msg;
+    els.replyAutor.textContent = nomeDe(msg.autorUid);
+    els.replyResumo.textContent = resumoMensagem(msg).slice(0, 140);
+    els.replyPreviewRow.classList.add('show');
+    els.composerInput.focus();
+  }
+
+  function cancelarResposta(){
+    replyTarget = null;
+    els.replyPreviewRow.classList.remove('show');
+  }
+  els.btnCancelarResposta.addEventListener('click', cancelarResposta);
+
+  // ---------------- emoji ----------------
+
+  els.emojiPopover.innerHTML = EMOJIS.map(function(e){ return '<button type="button">' + e + '</button>'; }).join('');
+  Array.prototype.forEach.call(els.emojiPopover.querySelectorAll('button'), function(btn){
+    btn.addEventListener('click', function(){
+      var inicio = els.composerInput.selectionStart || els.composerInput.value.length;
+      var fim = els.composerInput.selectionEnd || els.composerInput.value.length;
+      var valor = els.composerInput.value;
+      els.composerInput.value = valor.slice(0, inicio) + btn.textContent + valor.slice(fim);
+      var novaPos = inicio + btn.textContent.length;
+      els.composerInput.focus();
+      els.composerInput.setSelectionRange(novaPos, novaPos);
+      els.composerInput.style.height = 'auto';
+      els.composerInput.style.height = Math.min(els.composerInput.scrollHeight, 120) + 'px';
+    });
+  });
+  els.btnEmoji.addEventListener('click', function(e){
+    e.stopPropagation();
+    els.emojiPopover.classList.toggle('open');
+  });
+  document.addEventListener('click', function(e){
+    if (els.emojiPopover.classList.contains('open') && !els.emojiPopover.contains(e.target) && e.target !== els.btnEmoji){
+      els.emojiPopover.classList.remove('open');
+    }
+  });
+
   els.composerInput.addEventListener('input', function(){
     els.composerInput.style.height = 'auto';
     els.composerInput.style.height = Math.min(els.composerInput.scrollHeight, 120) + 'px';
@@ -688,6 +878,11 @@
       fotoBase64: novaFotoDataUrl || null,
       encaminhada: false,
       encaminhadaDeAutorNome: null,
+      respondendoA: replyTarget ? {
+        mensagemId: replyTarget.id,
+        autorNome: nomeDe(replyTarget.autorUid),
+        resumo: resumoMensagem(replyTarget).slice(0, 140)
+      } : null,
       criadoEm: FV.serverTimestamp(),
       lidaPor: [myUid]
     };
@@ -696,6 +891,7 @@
       els.composerInput.value = '';
       els.composerInput.style.height = 'auto';
       limparComposerFoto();
+      cancelarResposta();
     }).catch(function(e){
       alert('Não foi possível enviar: ' + e.message);
     }).finally(function(){
@@ -716,35 +912,140 @@
 
   els.btnEtiquetas.addEventListener('click', function(){
     if (!activeId) return;
-    renderTagEditor();
+    resetFormularioEtiqueta();
+    renderTagsModal();
     els.tagsBackdrop.classList.add('open');
-    els.tagInput.value = '';
-    els.tagInput.focus();
   });
   els.tagsFechar.addEventListener('click', function(){ els.tagsBackdrop.classList.remove('open'); });
 
-  function renderTagEditor(){
-    var tags = (tagsPorConversa[activeId] && tagsPorConversa[activeId].etiquetas) || [];
-    els.tagEditorChips.innerHTML = tags.map(function(t){
-      return '<span class="tag-chip">' + escapeHtml(t) + '<button data-rm="' + escapeHtml(t) + '">×</button></span>';
-    }).join('') || '<span style="color:var(--muted);font-size:.78rem;">Nenhuma etiqueta ainda.</span>';
-    Array.prototype.forEach.call(els.tagEditorChips.querySelectorAll('[data-rm]'), function(btn){
+  function resetFormularioEtiqueta(){
+    editingTagId = null;
+    novaTagCor = PALETA_ETIQUETAS[0];
+    els.tagNomeInput.value = '';
+    els.tagFormErr.textContent = '';
+    els.tagFormLabel.textContent = 'Nova etiqueta';
+    els.tagFormSalvar.textContent = 'Criar etiqueta';
+    els.tagFormCancelar.style.display = 'none';
+    renderSwatches();
+  }
+
+  function renderSwatches(){
+    els.tagSwatchRow.innerHTML = PALETA_ETIQUETAS.map(function(cor){
+      return '<button type="button" class="swatch' + (cor === novaTagCor ? ' active' : '') + '" data-cor="' + cor + '" style="background:' + cor + ';"></button>';
+    }).join('');
+    Array.prototype.forEach.call(els.tagSwatchRow.querySelectorAll('.swatch'), function(btn){
       btn.addEventListener('click', function(){
-        var tag = btn.getAttribute('data-rm');
-        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
-          .set({ etiquetas: FV.arrayRemove(tag) }, { merge: true });
+        novaTagCor = btn.getAttribute('data-cor');
+        renderSwatches();
       });
     });
   }
 
-  els.tagInput.addEventListener('keydown', function(e){
-    if (e.key !== 'Enter') return;
-    var tag = els.tagInput.value.trim();
-    if (!tag) return;
-    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
-      .set({ etiquetas: FV.arrayUnion(tag) }, { merge: true }).then(function(){
-        els.tagInput.value = '';
+  function renderTagsModal(){
+    var ids = Object.keys(catalogoEtiquetas).sort(function(a, b){
+      return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
+    });
+    var aplicadas = (tagsPorConversa[activeId] && tagsPorConversa[activeId].etiquetasIds) || [];
+    if (!ids.length){
+      els.tagCatalogList.innerHTML = '<div class="tag-cat-empty">Você ainda não criou nenhuma etiqueta. Crie a primeira ali embaixo.</div>';
+    } else {
+      els.tagCatalogList.innerHTML = ids.map(function(id){
+        var t = catalogoEtiquetas[id];
+        var marcada = aplicadas.indexOf(id) !== -1;
+        return '<div class="tag-cat-row">' +
+          '<input type="checkbox" data-aplicar="' + id + '" ' + (marcada ? 'checked' : '') + '>' +
+          '<span class="dot" style="background:' + t.cor + ';"></span>' +
+          '<span class="nome">' + escapeHtml(t.nome) + '</span>' +
+          '<span class="acoes">' +
+            '<button type="button" data-editar="' + id + '" title="Editar">✎</button>' +
+            '<button type="button" data-excluir="' + id + '" title="Excluir">🗑</button>' +
+          '</span></div>';
+      }).join('');
+    }
+
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-aplicar]'), function(chk){
+      chk.addEventListener('change', function(){
+        var id = chk.getAttribute('data-aplicar');
+        var campo = { etiquetasIds: chk.checked ? FV.arrayUnion(id) : FV.arrayRemove(id) };
+        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId).set(campo, { merge: true });
       });
+    });
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-editar]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-editar');
+        var t = catalogoEtiquetas[id];
+        if (!t) return;
+        editingTagId = id;
+        novaTagCor = t.cor;
+        els.tagNomeInput.value = t.nome;
+        els.tagFormErr.textContent = '';
+        els.tagFormLabel.textContent = 'Editar etiqueta';
+        els.tagFormSalvar.textContent = 'Salvar alterações';
+        els.tagFormCancelar.style.display = 'inline-block';
+        renderSwatches();
+      });
+    });
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-excluir]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-excluir');
+        var t = catalogoEtiquetas[id];
+        if (!confirm('Excluir a etiqueta "' + (t ? t.nome : '') + '"? Ela será removida de todas as suas conversas.')) return;
+        excluirEtiquetaCatalogo(id);
+      });
+    });
+  }
+
+  function excluirEtiquetaCatalogo(tagId){
+    db.collection('chatPrefs').doc(myUid).collection('conversas').where('etiquetasIds', 'array-contains', tagId).get()
+      .then(function(snap){
+        var batch = db.batch();
+        snap.docs.forEach(function(d){ batch.update(d.ref, { etiquetasIds: FV.arrayRemove(tagId) }); });
+        return batch.commit();
+      })
+      .then(function(){
+        return db.collection('chatPrefs').doc(myUid).collection('etiquetas').doc(tagId).delete();
+      })
+      .then(function(){
+        delete tagFilterSelected[tagId];
+        if (editingTagId === tagId) resetFormularioEtiqueta();
+      })
+      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
+  }
+
+  els.tagFormCancelar.addEventListener('click', resetFormularioEtiqueta);
+  els.tagNomeInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); els.tagFormSalvar.click(); }
+  });
+
+  els.tagFormSalvar.addEventListener('click', function(){
+    var nome = els.tagNomeInput.value.trim().toUpperCase();
+    if (!nome){
+      els.tagFormErr.textContent = 'Dê um nome para a etiqueta.';
+      return;
+    }
+    if (!editingTagId){
+      var existente = Object.keys(catalogoEtiquetas).filter(function(id){
+        return catalogoEtiquetas[id].nome === nome;
+      })[0];
+      if (existente){
+        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+          .set({ etiquetasIds: FV.arrayUnion(existente) }, { merge: true })
+          .then(resetFormularioEtiqueta);
+        return;
+      }
+      db.collection('chatPrefs').doc(myUid).collection('etiquetas').add({ nome: nome, cor: novaTagCor })
+        .then(function(doc){
+          return db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+            .set({ etiquetasIds: FV.arrayUnion(doc.id) }, { merge: true });
+        })
+        .then(resetFormularioEtiqueta)
+        .catch(function(e){ els.tagFormErr.textContent = 'Erro: ' + e.message; });
+    } else {
+      db.collection('chatPrefs').doc(myUid).collection('etiquetas').doc(editingTagId)
+        .set({ nome: nome, cor: novaTagCor }, { merge: true })
+        .then(resetFormularioEtiqueta)
+        .catch(function(e){ els.tagFormErr.textContent = 'Erro: ' + e.message; });
+    }
   });
 
   // ---------------- picker: nova conversa / encaminhar ----------------
@@ -956,11 +1257,19 @@
       tagsPorConversa = {};
       snap.docs.forEach(function(d){ tagsPorConversa[d.id] = d.data(); });
       renderConvList();
+      if (els.tagsBackdrop.classList.contains('open')) renderTagsModal();
       if (activeId){
         var fixada = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
         els.btnPin.textContent = fixada ? '★ Fixada' : '☆ Fixar';
         els.btnPin.classList.toggle('on', !!fixada);
       }
+    });
+
+    db.collection('chatPrefs').doc(myUid).collection('etiquetas').onSnapshot(function(snap){
+      catalogoEtiquetas = {};
+      snap.docs.forEach(function(d){ catalogoEtiquetas[d.id] = d.data(); });
+      renderConvList();
+      if (els.tagsBackdrop.classList.contains('open')) renderTagsModal();
     });
   }
 
