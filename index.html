@@ -65,9 +65,6 @@
   .login-box h1{
     font-family:var(--font-display);font-weight:600;font-size:1.25rem;margin:0 0 4px;color:var(--paper);
   }
-  .login-box h1#login-title{
-    text-align:center;color:var(--silver);letter-spacing:.04em;
-  }
   .login-box .sub{color:var(--muted);font-size:.85rem;margin:0 0 20px;}
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
@@ -199,6 +196,22 @@
   .msg-err{color:var(--danger-text);font-size:.8rem;margin-top:8px;display:none;}
   .actions-cell{white-space:nowrap;}
   .actions-cell button{margin-right:6px;}
+
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal-box{
+    width:min(360px,100%);max-height:80vh;display:flex;flex-direction:column;
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;
+  }
+  .modal-box h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
+  .modal-box .sub{margin:0 0 14px;font-size:.78rem;color:var(--muted);}
+  .modal-box .list{flex:1;overflow-y:auto;margin-bottom:16px;}
+  .modal-box .empty-hint{color:var(--muted);font-size:.82rem;}
+  .modal-foot{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-foot .btn{width:auto;padding:9px 16px;}
 </style>
 </head>
 <body>
@@ -209,7 +222,7 @@
 " alt="Fonseca e Braga">
   <div class="login-box">
     <div id="login-mode">
-      <h1 id="login-title">Portal Fonseca e Braga</h1>
+      <h1>Portal Fonseca e Braga</h1>
       <p class="sub">Entre com seu usuário para acessar as ferramentas do escritório.</p>
       <div class="error-msg" id="login-error"></div>
       <form id="login-form">
@@ -364,6 +377,19 @@
   </div>
 </div>
 
+<!-- ================= MODAL: EDITAR ABAS DO USUÁRIO ================= -->
+<div class="modal-backdrop" id="edit-tabs-backdrop">
+  <div class="modal-box">
+    <h3>Editar abas</h3>
+    <p class="sub" id="edit-tabs-user-label"></p>
+    <div class="list" id="edit-tabs-list"></div>
+    <div class="modal-foot">
+      <button class="btn secondary" id="edit-tabs-cancelar">Cancelar</button>
+      <button class="btn" id="edit-tabs-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -419,6 +445,11 @@
     themeToggle: document.getElementById('theme-toggle'),
     themeIcon: document.getElementById('theme-icon'),
     themeLabel: document.getElementById('theme-label'),
+    editTabsBackdrop: document.getElementById('edit-tabs-backdrop'),
+    editTabsUserLabel: document.getElementById('edit-tabs-user-label'),
+    editTabsList: document.getElementById('edit-tabs-list'),
+    editTabsCancelar: document.getElementById('edit-tabs-cancelar'),
+    editTabsSalvar: document.getElementById('edit-tabs-salvar'),
   };
 
   // ---------- Tema claro/escuro ----------
@@ -841,16 +872,41 @@
     }
   }
 
+  // ---------- Modal: editar abas do usuário (checkboxes) ----------
+  let editTabsTargetUid = null;
+
   window.__editUserTabs = function(uid){
     db.collection('users').doc(uid).get().then(function(doc){
-      const cur = doc.data().tabs || [];
-      const escolhas = tabsCatalog.map(function(t){ return t.label + ' [' + t.id + ']'; }).join(', ');
-      const resp = prompt('IDs das abas separados por vírgula.\nDisponíveis: ' + escolhas, cur.join(','));
-      if (resp === null) return;
-      const novaLista = resp.split(',').map(function(s){return s.trim();}).filter(Boolean);
-      db.collection('users').doc(uid).update({ tabs: novaLista });
+      const dados = doc.data();
+      const cur = dados.tabs || [];
+      editTabsTargetUid = uid;
+      els.editTabsUserLabel.textContent = dados.displayName || dados.email || '';
+
+      if (tabsCatalog.length === 0) {
+        els.editTabsList.innerHTML = '<p class="empty-hint">Nenhuma aba cadastrada ainda. Crie abas em Administração &gt; Abas.</p>';
+      } else {
+        els.editTabsList.innerHTML = tabsCatalog.map(function(t){
+          const marcado = cur.indexOf(t.id) !== -1 ? ' checked' : '';
+          return '<label class="checkbox-row"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '> ' + escapeHtml(t.label) + '</label>';
+        }).join('');
+      }
+      els.editTabsBackdrop.classList.add('show');
     });
   };
+
+  function fecharModalEditTabs(){
+    els.editTabsBackdrop.classList.remove('show');
+    editTabsTargetUid = null;
+  }
+  els.editTabsCancelar.addEventListener('click', fecharModalEditTabs);
+  els.editTabsBackdrop.addEventListener('click', function(e){
+    if (e.target === els.editTabsBackdrop) fecharModalEditTabs();
+  });
+  els.editTabsSalvar.addEventListener('click', function(){
+    if (!editTabsTargetUid) return;
+    const novaLista = Array.prototype.slice.call(document.querySelectorAll('.edit-tab-cb:checked')).map(function(c){ return c.value; });
+    db.collection('users').doc(editTabsTargetUid).update({ tabs: novaLista }).then(fecharModalEditTabs);
+  });
 
   window.__revokeUser = function(uid){
     if (!confirm('Revogar o acesso deste usuário? Ele não conseguirá mais ver nenhuma aba.\n(A conta de login continua existindo — para excluí-la de vez, remova em Firebase Console > Authentication.)')) return;
