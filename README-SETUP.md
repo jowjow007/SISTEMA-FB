@@ -62,6 +62,10 @@ service cloud.firestore {
                     && request.resource.data.texto is string
                     && request.resource.data.texto.size() > 0
                     && request.resource.data.texto.size() <= 2000
+                    && request.resource.data.autorNome is string
+                    && request.resource.data.autorNome.size() > 0
+                    && request.resource.data.autorNome.size() <= 120
+                    && request.resource.data.autorNome.matches('.+ .+')
                     && request.resource.data.motivoExclusao == null;
       allow update: if isAdmin()
                     && resource.data.status == 'aberta'
