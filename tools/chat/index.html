@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat Interno — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332726;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --green:#4c9a6a;
+    --gold:#d8b25a;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;}
+  button,input,textarea{font-family:inherit;}
+  a{color:inherit;}
+
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+
+  .shell{display:flex;height:100vh;}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    width:320px;flex:0 0 auto;display:flex;flex-direction:column;background:var(--panel);
+    border-right:1px solid var(--line-strong);min-width:0;
+  }
+  .sidebar-head{padding:16px 16px 12px;border-bottom:1px solid var(--line-strong);}
+  .sidebar-head h1{font-family:var(--font-display);font-weight:600;font-size:1.2rem;margin:0 0 10px;color:var(--paper);}
+  .search-row{display:flex;gap:8px;}
+  .search-row input{
+    flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:20px;
+    color:var(--paper);font-size:.82rem;padding:8px 12px;outline:none;
+  }
+  .search-row input:focus{border-color:var(--red);}
+  .icon-btn{
+    flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--red);background:var(--red-deep);
+    color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .icon-btn:hover{background:var(--red);}
+
+  .conv-list{flex:1;overflow-y:auto;}
+  .conv-empty{padding:50px 20px;text-align:center;color:var(--muted);font-size:.85rem;}
+  .conv-item{
+    display:flex;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--line);
+    align-items:flex-start;position:relative;
+  }
+  .conv-item:hover{background:var(--panel-2);}
+  .conv-item.active{background:var(--panel-3);}
+  .avatar{
+    width:42px;height:42px;border-radius:50%;background:var(--panel-2);background-size:cover;background-position:center;
+    flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);
+    font-size:1rem;color:var(--gold);border:1px solid var(--line-strong);
+  }
+  .avatar.group{color:var(--silver);}
+  .conv-body{flex:1;min-width:0;}
+  .conv-top-line{display:flex;align-items:center;gap:6px;}
+  .conv-name{font-size:.88rem;font-weight:600;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  .conv-time{font-size:.68rem;color:var(--muted);flex:0 0 auto;}
+  .conv-preview{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;}
+  .conv-preview.unread{color:var(--paper);font-weight:600;}
+  .conv-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+  .tag-chip{
+    font-size:.65rem;padding:2px 8px;border-radius:20px;background:rgba(216,178,90,.14);color:var(--gold);
+    border:1px solid rgba(216,178,90,.35);
+  }
+  .pin-mark{color:var(--gold);font-size:.75rem;flex:0 0 auto;}
+  .unread-badge{
+    background:var(--red);color:#fff;font-size:.65rem;font-weight:700;border-radius:20px;padding:1px 7px;
+    flex:0 0 auto;
+  }
+  .conv-meta-col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto;}
+
+  /* ---------- thread ---------- */
+  .thread{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--ink);}
+  .thread-empty{
+    flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;
+    text-align:center;padding:20px;flex-direction:column;gap:8px;
+  }
+  .thread-empty .big{font-size:2.4rem;}
+  .thread-head{
+    padding:13px 20px;border-bottom:1px solid var(--line-strong);background:var(--panel);display:flex;
+    align-items:center;gap:12px;flex:0 0 auto;
+  }
+  .back-btn{display:none;background:none;border:none;color:var(--paper);font-size:1.2rem;cursor:pointer;padding:0 4px;}
+  .thread-title{font-size:.98rem;font-weight:600;color:var(--paper);}
+  .thread-sub{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .thread-tags-row{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .small-link-btn{
+    background:none;border:1px solid var(--line-strong);color:var(--muted);font-size:.7rem;padding:4px 10px;
+    border-radius:20px;cursor:pointer;
+  }
+  .small-link-btn:hover{color:var(--paper);border-color:var(--silver);}
+  .small-link-btn.on{color:var(--gold);border-color:rgba(216,178,90,.5);}
+
+  .msg-list{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:4px;}
+  .day-sep{align-self:center;font-size:.68rem;color:var(--muted);background:var(--panel-2);padding:3px 12px;border-radius:20px;margin:10px 0;}
+  .msg-row{display:flex;max-width:72%;flex-direction:column;margin:3px 0;}
+  .msg-row.own{align-self:flex-end;align-items:flex-end;}
+  .msg-row.other{align-self:flex-start;align-items:flex-start;}
+  .msg-author{font-size:.68rem;color:var(--silver);margin:0 4px 2px;}
+  .msg-bubble-wrap{display:flex;align-items:center;gap:6px;}
+  .msg-row.own .msg-bubble-wrap{flex-direction:row-reverse;}
+  .msg-bubble{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:14px;padding:8px 12px;
+    font-size:.87rem;line-height:1.4;color:var(--paper);white-space:pre-wrap;word-break:break-word;
+  }
+  .msg-row.own .msg-bubble{background:var(--red-deep);border-color:var(--red);}
+  .msg-fwd-label{font-size:.68rem;color:var(--muted);font-style:italic;margin-bottom:3px;}
+  .msg-photo{max-width:220px;border-radius:10px;display:block;cursor:pointer;margin-bottom:4px;}
+  .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;}
+  .msg-fwd-btn{
+    background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;opacity:0;transition:opacity .12s;
+    padding:2px 4px;
+  }
+  .msg-row:hover .msg-fwd-btn{opacity:1;}
+  .msg-fwd-btn:hover{color:var(--paper);}
+
+  .composer{
+    flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:10px 14px;
+  }
+  .photo-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px;}
+  .photo-preview-row.show{display:flex;}
+  .photo-preview-row img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line-strong);}
+  .photo-preview-row button{background:none;border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:3px 10px;font-size:.72rem;cursor:pointer;}
+  .composer-row{display:flex;align-items:flex-end;gap:8px;}
+  .composer-row textarea{
+    flex:1;min-height:38px;max-height:120px;resize:none;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:18px;color:var(--paper);font-size:.87rem;padding:9px 14px;outline:none;line-height:1.35;
+  }
+  .composer-row textarea:focus{border-color:var(--red);}
+  .send-btn{
+    flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--red);background:var(--red-deep);
+    color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .send-btn:hover{background:var(--red);}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .media-hint{font-size:.65rem;color:var(--muted);margin-top:6px;}
+
+  /* ---------- modals ---------- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;
+    z-index:60;padding:20px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;max-width:420px;
+    width:100%;max-height:82vh;display:flex;flex-direction:column;
+  }
+  .modal h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
+  .modal p.hint{margin:0 0 10px;font-size:.78rem;color:var(--muted);}
+  .modal input[type=text]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);
+    font-size:.85rem;padding:8px 10px;margin-bottom:10px;
+  }
+  .picker-list{overflow-y:auto;flex:1;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 0 12px;}
+  .picker-item{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid var(--line);}
+  .picker-item:hover{background:var(--panel-2);}
+  .picker-item .nome{font-size:.85rem;color:var(--paper);flex:1;}
+  .picker-item .sub{font-size:.68rem;color:var(--muted);}
+  .picker-item input[type=checkbox]{flex:0 0 auto;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
+  .modal .err{color:#ffb4ae;font-size:.75rem;min-height:1.1em;margin:0 0 8px;}
+  .btn{
+    border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
+    padding:7px 16px;font-size:.8rem;font-weight:600;cursor:pointer;
+  }
+  .btn:hover{background:var(--red);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--paper);}
+  .btn.ghost:hover{border-color:var(--silver);}
+
+  .tag-editor-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .tag-editor-chips .tag-chip button{background:none;border:none;color:inherit;cursor:pointer;margin-left:4px;font-size:.8rem;}
+
+  .lightbox-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;
+    z-index:70;padding:20px;cursor:zoom-out;
+  }
+  .lightbox-backdrop.open{display:flex;}
+  .lightbox-backdrop img{max-width:100%;max-height:100%;border-radius:8px;}
+
+  @media(max-width:720px){
+    .sidebar{width:100%;position:absolute;inset:0;z-index:2;}
+    .shell.thread-open .sidebar{display:none;}
+    .thread{position:absolute;inset:0;}
+    .shell:not(.thread-open) .thread{display:none;}
+    .back-btn{display:block;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate" style="display:none;"></div>
+
+<div class="shell" id="shell" style="display:none;">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h1>Chat Interno</h1>
+      <div class="search-row">
+        <input type="text" id="busca-conversas" placeholder="Buscar por nome ou etiqueta...">
+        <button class="icon-btn" id="btn-nova-conversa" title="Nova conversa">+</button>
+      </div>
+    </div>
+    <div class="conv-list" id="conv-list"></div>
+  </aside>
+
+  <section class="thread" id="thread">
+    <div class="thread-empty" id="thread-empty">
+      <div class="big">💬</div>
+      <div>Selecione uma conversa ou inicie uma nova.</div>
+    </div>
+
+    <div id="thread-active" style="display:none;flex:1;flex-direction:column;min-height:0;">
+      <div class="thread-head">
+        <button class="back-btn" id="btn-voltar">←</button>
+        <div>
+          <div class="thread-title" id="thread-title">—</div>
+          <div class="thread-sub" id="thread-sub"></div>
+        </div>
+        <div class="thread-tags-row">
+          <button class="small-link-btn" id="btn-pin">☆ Fixar</button>
+          <button class="small-link-btn" id="btn-etiquetas">🏷 Etiquetas</button>
+        </div>
+      </div>
+      <div class="msg-list" id="msg-list"></div>
+      <div class="composer">
+        <div class="photo-preview-row" id="photo-preview-row">
+          <img id="photo-preview-img" src="">
+          <button id="btn-remover-foto">Remover foto</button>
+        </div>
+        <div class="composer-row">
+          <button class="icon-btn" id="btn-anexar" title="Anexar foto">📷</button>
+          <input type="file" id="foto-input" accept="image/*" hidden>
+          <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
+          <button class="send-btn" id="btn-enviar" title="Enviar">➤</button>
+        </div>
+        <div class="media-hint">Suporta texto e fotos. Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- modal: nova conversa / encaminhar -->
+<div class="modal-backdrop" id="picker-backdrop">
+  <div class="modal">
+    <h3 id="picker-title">Nova conversa</h3>
+    <p class="hint" id="picker-hint">Escolha um ou mais colegas.</p>
+    <input type="text" id="picker-nome-grupo" placeholder="Nome do grupo" style="display:none;">
+    <input type="text" id="picker-busca" placeholder="Buscar colaborador...">
+    <div class="picker-list" id="picker-list"></div>
+    <div class="err" id="picker-err"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="picker-cancelar">Cancelar</button>
+      <button class="btn" id="picker-confirmar" style="display:none;">Iniciar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal: etiquetas -->
+<div class="modal-backdrop" id="tags-backdrop">
+  <div class="modal">
+    <h3>Etiquetas</h3>
+    <p class="hint">Etiquetas são só suas — organizam sua própria lista de conversas.</p>
+    <div class="tag-editor-chips" id="tag-editor-chips"></div>
+    <input type="text" id="tag-input" placeholder="Nova etiqueta e Enter" maxlength="30">
+    <div class="modal-foot">
+      <button class="btn ghost" id="tags-fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox-backdrop" id="lightbox">
+  <img id="lightbox-img" src="">
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+  var FV = firebase.firestore.FieldValue;
+
+  var els = {
+    gate: document.getElementById('gate'),
+    shell: document.getElementById('shell'),
+    convList: document.getElementById('conv-list'),
+    buscaConversas: document.getElementById('busca-conversas'),
+    btnNovaConversa: document.getElementById('btn-nova-conversa'),
+    threadEmpty: document.getElementById('thread-empty'),
+    threadActive: document.getElementById('thread-active'),
+    threadTitle: document.getElementById('thread-title'),
+    threadSub: document.getElementById('thread-sub'),
+    btnVoltar: document.getElementById('btn-voltar'),
+    btnPin: document.getElementById('btn-pin'),
+    btnEtiquetas: document.getElementById('btn-etiquetas'),
+    msgList: document.getElementById('msg-list'),
+    photoPreviewRow: document.getElementById('photo-preview-row'),
+    photoPreviewImg: document.getElementById('photo-preview-img'),
+    btnRemoverFoto: document.getElementById('btn-remover-foto'),
+    btnAnexar: document.getElementById('btn-anexar'),
+    fotoInput: document.getElementById('foto-input'),
+    composerInput: document.getElementById('composer-input'),
+    btnEnviar: document.getElementById('btn-enviar'),
+    pickerBackdrop: document.getElementById('picker-backdrop'),
+    pickerTitle: document.getElementById('picker-title'),
+    pickerHint: document.getElementById('picker-hint'),
+    pickerNomeGrupo: document.getElementById('picker-nome-grupo'),
+    pickerBusca: document.getElementById('picker-busca'),
+    pickerList: document.getElementById('picker-list'),
+    pickerErr: document.getElementById('picker-err'),
+    pickerCancelar: document.getElementById('picker-cancelar'),
+    pickerConfirmar: document.getElementById('picker-confirmar'),
+    tagsBackdrop: document.getElementById('tags-backdrop'),
+    tagEditorChips: document.getElementById('tag-editor-chips'),
+    tagInput: document.getElementById('tag-input'),
+    tagsFechar: document.getElementById('tags-fechar'),
+    lightbox: document.getElementById('lightbox'),
+    lightboxImg: document.getElementById('lightbox-img')
+  };
+
+  var myUid = null;
+  var myNome = 'Você';
+  var perfis = {};          // uid -> {displayName, photoBase64}
+  var conversas = [];       // lista de conversas do usuário
+  var tagsPorConversa = {}; // conversaId -> {etiquetas:[], fixada:bool}
+  var activeId = null;
+  var mensagensCache = [];
+  var unsubMensagens = null;
+  var novaFotoDataUrl = null;
+  var pickerMode = null;      // 'nova' | 'encaminhar'
+  var pickerSelected = {};    // uid -> true (modo nova)
+  var forwardMsg = null;      // mensagem sendo encaminhada
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function nomeDe(uid){
+    if (uid === myUid) return myNome;
+    var p = perfis[uid];
+    return (p && p.displayName) || 'Colaborador';
+  }
+
+  function fotoDe(uid){
+    var p = perfis[uid];
+    return p && p.photoBase64;
+  }
+
+  function iniciais(nome){
+    var partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return '?';
+    return (partes[0][0] + (partes[1] ? partes[1][0] : '')).toUpperCase();
+  }
+
+  function avatarHtml(nomeParaIniciais, fotoBase64, isGroup){
+    if (fotoBase64) return '<div class="avatar" style="background-image:url(\'' + fotoBase64 + '\')"></div>';
+    if (isGroup) return '<div class="avatar group">👥</div>';
+    return '<div class="avatar">' + escapeHtml(iniciais(nomeParaIniciais)) + '</div>';
+  }
+
+  function tituloConversa(c){
+    if (c.tipo === 'grupo') return c.nomeGrupo || 'Grupo';
+    var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
+    return outro ? nomeDe(outro) : 'Conversa';
+  }
+
+  function subConversa(c){
+    if (c.tipo === 'grupo') return (c.participantes || []).length + ' participantes';
+    return '';
+  }
+
+  function avatarConversaHtml(c){
+    if (c.tipo === 'grupo') return avatarHtml(null, null, true);
+    var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
+    return avatarHtml(nomeDe(outro), fotoDe(outro), false);
+  }
+
+  function formatHora(ts){
+    if (!ts || !ts.toDate) return '';
+    return ts.toDate().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function formatDiaCurto(ts){
+    if (!ts || !ts.toDate) return '';
+    var d = ts.toDate();
+    var hoje = new Date();
+    var ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+    function mesmoDia(a, b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    if (mesmoDia(d, hoje)) return 'agora';
+    if (mesmoDia(d, ontem)) return 'ontem';
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  }
+
+  function formatDiaLongo(date){
+    var hoje = new Date();
+    var ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+    function mesmoDia(a, b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    if (mesmoDia(date, hoje)) return 'Hoje';
+    if (mesmoDia(date, ontem)) return 'Ontem';
+    return date.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+  }
+
+  // ---------------- render: lista de conversas ----------------
+
+  function conversaOrdenada(){
+    var termo = els.buscaConversas.value.trim().toLowerCase();
+    var lista = conversas.filter(function(c){
+      if (!termo) return true;
+      var nome = tituloConversa(c).toLowerCase();
+      var tags = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetas) || [];
+      if (nome.indexOf(termo) !== -1) return true;
+      return tags.some(function(t){ return t.toLowerCase().indexOf(termo) !== -1; });
+    });
+    lista.sort(function(a, b){
+      var pa = (tagsPorConversa[a.id] && tagsPorConversa[a.id].fixada) ? 1 : 0;
+      var pb = (tagsPorConversa[b.id] && tagsPorConversa[b.id].fixada) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      var ta = a.ultimaMensagemEm && a.ultimaMensagemEm.toMillis ? a.ultimaMensagemEm.toMillis() : 0;
+      var tb = b.ultimaMensagemEm && b.ultimaMensagemEm.toMillis ? b.ultimaMensagemEm.toMillis() : 0;
+      return tb - ta;
+    });
+    return lista;
+  }
+
+  function renderConvList(){
+    var lista = conversaOrdenada();
+    if (!lista.length){
+      els.convList.innerHTML = '<div class="conv-empty">Nenhuma conversa ainda. Toque em "+" para começar.</div>';
+      return;
+    }
+    els.convList.innerHTML = lista.map(function(c){
+      var tags = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetas) || [];
+      var fixada = tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada;
+      var naoLidas = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
+      var preview = c.ultimaMensagemPreview || '';
+      if (c.tipo === 'grupo' && c.ultimaMensagemAutor){
+        preview = nomeDe(c.ultimaMensagemAutor) + ': ' + preview;
+      }
+      var out = '<div class="conv-item' + (c.id === activeId ? ' active' : '') + '" data-id="' + c.id + '">';
+      out += avatarConversaHtml(c);
+      out += '<div class="conv-body">';
+      out += '<div class="conv-top-line">';
+      if (fixada) out += '<span class="pin-mark">★</span>';
+      out += '<span class="conv-name">' + escapeHtml(tituloConversa(c)) + '</span>';
+      out += '</div>';
+      out += '<div class="conv-preview' + (naoLidas > 0 ? ' unread' : '') + '">' + escapeHtml(preview) + '</div>';
+      if (tags.length){
+        out += '<div class="conv-tags">' + tags.map(function(t){ return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+      }
+      out += '</div>';
+      out += '<div class="conv-meta-col">';
+      out += '<span class="conv-time">' + formatDiaCurto(c.ultimaMensagemEm) + '</span>';
+      if (naoLidas > 0) out += '<span class="unread-badge">' + naoLidas + '</span>';
+      out += '</div>';
+      out += '</div>';
+      return out;
+    }).join('');
+
+    Array.prototype.forEach.call(els.convList.querySelectorAll('.conv-item'), function(el){
+      el.addEventListener('click', function(){ selecionarConversa(el.getAttribute('data-id')); });
+    });
+  }
+
+  // ---------------- thread ----------------
+
+  function selecionarConversa(id){
+    activeId = id;
+    els.shell.classList.add('thread-open');
+    els.threadEmpty.style.display = 'none';
+    els.threadActive.style.display = 'flex';
+    renderConvList();
+
+    var c = conversas.filter(function(x){ return x.id === id; })[0];
+    if (c){
+      els.threadTitle.textContent = tituloConversa(c);
+      els.threadSub.textContent = subConversa(c);
+      var fixada = tagsPorConversa[id] && tagsPorConversa[id].fixada;
+      els.btnPin.textContent = fixada ? '★ Fixada' : '☆ Fixar';
+      els.btnPin.classList.toggle('on', !!fixada);
+    }
+
+    db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
+
+    if (unsubMensagens) { unsubMensagens(); unsubMensagens = null; }
+    unsubMensagens = db.collection('conversas').doc(id).collection('mensagens')
+      .orderBy('criadoEm', 'asc')
+      .onSnapshot(function(snap){
+        mensagensCache = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        renderMensagens();
+        marcarComoLidas();
+      });
+  }
+
+  function fecharThreadMobile(){
+    els.shell.classList.remove('thread-open');
+  }
+
+  function marcarComoLidas(){
+    mensagensCache.forEach(function(m){
+      var lidaPor = m.lidaPor || [];
+      if (m.autorUid !== myUid && lidaPor.indexOf(myUid) === -1){
+        db.collection('conversas').doc(activeId).collection('mensagens').doc(m.id)
+          .update({ lidaPor: FV.arrayUnion(myUid) }).catch(function(){});
+      }
+    });
+  }
+
+  function renderMensagens(){
+    var out = '';
+    var ultimoDia = null;
+    mensagensCache.forEach(function(m){
+      var data = m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : new Date();
+      var chaveDia = data.toDateString();
+      if (chaveDia !== ultimoDia){
+        out += '<div class="day-sep">' + formatDiaLongo(data) + '</div>';
+        ultimoDia = chaveDia;
+      }
+      var own = m.autorUid === myUid;
+      out += '<div class="msg-row ' + (own ? 'own' : 'other') + '">';
+      if (!own) out += '<div class="msg-author">' + escapeHtml(nomeDe(m.autorUid)) + '</div>';
+      out += '<div class="msg-bubble-wrap">';
+      out += '<div class="msg-bubble">';
+      if (m.encaminhada){
+        out += '<div class="msg-fwd-label">↪ Encaminhada de ' + escapeHtml(m.encaminhadaDeAutorNome || 'alguém') + '</div>';
+      }
+      if (m.tipo === 'foto' && m.fotoBase64){
+        out += '<img class="msg-photo" src="' + m.fotoBase64 + '" data-full="' + m.fotoBase64 + '">';
+      }
+      if (m.texto) out += '<div>' + escapeHtml(m.texto) + '</div>';
+      out += '</div>';
+      out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">↪</button>';
+      out += '</div>';
+      out += '<div class="msg-time">' + formatHora(m.criadoEm) + '</div>';
+      out += '</div>';
+    });
+    els.msgList.innerHTML = out;
+    els.msgList.scrollTop = els.msgList.scrollHeight;
+
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('.msg-photo'), function(img){
+      img.addEventListener('click', function(){
+        els.lightboxImg.src = img.getAttribute('data-full');
+        els.lightbox.classList.add('open');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-fwd]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-fwd');
+        forwardMsg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (forwardMsg) abrirPicker('encaminhar');
+      });
+    });
+  }
+
+  els.lightbox.addEventListener('click', function(){ els.lightbox.classList.remove('open'); });
+  els.btnVoltar.addEventListener('click', fecharThreadMobile);
+
+  // ---------------- envio de mensagens ----------------
+
+  function limparComposerFoto(){
+    novaFotoDataUrl = null;
+    els.photoPreviewRow.classList.remove('show');
+    els.fotoInput.value = '';
+  }
+
+  function comprimirFoto(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function(){
+          function tentativa(maxDim, quality){
+            var w = img.width, h = img.height;
+            if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
+            else { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            return canvas.toDataURL('image/jpeg', quality);
+          }
+          var dataUrl = tentativa(1000, 0.72);
+          if (dataUrl.length > 700000) dataUrl = tentativa(700, 0.6);
+          if (dataUrl.length > 700000) dataUrl = tentativa(500, 0.5);
+          if (dataUrl.length > 700000) { reject(new Error('Imagem muito grande mesmo após compressão. Tente outra foto.')); return; }
+          resolve(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.btnAnexar.addEventListener('click', function(){ els.fotoInput.click(); });
+  els.fotoInput.addEventListener('change', function(){
+    var file = els.fotoInput.files[0];
+    if (!file) return;
+    comprimirFoto(file).then(function(dataUrl){
+      novaFotoDataUrl = dataUrl;
+      els.photoPreviewImg.src = dataUrl;
+      els.photoPreviewRow.classList.add('show');
+    }).catch(function(err){
+      alert(err.message || 'Não foi possível processar a imagem.');
+      els.fotoInput.value = '';
+    });
+  });
+  els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
+
+  els.composerInput.addEventListener('input', function(){
+    els.composerInput.style.height = 'auto';
+    els.composerInput.style.height = Math.min(els.composerInput.scrollHeight, 120) + 'px';
+  });
+  els.composerInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      enviarMensagem();
+    }
+  });
+  els.btnEnviar.addEventListener('click', enviarMensagem);
+
+  function postMessageTo(conversaId, msgData, preview){
+    return db.collection('conversas').doc(conversaId).collection('mensagens').add(msgData).then(function(){
+      var cached = conversas.filter(function(x){ return x.id === conversaId; })[0];
+      var participantesPromise = cached
+        ? Promise.resolve(cached.participantes || [])
+        : db.collection('conversas').doc(conversaId).get().then(function(doc){
+            return (doc.exists && doc.data().participantes) || [];
+          });
+      return participantesPromise.then(function(participantes){
+        var updates = {
+          ultimaMensagemEm: FV.serverTimestamp(),
+          ultimaMensagemPreview: preview.slice(0, 120),
+          ultimaMensagemAutor: msgData.autorUid
+        };
+        participantes.forEach(function(uid){
+          updates['naoLidoPor.' + uid] = (uid === msgData.autorUid) ? 0 : FV.increment(1);
+        });
+        return db.collection('conversas').doc(conversaId).update(updates);
+      });
+    });
+  }
+
+  function enviarMensagem(){
+    if (!activeId) return;
+    var texto = els.composerInput.value.trim();
+    if (!texto && !novaFotoDataUrl) return;
+    els.btnEnviar.disabled = true;
+    var msgData = {
+      autorUid: myUid,
+      tipo: novaFotoDataUrl ? 'foto' : 'texto',
+      texto: texto || null,
+      fotoBase64: novaFotoDataUrl || null,
+      encaminhada: false,
+      encaminhadaDeAutorNome: null,
+      criadoEm: FV.serverTimestamp(),
+      lidaPor: [myUid]
+    };
+    var preview = novaFotoDataUrl ? ('📷 Foto' + (texto ? ': ' + texto : '')) : texto;
+    postMessageTo(activeId, msgData, preview).then(function(){
+      els.composerInput.value = '';
+      els.composerInput.style.height = 'auto';
+      limparComposerFoto();
+    }).catch(function(e){
+      alert('Não foi possível enviar: ' + e.message);
+    }).finally(function(){
+      els.btnEnviar.disabled = false;
+    });
+  }
+
+  // ---------------- pin ----------------
+
+  els.btnPin.addEventListener('click', function(){
+    if (!activeId) return;
+    var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+      .set({ fixada: !atual }, { merge: true }).catch(function(e){ alert('Erro: ' + e.message); });
+  });
+
+  // ---------------- etiquetas ----------------
+
+  els.btnEtiquetas.addEventListener('click', function(){
+    if (!activeId) return;
+    renderTagEditor();
+    els.tagsBackdrop.classList.add('open');
+    els.tagInput.value = '';
+    els.tagInput.focus();
+  });
+  els.tagsFechar.addEventListener('click', function(){ els.tagsBackdrop.classList.remove('open'); });
+
+  function renderTagEditor(){
+    var tags = (tagsPorConversa[activeId] && tagsPorConversa[activeId].etiquetas) || [];
+    els.tagEditorChips.innerHTML = tags.map(function(t){
+      return '<span class="tag-chip">' + escapeHtml(t) + '<button data-rm="' + escapeHtml(t) + '">×</button></span>';
+    }).join('') || '<span style="color:var(--muted);font-size:.78rem;">Nenhuma etiqueta ainda.</span>';
+    Array.prototype.forEach.call(els.tagEditorChips.querySelectorAll('[data-rm]'), function(btn){
+      btn.addEventListener('click', function(){
+        var tag = btn.getAttribute('data-rm');
+        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+          .set({ etiquetas: FV.arrayRemove(tag) }, { merge: true });
+      });
+    });
+  }
+
+  els.tagInput.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter') return;
+    var tag = els.tagInput.value.trim();
+    if (!tag) return;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+      .set({ etiquetas: FV.arrayUnion(tag) }, { merge: true }).then(function(){
+        els.tagInput.value = '';
+      });
+  });
+
+  // ---------------- picker: nova conversa / encaminhar ----------------
+
+  function ensureIndividualConversa(otherUid){
+    var existente = conversas.filter(function(c){
+      return c.tipo === 'individual' && c.participantes.indexOf(otherUid) !== -1 && c.participantes.indexOf(myUid) !== -1;
+    })[0];
+    if (existente) return Promise.resolve(existente.id);
+    var naoLidoPor = {}; naoLidoPor[myUid] = 0; naoLidoPor[otherUid] = 0;
+    return db.collection('conversas').add({
+      participantes: [myUid, otherUid],
+      tipo: 'individual',
+      nomeGrupo: null,
+      criadoPor: myUid,
+      criadoEm: FV.serverTimestamp(),
+      ultimaMensagemEm: FV.serverTimestamp(),
+      ultimaMensagemPreview: 'Conversa iniciada',
+      ultimaMensagemAutor: myUid,
+      naoLidoPor: naoLidoPor
+    }).then(function(doc){ return doc.id; });
+  }
+
+  function criarGrupo(uids, nomeGrupo){
+    var participantes = [myUid].concat(uids.filter(function(u){ return u !== myUid; }));
+    var naoLidoPor = {}; participantes.forEach(function(u){ naoLidoPor[u] = 0; });
+    return db.collection('conversas').add({
+      participantes: participantes,
+      tipo: 'grupo',
+      nomeGrupo: nomeGrupo,
+      criadoPor: myUid,
+      criadoEm: FV.serverTimestamp(),
+      ultimaMensagemEm: FV.serverTimestamp(),
+      ultimaMensagemPreview: 'Grupo criado',
+      ultimaMensagemAutor: myUid,
+      naoLidoPor: naoLidoPor
+    }).then(function(doc){ return doc.id; });
+  }
+
+  function abrirPicker(mode){
+    pickerMode = mode;
+    pickerSelected = {};
+    els.pickerErr.textContent = '';
+    els.pickerBusca.value = '';
+    els.pickerNomeGrupo.value = '';
+    els.pickerNomeGrupo.style.display = 'none';
+    if (mode === 'nova'){
+      els.pickerTitle.textContent = 'Nova conversa';
+      els.pickerHint.textContent = 'Escolha um colega (individual) ou vários (cria um grupo).';
+      els.pickerConfirmar.style.display = 'inline-block';
+      els.pickerConfirmar.textContent = 'Iniciar';
+    } else {
+      els.pickerTitle.textContent = 'Encaminhar mensagem';
+      els.pickerHint.textContent = 'Toque numa conversa ou colega para encaminhar.';
+      els.pickerConfirmar.style.display = 'none';
+    }
+    renderPickerList();
+    els.pickerBackdrop.classList.add('open');
+  }
+
+  function fecharPicker(){
+    els.pickerBackdrop.classList.remove('open');
+    forwardMsg = null;
+  }
+  els.pickerCancelar.addEventListener('click', fecharPicker);
+  els.btnNovaConversa.addEventListener('click', function(){ abrirPicker('nova'); });
+  els.pickerBusca.addEventListener('input', renderPickerList);
+
+  function renderPickerList(){
+    var termo = els.pickerBusca.value.trim().toLowerCase();
+
+    if (pickerMode === 'nova'){
+      var contatos = Object.keys(perfis)
+        .filter(function(uid){ return uid !== myUid; })
+        .map(function(uid){ return { uid: uid, nome: perfis[uid].displayName || 'Colaborador' }; })
+        .filter(function(c){ return !termo || c.nome.toLowerCase().indexOf(termo) !== -1; })
+        .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
+      if (!contatos.length){
+        els.pickerList.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.82rem;">Nenhum colaborador encontrado. As pessoas aparecem aqui depois de preencherem "Meu Perfil" ao menos uma vez.</div>';
+        return;
+      }
+      els.pickerList.innerHTML = contatos.map(function(c){
+        return '<div class="picker-item" data-uid="' + c.uid + '">' +
+          '<input type="checkbox" ' + (pickerSelected[c.uid] ? 'checked' : '') + '>' +
+          avatarHtml(c.nome, perfis[c.uid].photoBase64, false) +
+          '<span class="nome">' + escapeHtml(c.nome) + '</span></div>';
+      }).join('');
+      Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){
+        el.addEventListener('click', function(){
+          var uid = el.getAttribute('data-uid');
+          pickerSelected[uid] = !pickerSelected[uid];
+          var qtd = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; }).length;
+          els.pickerNomeGrupo.style.display = qtd > 1 ? 'block' : 'none';
+          renderPickerList();
+        });
+      });
+      return;
+    }
+
+    // modo encaminhar: conversas existentes + colaboradores sem conversa individual ainda
+    var alvos = conversas.map(function(c){
+      return { tipo: 'conversa', id: c.id, nome: tituloConversa(c), sub: c.tipo === 'grupo' ? 'Grupo' : '' };
+    });
+    var jaTemIndividual = {};
+    conversas.forEach(function(c){
+      if (c.tipo === 'individual'){
+        var outro = c.participantes.filter(function(u){ return u !== myUid; })[0];
+        if (outro) jaTemIndividual[outro] = true;
+      }
+    });
+    Object.keys(perfis).forEach(function(uid){
+      if (uid === myUid || jaTemIndividual[uid]) return;
+      alvos.push({ tipo: 'novo', uid: uid, nome: perfis[uid].displayName || 'Colaborador', sub: 'Nova conversa' });
+    });
+    alvos = alvos.filter(function(a){ return !termo || a.nome.toLowerCase().indexOf(termo) !== -1; })
+      .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
+    if (!alvos.length){
+      els.pickerList.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.82rem;">Nada encontrado.</div>';
+      return;
+    }
+    els.pickerList.innerHTML = alvos.map(function(a){
+      return '<div class="picker-item" data-tipo="' + a.tipo + '" data-alvo="' + (a.id || a.uid) + '">' +
+        avatarHtml(a.nome, a.uid ? perfis[a.uid].photoBase64 : null, a.tipo === 'conversa' && a.sub === 'Grupo') +
+        '<span class="nome">' + escapeHtml(a.nome) + (a.sub ? ' <span class="sub">· ' + escapeHtml(a.sub) + '</span>' : '') + '</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){
+      el.addEventListener('click', function(){
+        var tipo = el.getAttribute('data-tipo');
+        var alvo = el.getAttribute('data-alvo');
+        if (tipo === 'conversa') {
+          encaminharParaConversa(alvo);
+        } else {
+          ensureIndividualConversa(alvo).then(function(id){ encaminharParaConversa(id); });
+        }
+      });
+    });
+  }
+
+  function encaminharParaConversa(conversaId){
+    if (!forwardMsg) return;
+    var autorOriginal = forwardMsg.encaminhada ? forwardMsg.encaminhadaDeAutorNome : nomeDe(forwardMsg.autorUid);
+    var msgData = {
+      autorUid: myUid,
+      tipo: forwardMsg.tipo,
+      texto: forwardMsg.texto || null,
+      fotoBase64: forwardMsg.fotoBase64 || null,
+      encaminhada: true,
+      encaminhadaDeAutorNome: autorOriginal,
+      criadoEm: FV.serverTimestamp(),
+      lidaPor: [myUid]
+    };
+    var preview = (forwardMsg.tipo === 'foto' ? '📷 Foto' : (forwardMsg.texto || ''));
+    postMessageTo(conversaId, msgData, preview).then(function(){
+      fecharPicker();
+    }).catch(function(e){ alert('Não foi possível encaminhar: ' + e.message); });
+  }
+
+  els.pickerConfirmar.addEventListener('click', function(){
+    var uids = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; });
+    if (!uids.length){
+      els.pickerErr.textContent = 'Escolha ao menos um colaborador.';
+      return;
+    }
+    if (uids.length === 1){
+      ensureIndividualConversa(uids[0]).then(function(id){
+        fecharPicker();
+        selecionarConversa(id);
+      });
+      return;
+    }
+    var nomeGrupo = els.pickerNomeGrupo.value.trim();
+    if (!nomeGrupo){
+      els.pickerErr.textContent = 'Dê um nome para o grupo.';
+      return;
+    }
+    criarGrupo(uids, nomeGrupo).then(function(id){
+      fecharPicker();
+      selecionarConversa(id);
+    });
+  });
+
+  // ---------------- boot ----------------
+
+  function iniciarListeners(){
+    db.collection('perfis').onSnapshot(function(snap){
+      perfis = {};
+      snap.docs.forEach(function(d){ perfis[d.id] = d.data(); });
+      renderConvList();
+      if (activeId) renderMensagens();
+    });
+
+    db.collection('conversas').where('participantes', 'array-contains', myUid).onSnapshot(function(snap){
+      conversas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      renderConvList();
+      if (activeId){
+        var c = conversas.filter(function(x){ return x.id === activeId; })[0];
+        if (c){
+          els.threadTitle.textContent = tituloConversa(c);
+          els.threadSub.textContent = subConversa(c);
+        }
+      }
+    }, function(e){
+      els.convList.innerHTML = '<div class="conv-empty">Não foi possível carregar as conversas: ' + escapeHtml(e.message) + '</div>';
+    });
+
+    db.collection('chatPrefs').doc(myUid).collection('conversas').onSnapshot(function(snap){
+      tagsPorConversa = {};
+      snap.docs.forEach(function(d){ tagsPorConversa[d.id] = d.data(); });
+      renderConvList();
+      if (activeId){
+        var fixada = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
+        els.btnPin.textContent = fixada ? '★ Fixada' : '☆ Fixar';
+        els.btnPin.classList.toggle('on', !!fixada);
+      }
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login pelo Portal Fonseca e Braga para usar o chat interno.';
+      els.shell.style.display = 'none';
+      return;
+    }
+    myUid = user.uid;
+    Promise.all([
+      db.collection('users').doc(user.uid).get(),
+      db.collection('perfis').doc(user.uid).get()
+    ]).then(function(results){
+      var userDoc = results[0], perfilDoc = results[1];
+      if (!userDoc.exists){
+        els.gate.style.display = 'block';
+        els.gate.textContent = 'Seu usuário ainda não tem acesso configurado no portal.';
+        return;
+      }
+      myNome = (perfilDoc.exists && perfilDoc.data().displayName) || userDoc.data().displayName || user.email;
+      els.gate.style.display = 'none';
+      els.shell.style.display = 'flex';
+      iniciarListeners();
+    });
+  });
+
+  els.buscaConversas.addEventListener('input', renderConvList);
+
+})();
+</script>
+</body>
+</html>

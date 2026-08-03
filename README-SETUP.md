@@ -81,6 +81,32 @@ service cloud.firestore {
                         : (request.resource.data.motivoExclusao is string && request.resource.data.motivoExclusao.size() > 0));
       allow delete: if isAdmin();
     }
+    match /conversas/{conversaId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participantes;
+      allow create: if isSignedIn()
+                    && request.auth.uid in request.resource.data.participantes
+                    && request.resource.data.participantes.size() >= 2
+                    && request.resource.data.criadoPor == request.auth.uid;
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.participantes
+                    && request.auth.uid in request.resource.data.participantes;
+      allow delete: if false;
+
+      match /mensagens/{mensagemId} {
+        allow read: if isSignedIn()
+                    && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes;
+        allow create: if isSignedIn()
+                      && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
+                      && request.resource.data.autorUid == request.auth.uid;
+        allow update: if isSignedIn()
+                      && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor']);
+        allow delete: if false;
+      }
+    }
+    match /chatPrefs/{uid}/conversas/{conversaId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
   }
 }
 ```
@@ -92,6 +118,8 @@ service cloud.firestore {
 > A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; marcar como excluída exige preencher o motivo (fica registrado no histórico, visível a todos). Só o admin também pode apagar uma sugestão de vez (botão "Excluir permanentemente" na ferramenta) — pensado para lixo/teste, já que isso não deixa rastro nenhum no histórico (diferente de "Marcar como excluída", que mantém o registro com o motivo).
 
 > A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
+
+> As regras de `conversas` / `conversas/{id}/mensagens` (usadas pela ferramenta **Chat Interno**) só deixam ler/escrever quem está no array `participantes` daquela conversa — ninguém vê conversas ou grupos dos quais não faz parte. Mensagens não podem ser editadas nem apagadas depois de enviadas (só o campo `lidaPor`, usado para o contador de não lidas, pode ser atualizado). `chatPrefs/{uid}/conversas/{conversaId}` guarda etiquetas e fixação de conversa — é sempre pessoal, cada um só lê/escreve a própria pasta (mesmo participante veem etiquetas diferentes na mesma conversa, de propósito). O chat só suporta texto e foto (fotos comprimidas no navegador, como no mural de aniversariantes) — áudio e vídeo ficaram de fora porque exigiriam ativar o Firebase Storage, que só existe no plano pago (Blaze) do Firebase; se um dia quiserem isso, é só pedir.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 
@@ -123,6 +151,7 @@ cadastre, por exemplo:
 | Sugestões | `https://jowjow007.github.io/SISTEMA-FB/tools/sugestoes/` |
 | Meu Perfil | `https://jowjow007.github.io/SISTEMA-FB/tools/perfil/` |
 | Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
+| Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
