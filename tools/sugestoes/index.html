@@ -77,6 +77,8 @@
   .btn.secondary:hover{border-color:var(--silver);}
   .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--muted);}
   .btn.ghost:hover{color:var(--paper);}
+  .btn.ghost.danger{color:#ffb4ae;border-color:rgba(184,54,46,.35);}
+  .btn.ghost.danger:hover{background:rgba(184,54,46,.12);border-color:rgba(184,54,46,.6);color:#ffb4ae;}
 
   #empty{color:var(--muted);text-align:center;padding:60px 20px;font-size:.9rem;}
 
@@ -99,6 +101,8 @@
     margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted);
   }
   .sug-decision b{color:var(--paper);}
+  .sug-danger{margin-top:8px;text-align:right;}
+  .sug-danger .btn{padding:4px 12px;font-size:.7rem;}
   .motivo-box{
     margin-top:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
     padding:8px 10px;font-size:.82rem;color:var(--paper);white-space:pre-wrap;
@@ -297,6 +301,13 @@
     }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
+  window.__excluirPermanente = function(id){
+    if (!confirm('Excluir esta sugestão PERMANENTEMENTE?\n\nEla some do histórico para todo mundo e não pode ser recuperada. Use isso só para lixo/teste — para recusar uma sugestão de verdade, use "Marcar como excluída" (com motivo).')) return;
+    db.collection('sugestoes').doc(id).delete().catch(function(e){
+      alert('Não foi possível excluir: ' + e.message);
+    });
+  };
+
   window.__abrirMotivoExclusao = function(id){
     motivoAlvoId = id;
     els.motivoTexto.value = '';
@@ -351,6 +362,9 @@
       if (s.status === 'excluida' && s.motivoExclusao){
         out += '<div class="motivo-box">' + escapeHtml(s.motivoExclusao) + '</div>';
       }
+    }
+    if (isAdmin){
+      out += '<div class="sug-danger"><button class="btn ghost danger" onclick="__excluirPermanente(\'' + s.id + '\')">Excluir permanentemente</button></div>';
     }
     out += '</div>';
     return out;

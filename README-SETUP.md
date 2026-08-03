@@ -79,7 +79,7 @@ service cloud.firestore {
                     && (request.resource.data.status == 'implantada'
                         ? request.resource.data.motivoExclusao == null
                         : (request.resource.data.motivoExclusao is string && request.resource.data.motivoExclusao.size() > 0));
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
   }
 }
@@ -89,7 +89,7 @@ service cloud.firestore {
 
 > A regra de `perfis` acima é usada pelas ferramentas de aniversariantes: cada pessoa só edita o próprio perfil (data de nascimento + foto), admin pode editar qualquer um, e qualquer usuário logado pode ler (para montar o mural do mês).
 
-> A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; excluir exige preencher o motivo; nenhuma sugestão pode ser apagada de verdade — fica tudo registrado, como um arquivo único de histórico.
+> A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; marcar como excluída exige preencher o motivo (fica registrado no histórico, visível a todos). Só o admin também pode apagar uma sugestão de vez (botão "Excluir permanentemente" na ferramenta) — pensado para lixo/teste, já que isso não deixa rastro nenhum no histórico (diferente de "Marcar como excluída", que mantém o registro com o motivo).
 
 > A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
 
