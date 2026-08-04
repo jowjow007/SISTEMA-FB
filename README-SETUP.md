@@ -146,7 +146,7 @@ service cloud.firestore {
 
 > As regras de `conversas` / `conversas/{id}/mensagens` (usadas pela ferramenta **Chat Interno**) só deixam ler/escrever quem está no array `participantes` daquela conversa — ninguém vê conversas ou grupos dos quais não faz parte. Mensagens não podem ser editadas nem apagadas depois de enviadas (só o campo `lidaPor`, usado para o contador de não lidas, pode ser atualizado). `chatPrefs/{uid}/conversas/{conversaId}` guarda quais etiquetas e a fixação de cada conversa — é sempre pessoal, cada um só lê/escreve a própria pasta (mesmo participante veem etiquetas diferentes na mesma conversa, de propósito). `chatPrefs/{uid}/etiquetas/{etiquetaId}` é o catálogo reutilizável de etiquetas de cada pessoa (nome sempre em maiúsculas + cor), também pessoal. O chat só suporta texto e foto (fotos comprimidas no navegador, como no mural de aniversariantes) — áudio e vídeo ficaram de fora porque exigiriam ativar o Firebase Storage, que só existe no plano pago (Blaze) do Firebase; se um dia quiserem isso, é só pedir.
 
-> As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Pendências**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
+> As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Minhas Anotações**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 
@@ -179,7 +179,7 @@ cadastre, por exemplo:
 | Meu Perfil | `https://jowjow007.github.io/SISTEMA-FB/tools/perfil/` |
 | Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
 | Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
-| Pendências | `https://jowjow007.github.io/SISTEMA-FB/tools/pendencias/` |
+| Minhas Anotações | `https://jowjow007.github.io/SISTEMA-FB/tools/minhas-anotacoes/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
