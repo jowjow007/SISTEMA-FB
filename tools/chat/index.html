@@ -171,7 +171,20 @@
   .photo-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px;}
   .photo-preview-row.show{display:flex;}
   .photo-preview-row img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line-strong);}
-  .photo-preview-row button{background:none;border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:3px 10px;font-size:.72rem;cursor:pointer;}
+  .photo-preview-row button{background:none;border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:3px 10px;font-size:.72rem;cursor:pointer;flex:0 0 auto;}
+  .doc-preview-icon{font-size:1.6rem;flex:0 0 auto;}
+  .doc-preview-info{flex:1;min-width:0;}
+  .doc-preview-nome{font-size:.82rem;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .doc-preview-tamanho{font-size:.68rem;color:var(--muted);}
+  .msg-doc{
+    display:flex;align-items:center;gap:8px;background:var(--panel-3);border:1px solid var(--line-strong);
+    border-radius:10px;padding:8px 10px;text-decoration:none;color:var(--paper);margin-bottom:4px;max-width:220px;
+  }
+  .msg-row.own .msg-doc{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.3);}
+  .msg-doc .icone{font-size:1.5rem;flex:0 0 auto;}
+  .msg-doc .info{min-width:0;}
+  .msg-doc .nome{font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-doc .tamanho{font-size:.68rem;color:var(--muted);}
   .composer-row{display:flex;align-items:flex-end;gap:8px;}
   .composer-row textarea{
     flex:1;min-height:38px;max-height:120px;resize:none;background:var(--panel-2);border:1px solid var(--line-strong);
@@ -298,15 +311,34 @@
           <img id="photo-preview-img" src="">
           <button id="btn-remover-foto">Remover foto</button>
         </div>
+        <div class="photo-preview-row" id="doc-preview-row">
+          <span class="doc-preview-icon">📄</span>
+          <div class="doc-preview-info">
+            <div class="doc-preview-nome" id="doc-preview-nome"></div>
+            <div class="doc-preview-tamanho" id="doc-preview-tamanho"></div>
+          </div>
+          <button id="btn-remover-doc">Remover</button>
+        </div>
         <div class="composer-row">
-          <button class="icon-btn" id="btn-anexar" title="Anexar foto">📷</button>
+          <button class="icon-btn" id="btn-anexar" title="Anexar foto">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </button>
           <input type="file" id="foto-input" accept="image/*" hidden>
+          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documento">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+            </svg>
+          </button>
+          <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.odt,.ods" hidden>
           <button class="icon-btn" id="btn-emoji" title="Emoji">🙂</button>
           <div class="emoji-popover" id="emoji-popover"></div>
           <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
           <button class="send-btn" id="btn-enviar" title="Enviar">➤</button>
         </div>
-        <div class="media-hint">Suporta texto e fotos. Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
+        <div class="media-hint">Suporta texto, fotos e documentos (até 500 KB). Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
       </div>
     </div>
   </section>
@@ -390,6 +422,12 @@
     btnRemoverFoto: document.getElementById('btn-remover-foto'),
     btnAnexar: document.getElementById('btn-anexar'),
     fotoInput: document.getElementById('foto-input'),
+    docPreviewRow: document.getElementById('doc-preview-row'),
+    docPreviewNome: document.getElementById('doc-preview-nome'),
+    docPreviewTamanho: document.getElementById('doc-preview-tamanho'),
+    btnRemoverDoc: document.getElementById('btn-remover-doc'),
+    btnAnexarDoc: document.getElementById('btn-anexar-doc'),
+    docInput: document.getElementById('doc-input'),
     composerInput: document.getElementById('composer-input'),
     btnEnviar: document.getElementById('btn-enviar'),
     pickerBackdrop: document.getElementById('picker-backdrop'),
@@ -430,6 +468,7 @@
   var mensagensCache = [];
   var unsubMensagens = null;
   var novaFotoDataUrl = null;
+  var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
   var pickerMode = null;      // 'nova' | 'encaminhar'
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
@@ -689,6 +728,13 @@
       if (m.tipo === 'foto' && m.fotoBase64){
         out += '<img class="msg-photo" src="' + m.fotoBase64 + '" data-full="' + m.fotoBase64 + '">';
       }
+      if (m.tipo === 'documento' && m.documentoBase64){
+        out += '<a class="msg-doc" href="' + m.documentoBase64 + '" download="' + escapeHtml(m.documentoNome || 'documento') + '">' +
+          '<span class="icone">📄</span><span class="info">' +
+          '<div class="nome">' + escapeHtml(m.documentoNome || 'Documento') + '</div>' +
+          '<div class="tamanho">' + formatBytes(m.documentoTamanho || 0) + '</div>' +
+          '</span></a>';
+      }
       if (m.texto) out += '<div>' + escapeHtml(m.texto) + '</div>';
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">↩</button>';
@@ -777,6 +823,7 @@
     var file = els.fotoInput.files[0];
     if (!file) return;
     comprimirFoto(file).then(function(dataUrl){
+      limparComposerDoc();
       novaFotoDataUrl = dataUrl;
       els.photoPreviewImg.src = dataUrl;
       els.photoPreviewRow.classList.add('show');
@@ -787,8 +834,55 @@
   });
   els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
 
+  var LIMITE_DOCUMENTO_BYTES = 500 * 1024;
+
+  function formatBytes(n){
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function limparComposerDoc(){
+    novoDocumento = null;
+    els.docPreviewRow.classList.remove('show');
+    els.docInput.value = '';
+  }
+
+  function lerDocumento(file){
+    return new Promise(function(resolve, reject){
+      if (file.size > LIMITE_DOCUMENTO_BYTES){
+        reject(new Error('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 500 KB. Tente um arquivo menor.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        resolve({ dataUrl: reader.result, nome: file.name, tipo: file.type || '', tamanho: file.size });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.btnAnexarDoc.addEventListener('click', function(){ els.docInput.click(); });
+  els.docInput.addEventListener('change', function(){
+    var file = els.docInput.files[0];
+    if (!file) return;
+    lerDocumento(file).then(function(doc){
+      limparComposerFoto();
+      novoDocumento = doc;
+      els.docPreviewNome.textContent = doc.nome;
+      els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
+      els.docPreviewRow.classList.add('show');
+    }).catch(function(err){
+      alert(err.message || 'Não foi possível anexar o documento.');
+      els.docInput.value = '';
+    });
+  });
+  els.btnRemoverDoc.addEventListener('click', limparComposerDoc);
+
   function resumoMensagem(m){
     if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
+    if (m.tipo === 'documento') return '📄 ' + (m.documentoNome || 'Documento') + (m.texto ? ': ' + m.texto : '');
     return m.texto || '';
   }
 
@@ -869,13 +963,18 @@
   function enviarMensagem(){
     if (!activeId) return;
     var texto = els.composerInput.value.trim();
-    if (!texto && !novaFotoDataUrl) return;
+    if (!texto && !novaFotoDataUrl && !novoDocumento) return;
     els.btnEnviar.disabled = true;
+    var tipo = novoDocumento ? 'documento' : (novaFotoDataUrl ? 'foto' : 'texto');
     var msgData = {
       autorUid: myUid,
-      tipo: novaFotoDataUrl ? 'foto' : 'texto',
+      tipo: tipo,
       texto: texto || null,
       fotoBase64: novaFotoDataUrl || null,
+      documentoBase64: novoDocumento ? novoDocumento.dataUrl : null,
+      documentoNome: novoDocumento ? novoDocumento.nome : null,
+      documentoTipo: novoDocumento ? novoDocumento.tipo : null,
+      documentoTamanho: novoDocumento ? novoDocumento.tamanho : null,
       encaminhada: false,
       encaminhadaDeAutorNome: null,
       respondendoA: replyTarget ? {
@@ -886,11 +985,12 @@
       criadoEm: FV.serverTimestamp(),
       lidaPor: [myUid]
     };
-    var preview = novaFotoDataUrl ? ('📷 Foto' + (texto ? ': ' + texto : '')) : texto;
+    var preview = resumoMensagem(msgData);
     postMessageTo(activeId, msgData, preview).then(function(){
       els.composerInput.value = '';
       els.composerInput.style.height = 'auto';
       limparComposerFoto();
+      limparComposerDoc();
       cancelarResposta();
     }).catch(function(e){
       alert('Não foi possível enviar: ' + e.message);
@@ -1194,12 +1294,16 @@
       tipo: forwardMsg.tipo,
       texto: forwardMsg.texto || null,
       fotoBase64: forwardMsg.fotoBase64 || null,
+      documentoBase64: forwardMsg.documentoBase64 || null,
+      documentoNome: forwardMsg.documentoNome || null,
+      documentoTipo: forwardMsg.documentoTipo || null,
+      documentoTamanho: forwardMsg.documentoTamanho || null,
       encaminhada: true,
       encaminhadaDeAutorNome: autorOriginal,
       criadoEm: FV.serverTimestamp(),
       lidaPor: [myUid]
     };
-    var preview = (forwardMsg.tipo === 'foto' ? '📷 Foto' : (forwardMsg.texto || ''));
+    var preview = resumoMensagem(forwardMsg);
     postMessageTo(conversaId, msgData, preview).then(function(){
       fecharPicker();
     }).catch(function(e){ alert('Não foi possível encaminhar: ' + e.message); });
