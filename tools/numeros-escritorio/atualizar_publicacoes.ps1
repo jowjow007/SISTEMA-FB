@@ -25,6 +25,15 @@
 
 $ErrorActionPreference = "Stop"
 
+$LogPath = Join-Path $PSScriptRoot "atualizacao.log"
+Start-Transcript -Path $LogPath -Append | Out-Null
+
+trap {
+    Write-Host ("ERRO FATAL: " + $_.Exception.Message)
+    Stop-Transcript | Out-Null
+    exit 1
+}
+
 $NumeroOab      = "163443"
 $UfOab          = "MG"
 $DataInicio     = "2026-01-01"
@@ -61,6 +70,7 @@ $allItems = $allItems | Sort-Object -Property id -Unique
 
 if ($totalCount -and $allItems.Count -lt $totalCount) {
     Write-Warning ("Coletado " + $allItems.Count + " de " + $totalCount + " reportado pela API. Abortando para nao publicar numero incompleto.")
+    Stop-Transcript | Out-Null
     exit 1
 }
 
@@ -217,11 +227,13 @@ $html = Apply-Replace -Texto $html -Pattern $pattern8 -Replacement $repl8 -Nome 
 if ($falhas.Count -gt 0) {
     Write-Warning ("As seguintes ancoras NAO casaram (pagina pode ter mudado de estrutura manualmente): " + ($falhas -join ", "))
     Write-Warning "Nada foi gravado em disco, para nao publicar uma pagina corrompida. Revise manualmente."
+    Stop-Transcript | Out-Null
     exit 1
 }
 
 if ($html -eq $original) {
     Write-Host "Nenhuma mudanca de conteudo detectada - pulando escrita/commit."
+    Stop-Transcript | Out-Null
     exit 0
 }
 
@@ -244,3 +256,4 @@ try {
 }
 
 Write-Host "=== Concluido ==="
+Stop-Transcript | Out-Null
