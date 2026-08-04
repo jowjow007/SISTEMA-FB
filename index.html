@@ -496,6 +496,8 @@
   let iframes = {};       // id -> iframe element
   let activeTabId = null;
   let pendingCount = 0;   // usuários (não-admin) com zero abas liberadas
+  let anotacoesOverdueCount = 0; // tarefas atrasadas em "Minhas Anotações" do usuário logado
+  let unsubAnotacoesOverdue = null;
 
   // ---------- Erros PT-BR ----------
   function traduzErro(code){
@@ -644,6 +646,7 @@
       els.appScreen.style.display = 'flex';
       renderUserInfo();
       subscribeTabsCatalog();
+      subscribeAnotacoesOverdue();
       if (currentProfile.role === 'admin') initAdminPanel();
     });
   });
@@ -680,10 +683,13 @@
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = t.id;
-      btn.innerHTML = '<span class="dot"></span><span>' + escapeHtml(t.label) + '</span>';
+      const isAnotacoes = /minhas-anotacoes/.test(t.url || '');
+      btn.innerHTML = '<span class="dot"></span><span>' + escapeHtml(t.label) + '</span>' +
+        (isAnotacoes ? '<span class="pending-badge" id="anotacoes-overdue-badge" title="Tarefas atrasadas"></span>' : '');
       btn.addEventListener('click', function(){ selectTab(t.id); });
       els.tabstrip.appendChild(btn);
     });
+    updateAnotacoesBadge();
 
     if (currentProfile.role === 'admin') {
       const div = document.createElement('div');
@@ -884,6 +890,38 @@
     if (!badge) return;
     if (pendingCount > 0) {
       badge.textContent = pendingCount;
+      badge.classList.add('show');
+    } else {
+      badge.textContent = '';
+      badge.classList.remove('show');
+    }
+  }
+
+  // ---------- Aviso de tarefas atrasadas (Minhas Anotações) ----------
+  function subscribeAnotacoesOverdue(){
+    if (unsubAnotacoesOverdue) return;
+    unsubAnotacoesOverdue = db.collection('pendTarefas')
+      .where('ownerUid', '==', currentProfile.uid)
+      .where('concluida', '==', false)
+      .onSnapshot(function(snap){
+        const hoje = new Date();
+        const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+        anotacoesOverdueCount = snap.docs.filter(function(d){
+          const v = d.data().dataVencimento;
+          return v && v < hojeStr;
+        }).length;
+        updateAnotacoesBadge();
+      }, function(){
+        anotacoesOverdueCount = 0;
+        updateAnotacoesBadge();
+      });
+  }
+
+  function updateAnotacoesBadge(){
+    const badge = document.getElementById('anotacoes-overdue-badge');
+    if (!badge) return;
+    if (anotacoesOverdueCount > 0) {
+      badge.textContent = anotacoesOverdueCount;
       badge.classList.add('show');
     } else {
       badge.textContent = '';
