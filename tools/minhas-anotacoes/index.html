@@ -22,6 +22,7 @@
     --line-strong:rgba(236,230,225,0.18);
     --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --topbar-h:54px;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
@@ -48,20 +49,24 @@
   .icon-btn:hover{color:var(--paper);border-color:var(--silver);}
   .icon-btn.danger:hover{color:#ffb4ae;border-color:rgba(184,54,46,.6);background:rgba(184,54,46,.12);}
 
-  /* ---------- Layout ---------- */
-  #shell{display:flex;height:100vh;}
+  /* ---------- Topbar ---------- */
+  #topbar{
+    height:var(--topbar-h);display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--panel);
+    border-bottom:1px solid var(--line-strong);position:sticky;top:0;z-index:6;
+  }
+  #topbar .topbar-title{font-family:var(--font-display);font-weight:600;font-size:1.1rem;color:var(--paper);white-space:nowrap;}
+  .view-toggle{display:flex;gap:3px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:20px;padding:3px;margin-left:auto;flex:0 0 auto;}
+  .view-btn{background:transparent;border:none;color:var(--muted);font-size:.76rem;font-weight:600;padding:6px 13px;border-radius:16px;cursor:pointer;white-space:nowrap;}
+  .view-btn.active{background:var(--red-deep);color:#fff;}
+  #topbar .status{font-size:.68rem;color:var(--muted);white-space:nowrap;flex:0 0 auto;}
+
+  /* ---------- Layout: Lista ---------- */
+  #shell{display:flex;height:calc(100vh - var(--topbar-h));}
 
   #sidebar{
     width:260px;flex:0 0 260px;background:var(--panel);border-right:1px solid var(--line-strong);
     display:flex;flex-direction:column;overflow-y:auto;
   }
-  .sidebar-head{
-    padding:16px 16px 10px;position:sticky;top:0;background:var(--panel);
-    border-bottom:1px solid var(--line);z-index:2;
-  }
-  .sidebar-head h1{font-family:var(--font-display);font-weight:600;font-size:1.15rem;margin:0 0 4px;color:var(--paper);}
-  .sidebar-head .status{font-size:.68rem;color:var(--muted);}
-
   #listasNav{flex:1 1 auto;padding:8px;display:flex;flex-direction:column;gap:4px;}
   .sidebar-empty{padding:14px 16px;font-size:.78rem;color:var(--muted);}
 
@@ -145,6 +150,46 @@
   .add-tarefa-btn:hover{color:var(--paper);border-color:var(--silver);}
   .sec-empty{font-size:.78rem;color:var(--muted);padding:4px 0 2px;}
 
+  /* ---------- Layout: Kanban ---------- */
+  #kanbanBoard{
+    display:none;height:calc(100vh - var(--topbar-h));overflow-x:auto;overflow-y:hidden;
+    padding:16px;gap:14px;align-items:flex-start;
+  }
+  #kanbanBoard.show{display:flex;}
+  #kanbanCols{display:contents;}
+  .kanban-col{
+    flex:0 0 280px;height:100%;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .kanban-col-head{
+    display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid var(--line);flex:0 0 auto;
+  }
+  .kanban-col-head .emoji{font-size:1.1rem;line-height:1;}
+  .kanban-col-head .nome{flex:1 1 auto;font-weight:600;font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .kanban-col-head .count{font-size:.66rem;color:var(--muted);background:var(--panel-3);border-radius:20px;padding:1px 7px;flex:0 0 auto;}
+  .kanban-col-body{flex:1 1 auto;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:40px;}
+  .kanban-col-body.drag-over{background:rgba(184,54,46,.08);outline:1px dashed var(--red);outline-offset:-4px;}
+  .kanban-card{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;cursor:grab;
+  }
+  .kanban-card:active{cursor:grabbing;}
+  .kanban-card.atrasada{border-color:rgba(184,54,46,.55);background:rgba(184,54,46,.10);}
+  .kanban-card-top{display:flex;align-items:flex-start;gap:8px;}
+  .kanban-card-texto{flex:1 1 auto;font-size:.85rem;color:var(--paper);word-break:break-word;padding-top:1px;}
+  .kanban-card-foot{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .kanban-add{
+    flex:0 0 auto;margin:0 10px 10px;display:flex;align-items:center;gap:6px;background:transparent;
+    border:1px dashed var(--line-strong);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:.76rem;cursor:pointer;
+  }
+  .kanban-add:hover{color:var(--paper);border-color:var(--silver);}
+  .kanban-col-new{flex:0 0 220px;align-self:flex-start;}
+  .kanban-col-new button{
+    width:100%;background:transparent;border:1px dashed var(--line-strong);color:var(--muted);
+    border-radius:12px;padding:14px;font-size:.85rem;cursor:pointer;
+  }
+  .kanban-col-new button:hover{color:var(--paper);border-color:var(--silver);}
+  .kanban-empty{color:var(--muted);padding:16px;font-size:.85rem;text-align:center;}
+
   .modal-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
     z-index:50;padding:20px;
@@ -181,7 +226,9 @@
   .emoji-opt.active{background:var(--red-deep);border-color:var(--red);}
 
   @media(max-width:780px){
-    #shell{flex-direction:column;height:auto;min-height:100vh;}
+    #topbar{padding:0 12px;gap:8px;}
+    #topbar .topbar-title{font-size:.98rem;}
+    #shell{flex-direction:column;height:auto;min-height:calc(100vh - var(--topbar-h));}
     #sidebar{width:100%;flex:0 0 auto;border-right:none;border-bottom:1px solid var(--line-strong);max-height:none;overflow:visible;}
     #listasNav{flex-direction:row;overflow-x:auto;padding:8px;gap:8px;}
     .lista-btn{flex:0 0 auto;width:auto;}
@@ -189,6 +236,7 @@
     .nova-lista-btn{margin:0 8px 10px;flex:0 0 auto;}
     #mainPane{padding:18px 16px 60px;}
     .tarefa-move{max-width:100px;}
+    .kanban-col{flex-basis:240px;}
   }
 </style>
 </head>
@@ -199,20 +247,34 @@
   Faça login pelo portal para ver suas anotações.
 </div>
 
-<div id="shell" style="display:none;">
-  <aside id="sidebar">
-    <div class="sidebar-head">
-      <h1>Minhas Anotações</h1>
-      <span class="status" id="status">carregando…</span>
+<div id="app" style="display:none;">
+  <div id="topbar">
+    <span class="topbar-title">Minhas Anotações</span>
+    <div class="view-toggle">
+      <button type="button" class="view-btn" id="viewBtnLista">☰ Lista</button>
+      <button type="button" class="view-btn" id="viewBtnKanban">▦ Kanban</button>
     </div>
-    <div id="listasNav"></div>
-    <div id="listasEmpty" class="sidebar-empty" style="display:none;">Nenhuma lista ainda. Crie a primeira abaixo.</div>
-    <button type="button" class="nova-lista-btn" id="novaListaBtn">+ Nova lista</button>
-  </aside>
-  <main id="mainPane">
-    <div id="semSelecao">Selecione uma lista à esquerda ou crie a primeira com "+ Nova lista".</div>
-    <div id="listaDetalhe" style="display:none;"></div>
-  </main>
+    <span class="status" id="status">carregando…</span>
+  </div>
+
+  <div id="shell">
+    <aside id="sidebar">
+      <div id="listasNav"></div>
+      <div id="listasEmpty" class="sidebar-empty" style="display:none;">Nenhuma lista ainda. Crie a primeira abaixo.</div>
+      <button type="button" class="nova-lista-btn" id="novaListaBtn">+ Nova lista</button>
+    </aside>
+    <main id="mainPane">
+      <div id="semSelecao">Selecione uma lista à esquerda ou crie a primeira com "+ Nova lista".</div>
+      <div id="listaDetalhe" style="display:none;"></div>
+    </main>
+  </div>
+
+  <div id="kanbanBoard">
+    <div id="kanbanCols"></div>
+    <div class="kanban-col-new">
+      <button type="button" id="novaListaKanbanBtn">+ Nova lista</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: nova lista -->
@@ -255,6 +317,8 @@
   const app = firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+
+  const VIEW_CACHE_KEY = 'anotacoesfb_view_v1';
 
   const EMOJI_CATALOGO = [
     { cat: 'Escritório', itens: [
@@ -300,8 +364,14 @@
 
   const els = {
     gate: document.getElementById('gate'),
-    shell: document.getElementById('shell'),
+    app: document.getElementById('app'),
     status: document.getElementById('status'),
+    viewBtnLista: document.getElementById('viewBtnLista'),
+    viewBtnKanban: document.getElementById('viewBtnKanban'),
+    shell: document.getElementById('shell'),
+    kanbanBoard: document.getElementById('kanbanBoard'),
+    kanbanCols: document.getElementById('kanbanCols'),
+    novaListaKanbanBtn: document.getElementById('novaListaKanbanBtn'),
     listasNav: document.getElementById('listasNav'),
     listasEmpty: document.getElementById('listasEmpty'),
     novaListaBtn: document.getElementById('novaListaBtn'),
@@ -321,6 +391,8 @@
   let listas = [];
   let tarefas = [];
   let selectedListaId = null;
+  let currentView = 'lista';
+  let draggedTarefaId = null;
   let unsubListas = null;
   let unsubTarefas = null;
   let emojiSelecionado = '📌';
@@ -340,6 +412,18 @@
   function isAtrasada(t){
     return !t.concluida && !!t.dataVencimento && t.dataVencimento < hojeStr();
   }
+
+  // ---------- Alternância de visualização ----------
+  function setView(v){
+    currentView = v === 'kanban' ? 'kanban' : 'lista';
+    try { localStorage.setItem(VIEW_CACHE_KEY, currentView); } catch(e){ /* indisponível */ }
+    els.viewBtnLista.classList.toggle('active', currentView === 'lista');
+    els.viewBtnKanban.classList.toggle('active', currentView === 'kanban');
+    els.shell.style.display = currentView === 'lista' ? 'flex' : 'none';
+    els.kanbanBoard.classList.toggle('show', currentView === 'kanban');
+  }
+  els.viewBtnLista.addEventListener('click', function(){ setView('lista'); });
+  els.viewBtnKanban.addEventListener('click', function(){ setView('kanban'); });
 
   // ---------- Modal nova lista / catálogo de emoji ----------
   function renderEmojiCatalogo(filtro){
@@ -380,6 +464,7 @@
   }
 
   els.novaListaBtn.addEventListener('click', abrirModalLista);
+  els.novaListaKanbanBtn.addEventListener('click', abrirModalLista);
   els.listaCancelar.addEventListener('click', function(){
     els.listaBackdrop.classList.remove('open');
   });
@@ -460,16 +545,15 @@
     }).catch(function(e){ alert('Não foi possível salvar a data: ' + e.message); });
   };
 
-  window.__abrirComposer = function(listaId){
-    const row = document.getElementById('composer-' + listaId);
+  function abrirComposerRow(rowId){
+    const row = document.getElementById(rowId);
     if (!row) return;
     row.style.display = 'flex';
-    const input = row.querySelector('input');
-    input.focus();
-  };
+    row.querySelector('input').focus();
+  }
 
-  window.__criarTarefa = function(listaId){
-    const input = document.getElementById('composer-input-' + listaId);
+  function criarTarefaFromInput(listaId, inputId){
+    const input = document.getElementById(inputId);
     const texto = input.value.trim();
     if (!texto || !currentUser) return;
     input.disabled = true;
@@ -489,9 +573,33 @@
       alert('Não foi possível criar a tarefa: ' + e.message);
       input.disabled = false;
     });
+  }
+
+  window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId); };
+  window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId); };
+  window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId); };
+  window.__criarKanbanTarefa = function(listaId){ criarTarefaFromInput(listaId, 'kanban-composer-input-' + listaId); };
+
+  // ---------- Drag and drop (Kanban) ----------
+  window.__dragStart = function(ev, tarefaId){
+    draggedTarefaId = tarefaId;
+    if (ev.dataTransfer){
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', tarefaId);
+    }
   };
 
-  // ---------- Render: sidebar ----------
+  window.__dropCard = function(ev, listaId){
+    ev.preventDefault();
+    ev.currentTarget.classList.remove('drag-over');
+    const id = draggedTarefaId || (ev.dataTransfer && ev.dataTransfer.getData('text/plain'));
+    draggedTarefaId = null;
+    if (!id) return;
+    const t = tarefas.find(function(x){ return x.id === id; });
+    if (t && t.grupoId !== listaId) window.__moverTarefa(id, listaId);
+  };
+
+  // ---------- Render: sidebar (Lista) ----------
   function listaBtnHtml(g){
     const tarefasLista = tarefas.filter(function(t){ return t.grupoId === g.id; });
     const abertasCount = tarefasLista.filter(function(t){ return !t.concluida; }).length;
@@ -517,7 +625,7 @@
     }
   }
 
-  // ---------- Render: painel principal ----------
+  // ---------- Render: painel principal (Lista) ----------
   function tarefaRowHtml(t, done, outrasListas){
     const atrasada = !done && isAtrasada(t);
     let out = '<div class="tarefa-row' + (atrasada ? ' atrasada' : '') + '">';
@@ -605,6 +713,67 @@
     els.listaDetalhe.innerHTML = listaDetalheHtml(g);
   }
 
+  // ---------- Render: quadro Kanban ----------
+  function kanbanCardHtml(t, outrasListas){
+    const atrasada = isAtrasada(t);
+    let out = '<div class="kanban-card' + (atrasada ? ' atrasada' : '') + '" draggable="true" ondragstart="__dragStart(event,\'' + t.id + '\')">';
+    out += '<div class="kanban-card-top">';
+    out += '<button type="button" class="tarefa-check" onclick="__toggleTarefa(\'' + t.id + '\',false)" title="Marcar como concluída"></button>';
+    out += '<div class="kanban-card-texto">' + escapeHtml(t.texto) + '</div>';
+    out += '<button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button>';
+    out += '</div>';
+    out += '<div class="kanban-card-foot">';
+    if (atrasada) out += '<span class="tarefa-atraso-tag">⚠️ Atrasada</span>';
+    out += '<input type="date" class="tarefa-data" value="' + (t.dataVencimento || '') + '" onchange="__definirData(\'' + t.id + '\', this.value)" title="Data de conclusão">';
+    if (outrasListas.length){
+      out += '<select class="tarefa-move" onchange="__moverTarefa(\'' + t.id + '\', this.value); this.selectedIndex=0;">';
+      out += '<option value="">Mover para…</option>';
+      outrasListas.forEach(function(g){
+        out += '<option value="' + g.id + '">' + g.emoji + ' ' + escapeHtml(g.nome) + '</option>';
+      });
+      out += '</select>';
+    }
+    out += '</div>';
+    out += '</div>';
+    return out;
+  }
+
+  function kanbanColHtml(g){
+    const abertas = tarefas.filter(function(t){ return t.grupoId === g.id && !t.concluida; })
+      .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+    const outrasListas = listas.filter(function(x){ return x.id !== g.id; });
+
+    let out = '<div class="kanban-col">';
+    out += '<div class="kanban-col-head">';
+    out += '<span class="emoji">' + g.emoji + '</span>';
+    out += '<span class="nome">' + escapeHtml(g.nome) + '</span>';
+    out += '<span class="count">' + abertas.length + '</span>';
+    out += '<button type="button" class="icon-btn danger" onclick="__excluirLista(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir lista">✕</button>';
+    out += '</div>';
+    out += '<div class="kanban-col-body" ondragover="event.preventDefault(); this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="__dropCard(event,\'' + g.id + '\')">';
+    if (!abertas.length){
+      out += '<div class="kanban-empty">Sem tarefas aqui.<br>Arraste um cartão ou adicione uma nova.</div>';
+    } else {
+      out += abertas.map(function(t){ return kanbanCardHtml(t, outrasListas); }).join('');
+    }
+    out += '</div>';
+    out += '<button type="button" class="kanban-add" onclick="__abrirKanbanComposer(\'' + g.id + '\')">+ Adicionar</button>';
+    out += '<div class="add-tarefa-row" id="kanban-composer-' + g.id + '" style="display:none;margin:0 10px 10px;">';
+    out += '<input type="text" id="kanban-composer-input-' + g.id + '" maxlength="300" placeholder="Nova tarefa" onkeydown="if(event.key===\'Enter\'){__criarKanbanTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
+    out += '<button type="button" class="btn small" onclick="__criarKanbanTarefa(\'' + g.id + '\')">OK</button>';
+    out += '</div>';
+    out += '</div>';
+    return out;
+  }
+
+  function renderKanban(){
+    if (!listas.length){
+      els.kanbanCols.innerHTML = '<div class="kanban-empty" style="padding:20px;">Nenhuma lista ainda — crie uma para começar seu quadro kanban.</div>';
+      return;
+    }
+    els.kanbanCols.innerHTML = listas.map(kanbanColHtml).join('');
+  }
+
   function render(){
     if (selectedListaId && !listas.some(function(g){ return g.id === selectedListaId; })){
       selectedListaId = listas.length ? listas[0].id : null;
@@ -613,6 +782,7 @@
     }
     renderSidebar();
     renderMain();
+    renderKanban();
   }
 
   function startListening(){
@@ -642,7 +812,7 @@
   auth.onAuthStateChanged(function(user){
     if (!user){
       els.gate.style.display = 'block';
-      els.shell.style.display = 'none';
+      els.app.style.display = 'none';
       currentUser = null;
       return;
     }
@@ -654,7 +824,10 @@
       }
       currentUser = { uid: user.uid, email: user.email };
       els.gate.style.display = 'none';
-      els.shell.style.display = 'flex';
+      els.app.style.display = 'block';
+      let savedView = null;
+      try { savedView = localStorage.getItem(VIEW_CACHE_KEY); } catch(e){ /* indisponível */ }
+      setView(savedView === 'kanban' ? 'kanban' : 'lista');
       startListening();
     });
   });
