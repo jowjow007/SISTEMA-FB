@@ -29,8 +29,20 @@
     position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
     padding:18px 20px 15px;text-align:center;
   }
-  header h1{font-family:var(--font-display);font-weight:600;font-size:1.5rem;margin:0 0 3px;color:var(--paper);}
-  header .sub{font-size:.82rem;color:var(--muted);margin:0;text-transform:capitalize;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.5rem;margin:0 0 8px;color:var(--paper);}
+  .mes-nav{display:flex;align-items:center;justify-content:center;gap:14px;}
+  .mes-nav button{
+    width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--paper);font-size:1rem;line-height:1;cursor:pointer;
+  }
+  .mes-nav button:hover{border-color:var(--gold);color:var(--gold);}
+  header .sub{font-size:.82rem;color:var(--muted);margin:0;min-width:160px;}
+  header .sub::first-letter{text-transform:uppercase;}
+  .voltar-hoje{
+    display:none;margin:10px auto 0;padding:5px 14px;border-radius:20px;border:1px solid var(--line-strong);
+    background:transparent;color:var(--gold);font-size:.72rem;cursor:pointer;
+  }
+  .voltar-hoje:hover{border-color:var(--gold);}
 
   main{max-width:960px;margin:0 auto;padding:26px 20px 60px;}
   #gate{padding:80px 20px;text-align:center;color:var(--muted);}
@@ -101,15 +113,20 @@
 <body>
 
 <header>
-  <h1>🎉 Aniversariantes do mês</h1>
-  <p class="sub" id="mes-atual"></p>
+  <h1 id="titulo">🎉 Aniversariantes do mês</h1>
+  <div class="mes-nav">
+    <button type="button" id="mes-prev" aria-label="Mês anterior">‹</button>
+    <p class="sub" id="mes-atual"></p>
+    <button type="button" id="mes-next" aria-label="Próximo mês">›</button>
+  </div>
+  <button type="button" class="voltar-hoje" id="voltar-hoje">Voltar para o mês atual</button>
 </header>
 
 <main>
   <div id="gate" style="display:none;"></div>
   <div id="empty" style="display:none;">
     <div class="big">🎂</div>
-    Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").
+    <span id="empty-texto">Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").</span>
   </div>
   <div class="grid" id="grid"></div>
 </main>
@@ -139,14 +156,48 @@
   const els = {
     gate: document.getElementById('gate'),
     empty: document.getElementById('empty'),
+    emptyTexto: document.getElementById('empty-texto'),
     grid: document.getElementById('grid'),
     mesAtual: document.getElementById('mes-atual'),
+    titulo: document.getElementById('titulo'),
+    mesPrev: document.getElementById('mes-prev'),
+    mesNext: document.getElementById('mes-next'),
+    voltarHoje: document.getElementById('voltar-hoje'),
   };
 
   const hoje = new Date();
   const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
   const diaHoje = hoje.getDate();
-  els.mesAtual.textContent = MESES[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+  let mesSelecionado = mesAtual;
+  let ultimosPerfis = [];
+
+  function atualizarCabecalho(){
+    const idx = mesSelecionado - 1;
+    const ehMesAtual = mesSelecionado === mesAtual;
+    els.mesAtual.textContent = MESES[idx] + ' de ' + anoAtual;
+    els.titulo.textContent = ehMesAtual ? '🎉 Aniversariantes do mês' : '🎉 Aniversariantes de ' + MESES[idx];
+    els.voltarHoje.style.display = ehMesAtual ? 'none' : 'inline-block';
+    els.emptyTexto.textContent = ehMesAtual
+      ? 'Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").'
+      : 'Ninguém do escritório faz aniversário em ' + MESES[idx] + ' (ou ainda não preencheu a data em "Meu Perfil").';
+  }
+  atualizarCabecalho();
+
+  function mudarMes(delta){
+    mesSelecionado += delta;
+    if (mesSelecionado > 12) mesSelecionado = 1;
+    if (mesSelecionado < 1) mesSelecionado = 12;
+    atualizarCabecalho();
+    renderGrid(ultimosPerfis);
+  }
+  els.mesPrev.addEventListener('click', function(){ mudarMes(-1); });
+  els.mesNext.addEventListener('click', function(){ mudarMes(1); });
+  els.voltarHoje.addEventListener('click', function(){
+    mesSelecionado = mesAtual;
+    atualizarCabecalho();
+    renderGrid(ultimosPerfis);
+  });
 
   function escapeHtml(s){
     return String(s || '').replace(/[&<>"']/g, function(c){
@@ -185,7 +236,7 @@
     const avatarInner = p.photoBase64
       ? '<div class="avatar" style="background-image:url(' + p.photoBase64 + ')"></div>'
       : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
-    const ehHoje = dia === diaHoje;
+    const ehHoje = mesSelecionado === mesAtual && dia === diaHoje;
     return '<div class="card' + (ehHoje ? ' hoje' : '') + '">' +
       '<img class="logo-watermark" src="../../assets/logo-light.png" alt="">' +
       gerarConfetes(16) +
@@ -202,11 +253,12 @@
   }
 
   function renderGrid(perfis){
+    ultimosPerfis = perfis;
     const doMes = perfis
       .filter(function(p){
         if (!p.birthDate) return false;
         const mes = parseInt(p.birthDate.split('-')[1], 10);
-        return mes === mesAtual;
+        return mes === mesSelecionado;
       })
       .sort(function(a, b){
         return parseInt(a.birthDate.split('-')[2], 10) - parseInt(b.birthDate.split('-')[2], 10);
