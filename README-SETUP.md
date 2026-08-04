@@ -5,6 +5,16 @@ com login de verdade via **Firebase Authentication** e controle de quais abas ca
 pessoa vê, guardado no **Firestore**. Não precisa manter servidor nenhum — tudo
 roda no navegador, o Firebase (gratuito no plano Spark) cuida das senhas.
 
+## Versão
+
+O número de versão aparece ao lado de "Portal Fonseca e Braga" no topo do sistema
+(`<span class="version-tag">vN</span>`, dentro de `index.html`). **Convenção: toda
+vez que qualquer coisa for alterada no sistema — o portal principal ou qualquer
+ferramenta em `tools/*` — incremente esse número em 1 antes de publicar.** Isso
+vale para qualquer conversa/sessão que mexer neste repositório, não só a que criou
+o portal, para que o número reflita o estado real do sistema como um todo (não é
+por arquivo, é uma versão única para tudo).
+
 ## 1. Criar o projeto no Firebase
 
 1. Acesse https://console.firebase.google.com e clique em **"Adicionar projeto"**.
