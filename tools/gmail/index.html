@@ -71,6 +71,14 @@
 
   #mail-list{width:300px;flex:0 0 300px;border-right:1px solid var(--line-strong);overflow-y:auto;}
   #back-to-list{display:none;}
+
+  #category-tabs{display:none;position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px solid var(--line-strong);}
+  #category-tabs.visible{display:flex;}
+  .cat-tab{flex:1;text-align:center;padding:9px 4px 8px;font-size:.66rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cat-tab .cat-icon{display:block;font-size:.95rem;margin-bottom:2px;}
+  .cat-tab:hover{background:var(--panel-2);}
+  .cat-tab.active{color:var(--paper);border-bottom-color:var(--red-bright);font-weight:600;}
+
   .label-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
   .label-chip{font-size:.62rem;padding:1px 7px;border-radius:8px;color:#1a1a1a;background:var(--muted);white-space:nowrap;}
   .mail-row{padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s;}
@@ -166,6 +174,7 @@
     <div id="mail-app">
       <div id="mail-folders"></div>
       <div id="mail-list">
+        <div id="category-tabs"></div>
         <div id="list-status"></div>
       </div>
       <div id="mail-reader">
@@ -266,6 +275,7 @@
     mailApp: document.getElementById('mail-app'),
     mailFolders: document.getElementById('mail-folders'),
     mailList: document.getElementById('mail-list'),
+    categoryTabs: document.getElementById('category-tabs'),
     listStatus: document.getElementById('list-status'),
     mailReader: document.getElementById('mail-reader'),
     readerEmpty: document.getElementById('reader-empty'),
@@ -303,6 +313,7 @@
   let nextPageToken = null;
   let currentQuery = '';
   let currentLabelId = 'INBOX';
+  let currentCategoryId = null;
   let currentMessage = null; // {id, threadId, meta, messageIdHeader, referencesHeader, labelIds}
   let labelsData = [];
   let labelsById = {};
@@ -481,7 +492,48 @@
       labelsById = {};
       labelsData.forEach(function(l){ labelsById[l.id] = l; });
       renderFolders();
+      renderCategoryTabs();
     });
+  }
+
+  const CATEGORY_TAB_ORDER = ['CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'];
+
+  function updateCategoryTabsVisibility(){
+    const shouldShow = currentLabelId === 'INBOX' && els.categoryTabs.children.length > 0;
+    els.categoryTabs.classList.toggle('visible', shouldShow);
+  }
+
+  function renderCategoryTabs(){
+    const cats = CATEGORY_TAB_ORDER.filter(function(id){ return labelsById[id]; });
+    if (!cats.length) {
+      els.categoryTabs.innerHTML = '';
+      updateCategoryTabsVisibility();
+      return;
+    }
+
+    let needsReload = false;
+    if (currentLabelId === 'INBOX' && currentCategoryId === null) {
+      currentCategoryId = 'CATEGORY_PERSONAL';
+      needsReload = true;
+    }
+
+    els.categoryTabs.innerHTML = cats.map(function(id){
+      const c = CATEGORY_FOLDERS[id];
+      return '<div class="cat-tab' + (id === currentCategoryId ? ' active' : '') + '" data-cat="' + id + '">' +
+        '<span class="cat-icon">' + c.icon + '</span>' + escapeHtml(c.name) + '</div>';
+    }).join('');
+    els.categoryTabs.querySelectorAll('.cat-tab').forEach(function(tab){
+      tab.addEventListener('click', function(){
+        currentCategoryId = tab.dataset.cat;
+        currentQuery = '';
+        els.searchInput.value = '';
+        els.categoryTabs.querySelectorAll('.cat-tab').forEach(function(t){ t.classList.remove('active'); });
+        tab.classList.add('active');
+        loadInbox();
+      });
+    });
+    updateCategoryTabsVisibility();
+    if (needsReload) loadInbox();
   }
 
   function folderItemHtml(id, name, icon, color){
@@ -495,12 +547,6 @@
   function renderFolders(){
     let html = '';
     SYSTEM_FOLDERS.forEach(function(f){ html += folderItemHtml(f.id, f.name, f.icon, null); });
-
-    const cats = Object.keys(CATEGORY_FOLDERS).filter(function(id){ return labelsById[id]; });
-    if (cats.length) {
-      html += '<div class="folder-section-title">Categorias</div>';
-      cats.forEach(function(id){ html += folderItemHtml(id, CATEGORY_FOLDERS[id].name, CATEGORY_FOLDERS[id].icon, null); });
-    }
 
     const userLabels = labelsData.filter(function(l){ return l.type === 'user'; })
       .sort(function(a, b){ return a.name.localeCompare(b.name, 'pt-BR'); });
@@ -524,6 +570,14 @@
         els.mailFolders.querySelectorAll('.folder-item').forEach(function(i){ i.classList.remove('active'); });
         item.classList.add('active');
         els.mailApp.classList.remove('reading');
+
+        const hasCats = els.categoryTabs.children.length > 0;
+        currentCategoryId = (currentLabelId === 'INBOX' && hasCats) ? 'CATEGORY_PERSONAL' : null;
+        els.categoryTabs.querySelectorAll('.cat-tab').forEach(function(t){
+          t.classList.toggle('active', t.dataset.cat === currentCategoryId);
+        });
+        updateCategoryTabsVisibility();
+
         loadInbox();
       });
     });
@@ -547,6 +601,7 @@
     }
     let path = '/messages?maxResults=20';
     if (currentLabelId) path += '&labelIds=' + encodeURIComponent(currentLabelId);
+    if (currentCategoryId) path += '&labelIds=' + encodeURIComponent(currentCategoryId);
     if (currentQuery) path += '&q=' + encodeURIComponent(currentQuery);
     if (append && nextPageToken) path += '&pageToken=' + encodeURIComponent(nextPageToken);
 
