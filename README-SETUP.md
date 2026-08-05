@@ -190,6 +190,7 @@ cadastre, por exemplo:
 | Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
 | Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
 | Minhas Anotações | `https://jowjow007.github.io/SISTEMA-FB/tools/minhas-anotacoes/` |
+| E-mail | `https://jowjow007.github.io/SISTEMA-FB/tools/gmail/` (precisa da configuração extra na seção 8 antes de funcionar) |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
@@ -226,3 +227,76 @@ Tudo pela aba **Administração** do próprio portal (só admins veem essa aba):
   outras pessoas).
 - **Abas**: adicionar, listar e excluir as ferramentas disponíveis no
   sistema.
+
+## 8. Aba "E-mail" (Gmail dentro do Portal)
+
+A ferramenta em `tools/gmail/` mostra a caixa de entrada do Gmail e permite
+ler/responder/escrever e-mails sem sair do Portal. Como o Gmail **bloqueia**
+ser exibido dentro de um `<iframe>` (diferente dos outros painéis), essa aba
+não carrega `mail.google.com` diretamente — ela é uma telinha própria que
+conversa com a **Gmail API** usando a conta Google de cada pessoa. Isso exige
+uma configuração única no **Google Cloud Console** (é o mesmo projeto que já
+existe por trás do Firebase, não precisa criar um novo).
+
+1. Acesse https://console.cloud.google.com e selecione o projeto
+   `sistema-fb-4cce5` (o mesmo nome do Firebase, aparece no seletor de
+   projetos no topo da tela).
+2. Vá em **APIs e serviços > Biblioteca**, busque **"Gmail API"** e clique
+   em **Ativar**.
+3. Vá em **APIs e serviços > Tela de consentimento OAuth**:
+   - Em **Tipo de usuário**, se aparecer a opção **Interno**, escolha ela —
+     como as contas da equipe são do domínio Workspace
+     `@fonsecaebraga.com.br`, isso libera o acesso para todo mundo do
+     domínio sem o Google exigir um processo de revisão/verificação do app.
+     Se só aparecer **Externo** (acontece quando o projeto não está
+     vinculado à organização Workspace no Cloud), ainda dá para usar, mas:
+     o Google mostra uma tela "app não verificado" antes do login, e para
+     evitar isso permanentemente seria preciso enviar o app para
+     verificação do Google (processo deles, pode levar dias/semanas); como
+     alternativa mais rápida, é possível deixar em modo **Teste** e
+     cadastrar os e-mails da equipe em **"Usuários de teste"** (até 100),
+     só que aí cada pessoa precisa reconectar a conta a cada 7 dias.
+   - Preencha nome do app (ex: "Portal Fonseca e Braga — E-mail"), e-mail
+     de suporte e domínio autorizado (`fonsecaebraga.com.br`).
+   - Em **Escopos**, adicione `.../auth/gmail.modify` (aparece como escopo
+     "restrito" — normal, é o que permite ler, marcar como lida e
+     responder e-mails).
+4. Vá em **APIs e serviços > Credenciais > Criar credenciais > ID do
+   cliente OAuth**:
+   - Tipo de aplicativo: **Aplicativo da Web**.
+   - Nome: `Portal FB - Gmail` (só identificação interna, não aparece
+     para os usuários).
+   - Em **Origens JavaScript autorizadas**, adicione os endereços onde o
+     Portal roda: `https://portal.fonsecaebraga.com.br` e
+     `https://jowjow007.github.io`.
+   - Não precisa preencher URI de redirecionamento (o login usa o fluxo
+     "token" do Google, tudo pelo navegador, sem voltar para nenhuma URL
+     específica).
+   - Clique em **Criar** e copie o **Client ID** gerado (algo como
+     `123456-abc.apps.googleusercontent.com`). Ele não é secreto — pode
+     ficar público no repositório, igual a `apiKey` do Firebase.
+5. Cole o Client ID em [`tools/gmail/google-config.js`](tools/gmail/google-config.js),
+   no lugar de `COLE_AQUI_SEU_CLIENT_ID...`.
+6. Se em algum momento a equipe ver um aviso de que o app foi **bloqueado
+   pelo administrador** ao tentar conectar: um admin do Google Workspace
+   precisa ir em **admin.google.com > Segurança > Controles de API >
+   Acesso de apps de terceiros**, encontrar "Portal Fonseca e Braga — E-mail"
+   e marcá-lo como **Confiável** — é uma trava separada que o Workspace
+   coloca em cima de qualquer app novo que peça acesso a dados sensíveis
+   (como e-mail), independente da tela de consentimento OAuth configurada
+   acima.
+7. Cadastre a aba **E-mail** em **Administração > Abas**, como na tabela do
+   passo 5, apontando para `tools/gmail/`.
+
+**O que a ferramenta faz e não faz:** mostra só a caixa de entrada
+(rótulo `INBOX`, com busca no padrão do Gmail — ex: `de:fulano`,
+`assunto:contrato`), abre o corpo do e-mail dentro de um `<iframe>`
+travado (sem rodar scripts nem abrir pop-ups do conteúdo do e-mail, por
+segurança), marca como lida automaticamente ao abrir, e permite responder
+(mantendo a mesma conversa no Gmail) ou escrever um e-mail novo — sempre em
+texto simples, sem formatação rica nem anexos por enquanto. Não mostra
+Enviados/Rascunhos/Spam nem apaga e-mails. Cada pessoa conecta a própria
+conta Google (o token de acesso fica só na memória da aba, não é salvo em
+lugar nenhum) — quando expira (cerca de 1h), a ferramenta tenta renovar
+sozinha em segundo plano; se não conseguir, pede para clicar em "Conectar
+com Google" de novo.

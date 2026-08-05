@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>E-mail — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332624;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  button,input,textarea{font-family:inherit;}
+  body{display:flex;flex-direction:column;min-height:100%;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:14px 20px 12px;flex:0 0 auto;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.25rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.78rem;color:var(--muted);margin:0;}
+
+  main{flex:1;display:flex;flex-direction:column;min-height:0;padding:16px 20px 20px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+
+  /* --- tela de conectar --- */
+  #connect-box{max-width:440px;margin:60px auto;text-align:center;background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:32px 28px;}
+  #connect-box p{color:var(--muted);font-size:.88rem;line-height:1.5;margin:0 0 20px;}
+  #connect-box .g-icon{font-size:2.4rem;margin-bottom:10px;}
+  .btn{padding:11px 18px;border-radius:8px;border:none;background:var(--red);color:#fff;font-weight:600;font-size:.88rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn-ghost{background:transparent;border:1px solid var(--line-strong);color:var(--paper);}
+  .btn-ghost:hover{background:var(--panel-3);}
+  #connect-err{color:#ffb4ae;font-size:.8rem;margin-top:14px;display:none;}
+
+  /* --- toolbar --- */
+  #toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;flex:0 0 auto;}
+  #search-input{flex:1;min-width:140px;padding:9px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.85rem;outline:none;}
+  #search-input:focus{border-color:var(--red);}
+  .icon-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .icon-btn:hover{background:var(--panel-3);}
+  #account-tag{font-size:.72rem;color:var(--muted);white-space:nowrap;}
+  #account-tag a{color:var(--silver);cursor:pointer;text-decoration:underline;}
+
+  /* --- layout de e-mail --- */
+  #mail-app{display:flex;flex:1;min-height:0;border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:var(--panel);}
+  #mail-list{width:340px;flex:0 0 340px;border-right:1px solid var(--line-strong);overflow-y:auto;}
+  #back-to-list{display:none;}
+  .mail-row{padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s;}
+  .mail-row:hover{background:var(--panel-2);}
+  .mail-row.active{background:var(--panel-3);}
+  .mail-row .row-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .mail-row .from{font-size:.85rem;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mail-row.unread .from{font-weight:700;}
+  .mail-row.unread .subject{font-weight:700;color:var(--paper);}
+  .mail-row .date{font-size:.68rem;color:var(--muted);flex:0 0 auto;}
+  .mail-row .subject{font-size:.8rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mail-row .snippet{font-size:.72rem;color:var(--muted);opacity:.75;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .unread-dot{display:none;width:7px;height:7px;border-radius:50%;background:var(--red-bright);margin-right:6px;vertical-align:middle;}
+  .mail-row.unread .unread-dot{display:inline-block;}
+  #list-status{padding:16px;text-align:center;color:var(--muted);font-size:.8rem;}
+  #load-more{display:block;width:calc(100% - 24px);margin:10px 12px;}
+
+  #mail-reader{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--panel-2);}
+  #reader-empty{margin:auto;color:var(--muted);font-size:.85rem;text-align:center;padding:20px;}
+  #reader-content{display:none;flex-direction:column;flex:1;min-height:0;}
+  #reader-header{padding:16px 18px 12px;border-bottom:1px solid var(--line-strong);flex:0 0 auto;}
+  #reader-header .subject-line{font-family:var(--font-display);font-size:1.05rem;color:var(--paper);margin:0 0 8px;word-break:break-word;}
+  #reader-header .meta-line{font-size:.78rem;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  #reader-header .actions{padding-top:10px;display:flex;gap:8px;}
+  #reader-body-frame{flex:1;min-height:0;width:100%;border:none;background:#fff;}
+  #reply-box{border-top:1px solid var(--line-strong);padding:14px 18px;flex:0 0 auto;display:none;}
+  #reply-box textarea{width:100%;min-height:90px;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-3);color:var(--paper);font-size:.85rem;resize:vertical;outline:none;}
+  #reply-box textarea:focus{border-color:var(--red);}
+  #reply-box .actions{margin-top:8px;display:flex;gap:8px;align-items:center;}
+  #reply-status{font-size:.76rem;color:var(--muted);}
+
+  /* --- modal de novo e-mail --- */
+  #compose-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;align-items:center;justify-content:center;padding:20px;}
+  #compose-modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;max-width:520px;width:100%;}
+  #compose-modal h2{font-family:var(--font-display);font-size:1.05rem;margin:0 0 16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;letter-spacing:.02em;}
+  .field input,.field textarea{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.85rem;outline:none;}
+  .field input:focus,.field textarea:focus{border-color:var(--red);}
+  .field textarea{min-height:120px;resize:vertical;}
+  #compose-modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;}
+  #compose-status{font-size:.78rem;color:var(--muted);margin-top:8px;}
+
+  @media(max-width:760px){
+    #mail-list{width:100%;flex:1 1 auto;border-right:none;}
+    #mail-reader{display:none;}
+    #mail-app.reading #mail-list{display:none;}
+    #mail-app.reading #mail-reader{display:flex;flex:1 1 auto;}
+    #back-to-list{display:inline-flex;}
+    #account-tag{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>E-mail</h1>
+  <p class="sub">Sua caixa do Gmail, sem sair do Portal.</p>
+</header>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+
+  <div id="connect-box" style="display:none;">
+    <div class="g-icon">📧</div>
+    <p>Conecte sua conta Google do escritório para ver e responder seus e-mails aqui dentro, sem precisar abrir o Gmail em outra aba.</p>
+    <button class="btn" id="connect-btn">Conectar com Google</button>
+    <div id="connect-err"></div>
+  </div>
+
+  <div id="mail-ui" style="display:none;flex:1;min-height:0;flex-direction:column;">
+    <div id="toolbar">
+      <input type="text" id="search-input" placeholder="Buscar e-mails (ex: de:fulano, assunto:contrato)">
+      <button class="icon-btn" id="refresh-btn" title="Atualizar">⟳</button>
+      <button class="btn" id="new-mail-btn">Novo e-mail</button>
+      <span id="account-tag">Conectado como <b id="account-email"></b> · <a id="disconnect-link">trocar conta</a></span>
+    </div>
+
+    <div id="mail-app">
+      <div id="mail-list">
+        <div id="list-status"></div>
+      </div>
+      <div id="mail-reader">
+        <div id="reader-empty">Selecione uma mensagem à esquerda para ler.</div>
+        <div id="reader-content">
+          <div id="reader-header">
+            <button class="icon-btn" id="back-to-list" title="Voltar">←</button>
+            <p class="subject-line" id="reader-subject"></p>
+            <div class="meta-line">
+              <span id="reader-from"></span>
+              <span id="reader-date"></span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-ghost" id="reply-toggle-btn">Responder</button>
+            </div>
+          </div>
+          <iframe id="reader-body-frame" sandbox=""></iframe>
+          <div id="reply-box">
+            <textarea id="reply-text" placeholder="Escreva sua resposta..."></textarea>
+            <div class="actions">
+              <button class="btn" id="reply-send-btn">Enviar resposta</button>
+              <button class="btn btn-ghost" id="reply-cancel-btn">Cancelar</button>
+              <span id="reply-status"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="compose-overlay">
+  <div id="compose-modal">
+    <h2>Novo e-mail</h2>
+    <div class="field">
+      <label>Para</label>
+      <input type="email" id="compose-to" placeholder="destinatario@exemplo.com">
+    </div>
+    <div class="field">
+      <label>Assunto</label>
+      <input type="text" id="compose-subject">
+    </div>
+    <div class="field">
+      <label>Mensagem</label>
+      <textarea id="compose-body"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="compose-cancel-btn">Cancelar</button>
+      <button class="btn" id="compose-send-btn">Enviar</button>
+    </div>
+    <div id="compose-status"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="google-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+  const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  const els = {
+    gate: document.getElementById('gate'),
+    connectBox: document.getElementById('connect-box'),
+    connectBtn: document.getElementById('connect-btn'),
+    connectErr: document.getElementById('connect-err'),
+    mailUi: document.getElementById('mail-ui'),
+    searchInput: document.getElementById('search-input'),
+    refreshBtn: document.getElementById('refresh-btn'),
+    newMailBtn: document.getElementById('new-mail-btn'),
+    accountTag: document.getElementById('account-tag'),
+    accountEmail: document.getElementById('account-email'),
+    disconnectLink: document.getElementById('disconnect-link'),
+    mailApp: document.getElementById('mail-app'),
+    mailList: document.getElementById('mail-list'),
+    listStatus: document.getElementById('list-status'),
+    mailReader: document.getElementById('mail-reader'),
+    readerEmpty: document.getElementById('reader-empty'),
+    readerContent: document.getElementById('reader-content'),
+    backToList: document.getElementById('back-to-list'),
+    readerSubject: document.getElementById('reader-subject'),
+    readerFrom: document.getElementById('reader-from'),
+    readerDate: document.getElementById('reader-date'),
+    readerFrame: document.getElementById('reader-body-frame'),
+    replyToggleBtn: document.getElementById('reply-toggle-btn'),
+    replyBox: document.getElementById('reply-box'),
+    replyText: document.getElementById('reply-text'),
+    replySendBtn: document.getElementById('reply-send-btn'),
+    replyCancelBtn: document.getElementById('reply-cancel-btn'),
+    replyStatus: document.getElementById('reply-status'),
+    composeOverlay: document.getElementById('compose-overlay'),
+    composeTo: document.getElementById('compose-to'),
+    composeSubject: document.getElementById('compose-subject'),
+    composeBody: document.getElementById('compose-body'),
+    composeSendBtn: document.getElementById('compose-send-btn'),
+    composeCancelBtn: document.getElementById('compose-cancel-btn'),
+    composeStatus: document.getElementById('compose-status'),
+  };
+
+  let portalUserEmail = null;
+  let tokenClient = null;
+  let accessToken = null;
+  let pendingResolve = null;
+  let gsiReady = false;
+
+  let nextPageToken = null;
+  let currentQuery = '';
+  let currentMessage = null; // {id, threadId, meta, messageIdHeader, referencesHeader}
+
+  // ---------- Portal auth gate ----------
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para acessar seus e-mails.';
+      els.connectBox.style.display = 'none';
+      els.mailUi.style.display = 'none';
+      return;
+    }
+    portalUserEmail = user.email;
+    els.gate.style.display = 'none';
+    if (accessToken) {
+      showMailUi();
+    } else {
+      els.connectBox.style.display = 'block';
+    }
+    setupGoogleClientWhenReady();
+  });
+
+  function setupGoogleClientWhenReady(){
+    if (tokenClient) return;
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      setTimeout(setupGoogleClientWhenReady, 200);
+      return;
+    }
+    gsiReady = true;
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf('COLE_AQUI') === 0) {
+      els.connectBox.style.display = 'block';
+      els.connectErr.style.display = 'block';
+      els.connectErr.textContent = 'Configuração pendente: google-config.js não foi preenchido com o Client ID do Google Cloud.';
+      els.connectBtn.disabled = true;
+      return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GMAIL_SCOPE,
+      hint: portalUserEmail || '',
+      callback: function(resp){
+        if (resp.error) {
+          if (pendingResolve) { pendingResolve(false); pendingResolve = null; }
+          else {
+            els.connectErr.style.display = 'block';
+            els.connectErr.textContent = 'Não foi possível conectar: ' + resp.error;
+          }
+          return;
+        }
+        accessToken = resp.access_token;
+        if (pendingResolve) { pendingResolve(true); pendingResolve = null; return; }
+        els.connectErr.style.display = 'none';
+        fetchConnectedAccount();
+        showMailUi();
+        loadInbox();
+      }
+    });
+  }
+
+  els.connectBtn.addEventListener('click', function(){
+    if (!tokenClient) return;
+    els.connectErr.style.display = 'none';
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  });
+
+  els.disconnectLink.addEventListener('click', function(){
+    if (accessToken && window.google && google.accounts && google.accounts.oauth2) {
+      google.accounts.oauth2.revoke(accessToken, function(){});
+    }
+    accessToken = null;
+    currentMessage = null;
+    els.mailUi.style.display = 'none';
+    els.connectBox.style.display = 'block';
+  });
+
+  function showMailUi(){
+    els.connectBox.style.display = 'none';
+    els.mailUi.style.display = 'flex';
+  }
+
+  function fetchConnectedAccount(){
+    fetch(GMAIL_API + '/profile', { headers: { Authorization: 'Bearer ' + accessToken } })
+      .then(function(r){ return r.json(); })
+      .then(function(data){ els.accountEmail.textContent = data.emailAddress || portalUserEmail || ''; })
+      .catch(function(){ els.accountEmail.textContent = portalUserEmail || ''; });
+  }
+
+  function silentReauth(){
+    return new Promise(function(resolve){
+      if (!tokenClient) { resolve(false); return; }
+      pendingResolve = resolve;
+      tokenClient.requestAccessToken({ prompt: '' });
+    });
+  }
+
+  function gmailFetch(path, opts){
+    opts = opts || {};
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + accessToken });
+    return fetch(GMAIL_API + path, opts).then(function(res){
+      if (res.status === 401) {
+        return silentReauth().then(function(ok){
+          if (!ok) return res;
+          opts.headers.Authorization = 'Bearer ' + accessToken;
+          return fetch(GMAIL_API + path, opts);
+        });
+      }
+      return res;
+    });
+  }
+
+  // ---------- base64url / MIME helpers ----------
+  function decodeBase64Url(data){
+    const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  function utf8ToBinaryString(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return bin;
+  }
+
+  function toBase64Url(rawStr){
+    const b64 = btoa(utf8ToBinaryString(rawStr));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function encodeMimeWord(str){
+    if (/^[\x00-\x7F]*$/.test(str)) return str;
+    return '=?UTF-8?B?' + btoa(utf8ToBinaryString(str)) + '?=';
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function extractEmail(headerVal){
+    if (!headerVal) return '';
+    const m = headerVal.match(/<([^>]+)>/);
+    return m ? m[1] : headerVal.trim();
+  }
+
+  function headersToMap(headers){
+    const map = {};
+    (headers || []).forEach(function(h){ map[h.name] = h.value; });
+    return map;
+  }
+
+  // ---------- lista de mensagens ----------
+  els.searchInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') {
+      currentQuery = els.searchInput.value.trim();
+      loadInbox();
+    }
+  });
+  els.refreshBtn.addEventListener('click', function(){ loadInbox(); });
+
+  function loadInbox(append){
+    if (!append) {
+      els.mailList.querySelectorAll('.mail-row, #load-more').forEach(function(n){ n.remove(); });
+      els.listStatus.style.display = 'block';
+      els.listStatus.textContent = 'Carregando...';
+      nextPageToken = null;
+    }
+    let path = '/messages?maxResults=20&labelIds=INBOX';
+    if (currentQuery) path += '&q=' + encodeURIComponent(currentQuery);
+    if (append && nextPageToken) path += '&pageToken=' + encodeURIComponent(nextPageToken);
+
+    gmailFetch(path).then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+      .then(function(r){
+        if (!r.ok) {
+          els.listStatus.textContent = 'Erro ao carregar: ' + (r.data.error && r.data.error.message || 'tente novamente.');
+          return;
+        }
+        nextPageToken = r.data.nextPageToken || null;
+        const ids = (r.data.messages || []).map(function(m){ return m.id; });
+        if (!ids.length && !append) {
+          els.listStatus.textContent = 'Nenhuma mensagem encontrada.';
+          return;
+        }
+        els.listStatus.style.display = 'none';
+        return Promise.all(ids.map(fetchMeta)).then(function(metas){
+          renderList(metas);
+          if (nextPageToken) renderLoadMore();
+        });
+      });
+  }
+
+  function fetchMeta(id){
+    return gmailFetch('/messages/' + id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date')
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        const h = headersToMap(data.payload && data.payload.headers);
+        return {
+          id: data.id,
+          threadId: data.threadId,
+          from: h['From'] || '',
+          subject: h['Subject'] || '(sem assunto)',
+          date: h['Date'] || '',
+          snippet: data.snippet || '',
+          unread: (data.labelIds || []).indexOf('UNREAD') !== -1
+        };
+      });
+  }
+
+  function formatDateShort(dateHeader){
+    const d = new Date(dateHeader);
+    if (isNaN(d.getTime())) return '';
+    const hoje = new Date();
+    const mesmodia = d.toDateString() === hoje.toDateString();
+    return mesmodia
+      ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  function renderList(metas){
+    const loadMoreBtn = document.getElementById('load-more');
+    metas.forEach(function(meta){
+      const row = document.createElement('div');
+      row.className = 'mail-row' + (meta.unread ? ' unread' : '');
+      row.dataset.id = meta.id;
+      const fromName = meta.from.replace(/<[^>]*>/, '').replace(/"/g, '').trim() || meta.from;
+      row.innerHTML =
+        '<div class="row-top">' +
+          '<span class="from"><span class="unread-dot"></span>' + escapeHtml(fromName) + '</span>' +
+          '<span class="date">' + escapeHtml(formatDateShort(meta.date)) + '</span>' +
+        '</div>' +
+        '<div class="subject">' + escapeHtml(meta.subject) + '</div>' +
+        '<div class="snippet">' + escapeHtml(meta.snippet) + '</div>';
+      row.addEventListener('click', function(){ openMessage(meta, row); });
+      if (loadMoreBtn) els.mailList.insertBefore(row, loadMoreBtn);
+      else els.mailList.appendChild(row);
+    });
+  }
+
+  function renderLoadMore(){
+    let btn = document.getElementById('load-more');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'load-more';
+      btn.className = 'btn btn-ghost';
+      btn.textContent = 'Carregar mais';
+      btn.addEventListener('click', function(){ loadInbox(true); });
+      els.mailList.appendChild(btn);
+    }
+  }
+
+  // ---------- leitura de mensagem ----------
+  function openMessage(meta, rowEl){
+    els.mailList.querySelectorAll('.mail-row').forEach(function(r){ r.classList.remove('active'); });
+    if (rowEl) rowEl.classList.add('active');
+    els.mailApp.classList.add('reading');
+
+    els.readerEmpty.style.display = 'none';
+    els.readerContent.style.display = 'flex';
+    els.readerSubject.textContent = 'Carregando...';
+    els.readerFrom.textContent = '';
+    els.readerDate.textContent = '';
+    els.readerFrame.srcdoc = '';
+    hideReplyBox();
+
+    gmailFetch('/messages/' + meta.id + '?format=full').then(function(res){ return res.json(); }).then(function(data){
+      const h = headersToMap(data.payload && data.payload.headers);
+      currentMessage = {
+        id: data.id,
+        threadId: data.threadId,
+        subject: h['Subject'] || '(sem assunto)',
+        from: h['From'] || '',
+        replyTo: h['Reply-To'] || '',
+        date: h['Date'] || '',
+        messageIdHeader: h['Message-ID'] || h['Message-Id'] || '',
+        referencesHeader: h['References'] || ''
+      };
+      els.readerSubject.textContent = currentMessage.subject;
+      els.readerFrom.textContent = currentMessage.from;
+      els.readerDate.textContent = currentMessage.date;
+
+      const body = extractBody(data.payload);
+      els.readerFrame.srcdoc = buildReaderHtml(body);
+
+      if (meta.unread) markAsRead(meta.id, rowEl);
+    });
+  }
+
+  function extractBody(payload){
+    let html = null, text = null;
+    (function walk(part){
+      if (!part) return;
+      if (part.mimeType === 'text/html' && part.body && part.body.data && !html) {
+        html = decodeBase64Url(part.body.data);
+      } else if (part.mimeType === 'text/plain' && part.body && part.body.data && !text) {
+        text = decodeBase64Url(part.body.data);
+      }
+      (part.parts || []).forEach(walk);
+    })(payload);
+    return { html: html, text: text };
+  }
+
+  function buildReaderHtml(body){
+    const style = '<style>body{font-family:Arial,Helvetica,sans-serif;color:#222;background:#fff;margin:0;padding:14px;word-wrap:break-word;} img{max-width:100%;} a{color:#b8362e;}</style>';
+    if (body.html) return style + body.html;
+    if (body.text) return style + '<pre style="white-space:pre-wrap;font-family:inherit;">' + escapeHtml(body.text) + '</pre>';
+    return style + '<p style="color:#888;">(sem conteúdo)</p>';
+  }
+
+  function markAsRead(id, rowEl){
+    gmailFetch('/messages/' + id + '/modify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ removeLabelIds: ['UNREAD'] })
+    }).then(function(){
+      if (rowEl) rowEl.classList.remove('unread');
+    });
+  }
+
+  els.backToList.addEventListener('click', function(){
+    els.mailApp.classList.remove('reading');
+  });
+
+  // ---------- responder ----------
+  els.replyToggleBtn.addEventListener('click', function(){
+    els.replyBox.style.display = els.replyBox.style.display === 'block' ? 'none' : 'block';
+    if (els.replyBox.style.display === 'block') els.replyText.focus();
+  });
+  els.replyCancelBtn.addEventListener('click', hideReplyBox);
+
+  function hideReplyBox(){
+    els.replyBox.style.display = 'none';
+    els.replyText.value = '';
+    els.replyStatus.textContent = '';
+  }
+
+  els.replySendBtn.addEventListener('click', function(){
+    if (!currentMessage) return;
+    const bodyText = els.replyText.value.trim();
+    if (!bodyText) return;
+
+    const to = extractEmail(currentMessage.replyTo || currentMessage.from);
+    let subject = currentMessage.subject || '';
+    if (!/^re:/i.test(subject)) subject = 'Re: ' + subject;
+
+    let raw = '';
+    raw += 'To: ' + to + '\r\n';
+    raw += 'Subject: ' + encodeMimeWord(subject) + '\r\n';
+    if (currentMessage.messageIdHeader) {
+      raw += 'In-Reply-To: ' + currentMessage.messageIdHeader + '\r\n';
+      raw += 'References: ' + (currentMessage.referencesHeader ? currentMessage.referencesHeader + ' ' : '') + currentMessage.messageIdHeader + '\r\n';
+    }
+    raw += 'Content-Type: text/plain; charset=UTF-8\r\n\r\n';
+    raw += bodyText;
+
+    els.replySendBtn.disabled = true;
+    els.replyStatus.textContent = 'Enviando...';
+
+    gmailFetch('/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: toBase64Url(raw), threadId: currentMessage.threadId })
+    }).then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+      .then(function(r){
+        if (!r.ok) {
+          els.replyStatus.textContent = 'Erro ao enviar: ' + (r.data.error && r.data.error.message || 'tente novamente.');
+          return;
+        }
+        els.replyStatus.textContent = 'Resposta enviada.';
+        setTimeout(hideReplyBox, 1500);
+      }).finally(function(){
+        els.replySendBtn.disabled = false;
+      });
+  });
+
+  // ---------- novo e-mail ----------
+  els.newMailBtn.addEventListener('click', function(){
+    els.composeTo.value = '';
+    els.composeSubject.value = '';
+    els.composeBody.value = '';
+    els.composeStatus.textContent = '';
+    els.composeOverlay.style.display = 'flex';
+  });
+  els.composeCancelBtn.addEventListener('click', function(){ els.composeOverlay.style.display = 'none'; });
+
+  els.composeSendBtn.addEventListener('click', function(){
+    const to = els.composeTo.value.trim();
+    const subject = els.composeSubject.value.trim();
+    const bodyText = els.composeBody.value.trim();
+    if (!to || !bodyText) {
+      els.composeStatus.textContent = 'Preencha ao menos o destinatário e a mensagem.';
+      return;
+    }
+
+    let raw = '';
+    raw += 'To: ' + to + '\r\n';
+    raw += 'Subject: ' + encodeMimeWord(subject) + '\r\n';
+    raw += 'Content-Type: text/plain; charset=UTF-8\r\n\r\n';
+    raw += bodyText;
+
+    els.composeSendBtn.disabled = true;
+    els.composeStatus.textContent = 'Enviando...';
+
+    gmailFetch('/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: toBase64Url(raw) })
+    }).then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+      .then(function(r){
+        if (!r.ok) {
+          els.composeStatus.textContent = 'Erro ao enviar: ' + (r.data.error && r.data.error.message || 'tente novamente.');
+          return;
+        }
+        els.composeStatus.textContent = 'Enviado!';
+        setTimeout(function(){ els.composeOverlay.style.display = 'none'; }, 1000);
+      }).finally(function(){
+        els.composeSendBtn.disabled = false;
+      });
+  });
+
+})();
+</script>
+</body>
+</html>
