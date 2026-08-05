@@ -60,8 +60,19 @@
 
   /* --- layout de e-mail --- */
   #mail-app{display:flex;flex:1;min-height:0;border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:var(--panel);}
-  #mail-list{width:340px;flex:0 0 340px;border-right:1px solid var(--line-strong);overflow-y:auto;}
+
+  #mail-folders{width:170px;flex:0 0 170px;border-right:1px solid var(--line-strong);overflow-y:auto;padding:10px 0;}
+  .folder-section-title{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:12px 14px 4px;}
+  .folder-item{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:.82rem;color:var(--paper);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .folder-item:hover{background:var(--panel-2);}
+  .folder-item.active{background:var(--panel-3);font-weight:600;}
+  .folder-icon{width:16px;text-align:center;flex:0 0 auto;opacity:.9;font-size:.85rem;}
+  .folder-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+
+  #mail-list{width:300px;flex:0 0 300px;border-right:1px solid var(--line-strong);overflow-y:auto;}
   #back-to-list{display:none;}
+  .label-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+  .label-chip{font-size:.62rem;padding:1px 7px;border-radius:8px;color:#1a1a1a;background:var(--muted);white-space:nowrap;}
   .mail-row{padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s;}
   .mail-row:hover{background:var(--panel-2);}
   .mail-row.active{background:var(--panel-3);}
@@ -83,7 +94,7 @@
   #reader-header{padding:16px 18px 12px;border-bottom:1px solid var(--line-strong);flex:0 0 auto;}
   #reader-header .subject-line{font-family:var(--font-display);font-size:1.05rem;color:var(--paper);margin:0 0 8px;word-break:break-word;}
   #reader-header .meta-line{font-size:.78rem;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
-  #reader-header .actions{padding-top:10px;display:flex;gap:8px;}
+  #reader-header .actions{padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
   #reader-body-frame{flex:1;min-height:0;width:100%;border:none;background:#fff;}
   #reply-box{border-top:1px solid var(--line-strong);padding:14px 18px;flex:0 0 auto;display:none;}
   #reply-box textarea{width:100%;min-height:90px;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-3);color:var(--paper);font-size:.85rem;resize:vertical;outline:none;}
@@ -103,7 +114,21 @@
   #compose-modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;}
   #compose-status{font-size:.78rem;color:var(--muted);margin-top:8px;}
 
+  /* --- modal de etiquetas --- */
+  #labels-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;align-items:center;justify-content:center;padding:20px;}
+  #labels-modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;max-width:360px;width:100%;max-height:70vh;overflow-y:auto;}
+  #labels-modal h2{font-family:var(--font-display);font-size:1.05rem;margin:0 0 14px;}
+  #labels-modal .actions{display:flex;justify-content:flex-end;margin-top:10px;}
+  .label-check-row{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:.85rem;cursor:pointer;}
+  .label-check-row input{flex:0 0 auto;}
+  .label-check-row .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+
   @media(max-width:760px){
+    #mail-app{flex-direction:column;}
+    #mail-folders{width:100%;flex:0 0 auto;border-right:none;border-bottom:1px solid var(--line-strong);display:flex;overflow-x:auto;padding:8px 8px;gap:6px;}
+    #mail-folders .folder-section-title{display:none;}
+    #mail-folders .folder-item{flex:0 0 auto;border-radius:20px;border:1px solid var(--line-strong);padding:6px 12px;}
+    #mail-app.reading #mail-folders{display:none;}
     #mail-list{width:100%;flex:1 1 auto;border-right:none;}
     #mail-reader{display:none;}
     #mail-app.reading #mail-list{display:none;}
@@ -139,6 +164,7 @@
     </div>
 
     <div id="mail-app">
+      <div id="mail-folders"></div>
       <div id="mail-list">
         <div id="list-status"></div>
       </div>
@@ -152,7 +178,7 @@
               <span id="reader-from"></span>
               <span id="reader-date"></span>
             </div>
-            <div class="actions">
+            <div class="actions" id="reader-actions">
               <button class="btn btn-ghost" id="reply-toggle-btn">Responder</button>
             </div>
           </div>
@@ -194,6 +220,16 @@
   </div>
 </div>
 
+<div id="labels-overlay">
+  <div id="labels-modal">
+    <h2>Etiquetas</h2>
+    <div id="labels-list"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="labels-close-btn">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="../../firebase-config.js"></script>
@@ -228,6 +264,7 @@
     accountEmail: document.getElementById('account-email'),
     disconnectLink: document.getElementById('disconnect-link'),
     mailApp: document.getElementById('mail-app'),
+    mailFolders: document.getElementById('mail-folders'),
     mailList: document.getElementById('mail-list'),
     listStatus: document.getElementById('list-status'),
     mailReader: document.getElementById('mail-reader'),
@@ -238,6 +275,7 @@
     readerFrom: document.getElementById('reader-from'),
     readerDate: document.getElementById('reader-date'),
     readerFrame: document.getElementById('reader-body-frame'),
+    readerActions: document.getElementById('reader-actions'),
     replyToggleBtn: document.getElementById('reply-toggle-btn'),
     replyBox: document.getElementById('reply-box'),
     replyText: document.getElementById('reply-text'),
@@ -251,6 +289,9 @@
     composeSendBtn: document.getElementById('compose-send-btn'),
     composeCancelBtn: document.getElementById('compose-cancel-btn'),
     composeStatus: document.getElementById('compose-status'),
+    labelsOverlay: document.getElementById('labels-overlay'),
+    labelsList: document.getElementById('labels-list'),
+    labelsCloseBtn: document.getElementById('labels-close-btn'),
   };
 
   let portalUserEmail = null;
@@ -261,7 +302,10 @@
 
   let nextPageToken = null;
   let currentQuery = '';
-  let currentMessage = null; // {id, threadId, meta, messageIdHeader, referencesHeader}
+  let currentLabelId = 'INBOX';
+  let currentMessage = null; // {id, threadId, meta, messageIdHeader, referencesHeader, labelIds}
+  let labelsData = [];
+  let labelsById = {};
 
   // ---------- Portal auth gate ----------
   auth.onAuthStateChanged(function(user){
@@ -314,6 +358,7 @@
         els.connectErr.style.display = 'none';
         fetchConnectedAccount();
         showMailUi();
+        loadLabels();
         loadInbox();
       }
     });
@@ -412,6 +457,78 @@
     return map;
   }
 
+  // ---------- pastas / categorias / etiquetas ----------
+  const SYSTEM_FOLDERS = [
+    { id: null, name: 'Todos os e-mails', icon: '📬' },
+    { id: 'INBOX', name: 'Caixa de entrada', icon: '📥' },
+    { id: 'STARRED', name: 'Marcados', icon: '⭐' },
+    { id: 'SENT', name: 'Enviados', icon: '📤' },
+    { id: 'DRAFT', name: 'Rascunhos', icon: '📝' },
+    { id: 'SPAM', name: 'Spam', icon: '🚫' },
+    { id: 'TRASH', name: 'Lixeira', icon: '🗑️' }
+  ];
+  const CATEGORY_FOLDERS = {
+    CATEGORY_PERSONAL: { name: 'Principal', icon: '👤' },
+    CATEGORY_SOCIAL: { name: 'Social', icon: '👥' },
+    CATEGORY_PROMOTIONS: { name: 'Promoções', icon: '🏷️' },
+    CATEGORY_UPDATES: { name: 'Atualizações', icon: '🔔' },
+    CATEGORY_FORUMS: { name: 'Fóruns', icon: '💬' }
+  };
+
+  function loadLabels(){
+    gmailFetch('/labels').then(function(res){ return res.json(); }).then(function(data){
+      labelsData = data.labels || [];
+      labelsById = {};
+      labelsData.forEach(function(l){ labelsById[l.id] = l; });
+      renderFolders();
+    });
+  }
+
+  function folderItemHtml(id, name, icon, color){
+    const dataId = id === null ? '' : id;
+    const iconHtml = icon
+      ? '<span class="folder-icon">' + icon + '</span>'
+      : '<span class="folder-dot" style="background:' + (color || 'var(--muted)') + ';"></span>';
+    return '<div class="folder-item" data-id="' + escapeHtml(dataId) + '">' + iconHtml + '<span>' + escapeHtml(name) + '</span></div>';
+  }
+
+  function renderFolders(){
+    let html = '';
+    SYSTEM_FOLDERS.forEach(function(f){ html += folderItemHtml(f.id, f.name, f.icon, null); });
+
+    const cats = Object.keys(CATEGORY_FOLDERS).filter(function(id){ return labelsById[id]; });
+    if (cats.length) {
+      html += '<div class="folder-section-title">Categorias</div>';
+      cats.forEach(function(id){ html += folderItemHtml(id, CATEGORY_FOLDERS[id].name, CATEGORY_FOLDERS[id].icon, null); });
+    }
+
+    const userLabels = labelsData.filter(function(l){ return l.type === 'user'; })
+      .sort(function(a, b){ return a.name.localeCompare(b.name, 'pt-BR'); });
+    if (userLabels.length) {
+      html += '<div class="folder-section-title">Etiquetas</div>';
+      userLabels.forEach(function(l){
+        const color = (l.color && l.color.backgroundColor) || null;
+        html += folderItemHtml(l.id, l.name, null, color);
+      });
+    }
+
+    els.mailFolders.innerHTML = html;
+    els.mailFolders.querySelectorAll('.folder-item').forEach(function(item){
+      if (item.dataset.id === currentLabelId || (currentLabelId === null && item.dataset.id === '')) {
+        item.classList.add('active');
+      }
+      item.addEventListener('click', function(){
+        currentLabelId = item.dataset.id === '' ? null : item.dataset.id;
+        currentQuery = '';
+        els.searchInput.value = '';
+        els.mailFolders.querySelectorAll('.folder-item').forEach(function(i){ i.classList.remove('active'); });
+        item.classList.add('active');
+        els.mailApp.classList.remove('reading');
+        loadInbox();
+      });
+    });
+  }
+
   // ---------- lista de mensagens ----------
   els.searchInput.addEventListener('keydown', function(e){
     if (e.key === 'Enter') {
@@ -428,7 +545,8 @@
       els.listStatus.textContent = 'Carregando...';
       nextPageToken = null;
     }
-    let path = '/messages?maxResults=20&labelIds=INBOX';
+    let path = '/messages?maxResults=20';
+    if (currentLabelId) path += '&labelIds=' + encodeURIComponent(currentLabelId);
     if (currentQuery) path += '&q=' + encodeURIComponent(currentQuery);
     if (append && nextPageToken) path += '&pageToken=' + encodeURIComponent(nextPageToken);
 
@@ -464,9 +582,22 @@
           subject: h['Subject'] || '(sem assunto)',
           date: h['Date'] || '',
           snippet: data.snippet || '',
-          unread: (data.labelIds || []).indexOf('UNREAD') !== -1
+          unread: (data.labelIds || []).indexOf('UNREAD') !== -1,
+          labelIds: data.labelIds || []
         };
       });
+  }
+
+  function labelChipsHtml(labelIds){
+    const chips = (labelIds || [])
+      .map(function(id){ return labelsById[id]; })
+      .filter(function(l){ return l && l.type === 'user'; })
+      .slice(0, 3)
+      .map(function(l){
+        const color = (l.color && l.color.backgroundColor) || 'var(--muted)';
+        return '<span class="label-chip" style="background:' + color + ';">' + escapeHtml(l.name) + '</span>';
+      }).join('');
+    return chips ? '<div class="label-chips">' + chips + '</div>' : '';
   }
 
   function formatDateShort(dateHeader){
@@ -492,7 +623,8 @@
           '<span class="date">' + escapeHtml(formatDateShort(meta.date)) + '</span>' +
         '</div>' +
         '<div class="subject">' + escapeHtml(meta.subject) + '</div>' +
-        '<div class="snippet">' + escapeHtml(meta.snippet) + '</div>';
+        '<div class="snippet">' + escapeHtml(meta.snippet) + '</div>' +
+        labelChipsHtml(meta.labelIds);
       row.addEventListener('click', function(){ openMessage(meta, row); });
       if (loadMoreBtn) els.mailList.insertBefore(row, loadMoreBtn);
       else els.mailList.appendChild(row);
@@ -523,6 +655,7 @@
     els.readerFrom.textContent = '';
     els.readerDate.textContent = '';
     els.readerFrame.srcdoc = '';
+    els.readerActions.querySelectorAll('.dyn-action').forEach(function(b){ b.remove(); });
     hideReplyBox();
 
     gmailFetch('/messages/' + meta.id + '?format=full').then(function(res){ return res.json(); }).then(function(data){
@@ -535,11 +668,13 @@
         replyTo: h['Reply-To'] || '',
         date: h['Date'] || '',
         messageIdHeader: h['Message-ID'] || h['Message-Id'] || '',
-        referencesHeader: h['References'] || ''
+        referencesHeader: h['References'] || '',
+        labelIds: data.labelIds || []
       };
       els.readerSubject.textContent = currentMessage.subject;
       els.readerFrom.textContent = currentMessage.from;
       els.readerDate.textContent = currentMessage.date;
+      updateReaderActions();
 
       const body = extractBody(data.payload);
       els.readerFrame.srcdoc = buildReaderHtml(body);
@@ -547,6 +682,109 @@
       if (meta.unread) markAsRead(meta.id, rowEl);
     });
   }
+
+  // ---------- ações da mensagem (estrela / arquivar / excluir / spam / etiquetas) ----------
+  function updateReaderActions(){
+    els.readerActions.querySelectorAll('.dyn-action').forEach(function(b){ b.remove(); });
+    if (!currentMessage) return;
+
+    function addDynBtn(label, handler){
+      const b = document.createElement('button');
+      b.className = 'btn btn-ghost dyn-action';
+      b.textContent = label;
+      b.addEventListener('click', handler);
+      els.readerActions.appendChild(b);
+      return b;
+    }
+
+    const isStarred = currentMessage.labelIds.indexOf('STARRED') !== -1;
+    addDynBtn(isStarred ? '★ Marcado' : '☆ Marcar', toggleStar);
+
+    if (currentLabelId === 'TRASH') {
+      addDynBtn('Restaurar', untrashCurrent);
+    } else {
+      addDynBtn('Arquivar', archiveCurrent);
+      addDynBtn('Excluir', trashCurrent);
+    }
+
+    if (currentLabelId === 'SPAM') {
+      addDynBtn('Não é spam', unspamCurrent);
+    } else if (currentLabelId !== 'SENT' && currentLabelId !== 'DRAFT') {
+      addDynBtn('Spam', spamCurrent);
+    }
+
+    addDynBtn('Etiquetas', openLabelsPopover);
+  }
+
+  function modifyCurrent(body){
+    if (!currentMessage) return Promise.resolve();
+    return gmailFetch('/messages/' + currentMessage.id + '/modify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(res){ return res.json(); }).then(function(data){
+      currentMessage.labelIds = data.labelIds || currentMessage.labelIds;
+      return data;
+    });
+  }
+
+  function toggleStar(){
+    const isStarred = currentMessage.labelIds.indexOf('STARRED') !== -1;
+    modifyCurrent(isStarred ? { removeLabelIds: ['STARRED'] } : { addLabelIds: ['STARRED'] })
+      .then(updateReaderActions);
+  }
+
+  function afterMessageLeftFolder(){
+    els.readerContent.style.display = 'none';
+    els.readerEmpty.style.display = 'block';
+    els.mailApp.classList.remove('reading');
+    currentMessage = null;
+    loadInbox();
+  }
+
+  function archiveCurrent(){
+    modifyCurrent({ removeLabelIds: ['INBOX'] }).then(afterMessageLeftFolder);
+  }
+
+  function trashCurrent(){
+    if (!currentMessage) return;
+    gmailFetch('/messages/' + currentMessage.id + '/trash', { method: 'POST' }).then(afterMessageLeftFolder);
+  }
+
+  function untrashCurrent(){
+    if (!currentMessage) return;
+    gmailFetch('/messages/' + currentMessage.id + '/untrash', { method: 'POST' }).then(afterMessageLeftFolder);
+  }
+
+  function spamCurrent(){
+    modifyCurrent({ addLabelIds: ['SPAM'], removeLabelIds: ['INBOX'] }).then(afterMessageLeftFolder);
+  }
+
+  function unspamCurrent(){
+    modifyCurrent({ removeLabelIds: ['SPAM'], addLabelIds: ['INBOX'] }).then(afterMessageLeftFolder);
+  }
+
+  function openLabelsPopover(){
+    if (!currentMessage) return;
+    const userLabels = labelsData.filter(function(l){ return l.type === 'user'; })
+      .sort(function(a, b){ return a.name.localeCompare(b.name, 'pt-BR'); });
+    els.labelsList.innerHTML = userLabels.length ? userLabels.map(function(l){
+      const checked = currentMessage.labelIds.indexOf(l.id) !== -1 ? 'checked' : '';
+      const color = (l.color && l.color.backgroundColor) || 'var(--muted)';
+      return '<label class="label-check-row"><input type="checkbox" data-label-id="' + l.id + '" ' + checked + '>' +
+        '<span class="dot" style="background:' + color + ';"></span>' + escapeHtml(l.name) + '</label>';
+    }).join('') : '<p style="color:var(--muted);font-size:.82rem;">Nenhuma etiqueta cadastrada no Gmail ainda.</p>';
+
+    els.labelsList.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        const labelId = cb.dataset.labelId;
+        modifyCurrent(cb.checked ? { addLabelIds: [labelId] } : { removeLabelIds: [labelId] });
+      });
+    });
+    els.labelsOverlay.style.display = 'flex';
+  }
+
+  els.labelsCloseBtn.addEventListener('click', function(){ els.labelsOverlay.style.display = 'none'; });
 
   function extractBody(payload){
     let html = null, text = null;

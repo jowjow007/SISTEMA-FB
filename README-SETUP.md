@@ -295,15 +295,25 @@ e selecione o projeto **`Portal FB - Gmail`** (não o `sistema-fb-4cce5`).
 7. Cadastre a aba **E-mail** em **Administração > Abas**, como na tabela do
    passo 5, apontando para `tools/gmail/`.
 
-**O que a ferramenta faz e não faz:** mostra só a caixa de entrada
-(rótulo `INBOX`, com busca no padrão do Gmail — ex: `de:fulano`,
-`assunto:contrato`), abre o corpo do e-mail dentro de um `<iframe>`
-travado (sem rodar scripts nem abrir pop-ups do conteúdo do e-mail, por
-segurança), marca como lida automaticamente ao abrir, e permite responder
-(mantendo a mesma conversa no Gmail) ou escrever um e-mail novo — sempre em
-texto simples, sem formatação rica nem anexos por enquanto. Não mostra
-Enviados/Rascunhos/Spam nem apaga e-mails. Cada pessoa conecta a própria
-conta Google (o token de acesso fica só na memória da aba, não é salvo em
-lugar nenhum) — quando expira (cerca de 1h), a ferramenta tenta renovar
-sozinha em segundo plano; se não conseguir, pede para clicar em "Conectar
-com Google" de novo.
+**O que a ferramenta faz e não faz:** tem uma coluna de pastas à esquerda —
+Caixa de entrada, Marcados, Enviados, Rascunhos, Spam, Lixeira e "Todos os
+e-mails", mais as categorias do Gmail (Principal/Social/Promoções/
+Atualizações/Fóruns, se a conta tiver categorização ativa) e as etiquetas
+personalizadas da conta (com a cor de cada uma) — clicar em qualquer uma
+recarrega a lista filtrada por aquele rótulo. Também mostra, em cada
+e-mail da lista, as etiquetas personalizadas aplicadas a ele. Dentro de
+uma mensagem aberta dá para: marcar/desmarcar com estrela, arquivar,
+excluir (manda pra Lixeira, reversível) ou restaurar (se já estiver na
+Lixeira), marcar/desmarcar como spam, e adicionar/remover etiquetas
+existentes (não cria etiqueta nova pela ferramenta — isso ainda precisa
+ser feito no Gmail de verdade). O corpo do e-mail abre dentro de um
+`<iframe>` travado (sem rodar scripts nem abrir pop-ups do conteúdo do
+e-mail, por segurança) e marca como lida automaticamente ao abrir.
+Responder mantém a mesma conversa no Gmail; responder ou escrever um
+e-mail novo é sempre em texto simples, sem formatação rica nem anexos por
+enquanto. Rascunhos abrem só para leitura (editar de verdade um rascunho
+ainda precisa ser feito no Gmail). Cada pessoa conecta a própria conta
+Google (o token de acesso fica só na memória da aba, não é salvo em lugar
+nenhum) — quando expira (cerca de 1h), a ferramenta tenta renovar sozinha
+em segundo plano; se não conseguir, pede para clicar em "Conectar com
+Google" de novo.
