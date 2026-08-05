@@ -235,34 +235,41 @@ ler/responder/escrever e-mails sem sair do Portal. Como o Gmail **bloqueia**
 ser exibido dentro de um `<iframe>` (diferente dos outros painéis), essa aba
 não carrega `mail.google.com` diretamente — ela é uma telinha própria que
 conversa com a **Gmail API** usando a conta Google de cada pessoa. Isso exige
-uma configuração única no **Google Cloud Console** (é o mesmo projeto que já
-existe por trás do Firebase, não precisa criar um novo).
+uma configuração única no **Google Cloud Console**.
 
-1. Acesse https://console.cloud.google.com e selecione o projeto
-   `sistema-fb-4cce5` (o mesmo nome do Firebase, aparece no seletor de
-   projetos no topo da tela).
+**Importante — projeto SEPARADO do Firebase:** a ideia original era usar o
+mesmo projeto que já existe por trás do Firebase (`sistema-fb-4cce5`), mas
+isso não deu certo: esse projeto pertence à conta pessoal
+`jowjow07@gmail.com`, não ao domínio Workspace, então a Tela de consentimento
+OAuth só oferecia o tipo **Externo** (com aviso de "app não verificado" e
+limite de usuários de teste). A solução foi criar um **projeto Google Cloud
+novo, separado**, chamado **`Portal FB - Gmail`**, logado com a conta
+Workspace `jonathan@fonsecaebraga.com.br` — assim o projeto nasce dentro da
+organização do domínio e a opção **Interno** fica disponível. O Gmail API
+não depende de estar no mesmo projeto do Firebase, então isso não afeta nada
+do resto do Portal. Se um dia precisar mexer nessa configuração de novo,
+entre no Cloud Console **já logado com a conta `jonathan@fonsecaebraga.com.br`**
+e selecione o projeto **`Portal FB - Gmail`** (não o `sistema-fb-4cce5`).
+
+1. Acesse https://console.cloud.google.com logado com
+   `jonathan@fonsecaebraga.com.br` e selecione o projeto **`Portal FB -
+   Gmail`** no seletor de projetos no topo da tela.
 2. Vá em **APIs e serviços > Biblioteca**, busque **"Gmail API"** e clique
    em **Ativar**.
-3. Vá em **APIs e serviços > Tela de consentimento OAuth**:
-   - Em **Tipo de usuário**, se aparecer a opção **Interno**, escolha ela —
-     como as contas da equipe são do domínio Workspace
-     `@fonsecaebraga.com.br`, isso libera o acesso para todo mundo do
-     domínio sem o Google exigir um processo de revisão/verificação do app.
-     Se só aparecer **Externo** (acontece quando o projeto não está
-     vinculado à organização Workspace no Cloud), ainda dá para usar, mas:
-     o Google mostra uma tela "app não verificado" antes do login, e para
-     evitar isso permanentemente seria preciso enviar o app para
-     verificação do Google (processo deles, pode levar dias/semanas); como
-     alternativa mais rápida, é possível deixar em modo **Teste** e
-     cadastrar os e-mails da equipe em **"Usuários de teste"** (até 100),
-     só que aí cada pessoa precisa reconectar a conta a cada 7 dias.
+3. Vá em **"Google Auth Platform"** (nome novo da antiga "Tela de
+   consentimento OAuth") no menu lateral:
+   - Em **Público-alvo**, escolha **Interno** — como o projeto pertence à
+     organização do domínio Workspace `@fonsecaebraga.com.br`, isso libera
+     o acesso para todo mundo do domínio sem o Google exigir um processo de
+     revisão/verificação do app.
    - Preencha nome do app (ex: "Portal Fonseca e Braga — E-mail"), e-mail
      de suporte e domínio autorizado (`fonsecaebraga.com.br`).
    - Em **Escopos**, adicione `.../auth/gmail.modify` (aparece como escopo
      "restrito" — normal, é o que permite ler, marcar como lida e
      responder e-mails).
-4. Vá em **APIs e serviços > Credenciais > Criar credenciais > ID do
-   cliente OAuth**:
+4. Vá em **"Google Auth Platform" > Clientes** (ou **APIs e serviços >
+   Credenciais > Criar credenciais > ID do cliente OAuth**, é a mesma
+   coisa em outro menu) > **Criar cliente**:
    - Tipo de aplicativo: **Aplicativo da Web**.
    - Nome: `Portal FB - Gmail` (só identificação interna, não aparece
      para os usuários).
