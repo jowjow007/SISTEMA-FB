@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documentos — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --err:#ffb4ae;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  button,input,select,textarea{font-family:inherit;}
+
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 14px;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:1560px;margin:0 auto;padding:20px 20px 70px;}
+  .layout{display:grid;grid-template-columns:minmax(360px,460px) 1fr;gap:22px;align-items:start;}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr;}}
+
+  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  @media (max-width:1100px){.form-col{position:static;max-height:none;}}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;}
+  .card h2{font-family:var(--font-display);font-weight:600;font-size:1.02rem;margin:0 0 4px;color:var(--paper);}
+  .card .desc{font-size:.76rem;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
+  .segmented{display:flex;gap:8px;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:6px;}
+  .segmented button{flex:1 1 46%;padding:11px 10px;border:none;border-radius:9px;background:transparent;color:var(--muted);font-weight:600;font-size:.78rem;cursor:pointer;transition:background .15s,color .15s;}
+  .segmented button.active{background:var(--red);color:#fff;}
+  .segmented button:not(.active):not(:disabled):hover{background:var(--panel-3);color:var(--paper);}
+  .segmented button:disabled{opacity:.4;cursor:not-allowed;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;letter-spacing:.02em;}
+  .field .hint{font-size:.66rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.86rem;outline:none;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);}
+  .field textarea{resize:vertical;min-height:44px;line-height:1.45;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  @media (max-width:480px){.grid3{grid-template-columns:1fr 1fr;}}
+
+  .btn{padding:10px 18px;border-radius:8px;border:none;background:var(--red);color:#fff;font-weight:600;font-size:.84rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.secondary:hover{background:var(--panel-2);}
+  .btn.ghost{background:transparent;color:var(--err);border:1px solid rgba(255,180,174,.3);padding:6px 12px;font-size:.72rem;}
+  .btn.ghost:hover{background:rgba(255,180,174,.08);}
+  .btn.small{padding:7px 12px;font-size:.74rem;}
+
+  .item-block{border:1px solid var(--line-strong);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--panel-2);}
+  .item-block.compact{padding:12px;background:var(--panel-3);}
+  .item-block .row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .item-block .row-head strong{font-size:.8rem;color:var(--silver);}
+
+  .list-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;}
+  .list-item textarea{flex:1;min-height:40px;}
+
+  .tipo-hidden{display:none !important;}
+
+  .preview-col{min-width:0;}
+  .preview-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .preview-toolbar .status{font-size:.78rem;color:var(--muted);}
+  .preview-toolbar .status.ok{color:var(--ok);}
+  .preview-toolbar .status.err{color:var(--err);}
+
+  #doc-pages-wrap{background:#0e0b0b;border:1px solid var(--line-strong);border-radius:14px;padding:26px;overflow-x:auto;}
+  #doc-pages{display:flex;flex-direction:column;align-items:center;gap:24px;}
+
+  /* ---- o papel do documento em si, no timbrado do escritório ---- */
+  .doc-page{
+    width:210mm;height:297mm;flex:0 0 auto;background:#ffffff;position:relative;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;
+    overflow:hidden;
+  }
+  .doc-watermark{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;
+  }
+  .doc-watermark img{width:120mm;opacity:.06;filter:grayscale(1);}
+  .doc-header{position:relative;z-index:1;padding:14mm 18mm 4mm;text-align:center;}
+  .doc-header img{height:15mm;}
+  .doc-pagenum{position:absolute;top:14mm;right:18mm;font-size:8pt;font-weight:600;color:#1a1a1a;z-index:1;}
+  .doc-content{position:relative;z-index:1;margin:0 18mm;height:214mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+  .doc-footer{position:absolute;left:18mm;right:18mm;bottom:10mm;z-index:1;font-size:7.6pt;color:#1a1a1a;text-align:center;border-top:1.4pt solid #8a1f1a;padding-top:2.4mm;}
+  .doc-footer .l1{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:1mm;font-weight:600;}
+  .doc-footer .l2{display:flex;align-items:center;justify-content:center;gap:5px;color:#333;}
+  .doc-footer svg{width:9px;height:9px;flex:0 0 auto;}
+
+  .blk{margin-bottom:2.6mm;text-align:justify;}
+  .blk.center{text-align:center;}
+  .blk strong{font-weight:700;}
+
+  .doc-h1{text-align:center;font-weight:700;font-size:11.5pt;text-transform:uppercase;margin:1mm 0 6mm;letter-spacing:.02em;}
+  .doc-h1.underline{text-decoration:underline;}
+  .doc-label{font-weight:700;margin:3mm 0 1.4mm;}
+  .doc-indent{margin-left:14mm;}
+
+  .sig-line{margin:8mm auto 0;text-align:center;width:74mm;}
+  .sig-line .rule{border-top:1pt solid #1a1a1a;margin-bottom:1.6mm;}
+  .sig-line .name{font-weight:700;font-size:9pt;}
+  .sig-line .doc{font-size:8.6pt;}
+  .sig-pair{display:flex;justify-content:center;gap:14mm;flex-wrap:wrap;}
+
+  .box-table{border:1pt solid #1a1a1a;border-radius:1.2mm;overflow:hidden;margin-bottom:2.6mm;}
+  .box-row{display:flex;border-top:1pt solid #1a1a1a;}
+  .box-row:first-child{border-top:none;}
+  .box-cell{flex:1;padding:1.3mm 2.2mm;border-left:1pt solid #1a1a1a;font-size:8.4pt;}
+  .box-cell:first-child{border-left:none;}
+  .box-cell b{font-weight:700;}
+
+  .blk.bullet{margin-left:6mm;}
+
+  @media print{ body{background:#fff;} header,.form-col,.preview-toolbar,#doc-pages-wrap{display:none !important;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Documentos</h1>
+  <p class="sub">Procurações, substabelecimentos, declarações e outros documentos avulsos — preencha os dados e baixe já em PDF, no timbrado do escritório.</p>
+</header>
+<main>
+  <div class="layout">
+
+    <div class="form-col">
+
+      <div class="card">
+        <h2>Tipo de documento</h2>
+        <p class="desc">Escolha o modelo desejado.</p>
+        <div class="segmented" id="tipo-seg"></div>
+      </div>
+
+      <!-- ===================== PROCURAÇÃO ===================== -->
+      <div class="card" data-tipo-only="procuracao">
+        <h2>Outorgante(s)</h2>
+        <p class="desc">Um bloco para cada outorgante — pessoa física ou jurídica (com representante).</p>
+        <div id="outorgantes-list"></div>
+        <button class="btn secondary small" id="btn-add-outorgante" type="button">+ Adicionar outorgante</button>
+      </div>
+
+      <div class="card" data-tipo-only="procuracao">
+        <h2>Outorgado(s) — procurador(es)</h2>
+        <p class="desc">Advogados do escritório que recebem os poderes. Já vem preenchido com os sócios; ajuste se necessário.</p>
+        <div id="procuradores-list"></div>
+        <button class="btn secondary small" id="btn-add-procurador" type="button">+ Adicionar procurador(a)</button>
+      </div>
+
+      <div class="card" data-tipo-only="procuracao">
+        <h2>Poderes adicionais (cláusula final)</h2>
+        <div class="field">
+          <label>Restringir ou vincular os poderes</label>
+          <select id="pr-final-tipo">
+            <option value="nenhum">Nenhum — poderes gerais (ad judicia)</option>
+            <option value="esfera">Restringir a uma esfera específica</option>
+            <option value="processo">Vincular a um processo específico</option>
+          </select>
+        </div>
+        <div class="field" id="pr-final-esfera" style="display:none;">
+          <label>Esfera</label>
+          <input id="pr-esfera" placeholder="Trabalhista, Cível, Criminal, Tributária...">
+        </div>
+        <div id="pr-final-processo" style="display:none;">
+          <div class="field"><label>Tipo de ação</label><input id="pr-tipo-acao" placeholder="RECLAMAÇÃO TRABALHISTA"></div>
+          <div class="field"><label>Número do processo</label><input id="pr-numero-processo" placeholder="0010819-61.2026.5.03.0103"></div>
+          <div class="field"><label>Movida por</label><input id="pr-movida-por"></div>
+          <div class="field"><label>Vara/Comarca</label><input id="pr-vara" placeholder="3ª Vara do Trabalho da Comarca de Uberlândia-MG"></div>
+        </div>
+      </div>
+
+      <!-- ===================== SUBSTABELECIMENTO ===================== -->
+      <div class="card" data-tipo-only="substabelecimento">
+        <h2>Advogado(a) que substabelece</h2>
+        <div class="field"><label>Nome completo</label><input id="sb-nome"></div>
+        <div class="grid2">
+          <div class="field"><label>Estado civil</label><input id="sb-estado-civil"></div>
+          <div class="field"><label>OAB/MG nº</label><input id="sb-oab"></div>
+        </div>
+        <div class="field">
+          <label>Reserva de poderes</label>
+          <select id="sb-reserva">
+            <option value="com reservas">Com reservas</option>
+            <option value="sem reservas de poderes">Sem reservas de poderes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="substabelecimento">
+        <h2>Cliente (poderes outorgados por)</h2>
+        <p class="desc">Quem outorgou a procuração original — pessoa física ou jurídica.</p>
+        <div id="sb-cliente-block"></div>
+      </div>
+
+      <div class="card" data-tipo-only="substabelecimento">
+        <h2>Processo</h2>
+        <div class="field"><label>Tipo de ação</label><input id="sb-tipo-acao" placeholder="RECLAMAÇÃO TRABALHISTA"></div>
+        <div class="field"><label>Numeração única</label><input id="sb-numero" placeholder="0001136-63.2026.5.18.0141"></div>
+        <div class="field"><label>Movida por</label><input id="sb-movida-por"></div>
+        <div class="field"><label>Vara/Comarca</label><input id="sb-vara" placeholder="VARA DO TRABALHO DA COMARCA DE CATALÃO/GO"></div>
+      </div>
+
+      <div class="card" data-tipo-only="substabelecimento">
+        <h2>Advogado(a) substabelecido(a)</h2>
+        <div class="grid2">
+          <div class="field"><label>Tratamento</label>
+            <select id="sbs-tratamento"><option value="Dr.">Dr.</option><option value="Dra.">Dra.</option></select>
+          </div>
+          <div class="field"><label>Nome completo</label><input id="sbs-nome"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Nacionalidade</label><input id="sbs-nacionalidade" placeholder="brasileiro / brasileira"></div>
+          <div class="field"><label>Estado civil</label><input id="sbs-estado-civil"></div>
+          <div class="field"><label>OAB/MG nº</label><input id="sbs-oab"></div>
+        </div>
+      </div>
+
+      <!-- ===================== HIPOSSUFICIÊNCIA ===================== -->
+      <div class="card" data-tipo-only="hipossuficiencia">
+        <h2>Declarante</h2>
+        <div class="field"><label>Nome completo</label><input id="hp-nome"></div>
+        <div class="grid3">
+          <div class="field"><label>Nacionalidade</label><input id="hp-nacionalidade" placeholder="brasileiro / brasileira"></div>
+          <div class="field"><label>Estado civil</label><input id="hp-estado-civil"></div>
+          <div class="field"><label>RG</label><input id="hp-rg"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Órgão emissor do RG</label><input id="hp-rg-orgao" placeholder="SSP/MG"></div>
+          <div class="field"><label>CPF</label><input id="hp-cpf"></div>
+        </div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin:8px 0 4px;">Profissão(ões)/registro(s) — ex.: "advogado, inscrito na OAB/MG sob nº 118.958"</label>
+        <div id="hp-profissoes-list"></div>
+        <button class="btn secondary small" id="btn-add-hp-profissao" type="button">+ Adicionar profissão/registro</button>
+        <div class="field" style="margin-top:12px;"><label>Endereço completo (residente e domiciliado à...)</label><input id="hp-endereco" placeholder="Rua..., nº..., Bairro..., Cidade/UF, CEP"></div>
+      </div>
+
+      <!-- ===================== TERMO DE REPASSE ===================== -->
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Processo</h2>
+        <div class="field">
+          <label>Tipo do instrumento</label>
+          <input id="tr-tipo-instrumento" list="tr-tipo-instrumento-list" placeholder="ACORDO">
+          <datalist id="tr-tipo-instrumento-list">
+            <option value="ACORDO">
+            <option value="CUMPRIMENTO DE SENTENÇA - CONDENAÇÃO">
+          </datalist>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Autor(a)</label><input id="tr-autor"></div>
+          <div class="field"><label>Réu/Ré</label><input id="tr-reu"></div>
+        </div>
+        <div class="field">
+          <label>Nosso cliente é</label>
+          <select id="tr-cliente-posicao"><option value="autor">Autor(a)</option><option value="reu">Réu/Ré</option></select>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Número do processo</label><input id="tr-numero-processo"></div>
+          <div class="field"><label>Tipo de processo</label>
+            <select id="tr-tipo-processo"><option value="ELETRÔNICO">Eletrônico</option><option value="FÍSICO">Físico</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Vara</label><input id="tr-vara"></div>
+        <div class="field"><label>Ação</label><input id="tr-acao" placeholder="RESCISÃO DO CONTRATO E DEVOLUÇÃO DO DINHEIRO"></div>
+        <div class="grid3">
+          <div class="field"><label>Gratuidade</label><select id="tr-gratuidade"><option value="SIM">Sim</option><option value="NÃO">Não</option></select></div>
+          <div class="field"><label>Custas já pagas (R$)</label><input id="tr-custas-pagas" value="00,00"></div>
+          <div class="field"><label>Segredo de justiça</label><select id="tr-segredo-justica"><option value="NÃO">Não</option><option value="SIM">Sim</option></select></div>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Cliente e valor do repasse</h2>
+        <div class="grid2">
+          <div class="field"><label>Nome do cliente</label><input id="tr-cliente-nome"></div>
+          <div class="field"><label>CPF</label><input id="tr-cliente-cpf"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Valor do repasse (R$)</label><input id="tr-valor" placeholder="10.918,92"></div>
+          <div class="field"><label>Valor por extenso</label><input id="tr-valor-extenso" readonly></div>
+        </div>
+        <div class="field">
+          <label>Origem do valor</label>
+          <select id="tr-origem">
+            <option value="acordo firmado">Acordo firmado</option>
+            <option value="condenação">Condenação</option>
+            <option value="cumprimento de sentença">Cumprimento de sentença</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Advogados que repassam</h2>
+        <div id="tr-advogados-list"></div>
+        <button class="btn secondary small" id="btn-add-tr-advogado" type="button">+ Adicionar advogado(a)</button>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Avença (opcional)</h2>
+        <div class="checkbox-field" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <input type="checkbox" id="tr-detalhar-avenca" style="width:15px;height:15px;">
+          <label style="margin:0;font-size:.78rem;color:var(--paper);">Detalhar os termos da avença (entrada, parcelas...)</label>
+        </div>
+        <div id="tr-avenca-wrap" style="display:none;">
+          <div id="tr-avenca-list"></div>
+          <button class="btn secondary small" id="btn-add-tr-avenca" type="button">+ Adicionar item</button>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Honorários e quitação</h2>
+        <div class="field">
+          <label>Observação sobre dedução de honorários (opcional)</label>
+          <textarea id="tr-obs-honorarios" style="min-height:70px" placeholder="Cumpre esclarecer que foram descontados do valor os honorários advocatícios de 20%, o que equivale a R$..."></textarea>
+        </div>
+        <div class="field">
+          <label>Quitação</label>
+          <select id="tr-quitacao-tipo">
+            <option value="total">Total — nada mais a reclamar</option>
+            <option value="parcial">Parcial — há mais parcelas a repassar</option>
+          </select>
+        </div>
+        <div class="field" id="tr-quitacao-obs-wrap" style="display:none;">
+          <label>Condição das parcelas restantes</label>
+          <textarea id="tr-quitacao-obs" style="min-height:60px" placeholder="ficando o repasse das demais parcelas condicionado aos respectivos depósitos e compensações pelo devedor nos meses subsequentes"></textarea>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Dados para pagamento</h2>
+        <div class="grid3">
+          <div class="field"><label>Banco</label><input id="tr-pag-banco"></div>
+          <div class="field"><label>Agência</label><input id="tr-pag-agencia"></div>
+          <div class="field"><label>Conta</label><input id="tr-pag-conta"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>CPF/CNPJ do favorecido</label><input id="tr-pag-doc"></div>
+          <div class="field"><label>Nome do favorecido</label><input id="tr-pag-nome"></div>
+        </div>
+        <div class="field"><label>Chave PIX</label><input id="tr-pag-pix"></div>
+      </div>
+
+      <!-- ===================== RECIBO ===================== -->
+      <div class="card" data-tipo-only="recibo">
+        <h2>Pagador</h2>
+        <p class="desc">Quem está pagando/entregando o valor.</p>
+        <div class="field">
+          <label>Preposição</label>
+          <select id="rc-prep"><option value="de">de</option><option value="do">do</option><option value="da">da</option></select>
+        </div>
+        <div id="rc-pagador-block"></div>
+      </div>
+
+      <div class="card" data-tipo-only="recibo">
+        <h2>Recebedor</h2>
+        <p class="desc">Quem está recebendo e assina o recibo. Já vem preenchido com o escritório; ajuste se necessário.</p>
+        <div id="rc-recebedor-block"></div>
+      </div>
+
+      <div class="card" data-tipo-only="recibo">
+        <h2>Valor e destinação</h2>
+        <div class="grid2">
+          <div class="field"><label>Valor (R$)</label><input id="rc-valor" placeholder="112,45"></div>
+          <div class="field"><label>Valor por extenso</label><input id="rc-valor-extenso" readonly></div>
+        </div>
+        <div class="field">
+          <label>Destinação (com preposição)</label>
+          <textarea id="rc-motivo" style="min-height:60px" placeholder="ao pagamento pelos serviços de envio de contranotificação, deslocamento e custos com correio"></textarea>
+        </div>
+      </div>
+
+      <!-- ===================== LOCAL E DATA (comum) ===================== -->
+      <div class="card" data-tipo-only="procuracao substabelecimento hipossuficiencia termo_repasse recibo">
+        <h2>Local e data</h2>
+        <div class="grid2">
+          <div class="field"><label>Cidade/UF</label><input id="doc-cidade-uf" value="Uberlândia/MG"></div>
+          <div class="field"><label>Data</label><input id="doc-data" type="date"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn" id="btn-gerar" type="button" style="width:100%">Gerar e baixar PDF</button>
+        <p class="hint" id="gerar-status" style="margin-top:10px;"></p>
+      </div>
+
+    </div>
+
+    <div class="preview-col">
+      <div class="preview-toolbar">
+        <strong style="font-size:.86rem;">Pré-visualização</strong>
+        <span class="status" id="pag-status">montando documento…</span>
+      </div>
+      <div id="doc-pages-wrap"><div id="doc-pages"></div></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ---------- utilidades ---------- */
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+function fmtDataExtenso(iso){
+  if(!iso) return '____ de ____________ de ______';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y,m,d]=iso.split('-').map(Number);
+  return d+' de '+meses[m-1]+' de '+y;
+}
+
+const UNIDADE=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+const DEZENA=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CENTENA=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+function extenso3(n){
+  n=parseInt(n,10);
+  if(n===0) return '';
+  if(n===100) return 'cem';
+  let out='';
+  const c=Math.floor(n/100), d=n%100;
+  if(c) out+=CENTENA[c];
+  if(d){
+    if(out) out+=' e ';
+    if(d<20) out+=UNIDADE[d];
+    else{
+      out+=DEZENA[Math.floor(d/10)];
+      if(d%10) out+=' e '+UNIDADE[d%10];
+    }
+  }
+  return out;
+}
+function extensoInt(n){
+  n=parseInt(n,10);
+  if(n===0) return 'zero';
+  const milhoes=Math.floor(n/1000000);
+  const milhares=Math.floor((n%1000000)/1000);
+  const centenas=n%1000;
+  let parts=[];
+  if(milhoes) parts.push(extenso3(milhoes)+(milhoes>1?' milhões':' milhão'));
+  if(milhares) parts.push((milhares===1?'mil':extenso3(milhares)+' mil'));
+  if(centenas) parts.push(extenso3(centenas));
+  if(parts.length===0) return 'zero';
+  if(parts.length===1) return parts[0];
+  return parts.slice(0,-1).join(', ')+' e '+parts[parts.length-1];
+}
+function valorExtenso(v){
+  const num = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+  if(isNaN(num)) return '';
+  const inteiro=Math.floor(num), centavos=Math.round((num-inteiro)*100);
+  let out = extensoInt(inteiro)+' '+(inteiro===1?'real':'reais');
+  if(centavos>0) out += ' e '+extensoInt(centavos)+' '+(centavos===1?'centavo':'centavos');
+  return out.toUpperCase();
+}
+
+const ESCRITORIO_CIDADE='Uberlândia';
+const ESCRITORIO_ESTADO='Minas Gerais';
+const ESCRITORIO_ENDERECO='Rua Senador Salgado Filho, nº. 426, Bairro Tabajaras, CEP 38400-236';
+
+/* ---------- bloco reutilizável de pessoa (PF ou PJ) ---------- */
+function novaPessoa(){
+  return {tipo:'pf',
+    nome:'', nacionalidade:'', estadoCivil:'', profissao:'', cpf:'', endereco:'',
+    razaoSocial:'', cnpj:'', sedeCidade:'Uberlândia', sedeEstado:'Minas Gerais', sedeEndereco:'',
+    repCargo:'sócio(a)', repNome:'', repNacionalidade:'', repProfissao:'', repCpf:''};
+}
+function pessoaFieldsHtml(o){
+  return `
+    <div class="segmented" style="margin-bottom:10px;">
+      <button type="button" data-settipo="pf" class="${o.tipo==='pf'?'active':''}">Pessoa Física</button>
+      <button type="button" data-settipo="pj" class="${o.tipo==='pj'?'active':''}">Pessoa Jurídica</button>
+    </div>
+    <div class="pessoa-pf" style="${o.tipo!=='pf'?'display:none':''}">
+      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(o.nome)}"></div>
+      <div class="grid3">
+        <div class="field"><label>Nacionalidade</label><input data-f="nacionalidade" value="${esc(o.nacionalidade)}" placeholder="brasileiro / brasileira"></div>
+        <div class="field"><label>Estado civil</label><input data-f="estadoCivil" value="${esc(o.estadoCivil)}"></div>
+        <div class="field"><label>Profissão</label><input data-f="profissao" value="${esc(o.profissao)}"></div>
+      </div>
+      <div class="field"><label>CPF</label><input data-f="cpf" value="${esc(o.cpf)}"></div>
+      <div class="field"><label>Endereço completo (residente e domiciliado à...)</label><input data-f="endereco" value="${esc(o.endereco)}" placeholder="Rua..., nº..., Bairro..., Cidade/UF, CEP"></div>
+    </div>
+    <div class="pessoa-pj" style="${o.tipo!=='pj'?'display:none':''}">
+      <div class="field"><label>Razão social</label><input data-f="razaoSocial" value="${esc(o.razaoSocial)}"></div>
+      <div class="field"><label>CNPJ</label><input data-f="cnpj" value="${esc(o.cnpj)}"></div>
+      <div class="grid2">
+        <div class="field"><label>Cidade da sede</label><input data-f="sedeCidade" value="${esc(o.sedeCidade)}"></div>
+        <div class="field"><label>Estado da sede</label><input data-f="sedeEstado" value="${esc(o.sedeEstado)}"></div>
+      </div>
+      <div class="field"><label>Endereço da sede</label><input data-f="sedeEndereco" value="${esc(o.sedeEndereco)}" placeholder="Av..., nº..., Bairro..., CEP"></div>
+      <label style="display:block;font-size:.72rem;color:var(--muted);margin:8px 0 4px;">Representante legal (assina pela empresa)</label>
+      <div class="grid2">
+        <div class="field"><label>Cargo</label><input data-f="repCargo" value="${esc(o.repCargo)}" placeholder="sócio / diretor / procurador"></div>
+        <div class="field"><label>Nome</label><input data-f="repNome" value="${esc(o.repNome)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Nacionalidade</label><input data-f="repNacionalidade" value="${esc(o.repNacionalidade)}" placeholder="brasileiro / brasileira"></div>
+        <div class="field"><label>Profissão</label><input data-f="repProfissao" value="${esc(o.repProfissao)}"></div>
+        <div class="field"><label>CPF</label><input data-f="repCpf" value="${esc(o.repCpf)}"></div>
+      </div>
+    </div>`;
+}
+function wirePessoaBlock(div,o,rerender){
+  div.querySelectorAll('[data-f]').forEach(inp=>{
+    inp.addEventListener('input',()=>{ o[inp.dataset.f]=inp.value; scheduleRender(); });
+  });
+  div.querySelectorAll('[data-settipo]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ o.tipo=btn.dataset.settipo; rerender(); scheduleRender(); });
+  });
+}
+function pessoaTexto(o){
+  if(o.tipo==='pj'){
+    return `<strong>${esc(o.razaoSocial)}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o n.º ${esc(o.cnpj)}, com sede na cidade de ${esc(o.sedeCidade)}, ${esc(o.sedeEstado)}, à ${esc(o.sedeEndereco)}, representado(a) por seu(sua) ${esc(o.repCargo)} <strong>${esc(o.repNome)}</strong>, ${esc(o.repNacionalidade)}, ${esc(o.repProfissao)}, inscrito(a) no CPF sob o n.º ${esc(o.repCpf)}`;
+  }
+  return `<strong>${esc(o.nome)}</strong>, ${esc(o.nacionalidade)}, ${esc(o.estadoCivil)}, ${esc(o.profissao)}, inscrito(a) no CPF sob o n.º ${esc(o.cpf)}${o.endereco?`, residente e domiciliado(a) à ${esc(o.endereco)}`:''}`;
+}
+function assinaturaPessoa(o){
+  if(o.tipo==='pj') return {nome:o.razaoSocial, doc:'CNPJ sob o nº. '+o.cnpj};
+  return {nome:o.nome, doc:'CPF sob o nº. '+o.cpf};
+}
+function assinaturasBlock(pessoas){
+  const items = pessoas.map(o=>{
+    const s=assinaturaPessoa(o);
+    return `<div class="sig-line"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`;
+  }).join('');
+  return `<div class="sig-pair" style="margin-top:14mm;">${items}</div>`;
+}
+
+/* ---------- OUTORGANTES (procuração) ---------- */
+let outorgantes=[];
+function renderOutorgantes(){
+  const wrap=document.getElementById('outorgantes-list');
+  wrap.innerHTML='';
+  outorgantes.forEach((o,idx)=>{
+    const div=document.createElement('div');
+    div.className='item-block';
+    div.innerHTML=`
+      <div class="row-head"><strong>Outorgante ${idx+1}</strong>
+        ${outorgantes.length>1?'<button type="button" class="btn ghost" data-remove="1">remover</button>':''}
+      </div>
+      ${pessoaFieldsHtml(o)}
+    `;
+    wirePessoaBlock(div,o,renderOutorgantes);
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ outorgantes=outorgantes.filter(x=>x!==o); renderOutorgantes(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-outorgante').addEventListener('click',()=>{
+  outorgantes.push(novaPessoa()); renderOutorgantes(); scheduleRender();
+});
+outorgantes.push(novaPessoa());
+renderOutorgantes();
+
+/* ---------- PROCURADORES (outorgados da procuração) ---------- */
+let procuradores=[];
+function novoProcurador(nome,estadoCivil,oab){ return {nome:nome||'', estadoCivil:estadoCivil||'', oab:oab||''}; }
+function renderProcuradores(){
+  const wrap=document.getElementById('procuradores-list');
+  wrap.innerHTML='';
+  procuradores.forEach((p,idx)=>{
+    const div=document.createElement('div');
+    div.className='item-block compact';
+    div.innerHTML=`
+      <div class="row-head"><strong>Procurador(a) ${idx+1}</strong>
+        ${procuradores.length>1?'<button type="button" class="btn ghost" data-remove="1">remover</button>':''}
+      </div>
+      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(p.nome)}"></div>
+      <div class="grid2">
+        <div class="field"><label>Estado civil</label><input data-f="estadoCivil" value="${esc(p.estadoCivil)}"></div>
+        <div class="field"><label>OAB/MG nº</label><input data-f="oab" value="${esc(p.oab)}"></div>
+      </div>
+    `;
+    div.querySelectorAll('[data-f]').forEach(inp=>{
+      inp.addEventListener('input',()=>{ p[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ procuradores=procuradores.filter(x=>x!==p); renderProcuradores(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-procurador').addEventListener('click',()=>{
+  procuradores.push(novoProcurador()); renderProcuradores(); scheduleRender();
+});
+procuradores.push(novoProcurador('HECY BRAGA DE OLIVEIRA','casado','95.948'));
+procuradores.push(novoProcurador('JONATHAN SILVA FONSECA','casado','163.443'));
+renderProcuradores();
+function outorgadosTexto(list){
+  if(list.length===0) return '';
+  const partes = list.map(a=>`<strong>${esc(a.nome)}</strong>, brasileiro, ${esc(a.estadoCivil)}, advogado, inscrito na OAB/MG sob o nº. ${esc(a.oab)}`);
+  let join;
+  if(partes.length===1) join=partes[0];
+  else if(partes.length===2) join=partes[0]+' e '+partes[1];
+  else join=partes.slice(0,-1).join(', ')+' e '+partes[partes.length-1];
+  const pron = list.length===1 ? 'com escritório profissional localizado' : (list.length===2?'ambos':'todos')+' com escritório profissional localizado';
+  return `${join}, ${pron} nesta cidade de ${ESCRITORIO_CIDADE}, estado de ${ESCRITORIO_ESTADO}, na ${esc(ESCRITORIO_ENDERECO)}`;
+}
+
+/* ---------- cláusula final da procuração ---------- */
+document.getElementById('pr-final-tipo').addEventListener('change',e=>{
+  const v=e.target.value;
+  document.getElementById('pr-final-esfera').style.display = v==='esfera'?'':'none';
+  document.getElementById('pr-final-processo').style.display = v==='processo'?'':'none';
+  scheduleRender();
+});
+
+/* ---------- cliente do substabelecimento ---------- */
+let clienteSub=novaPessoa();
+function renderClienteSub(){
+  const wrap=document.getElementById('sb-cliente-block');
+  wrap.innerHTML=pessoaFieldsHtml(clienteSub);
+  wirePessoaBlock(wrap,clienteSub,renderClienteSub);
+}
+renderClienteSub();
+
+/* ---------- profissões/registros da declaração de hipossuficiência ---------- */
+let hpProfissoes=[];
+function renderHpProfissoes(){
+  const wrap=document.getElementById('hp-profissoes-list');
+  wrap.innerHTML='';
+  hpProfissoes.forEach((item,idx)=>{
+    const row=document.createElement('div');
+    row.className='list-item';
+    row.innerHTML=`<textarea placeholder="ex.: advogado, inscrito na OAB/MG sob nº 118.958">${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.querySelector('textarea').addEventListener('input',e=>{ hpProfissoes[idx]=e.target.value; scheduleRender(); });
+    row.querySelector('button').addEventListener('click',()=>{ hpProfissoes.splice(idx,1); renderHpProfissoes(); scheduleRender(); });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('btn-add-hp-profissao').addEventListener('click',()=>{ hpProfissoes.push(''); renderHpProfissoes(); scheduleRender(); });
+hpProfissoes.push('');
+renderHpProfissoes();
+
+/* ---------- advogados que repassam (termo de repasse) ---------- */
+let trAdvogados=[];
+function renderTrAdvogados(){
+  const wrap=document.getElementById('tr-advogados-list');
+  wrap.innerHTML='';
+  trAdvogados.forEach((a,idx)=>{
+    const div=document.createElement('div');
+    div.className='item-block compact';
+    div.innerHTML=`
+      <div class="row-head"><strong>Advogado(a) ${idx+1}</strong>
+        ${trAdvogados.length>1?'<button type="button" class="btn ghost" data-remove="1">remover</button>':''}
+      </div>
+      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(a.nome)}"></div>
+      <div class="field"><label>OAB/MG nº</label><input data-f="oab" value="${esc(a.oab)}"></div>
+    `;
+    div.querySelectorAll('[data-f]').forEach(inp=>{
+      inp.addEventListener('input',()=>{ a[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ trAdvogados=trAdvogados.filter(x=>x!==a); renderTrAdvogados(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-tr-advogado').addEventListener('click',()=>{
+  trAdvogados.push({nome:'',oab:''}); renderTrAdvogados(); scheduleRender();
+});
+trAdvogados.push({nome:'JONATHAN SILVA FONSECA',oab:'163.443'});
+trAdvogados.push({nome:'HECY BRAGA DE OLIVEIRA',oab:'95.948'});
+renderTrAdvogados();
+function advogadosRepasseTexto(list){
+  const partes = list.filter(a=>a.nome.trim()!=='').map(a=>`<strong>${esc(a.nome)}</strong>, inscrito na OAB/MG sob o nº ${esc(a.oab)}`);
+  if(partes.length===0) return '';
+  if(partes.length===1) return partes[0];
+  return partes.slice(0,-1).join(', ')+' e '+partes[partes.length-1];
+}
+
+/* ---------- avença (itens opcionais do termo de repasse) ---------- */
+let trAvenca=[];
+function renderTrAvenca(){
+  const wrap=document.getElementById('tr-avenca-list');
+  wrap.innerHTML='';
+  trAvenca.forEach((item,idx)=>{
+    const row=document.createElement('div');
+    row.className='list-item';
+    row.innerHTML=`<textarea placeholder="ex.: 06 (seis) parcelas iguais e consecutivas de R$..., vencendo a primeira em...">${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.querySelector('textarea').addEventListener('input',e=>{ trAvenca[idx]=e.target.value; scheduleRender(); });
+    row.querySelector('button').addEventListener('click',()=>{ trAvenca.splice(idx,1); renderTrAvenca(); scheduleRender(); });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('btn-add-tr-avenca').addEventListener('click',()=>{ trAvenca.push(''); renderTrAvenca(); scheduleRender(); });
+document.getElementById('tr-detalhar-avenca').addEventListener('change',e=>{
+  document.getElementById('tr-avenca-wrap').style.display = e.target.checked?'':'none';
+  scheduleRender();
+});
+document.getElementById('tr-quitacao-tipo').addEventListener('change',e=>{
+  document.getElementById('tr-quitacao-obs-wrap').style.display = e.target.value==='parcial'?'':'none';
+  scheduleRender();
+});
+
+/* ---------- pagador / recebedor (recibo) ---------- */
+let rcPagador=novaPessoa();
+function renderRcPagador(){
+  const wrap=document.getElementById('rc-pagador-block');
+  wrap.innerHTML=pessoaFieldsHtml(rcPagador);
+  wirePessoaBlock(wrap,rcPagador,renderRcPagador);
+}
+renderRcPagador();
+
+let rcRecebedor=novaPessoa();
+rcRecebedor.tipo='pj';
+rcRecebedor.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS';
+rcRecebedor.cnpj='57.704.224/0001-00';
+rcRecebedor.sedeEndereco=ESCRITORIO_ENDERECO;
+rcRecebedor.repCargo='sócio';
+function renderRcRecebedor(){
+  const wrap=document.getElementById('rc-recebedor-block');
+  wrap.innerHTML=pessoaFieldsHtml(rcRecebedor);
+  wirePessoaBlock(wrap,rcRecebedor,renderRcRecebedor);
+}
+renderRcRecebedor();
+function reciboQualTexto(o){
+  if(o.tipo==='pj'){
+    let out = `<strong>${esc(o.razaoSocial)}</strong>, CNPJ nº ${esc(o.cnpj)}, estabelecido(a) na ${esc(o.sedeEndereco)}, em ${esc(o.sedeCidade)}/${esc(o.sedeEstado)}`;
+    if(o.repNome.trim()!==''){
+      out += `, nesse ato representado(a) pelo(a) ${esc(o.repCargo)} <strong>${esc(o.repNome)}</strong>, CPF nº ${esc(o.repCpf)}`;
+    }
+    return out;
+  }
+  return `<strong>${esc(o.nome)}</strong>, CPF nº ${esc(o.cpf)}${o.endereco?`, residente e domiciliado(a) à ${esc(o.endereco)}`:''}`;
+}
+
+/* ---------- coleta e validação ---------- */
+function coletarDados(){
+  document.getElementById('tr-valor-extenso').value = valorExtenso(val('tr-valor'));
+  document.getElementById('rc-valor-extenso').value = valorExtenso(val('rc-valor'));
+  return {
+    tipo: currentTipo,
+    cidadeUf: val('doc-cidade-uf'),
+    dataExtenso: fmtDataExtenso(document.getElementById('doc-data').value),
+    procuracao:{
+      outorgantes, procuradores,
+      finalTipo: val('pr-final-tipo'),
+      esfera: val('pr-esfera'),
+      tipoAcao: val('pr-tipo-acao'),
+      numeroProcesso: val('pr-numero-processo'),
+      movidaPor: val('pr-movida-por'),
+      vara: val('pr-vara')
+    },
+    substabelecimento:{
+      sbNome: val('sb-nome'), sbEstadoCivil: val('sb-estado-civil'), sbOab: val('sb-oab'),
+      reserva: val('sb-reserva'),
+      cliente: clienteSub,
+      tipoAcao: val('sb-tipo-acao'), numero: val('sb-numero'), movidaPor: val('sb-movida-por'), vara: val('sb-vara'),
+      tratamento: val('sbs-tratamento'),
+      sbsNome: val('sbs-nome'), sbsNacionalidade: val('sbs-nacionalidade'), sbsEstadoCivil: val('sbs-estado-civil'), sbsOab: val('sbs-oab')
+    },
+    hipossuficiencia:{
+      nome: val('hp-nome'), nacionalidade: val('hp-nacionalidade'), estadoCivil: val('hp-estado-civil'),
+      rg: val('hp-rg'), rgOrgao: val('hp-rg-orgao'), cpf: val('hp-cpf'),
+      profissoes: hpProfissoes, endereco: val('hp-endereco')
+    },
+    termoRepasse:{
+      tipoInstrumento: val('tr-tipo-instrumento'), autor: val('tr-autor'), reu: val('tr-reu'),
+      clientePosicao: val('tr-cliente-posicao'), numeroProcesso: val('tr-numero-processo'),
+      tipoProcesso: val('tr-tipo-processo'), vara: val('tr-vara'), acao: val('tr-acao'),
+      gratuidade: val('tr-gratuidade'), custasPagas: val('tr-custas-pagas'), segredoJustica: val('tr-segredo-justica'),
+      clienteNome: val('tr-cliente-nome'), clienteCpf: val('tr-cliente-cpf'),
+      valor: val('tr-valor'), valorExtenso: document.getElementById('tr-valor-extenso').value,
+      origem: val('tr-origem'), advogados: trAdvogados,
+      detalharAvenca: document.getElementById('tr-detalhar-avenca').checked, avenca: trAvenca,
+      obsHonorarios: document.getElementById('tr-obs-honorarios').value.trim(),
+      quitacaoTipo: val('tr-quitacao-tipo'), quitacaoObs: document.getElementById('tr-quitacao-obs').value.trim(),
+      pagBanco: val('tr-pag-banco'), pagAgencia: val('tr-pag-agencia'), pagConta: val('tr-pag-conta'),
+      pagDoc: val('tr-pag-doc'), pagNome: val('tr-pag-nome'), pagPix: val('tr-pag-pix')
+    },
+    recibo:{
+      prep: val('rc-prep'), pagador: rcPagador, recebedor: rcRecebedor,
+      valor: val('rc-valor'), valorExtenso: document.getElementById('rc-valor-extenso').value,
+      motivo: document.getElementById('rc-motivo').value.trim()
+    }
+  };
+}
+function validar(d){
+  if(d.tipo==='procuracao') return (d.procuracao.outorgantes.length>0 && d.procuracao.procuradores.length>0) ? null : 'Preencha ao menos um outorgante e um procurador.';
+  if(d.tipo==='substabelecimento') return (d.substabelecimento.sbNome.trim()!=='' && d.substabelecimento.sbsNome.trim()!=='') ? null : 'Preencha o(a) advogado(a) que substabelece e o(a) substabelecido(a).';
+  if(d.tipo==='hipossuficiencia') return d.hipossuficiencia.nome.trim()!=='' ? null : 'Preencha o nome do(a) declarante.';
+  if(d.tipo==='termo_repasse') return (d.termoRepasse.clienteNome.trim()!=='' && d.termoRepasse.valor.trim()!=='') ? null : 'Preencha o nome do cliente e o valor do repasse.';
+  if(d.tipo==='recibo') return d.recibo.valor.trim()!=='' ? null : 'Preencha o valor do recibo.';
+  return 'Modelo ainda não disponível.';
+}
+function nomeArquivo(d){
+  let base='documento';
+  if(d.tipo==='procuracao'){
+    const o=d.procuracao.outorgantes[0];
+    base = o ? (o.tipo==='pj'?o.razaoSocial:o.nome) : 'procuracao';
+  }
+  if(d.tipo==='substabelecimento') base=d.substabelecimento.sbsNome||'substabelecimento';
+  if(d.tipo==='hipossuficiencia') base=d.hipossuficiencia.nome||'declaracao';
+  if(d.tipo==='termo_repasse') base=d.termoRepasse.clienteNome||'termo_repasse';
+  if(d.tipo==='recibo'){
+    const p=d.recibo.pagador;
+    base = (p.tipo==='pj'?p.razaoSocial:p.nome)||'recibo';
+  }
+  return (base||'documento').replace(/[^\p{L}\p{N} ]/gu,'').trim().replace(/\s+/g,'_')||'documento';
+}
+function prefixoArquivo(tipo){
+  if(tipo==='procuracao') return 'Procuracao_';
+  if(tipo==='substabelecimento') return 'Substabelecimento_';
+  if(tipo==='hipossuficiencia') return 'Declaracao_Hipossuficiencia_';
+  if(tipo==='termo_repasse') return 'Termo_Repasse_';
+  if(tipo==='recibo') return 'Recibo_';
+  return 'Documento_';
+}
+
+/* ---------- construção dos documentos ---------- */
+function C(html){ return {type:'raw', html}; }
+function blockToHtml(b){ return b.type==='raw' ? b.html : ''; }
+
+const TEXTO_PODERES_PROCURACAO = 'Por este instrumento particular, nomeio/nomeamos meu(s)/nosso(s) bastante(s) procurador(es) outorgado(s) ao(s) qual(quais) confiro/conferimos todos os poderes para o foro em geral, com a cláusula ad judicia, podendo agir em conjunto ou separadamente, independentemente da ordem de nomeação, tanto na esfera administrativa quanto na esfera judicial, junto às repartições públicas municipais, estaduais e/ou federais, em qualquer foro e/ou tribunal, qualquer instância e/ou entrância, conferindo-lhe(s), ainda, os poderes especiais para receber aviso(s), notificação/notificações, intimação/intimações, acordar, agravar, assinar, concordar, confessar, conciliar, desistir, embargar, firmar compromisso e/ou acordo, intimar, notificar, recorrer, receber e/ou dar quitação, pagar e/ou protestar título(s), cancelar protesto(s), requerer certidão/certidões, receber alvará(s), precatório(s) e/ou RPV´s (requisições de pequeno valor), transigir, xerocopiar, substabelecer com ou sem reserva de poderes, praticar todo(s) e qualquer/quaisquer ato(s) necessário(s) e/ou conveniente(s) ao fiel desempenho deste mandato, propondo ação/ações de interesse(s) do(a)(s) outorgante(s) contra quem de direito e defendendo-o(a)(s) naquela(s) que lhe for/forem proposta(s) por quem quer que seja, propor e/ou variar de ação/ações, apresentar contestação/contestações, fazer e/ou firmar acordo(s) trabalhista(s), assinar termo(s) inventariante e/ou tutela(s), requerer inventário(s), concordata(s), falência(s), arrolamento(s), prestar declaração/declarações, cumprir testamento(s) e/ou assinar termo(s) de testamentária(s), apresentar queixa(s)-crime e/ou fazer defesa(s) criminal/criminais, habilitação/habilitações, requerer medida(s) preventiva(s) e/ou incidente(s)';
+
+function buildProcuracao(d){
+  const p=d.procuracao;
+  let clausulaFinal='';
+  if(p.finalTipo==='esfera' && p.esfera.trim()){
+    clausulaFinal = `, tendo o presente mandato poderes para representar o(s) outorgante(s) em demandas administrativas e judiciais da esfera ${esc(p.esfera)}`;
+  } else if(p.finalTipo==='processo' && p.numeroProcesso.trim()){
+    clausulaFinal = `, tendo o presente mandato poderes específicos para atuação nos autos da ${esc(p.tipoAcao)}, n.° ${esc(p.numeroProcesso)}, movida por <strong>${esc(p.movidaPor)}</strong> em trâmite na ${esc(p.vara)}`;
+  }
+  return [
+    C(`<div class="doc-h1 underline">Procuração</div>`),
+    C(`<div class="doc-label">OUTORGANTE(S):</div>`),
+    ...p.outorgantes.map(o=>C(`<div class="blk doc-indent">${pessoaTexto(o)}.</div>`)),
+    C(`<div class="doc-label">OUTORGADO(S):</div>`),
+    C(`<div class="blk doc-indent">${outorgadosTexto(p.procuradores)}.</div>`),
+    C(`<div class="blk" style="margin-top:1mm;">${TEXTO_PODERES_PROCURACAO}${clausulaFinal}.</div>`),
+    C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
+    C(assinaturasBlock(p.outorgantes))
+  ];
+}
+
+function buildSubstabelecimento(d){
+  const s=d.substabelecimento;
+  return [
+    C(`<div class="doc-h1">Substabelecimento</div>`),
+    C(`<div class="blk">Eu, <strong>${esc(s.sbNome)}</strong>, brasileiro, ${esc(s.sbEstadoCivil)}, advogado, inscrito na OAB/MG sob o nº. ${esc(s.sbOab)}, com escritório profissional localizado na Cidade de ${ESCRITORIO_CIDADE}, Estado de ${ESCRITORIO_ESTADO}, na ${esc(ESCRITORIO_ENDERECO)}, <strong>SUBSTABELEÇO</strong>, ${esc(s.reserva)}, todos os poderes outorgados por ${pessoaTexto(s.cliente)}, nos autos da ${esc(s.tipoAcao)}, Numeração Única ${esc(s.numero)}, movida por <strong>${esc(s.movidaPor)}</strong> em trâmite na ${esc(s.vara)}, à ${esc(s.tratamento)} <strong>${esc(s.sbsNome)}</strong>, ${esc(s.sbsNacionalidade)}, ${esc(s.sbsEstadoCivil)}, advogado(a), inscrito(a) na OAB/MG sob o nº ${esc(s.sbsOab)}, com escritório profissional localizado na Cidade de ${ESCRITORIO_CIDADE}, Estado de ${ESCRITORIO_ESTADO}, na ${esc(ESCRITORIO_ENDERECO)}, para os devidos fins de direito.</div>`),
+    C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
+    C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(s.sbNome)}</div><div class="doc">OAB/MG nº ${esc(s.sbOab)}</div></div>`)
+  ];
+}
+
+function buildHipossuficiencia(d){
+  const h=d.hipossuficiencia;
+  const profissoesTxt = h.profissoes.filter(x=>x.trim()!=='').map(esc).join(', ');
+  return [
+    C(`<div class="doc-h1">Declaração de Hipossuficiência Financeira</div>`),
+    C(`<div class="blk" style="text-indent:10mm;">Eu, <strong>${esc(h.nome)}</strong>, ${esc(h.nacionalidade)}, ${esc(h.estadoCivil)}${profissoesTxt?', '+profissoesTxt:''}, portador(a) do RG nº ${esc(h.rg)} ${esc(h.rgOrgao)} e CPF/MF nº ${esc(h.cpf)}, residente e domiciliado(a) à ${esc(h.endereco)}. Declaro, para os devidos fins de direito, que sou pobre no sentido legal e não disponho de meios para arcar com os pagamentos de quaisquer despesas judiciais e/ou honorários advocatícios sucumbenciais, sem prejuízos próprio e/ou de minha família.</div>`),
+    C(`<div class="blk" style="text-indent:10mm;">Por ser expressão da verdade, assino a presente declaração para fins judiciais.</div>`),
+    C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
+    C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(h.nome)}</div><div class="doc">CPF/MF sob o nº. ${esc(h.cpf)}</div></div>`)
+  ];
+}
+
+function buildTermoRepasse(d){
+  const t=d.termoRepasse;
+  const clienteEhAutor = t.clientePosicao==='autor';
+  const blocks=[
+    C(`<div class="doc-h1 underline">Termo de Repasse e Quitação</div>`),
+    C(`<div class="box-table">
+      <div class="box-row"><div class="box-cell"><b>TIPO:</b> ${esc(t.tipoInstrumento)}</div></div>
+      <div class="box-row">
+        <div class="box-cell"><b>AUTOR(A):</b> ${esc(t.autor)}</div>
+        <div class="box-cell" style="flex:0 0 16mm;">${clienteEhAutor?'SIM':'NÃO'}</div>
+      </div>
+      <div class="box-row">
+        <div class="box-cell"><b>RÉU/RÉ:</b> ${esc(t.reu)}</div>
+        <div class="box-cell" style="flex:0 0 16mm;">${clienteEhAutor?'NÃO':'SIM'}</div>
+      </div>
+      <div class="box-row">
+        <div class="box-cell"><b>AUTO:</b> ${esc(t.numeroProcesso)}</div>
+        <div class="box-cell"><b>TIPO:</b> ${esc(t.tipoProcesso)}</div>
+        <div class="box-cell"><b>VARA:</b> ${esc(t.vara)}</div>
+      </div>
+      <div class="box-row"><div class="box-cell"><b>AÇÃO:</b> ${esc(t.acao)}</div></div>
+      <div class="box-row">
+        <div class="box-cell"><b>GRATUIDADE:</b> ${esc(t.gratuidade)}</div>
+        <div class="box-cell"><b>VALOR DAS CUSTAS JÁ PAGAS:</b> R$ ${esc(t.custasPagas)}</div>
+        <div class="box-cell"><b>SEGREDO DE JUSTIÇA:</b> ${esc(t.segredoJustica)}</div>
+      </div>
+      <div class="box-row"><div class="box-cell"><b>VALOR DO REPASSE:</b> R$ ${esc(t.valor)} (${esc(t.valorExtenso)})</div></div>
+    </div>`),
+    C(`<div class="blk" style="margin-top:1mm;">Pelo presente instrumento, eu, <strong>${esc(t.clienteNome)}</strong>, inscrito(a) no CPF sob o nº ${esc(t.clienteCpf)}, declaro para os devidos fins que recebi dos advogados ${advogadosRepasseTexto(t.advogados)}, a quantia de R$ ${esc(t.valor)} (${esc(t.valorExtenso)}). O referido valor é proveniente ${({'acordo firmado':'do','condenação':'da','cumprimento de sentença':'do'})[t.origem]||'do'} ${esc(t.origem)} no processo nº ${esc(t.numeroProcesso)}, no qual atuaram como meus representantes legais${t.detalharAvenca && t.avenca.filter(x=>x.trim()!=='').length>0?', cuja avença total foi pactuada nos seguintes termos:':'.'}</div>`)
+  ];
+  if(t.detalharAvenca){
+    t.avenca.filter(x=>x.trim()!=='').forEach(item=>{
+      blocks.push(C(`<div class="blk bullet">● ${esc(item)}</div>`));
+    });
+  }
+  if(t.obsHonorarios){
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">${esc(t.obsHonorarios)}</div>`));
+  }
+  const quitacaoTexto = t.quitacaoTipo==='parcial'
+    ? `especificamente quanto à parcela ora recebida, nada mais havendo a reclamar a este título${t.quitacaoObs?', '+esc(t.quitacaoObs):''}.`
+    : `nada mais havendo a reclamar a esse título.`;
+  blocks.push(C(`<div class="blk" style="margin-top:1mm;">Diante do recebimento deste repasse, concedo aos referidos patronos <strong>absoluta, geral, irretratável, irrevogável, plena, rasa e total quitação</strong> ${quitacaoTexto}</div>`));
+  blocks.push(C(`<div class="box-table" style="margin-top:2mm;">
+    <div class="box-row"><div class="box-cell"><b>DADOS DO PAGAMENTO</b></div></div>
+    <div class="box-row">
+      <div class="box-cell"><b>Banco:</b> ${esc(t.pagBanco)}</div>
+      <div class="box-cell"><b>Agência:</b> ${esc(t.pagAgencia)}</div>
+      <div class="box-cell"><b>Conta:</b> ${esc(t.pagConta)}</div>
+    </div>
+    <div class="box-row">
+      <div class="box-cell"><b>CPF/CNPJ:</b> ${esc(t.pagDoc)}</div>
+      <div class="box-cell"><b>Nome:</b> ${esc(t.pagNome)}</div>
+    </div>
+    <div class="box-row"><div class="box-cell"><b>Chave PIX:</b> ${esc(t.pagPix)}</div></div>
+  </div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:1mm;"><strong>CONDIÇÃO DE VALIDADE:</strong> O presente termo de quitação somente terá validade após a apresentação do comprovante de pagamento, conforme dados informados neste instrumento.</div>`));
+  blocks.push(C(`<div class="blk">Assim, para que produza os devidos efeitos legais, assino o presente termo.</div>`));
+  blocks.push(C(`<div class="blk center" style="margin-top:6mm;">${esc(d.cidadeUf)} ${esc(d.dataExtenso)}.</div>`));
+  blocks.push(C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(t.clienteNome)}</div><div class="doc">CPF nº. ${esc(t.clienteCpf)}</div></div>`));
+  return blocks;
+}
+
+function buildRecibo(d){
+  const r=d.recibo;
+  return [
+    C(`<div class="doc-h1">Recibo de Quitação</div>`),
+    C(`<div class="blk center" style="font-weight:700;">VALOR: R$ ${esc(r.valor)}</div>`),
+    C(`<div class="blk" style="margin-top:2mm;">Recebemos ${esc(r.prep)} ${reciboQualTexto(r.pagador)}, a importância líquida e certa de R$ ${esc(r.valor)} (${esc(r.valorExtenso)}).</div>`),
+    C(`<div class="blk">O referido montante foi quitado em favor de ${reciboQualTexto(r.recebedor)}, e destina-se ${esc(r.motivo)}.</div>`),
+    C(`<div class="blk">Pela clareza e exatidão do que aqui se declara, confirmamos que a quitação ocorreu no dia ${esc(d.dataExtenso)}, firmando o presente recibo para que produza seus devidos efeitos legais, dando ao pagador plena e irrevogável quitação quanto ao valor mencionado.</div>`),
+    C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
+    C((()=>{ const s=assinaturaPessoa(r.recebedor); return `<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`; })())
+  ];
+}
+
+function buildDocumento(d){
+  if(d.tipo==='procuracao') return buildProcuracao(d);
+  if(d.tipo==='substabelecimento') return buildSubstabelecimento(d);
+  if(d.tipo==='hipossuficiencia') return buildHipossuficiencia(d);
+  if(d.tipo==='termo_repasse') return buildTermoRepasse(d);
+  if(d.tipo==='recibo') return buildRecibo(d);
+  return [];
+}
+
+/* ---------- montagem visual da carta / rodapé / marca d'água ---------- */
+function docHeaderHtml(){
+  return `<div class="doc-watermark"><img src="../../assets/favicon.png" alt=""></div>
+  <div class="doc-header"><img src="../../assets/logo-light.png" alt="Fonseca e Braga"></div>`;
+}
+function docFooterHtml(){
+  return `<div class="doc-pagenum"></div>
+  <div class="doc-footer">
+    <div class="l1"><svg viewBox="0 0 24 24" fill="#8a1f1a"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.3 21 3 13.7 3 4.9 3 4.4 3.4 4 4 4h3.2c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg><span>+55 34 3225-2737</span>
+      <svg viewBox="0 0 24 24" fill="#8a1f1a" style="margin-left:6px;"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6H15.7a15.9 15.9 0 00-1.3-4A8 8 0 0118.9 8zM12 4c.8 1.2 1.6 3 2 4H10c.4-1 1.2-2.8 2-4zM4.3 14a8 8 0 010-4h3.1a17 17 0 000 4H4.3zm.8 2h3.2c.3 1.5.8 2.9 1.3 4a8 8 0 01-4.5-4zm3.2-8H5.1a8 8 0 014.5-4c-.5 1.1-1 2.5-1.3 4zM12 20c-.8-1.2-1.6-3-2-4h4c-.4 1-1.2 2.8-2 4zm2.4-6H9.6a14 14 0 010-4h4.8a14 14 0 010 4zm.3 6c.5-1.1 1-2.5 1.3-4h3.2a8 8 0 01-4.5 4zm1.7-6a17 17 0 000-4h3.1a8 8 0 010 4h-3.1z"/></svg><span>www.FONSECAEBRAGA.com.br</span></div>
+    <div class="l2"><svg viewBox="0 0 24 24" fill="#333"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7.2.2.5.3.7.3s.5-.1.7-.3C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg><span>Rua Senador Salgado Filho, 426, B. Tabajaras | UBERLÂNDIA / MG | CEP 38400-236</span></div>
+  </div>`;
+}
+function makePageShell(){
+  const page=document.createElement('div');
+  page.className='doc-page';
+  page.innerHTML = docHeaderHtml() + `<div class="doc-content"></div>` + docFooterHtml();
+  return page;
+}
+
+function paginate(blocks, wrap){
+  // as páginas precisam estar anexadas ao DOM vivo enquanto medimos scrollHeight/clientHeight,
+  // senão o navegador não calcula layout e a paginação nunca detecta estouro de página.
+  wrap.innerHTML='';
+  const pages=[makePageShell()];
+  wrap.appendChild(pages[0]);
+  let content = pages[0].querySelector('.doc-content');
+  blocks.forEach(b=>{
+    const html = blockToHtml(b);
+    const wrapper=document.createElement('div');
+    wrapper.innerHTML=html;
+    const node = wrapper.firstElementChild || document.createTextNode(html);
+    content.appendChild(node);
+    if(content.scrollHeight > content.clientHeight){
+      content.removeChild(node);
+      const p=makePageShell();
+      wrap.appendChild(p);
+      pages.push(p);
+      content = p.querySelector('.doc-content');
+      content.appendChild(node);
+    }
+  });
+  pages.forEach((p,idx)=>{
+    p.querySelector('.doc-pagenum').textContent=(idx+1)+'/'+pages.length;
+  });
+  return pages;
+}
+
+/* ---------- render principal ---------- */
+let renderTimer=null;
+function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(render, 280); }
+
+function render(){
+  const status=document.getElementById('pag-status');
+  const d = coletarDados();
+  const erro = validar(d);
+  if(erro){
+    document.getElementById('doc-pages').innerHTML='';
+    status.textContent=erro;
+    status.className='status';
+    return;
+  }
+  const blocks = buildDocumento(d);
+  const wrap=document.getElementById('doc-pages');
+  const pages = paginate(blocks, wrap);
+  status.textContent = pages.length+' página(s)';
+  status.className='status ok';
+}
+
+/* ---------- seletor de tipo de documento ---------- */
+const TIPOS=[
+  {id:'procuracao', label:'Procuração', ready:true},
+  {id:'substabelecimento', label:'Substabelecimento', ready:true},
+  {id:'hipossuficiencia', label:'Declaração de Hipossuficiência', ready:true},
+  {id:'termo_repasse', label:'Termo de Repasse', ready:true},
+  {id:'recibo', label:'Recibo', ready:true}
+];
+let currentTipo='procuracao';
+const seg=document.getElementById('tipo-seg');
+TIPOS.forEach(t=>{
+  const btn=document.createElement('button');
+  btn.textContent=t.label+(t.ready?'':' (em breve)');
+  btn.disabled=!t.ready;
+  btn.dataset.tipo=t.id;
+  if(t.id===currentTipo) btn.classList.add('active');
+  btn.addEventListener('click',()=>setTipo(t.id));
+  seg.appendChild(btn);
+});
+function setTipo(id){
+  currentTipo=id;
+  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.tipo===id));
+  document.querySelectorAll('[data-tipo-only]').forEach(el=>{
+    const tipos = el.dataset.tipoOnly.split(' ');
+    el.classList.toggle('tipo-hidden', !tipos.includes(id));
+  });
+  render();
+}
+setTipo(new URLSearchParams(location.search).get('tipo') || currentTipo);
+
+/* ---------- delegação: qualquer campo estático dispara novo render ---------- */
+document.querySelector('.form-col').addEventListener('input', scheduleRender);
+document.querySelector('.form-col').addEventListener('change', scheduleRender);
+
+/* ---------- geração de PDF ---------- */
+document.getElementById('btn-gerar').addEventListener('click',()=>{
+  const statusEl=document.getElementById('gerar-status');
+  const d = coletarDados();
+  const erro = validar(d);
+  if(erro){ statusEl.textContent=erro; return; }
+  statusEl.textContent='Gerando PDF…';
+  render();
+  setTimeout(()=>{
+    const filename = prefixoArquivo(d.tipo)+nomeArquivo(d)+'.pdf';
+    const el = document.getElementById('doc-pages');
+    html2pdf().set({
+      margin:0,
+      filename,
+      image:{type:'jpeg',quality:0.96},
+      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
+      pagebreak:{mode:['css'], after:'.doc-page'}
+    }).from(el).save().then(()=>{ statusEl.textContent='PDF baixado.'; })
+      .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
+  }, 60);
+});
+
+render();
+</script>
+</body>
+</html>
