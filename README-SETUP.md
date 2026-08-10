@@ -54,7 +54,14 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId
                     && request.resource.data.role == 'membro'
                     && request.resource.data.tabs.size() == 0;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (
+                      isSignedIn() && request.auth.uid == userId &&
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.tabs == resource.data.tabs &&
+                      request.resource.data.email == resource.data.email &&
+                      request.resource.data.displayName == resource.data.displayName
+                    );
+      allow delete: if isAdmin();
     }
     match /tabs/{tabId} {
       allow read: if isSignedIn();
@@ -152,6 +159,8 @@ service cloud.firestore {
 
 > A regra de `sugestoes` acima garante: qualquer usuário logado pode criar sua própria sugestão (sempre como "aberta"); só o admin pode marcar como implantada ou excluída, e não pode alterar o texto/autor originais; marcar como excluída exige preencher o motivo (fica registrado no histórico, visível a todos). Só o admin também pode apagar uma sugestão de vez (botão "Excluir permanentemente" na ferramenta) — pensado para lixo/teste, já que isso não deixa rastro nenhum no histórico (diferente de "Marcar como excluída", que mantém o registro com o motivo).
 
+> A regra `allow update` de `users` acima também permite que a própria pessoa atualize seu cadastro, mas só se `role`, `tabs`, `email` e `displayName` continuarem exatamente iguais — na prática isso só serve para ela marcar `mustChangePassword: false` depois de trocar a senha forçada no primeiro login (ver seção 7). Ela não consegue se autopromover a admin nem alterar suas próprias abas por essa via.
+
 > A regra `allow create` acima é o que permite a tela de **"Cadastre-se"** do login funcionar: qualquer pessoa pode criar a própria conta, mas só com papel `membro` e zero abas — ela só ganha acesso de verdade quando um admin libera as abas pelo painel. Ninguém consegue se autopromover a admin nem se autoliberar abas por essa via, porque a regra trava os valores exatos permitidos na criação.
 
 > As regras de `conversas` / `conversas/{id}/mensagens` (usadas pela ferramenta **Chat Interno**) só deixam ler/escrever quem está no array `participantes` daquela conversa — ninguém vê conversas ou grupos dos quais não faz parte. Mensagens não podem ser editadas nem apagadas depois de enviadas (só o campo `lidaPor`, usado para o contador de não lidas, pode ser atualizado). `chatPrefs/{uid}/conversas/{conversaId}` guarda quais etiquetas e a fixação de cada conversa — é sempre pessoal, cada um só lê/escreve a própria pasta (mesmo participante veem etiquetas diferentes na mesma conversa, de propósito). `chatPrefs/{uid}/etiquetas/{etiquetaId}` é o catálogo reutilizável de etiquetas de cada pessoa (nome sempre em maiúsculas + cor), também pessoal. O chat só suporta texto e foto (fotos comprimidas no navegador, como no mural de aniversariantes) — áudio e vídeo ficaram de fora porque exigiriam ativar o Firebase Storage, que só existe no plano pago (Blaze) do Firebase; se um dia quiserem isso, é só pedir.
@@ -219,12 +228,22 @@ protege os dados de verdade são as **regras do Firestore** do passo 3.
 Tudo pela aba **Administração** do próprio portal (só admins veem essa aba):
 
 - **Usuários**: criar conta nova (nome + e-mail + senha temporária + quais
-  abas ela pode ver), editar as abas liberadas de alguém, ou **revogar**
-  acesso (a pessoa deixa de ver qualquer aba, mas a conta de login continua
-  existindo — se quiser apagar a conta de login por completo, isso só dá
-  para fazer direto no Firebase Console, em Authentication > Users, porque
-  o site (sem servidor próprio) não tem permissão para apagar contas de
-  outras pessoas).
+  abas ela pode ver), editar as abas liberadas de alguém, **revogar**
+  acesso (a pessoa deixa de ver qualquer aba, mas o cadastro continua
+  existindo — fácil de reverter depois), ou **excluir** definitivamente
+  (apaga o cadastro dela por completo — acesso, abas e perfil — e ela para
+  de conseguir entrar no sistema imediatamente, mesmo digitando a senha
+  certa). Em todos os casos, o *login* em si (e-mail/senha no Firebase
+  Authentication) continua tecnicamente existindo — o site, sem servidor
+  próprio, não tem permissão para apagar o login de outra pessoa. Para
+  apagar o login por completo (não só o acesso ao portal), é preciso ir
+  direto no Firebase Console, em Authentication > Users.
+- **Senha provisória com troca obrigatória**: toda conta criada pelo admin
+  nasce marcada para pedir troca de senha — na primeira vez que a pessoa
+  logar com a senha temporária, o sistema mostra uma tela pedindo para ela
+  definir uma senha só dela antes de liberar o acesso ao portal. Isso não
+  se aplica a quem se cadastra sozinho pelo "Cadastre-se aqui" (ela já
+  escolhe a própria senha na hora).
 - **Abas**: adicionar, listar e excluir as ferramentas disponíveis no
   sistema.
 
