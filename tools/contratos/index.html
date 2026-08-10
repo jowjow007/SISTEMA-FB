@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contratos e Propostas — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --err:#ffb4ae;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  button,input,select,textarea{font-family:inherit;}
+
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 14px;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:1560px;margin:0 auto;padding:20px 20px 70px;}
+  .layout{display:grid;grid-template-columns:minmax(360px,460px) 1fr;gap:22px;align-items:start;}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr;}}
+
+  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  @media (max-width:1100px){.form-col{position:static;max-height:none;}}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;}
+  .card h2{font-family:var(--font-display);font-weight:600;font-size:1.02rem;margin:0 0 4px;color:var(--paper);}
+  .card .desc{font-size:.76rem;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
+  .segmented{display:flex;gap:8px;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:6px;}
+  .segmented button{flex:1 1 46%;padding:11px 10px;border:none;border-radius:9px;background:transparent;color:var(--muted);font-weight:600;font-size:.78rem;cursor:pointer;transition:background .15s,color .15s;}
+  .segmented button.active{background:var(--red);color:#fff;}
+  .segmented button:not(.active):not(:disabled):hover{background:var(--panel-3);color:var(--paper);}
+  .segmented button:disabled{opacity:.4;cursor:not-allowed;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;letter-spacing:.02em;}
+  .field .hint{font-size:.66rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.86rem;outline:none;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);}
+  .field textarea{resize:vertical;min-height:64px;line-height:1.45;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  @media (max-width:480px){.grid3{grid-template-columns:1fr 1fr;}}
+
+  .btn{padding:10px 18px;border-radius:8px;border:none;background:var(--red);color:#fff;font-weight:600;font-size:.84rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.secondary:hover{background:var(--panel-2);}
+  .btn.ghost{background:transparent;color:var(--err);border:1px solid rgba(255,180,174,.3);padding:6px 12px;font-size:.72rem;}
+  .btn.ghost:hover{background:rgba(255,180,174,.08);}
+  .btn.small{padding:7px 12px;font-size:.74rem;}
+
+  .contratante-block{border:1px solid var(--line-strong);border-radius:10px;padding:14px;margin-bottom:12px;background:var(--panel-2);}
+  .contratante-block .row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .contratante-block .row-head strong{font-size:.8rem;color:var(--silver);}
+
+  .list-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;}
+  .list-item textarea{flex:1;min-height:44px;}
+  .list-item .letter{width:26px;flex:0 0 26px;padding-top:9px;font-size:.8rem;color:var(--muted);font-weight:600;text-align:center;}
+
+  .tipo-hidden{display:none !important;}
+
+  .area-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;max-height:280px;overflow:auto;padding:4px 2px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel-2);}
+  @media (max-width:480px){.area-grid{grid-template-columns:1fr;}}
+  .area-item{display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:.76rem;color:var(--paper);border-radius:5px;}
+  .area-item:hover{background:var(--panel-3);}
+  .area-item input{width:15px;height:15px;flex:0 0 auto;accent-color:var(--red);}
+  .rep-block{border:1px solid var(--line-strong);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel-3);}
+  .rep-block .row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .rep-block .row-head strong{font-size:.78rem;color:var(--silver);}
+  .checkbox-field{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.78rem;color:var(--paper);}
+  .checkbox-field input{width:15px;height:15px;accent-color:var(--red);}
+
+  details.subgroup{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
+  details.subgroup summary{cursor:pointer;font-size:.76rem;color:var(--silver);padding:2px 0 6px;}
+  details.subgroup summary:hover{color:var(--paper);}
+
+  .preview-col{min-width:0;}
+  .preview-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .preview-toolbar .status{font-size:.78rem;color:var(--muted);}
+  .preview-toolbar .status.ok{color:var(--ok);}
+  .preview-toolbar .status.err{color:var(--err);}
+
+  #doc-pages-wrap{background:#0e0b0b;border:1px solid var(--line-strong);border-radius:14px;padding:26px;overflow-x:auto;}
+  #doc-pages{display:flex;flex-direction:column;align-items:center;gap:24px;}
+
+  /* ---- the paper document itself, styled to match the F&B letterhead ---- */
+  .doc-page{
+    width:210mm;height:297mm;flex:0 0 auto;background:#ffffff;position:relative;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;
+    overflow:hidden;
+  }
+  .doc-watermark{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;
+  }
+  .doc-watermark img{width:120mm;opacity:.06;filter:grayscale(1);}
+  .doc-header{position:relative;z-index:1;padding:14mm 18mm 4mm;text-align:center;}
+  .doc-header img{height:15mm;}
+  .doc-title{position:relative;z-index:1;text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:.02em;margin:2mm 18mm 5mm;text-transform:uppercase;}
+  .doc-pagenum{position:absolute;top:14mm;right:18mm;font-size:8pt;font-weight:600;color:#1a1a1a;z-index:1;}
+  .doc-content{position:relative;z-index:1;margin:0 18mm;height:214mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+  .doc-footer{position:absolute;left:18mm;right:18mm;bottom:10mm;z-index:1;font-size:7.6pt;color:#1a1a1a;text-align:center;border-top:1.4pt solid #8a1f1a;padding-top:2.4mm;}
+  .doc-footer .l1{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:1mm;font-weight:600;}
+  .doc-footer .l2{display:flex;align-items:center;justify-content:center;gap:5px;color:#333;}
+  .doc-footer svg{width:9px;height:9px;flex:0 0 auto;}
+
+  .blk{margin-bottom:2.6mm;text-align:justify;}
+  .blk.clause{display:flex;gap:1.8mm;}
+  .blk.clause .num{flex:0 0 auto;font-weight:700;min-width:5mm;}
+  .blk.clause .txt{flex:1;}
+  .blk.sub{display:flex;gap:1.8mm;margin-left:6mm;}
+  .blk.sub .let{flex:0 0 auto;font-weight:700;min-width:5mm;}
+  .blk.sub .txt{flex:1;}
+  .blk.center{text-align:center;}
+  .blk strong{font-weight:700;}
+
+  .qual-table{border:1pt solid #1a1a1a;border-radius:1.4mm;overflow:hidden;margin-bottom:2.6mm;}
+  .qual-row{display:flex;border-top:1pt solid #1a1a1a;}
+  .qual-row:first-child{border-top:none;}
+  .qual-cell{flex:1;padding:1.4mm 2.4mm;border-left:1pt solid #1a1a1a;font-size:8.6pt;}
+  .qual-cell:first-child{border-left:none;}
+  .qual-cell b{font-weight:700;}
+
+  .hon-row{display:flex;border:1pt solid #1a1a1a;border-top:none;font-size:8.6pt;}
+  .hon-row.first{border-top:1pt solid #1a1a1a;}
+  .hon-row .k{flex:0 0 62mm;padding:1.4mm 2.4mm;border-right:1pt solid #1a1a1a;font-weight:700;}
+  .hon-row .v{flex:1;padding:1.4mm 2.4mm;font-weight:700;}
+
+  .sig-line{margin:8mm auto 0;text-align:center;width:70mm;}
+  .sig-line .rule{border-top:1pt solid #1a1a1a;margin-bottom:1.6mm;}
+  .sig-line .name{font-weight:700;font-size:9pt;}
+  .sig-line .doc{font-size:8.6pt;}
+  .sig-pair{display:flex;justify-content:center;gap:14mm;flex-wrap:wrap;}
+
+  .sec-bar{background:#8a1f1a;color:#fff;font-weight:700;text-align:center;padding:1.8mm 3mm;margin:3.2mm 0 2.2mm;font-size:8.8pt;letter-spacing:.01em;}
+  .blk.arrow{display:flex;gap:1.8mm;margin-left:2mm;}
+  .blk.arrow .mk{flex:0 0 auto;color:#8a1f1a;font-weight:700;}
+  .blk.arrow .txt{flex:1;}
+  .cover-title{text-align:center;font-weight:700;font-size:11pt;color:#8a1f1a;margin:2mm 0;text-transform:uppercase;line-height:1.35;}
+  .cover-rule{border-top:1.4pt solid #8a1f1a;margin:2mm 0;}
+  .cover-sub{text-align:center;font-size:9.5pt;margin:2mm 0 4mm;}
+
+  @media print{ body{background:#fff;} header,.form-col,.preview-toolbar,#doc-pages-wrap{display:none !important;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Contratos e Propostas</h1>
+  <p class="sub">Gere contratos de honorários e propostas comerciais já com a identidade visual do escritório — preencha os dados e baixe em PDF.</p>
+</header>
+<main>
+  <div class="layout">
+
+    <div class="form-col">
+
+      <div class="card">
+        <h2>Tipo de documento</h2>
+        <p class="desc">Escolha o modelo desejado.</p>
+        <div class="segmented" id="tipo-seg"></div>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pf">
+        <h2>Contratante(s)</h2>
+        <p class="desc">Um bloco para cada pessoa. Se houver mais de um contratante, todos respondem solidariamente pelo contrato.</p>
+        <div id="contratantes-list"></div>
+        <button class="btn secondary small" id="btn-add-contratante" type="button">+ Adicionar contratante</button>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pj">
+        <h2>Contratante — Pessoa Jurídica</h2>
+        <p class="desc">Dados da empresa contratante e de cada sócio/representante legal (assinam o contrato).</p>
+        <div class="field"><label>Razão social</label><input id="pj-razao-social"></div>
+        <div class="field"><label>Nome de fantasia</label><input id="pj-nome-fantasia"></div>
+        <div class="grid2">
+          <div class="field"><label>CNPJ</label><input id="pj-cnpj"></div>
+          <div class="field"><label>E-mail</label><input id="pj-email"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Sede (endereço)</label><input id="pj-sede-end"></div>
+          <div class="field"><label>Nº</label><input id="pj-sede-num"></div>
+          <div class="field"><label>Compl.</label><input id="pj-sede-compl"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Bairro</label><input id="pj-bairro"></div>
+          <div class="field"><label>Cidade/UF</label><input id="pj-cidade-uf"></div>
+          <div class="field"><label>CEP</label><input id="pj-cep"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Celular</label><input id="pj-cel"></div>
+          <div class="field"><label>Telefone</label><input id="pj-tel"></div>
+          <div class="field"><label>WhatsApp</label><input id="pj-whatsapp"></div>
+        </div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin:10px 0 6px;">Representantes legais / sócios-administradores</label>
+        <div id="representantes-list"></div>
+        <button class="btn secondary small" id="btn-add-representante" type="button">+ Adicionar representante</button>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_condominio proposta_condominio">
+        <h2>Condomínio e síndico(a)</h2>
+        <p class="desc">Dados do condomínio (pessoa jurídica) e, no contrato, do(a) síndico(a) que assina como representante legal.</p>
+        <div class="field"><label>Razão social do condomínio</label><input id="cd-razao-social"></div>
+        <div class="field"><label>Nome de fantasia</label><input id="cd-nome-fantasia"></div>
+        <div class="grid2">
+          <div class="field"><label>CNPJ</label><input id="cd-cnpj"></div>
+          <div class="field"><label>E-mail</label><input id="cd-email"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Sede (endereço)</label><input id="cd-sede-end"></div>
+          <div class="field"><label>Nº</label><input id="cd-sede-num"></div>
+          <div class="field"><label>Compl.</label><input id="cd-sede-compl"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Bairro</label><input id="cd-bairro"></div>
+          <div class="field"><label>Cidade/UF</label><input id="cd-cidade-uf"></div>
+          <div class="field"><label>CEP</label><input id="cd-cep"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Celular</label><input id="cd-cel"></div>
+          <div class="field"><label>Telefone</label><input id="cd-tel"></div>
+          <div class="field"><label>WhatsApp</label><input id="cd-whatsapp"></div>
+        </div>
+        <div data-tipo-only="contrato_condominio">
+          <label style="display:block;font-size:.72rem;color:var(--muted);margin:10px 0 6px;">Representante legal / síndico(a)</label>
+          <div class="field"><label>Nome</label><input id="sn-nome"></div>
+          <div class="grid3">
+            <div class="field"><label>Nacionalidade</label><input id="sn-nacionalidade" value="BRASILEIRA"></div>
+            <div class="field"><label>Estado civil</label><input id="sn-estado-civil"></div>
+            <div class="field"><label>Profissão</label><input id="sn-profissao"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label>CI/RG</label><input id="sn-rg"></div>
+            <div class="field"><label>Órgão emissor</label><input id="sn-rg-orgao" placeholder="SSP/MG"></div>
+            <div class="field"><label>CPF</label><input id="sn-cpf"></div>
+          </div>
+          <div class="field"><label>E-mail</label><input id="sn-email"></div>
+          <div class="grid3">
+            <div class="field"><label>Endereço</label><input id="sn-end"></div>
+            <div class="field"><label>Nº</label><input id="sn-end-num"></div>
+            <div class="field"><label>Compl.</label><input id="sn-end-compl"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label>Bairro</label><input id="sn-bairro"></div>
+            <div class="field"><label>Cidade/UF</label><input id="sn-cidade-uf"></div>
+            <div class="field"><label>CEP</label><input id="sn-cep"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label>Celular</label><input id="sn-cel"></div>
+            <div class="field"><label>Telefone</label><input id="sn-tel"></div>
+            <div class="field"><label>WhatsApp</label><input id="sn-whatsapp"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pj contrato_condominio proposta_pf_pj">
+        <h2>Áreas de atuação</h2>
+        <p class="desc">Marque as áreas contratadas — viram uma tabela Sim/Não no documento.</p>
+        <div class="area-grid" id="area-grid"></div>
+      </div>
+
+      <div class="card" data-tipo-only="proposta_pf_pj">
+        <h2>Proposta — cliente atendido</h2>
+        <div class="field">
+          <label>Tipo de cliente</label>
+          <select id="pp-subtipo">
+            <option value="pj">Pessoa Jurídica</option>
+            <option value="pf">Pessoa Física</option>
+          </select>
+        </div>
+        <div class="field"><label>Nome ou razão social</label><input id="pp-nome"></div>
+        <div class="grid2" data-tipo-only-pp="pj">
+          <div class="field"><label>Responsável</label><input id="pp-responsavel"></div>
+          <div class="field"><label>CNPJ</label><input id="pp-cnpj"></div>
+        </div>
+        <div class="grid3" data-tipo-only-pp="pj">
+          <div class="field"><label>Data de abertura</label><input id="pp-data-abertura" placeholder="dd/mm/aaaa"></div>
+          <div class="field"><label>Porte</label><input id="pp-porte" placeholder="ME"></div>
+          <div class="field"><label>Atividades econômicas</label><input id="pp-atividades"></div>
+        </div>
+        <div class="grid2" data-tipo-only-pp="pf">
+          <div class="field"><label>CPF</label><input id="pp-cpf"></div>
+          <div class="field"><label>Profissão</label><input id="pp-profissao"></div>
+        </div>
+        <div class="field"><label>Cidade/UF</label><input id="pp-cidade-uf" placeholder="Uberlândia – Minas Gerais"></div>
+        <div class="field"><label>Escopo-base (frase da capa)</label><input id="pp-escopo-base" value="advocacia, assessoria e consultoria jurídica empresarial contínua, estratégica e preventiva"></div>
+      </div>
+
+      <div class="card" data-tipo-only="proposta_pf_pj">
+        <h2>Proposta — entendimentos e escopo</h2>
+        <div class="field">
+          <label>Entendimentos e premissas (texto livre, seção 2)</label>
+          <textarea id="pp-entendimentos" style="min-height:120px" placeholder="Esta Proposta foi estruturada com base nas informações cadastrais... considerando [fatos específicos do cliente]..."></textarea>
+        </div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;">Escopo resumido dos trabalhos inclusos (seção 7, um item por linha)</label>
+        <div id="pp-escopo-list"></div>
+        <button class="btn secondary small" id="btn-add-pp-escopo" type="button">+ Adicionar item</button>
+      </div>
+
+      <div class="card" data-tipo-only="proposta_pf_pj">
+        <h2>Proposta — honorários e prazo</h2>
+        <div class="grid2">
+          <div class="field"><label>Honorários de implantação</label><input id="pp-implantacao" value="Isentos"></div>
+          <div class="field"><label>Honorários mensais (R$)</label><input id="pp-valor-mensal" placeholder="1.657,50"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Tributação</label><input id="pp-tributacao" value="já incluída no valor dos honorários"></div>
+          <div class="field"><label>Taxa de boleto</label><input id="pp-taxa-boleto" value="R$ 7,50"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Início da prestação</label><input id="pp-inicio-prestacao" value="imediatamente após a formalização contratual"></div>
+          <div class="field"><label>Forma de pagamento</label><input id="pp-forma-pagamento" value="pagamento mensal, por boleto bancário"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data do 1º vencimento</label><input id="pp-data-1venc" placeholder="dd/mm/aaaa"></div>
+          <div class="field"><label>Vencimentos seguintes</label><input id="pp-data-vencs" value="todo dia 10 de cada mês subsequente"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Honorários de êxito</label><input id="pp-exito" value="20% (vinte por cento)"></div>
+          <div class="field"><label>Prazo de contratação (referência)</label><input id="pp-prazo" value="60 (sessenta) meses"></div>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="proposta_pf_pj proposta_condominio">
+        <h2>Proposta — local, emissão e validade</h2>
+        <div class="grid2">
+          <div class="field"><label>Local de emissão</label><input id="pp-local-emissao" value="Uberlândia/MG"></div>
+          <div class="field"><label>Data de emissão</label><input id="pp-data-emissao" type="date"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Local dos trabalhos</label><input id="pp-local-trabalhos" value="Uberlândia, Estado de Minas Gerais"></div>
+          <div class="field"><label>Validade da proposta até</label><input id="pp-validade" type="date"></div>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="proposta_condominio">
+        <h2>Proposta — objeto e honorários</h2>
+        <div class="field">
+          <label>Objeto (seção 3 — descrição do caso)</label>
+          <textarea id="pc-objeto" style="min-height:90px" placeholder="propositura de ação judicial contra a construtora, para..."></textarea>
+        </div>
+        <div class="field"><label>Tribunal recursal competente</label><input id="pc-tribunal" value="Tribunal de Justiça de Minas Gerais"></div>
+        <div class="grid2">
+          <div class="field"><label>Honorários iniciais (R$)</label><input id="pc-hon-inicial" placeholder="12.817,50"></div>
+          <div class="field"><label>Tributação (%)</label><input id="pc-tributacao" value="22"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Taxa de boleto (R$)</label><input id="pc-taxa-boleto" value="7,50"></div>
+          <div class="field"><label>Honorários de êxito (%)</label><input id="pc-exito" value="20"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data de pagamento</label><input id="pc-data-pagamento" value="no ato da assinatura do Contrato"></div>
+          <div class="field"><label>Início dos trabalhos</label><input id="pc-inicio-trabalhos" value="imediatamente após a assinatura do Contrato"></div>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pf">
+        <h2>Descrição do caso (Cláusula 1 e 2)</h2>
+        <p class="desc">Texto livre — será inserido exatamente como escrito, mantendo a formatação do contrato.</p>
+        <div class="field">
+          <label>Objeto do contrato (Cláusula 1)</label>
+          <textarea id="f-objeto" style="min-height:110px" placeholder="O presente Contrato tem por objeto a prestação de serviços advocatícios de natureza..., relacionados a..."></textarea>
+        </div>
+        <div class="field">
+          <label>Introdução do escopo (frase antes dos itens a), b), c)...)</label>
+          <input id="f-escopo-intro" value="A atuação poderá compreender, de acordo com a estratégia jurídica adotada, as seguintes atividades:">
+        </div>
+        <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;">Itens do escopo (Cláusula 2)</label>
+        <div id="escopo-list"></div>
+        <button class="btn secondary small" id="btn-add-escopo" type="button">+ Adicionar item</button>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pf">
+        <h2>Honorários (Cláusula 8)</h2>
+        <div class="grid2">
+          <div class="field"><label>Valor (R$)</label><input id="h-valor" placeholder="7.500,00"></div>
+          <div class="field"><label>Valor por extenso</label><input id="h-valor-extenso" readonly></div>
+        </div>
+        <div class="field">
+          <label>Forma de pagamento</label>
+          <select id="h-forma">
+            <option value="À VISTA">À vista</option>
+            <option value="PARCELADO">Parcelado</option>
+            <option value="MENSAL / CONSULTORIA">Mensal / consultoria</option>
+          </select>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data de pagamento (à vista)</label><input id="h-data-avista" value="NO ATO DA ASSINATURA DO CONTRATO"></div>
+          <div class="field"><label>Entrada</label><input id="h-entrada" value="NÃO APLICÁVEL"></div>
+        </div>
+        <details class="subgroup">
+          <summary>Parcelamento (8.5 a 8.10)</summary>
+          <div class="grid2">
+            <div class="field"><label>Data(s) de pagamento (entrada)</label><input id="h-data-entrada" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Valor da parcela</label><input id="h-valor-parcela" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Quantidade de parcelas</label><input id="h-qtd-parcelas" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data do 1º pagto./1ª parc.</label><input id="h-data-1parc" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>13º pagamento/parcela</label><input id="h-13" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º</label><input id="h-data-13" value="NÃO APLICÁVEL"></div>
+          </div>
+        </details>
+        <details class="subgroup">
+          <summary>Honorários de consultoria (8.11 a 8.16)</summary>
+          <div class="grid2">
+            <div class="field"><label>Honorários de consultoria</label><input id="h-cons" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Forma de pagamento</label><input id="h-cons-forma" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Quantidade de parcelas</label><input id="h-cons-parcelas" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data do 1º pagto. (cons.)</label><input id="h-cons-data1" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>13º pagamento (cons.)</label><input id="h-cons-13" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º (cons.)</label><input id="h-cons-data13" value="NÃO APLICÁVEL"></div>
+          </div>
+        </details>
+        <details class="subgroup" open>
+          <summary>Encargos padrão (8.17 a 8.24)</summary>
+          <div class="grid2">
+            <div class="field"><label>Boleto(s)/fatura(s)</label><input id="h-boleto" value="CUSTO ADMINISTRATIVO ACRESCIDO"></div>
+            <div class="field"><label>Multa/atraso</label><input id="h-multa" value="10% (DEZ POR CENTO)"></div>
+            <div class="field"><label>Juros/atraso</label><input id="h-juros" value="3% (TRÊS POR CENTO) AO MÊS"></div>
+            <div class="field"><label>Correção monetária</label><input id="h-correcao" value="APLICÁVEL"></div>
+            <div class="field"><label>Índice de atualização</label><input id="h-indice" value="INFLAÇÃO"></div>
+            <div class="field"><label>Cláusula penal</label><input id="h-penal" value="10% (DEZ POR CENTO)"></div>
+            <div class="field"><label>Honorários de cobrança</label><input id="h-cobranca" value="30% (TRINTA POR CENTO)"></div>
+            <div class="field"><label>Honorários de êxito</label><input id="h-exito" value="NÃO APLICÁVEL"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pj contrato_condominio">
+        <h2>Honorários (mensalidade)</h2>
+        <p class="desc">Modelo de assessoria contínua — mensalidade fixa por prazo determinado.</p>
+        <div class="grid2">
+          <div class="field"><label>Valor da mensalidade (R$)</label><input id="m-valor" placeholder="1.500,00"></div>
+          <div class="field"><label>Valor por extenso</label><input id="m-valor-extenso" readonly></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Data do 1º pagamento</label><input id="m-data1" placeholder="dd/mm/aa"></div>
+          <div class="field"><label>Quantidade de parcelas (prazo em meses)</label><input id="m-qtd-parcelas" value="36 (TRINTA E SEIS)"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Boleto/fatura</label><input id="m-boleto" value="CUSTO ADMINISTRATIVO ACRESCIDO"></div>
+          <div class="field"><label>Índice de atualização</label><input id="m-indice" value="INFLAÇÃO"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Correção monetária</label><input id="m-correcao" value="TJMG"></div>
+          <div class="field"><label>Cláusula penal</label><input id="m-penal" value="10% (DEZ POR CENTO)"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Multa/atraso</label><input id="m-multa" value="10% (DEZ POR CENTO)"></div>
+          <div class="field"><label>Juros/atraso</label><input id="m-juros" value="3% (TRÊS POR CENTO) AO MÊS"></div>
+        </div>
+        <div class="field" data-tipo-only="contrato_condominio">
+          <label>Honorários de cobrança (extrajudicial/judicial)</label><input id="m-cobranca" value="20% (VINTE POR CENTO)">
+        </div>
+        <div class="grid2" data-tipo-only="contrato_pj">
+          <div class="field"><label>Honorários de cobrança extrajudicial</label><input id="m-cobranca-extra" value="20% (VINTE POR CENTO)"></div>
+          <div class="field"><label>Honorários de cobrança judicial</label><input id="m-cobranca-judicial" value="20% (VINTE POR CENTO)"></div>
+        </div>
+        <div class="field"><label>Honorários de êxito</label><input id="m-exito" value="30% (TRINTA POR CENTO)"></div>
+        <details class="subgroup">
+          <summary>Desconto e 13º (opcionais)</summary>
+          <div class="grid2">
+            <div class="field"><label>Desconto</label><input id="m-desconto" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Valor com desconto</label><input id="m-valor-desconto" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>13º pagamento</label><input id="m-13" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Forma de pagamento do 13º</label><input id="m-13-forma" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º</label><input id="m-13-data" value="NÃO APLICÁVEL"></div>
+          </div>
+        </details>
+        <details class="subgroup" data-tipo-only="contrato_pj">
+          <summary>Reajuste após o período inicial (opcional)</summary>
+          <div class="grid2">
+            <div class="field"><label>Valor cheio após período inicial (R$)</label><input id="m-valor-pos" placeholder="deixe em branco se não houver degrau"></div>
+            <div class="field"><label>A partir do mês (ex.: 7º)</label><input id="m-mes-pos" placeholder="7º"></div>
+          </div>
+          <div class="checkbox-field"><input type="checkbox" id="m-carencia-on"><label for="m-carencia-on">Aplicar carência de reajuste em um ano específico</label></div>
+          <div class="grid2">
+            <div class="field"><label>Ano da carência</label><input id="m-carencia-ano" placeholder="2027"></div>
+            <div class="field"><label>Valor mantido nesse ano (R$)</label><input id="m-carencia-valor" placeholder="mesmo valor da mensalidade vigente"></div>
+          </div>
+          <div class="field"><label>1ª recomposição a partir de</label><input id="m-carencia-data" placeholder="1º de janeiro de 2028"></div>
+        </details>
+        <details class="subgroup" data-tipo-only="contrato_pj">
+          <summary>Custos extras e multa rescisória (Cláusula 12/15)</summary>
+          <div class="grid2">
+            <div class="field"><label>Custo por km rodado</label><input id="m-km" value="R$ 7,75 (sete reais e setenta e cinco centavos)"></div>
+            <div class="field"><label>Diária fora da Comarca (a partir do 2º dia)</label><input id="m-diaria" value="R$ 2.775,00 (dois mil setecentos e setenta e cinco reais)"></div>
+          </div>
+          <div class="field"><label>Multa por rescisão antecipada (% do saldo)</label><input id="m-multa-rescisoria" value="60% (SESSENTA POR CENTO)"></div>
+        </details>
+        <details class="subgroup" data-tipo-only="contrato_condominio">
+          <summary>Custos extras (Cláusula 11)</summary>
+          <div class="grid2">
+            <div class="field"><label>Custo por km rodado</label><input id="cd-km" value="R$ 5,50 (cinco reais e cinquenta centavos)"></div>
+            <div class="field"><label>Diária fora da Comarca (a partir do 2º dia)</label><input id="cd-diaria" value="R$ 2.750,00 (dois mil setecentos e cinquenta reais)"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card" data-tipo-only="contrato_pf contrato_pj contrato_condominio">
+        <h2>Data, foro e assinatura</h2>
+        <div class="grid2">
+          <div class="field"><label>Cidade</label><input id="f-cidade" value="Uberlândia"></div>
+          <div class="field"><label>Data do contrato</label><input id="f-data" type="date"></div>
+        </div>
+        <div class="field" data-tipo-only="contrato_pf">
+          <label>Referência da Cláusula 19 (juízo competente corresponde ao domicílio/sede de...)</label>
+          <input id="f-foro-ref" value="do(a) Contratante">
+          <p class="hint">Ex.: "do(a) Contratante", "da falecida Sra. Fulana", "da empresa Contratante" — ajuste conforme a natureza do caso.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn" id="btn-gerar" type="button" style="width:100%">Gerar e baixar PDF</button>
+        <p class="hint" id="gerar-status" style="margin-top:10px;"></p>
+      </div>
+
+    </div>
+
+    <div class="preview-col">
+      <div class="preview-toolbar">
+        <strong style="font-size:.86rem;">Pré-visualização</strong>
+        <span class="status" id="pag-status">montando documento…</span>
+      </div>
+      <div id="doc-pages-wrap"><div id="doc-pages"></div></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ---------- utilidades ---------- */
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(s){
+  // negrito de termos definidos e referencias cruzadas, a partir de **texto**
+  let out = esc(s==null?'':s);
+  out = out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  return out;
+}
+function bJoinNames(list, field){
+  if(list.length===0) return '';
+  if(list.length===1) return list[0][field];
+  if(list.length===2) return list[0][field]+' e '+list[1][field];
+  return list.slice(0,-1).map(c=>c[field]).join(', ')+' e '+list[list.length-1][field];
+}
+const UNIDADE=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+const DEZENA=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CENTENA=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+function extenso3(n){
+  n=parseInt(n,10);
+  if(n===0) return '';
+  if(n===100) return 'cem';
+  let out='';
+  const c=Math.floor(n/100), d=n%100;
+  if(c) out+=CENTENA[c];
+  if(d){
+    if(out) out+=' e ';
+    if(d<20) out+=UNIDADE[d];
+    else{
+      out+=DEZENA[Math.floor(d/10)];
+      if(d%10) out+=' e '+UNIDADE[d%10];
+    }
+  }
+  return out;
+}
+function extensoInt(n){
+  n=parseInt(n,10);
+  if(n===0) return 'zero';
+  const milhoes=Math.floor(n/1000000);
+  const milhares=Math.floor((n%1000000)/1000);
+  const centenas=n%1000;
+  let parts=[];
+  if(milhoes) parts.push(extenso3(milhoes)+(milhoes>1?' milhões':' milhão'));
+  if(milhares) parts.push((milhares===1?'mil':extenso3(milhares)+' mil'));
+  if(centenas) parts.push(extenso3(centenas));
+  if(parts.length===0) return 'zero';
+  if(parts.length===1) return parts[0];
+  return parts.slice(0,-1).join(', ')+' e '+parts[parts.length-1];
+}
+function valorExtenso(v){
+  const num = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+  if(isNaN(num)) return '';
+  const inteiro=Math.floor(num), centavos=Math.round((num-inteiro)*100);
+  let out = extensoInt(inteiro)+' '+(inteiro===1?'real':'reais');
+  if(centavos>0) out += ' e '+extensoInt(centavos)+' '+(centavos===1?'centavo':'centavos');
+  return out.toUpperCase();
+}
+function fmtDataExtenso(iso){
+  if(!iso) return '____ de ____________ de ______';
+  const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const [y,m,d]=iso.split('-').map(Number);
+  return d+' de '+meses[m-1]+' de '+y;
+}
+
+/* ---------- estado ---------- */
+let contratantes=[];
+let escopo=[];
+let contratanteSeq=0;
+
+function novoContratante(){
+  contratanteSeq++;
+  return {id:contratanteSeq, nome:'', nacionalidade:'BRASILEIRA', estadoCivil:'', profissao:'',
+    rg:'', rgOrgao:'', cpf:'', email:'', logradouro:'', numero:'', complemento:'',
+    bairro:'', cidadeUf:'', cep:'', cel:'', tel:'', whatsapp:''};
+}
+
+function renderContratantes(){
+  const wrap=document.getElementById('contratantes-list');
+  wrap.innerHTML='';
+  contratantes.forEach((c,idx)=>{
+    const div=document.createElement('div');
+    div.className='contratante-block';
+    div.innerHTML=`
+      <div class="row-head"><strong>Contratante ${idx+1}</strong>
+        ${contratantes.length>1?'<button type="button" class="btn ghost" data-remove="'+c.id+'">remover</button>':''}
+      </div>
+      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(c.nome)}"></div>
+      <div class="grid3">
+        <div class="field"><label>Nacionalidade</label><input data-f="nacionalidade" value="${esc(c.nacionalidade)}"></div>
+        <div class="field"><label>Estado civil</label><input data-f="estadoCivil" value="${esc(c.estadoCivil)}"></div>
+        <div class="field"><label>Profissão</label><input data-f="profissao" value="${esc(c.profissao)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>CI/RG</label><input data-f="rg" value="${esc(c.rg)}"></div>
+        <div class="field"><label>Órgão emissor</label><input data-f="rgOrgao" value="${esc(c.rgOrgao)}" placeholder="SSP/MG"></div>
+        <div class="field"><label>CPF</label><input data-f="cpf" value="${esc(c.cpf)}"></div>
+      </div>
+      <div class="field"><label>E-mail</label><input data-f="email" value="${esc(c.email)}"></div>
+      <div class="grid3">
+        <div class="field"><label>Endereço</label><input data-f="logradouro" value="${esc(c.logradouro)}"></div>
+        <div class="field"><label>Nº</label><input data-f="numero" value="${esc(c.numero)}"></div>
+        <div class="field"><label>Compl.</label><input data-f="complemento" value="${esc(c.complemento)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Bairro</label><input data-f="bairro" value="${esc(c.bairro)}"></div>
+        <div class="field"><label>Cidade/UF</label><input data-f="cidadeUf" value="${esc(c.cidadeUf)}"></div>
+        <div class="field"><label>CEP</label><input data-f="cep" value="${esc(c.cep)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Celular</label><input data-f="cel" value="${esc(c.cel)}"></div>
+        <div class="field"><label>Telefone</label><input data-f="tel" value="${esc(c.tel)}"></div>
+        <div class="field"><label>WhatsApp</label><input data-f="whatsapp" value="${esc(c.whatsapp)}"></div>
+      </div>
+    `;
+    div.querySelectorAll('[data-f]').forEach(inp=>{
+      inp.addEventListener('input',()=>{ c[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ contratantes=contratantes.filter(x=>x.id!==c.id); renderContratantes(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-contratante').addEventListener('click',()=>{
+  contratantes.push(novoContratante()); renderContratantes(); scheduleRender();
+});
+
+function renderEscopo(){
+  const wrap=document.getElementById('escopo-list');
+  wrap.innerHTML='';
+  escopo.forEach((item,idx)=>{
+    const row=document.createElement('div');
+    row.className='list-item';
+    const letra=String.fromCharCode(97+idx)+')';
+    row.innerHTML=`<div class="letter">${letra}</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.querySelector('textarea').addEventListener('input',e=>{ escopo[idx]=e.target.value; scheduleRender(); });
+    row.querySelector('button').addEventListener('click',()=>{ escopo.splice(idx,1); renderEscopo(); scheduleRender(); });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('btn-add-escopo').addEventListener('click',()=>{ escopo.push(''); renderEscopo(); scheduleRender(); });
+
+// estado inicial: um contratante e três itens de escopo de exemplo
+contratantes.push(novoContratante());
+escopo.push('','','');
+renderContratantes();
+renderEscopo();
+
+/* ---------- representantes (PJ) ---------- */
+let representantes=[];
+let representanteSeq=0;
+function novoRepresentante(){
+  representanteSeq++;
+  return {id:representanteSeq, nome:'', cargo:'SÓCIO(A)-ADMINISTRADOR(A)', nacionalidade:'BRASILEIRA', estadoCivil:'', profissao:'',
+    rg:'', rgOrgao:'', cpf:'', email:'', logradouro:'', numero:'', complemento:'',
+    bairro:'', cidadeUf:'', cep:'', cel:'', tel:'', whatsapp:'', tambemPF:false};
+}
+function renderRepresentantes(){
+  const wrap=document.getElementById('representantes-list');
+  wrap.innerHTML='';
+  representantes.forEach((c,idx)=>{
+    const div=document.createElement('div');
+    div.className='rep-block';
+    div.innerHTML=`
+      <div class="row-head"><strong>Representante ${idx+1}</strong>
+        ${representantes.length>1?'<button type="button" class="btn ghost" data-remove="'+c.id+'">remover</button>':''}
+      </div>
+      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(c.nome)}"></div>
+      <div class="field"><label>Cargo</label><input data-f="cargo" value="${esc(c.cargo)}"></div>
+      <div class="grid3">
+        <div class="field"><label>Nacionalidade</label><input data-f="nacionalidade" value="${esc(c.nacionalidade)}"></div>
+        <div class="field"><label>Estado civil</label><input data-f="estadoCivil" value="${esc(c.estadoCivil)}"></div>
+        <div class="field"><label>Profissão</label><input data-f="profissao" value="${esc(c.profissao)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>CI/RG</label><input data-f="rg" value="${esc(c.rg)}"></div>
+        <div class="field"><label>Órgão emissor</label><input data-f="rgOrgao" value="${esc(c.rgOrgao)}" placeholder="SSP/MG"></div>
+        <div class="field"><label>CPF</label><input data-f="cpf" value="${esc(c.cpf)}"></div>
+      </div>
+      <div class="field"><label>E-mail</label><input data-f="email" value="${esc(c.email)}"></div>
+      <div class="grid3">
+        <div class="field"><label>Endereço</label><input data-f="logradouro" value="${esc(c.logradouro)}"></div>
+        <div class="field"><label>Nº</label><input data-f="numero" value="${esc(c.numero)}"></div>
+        <div class="field"><label>Compl.</label><input data-f="complemento" value="${esc(c.complemento)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Bairro</label><input data-f="bairro" value="${esc(c.bairro)}"></div>
+        <div class="field"><label>Cidade/UF</label><input data-f="cidadeUf" value="${esc(c.cidadeUf)}"></div>
+        <div class="field"><label>CEP</label><input data-f="cep" value="${esc(c.cep)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Celular</label><input data-f="cel" value="${esc(c.cel)}"></div>
+        <div class="field"><label>Telefone</label><input data-f="tel" value="${esc(c.tel)}"></div>
+        <div class="field"><label>WhatsApp</label><input data-f="whatsapp" value="${esc(c.whatsapp)}"></div>
+      </div>
+      <div class="checkbox-field"><input type="checkbox" data-fc="tambemPF" ${c.tambemPF?'checked':''}><label>Este representante também é contratante em nome próprio (assuntos pessoais)</label></div>
+    `;
+    div.querySelectorAll('[data-f]').forEach(inp=>{
+      inp.addEventListener('input',()=>{ c[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    div.querySelectorAll('[data-fc]').forEach(inp=>{
+      inp.addEventListener('change',()=>{ c[inp.dataset.fc]=inp.checked; scheduleRender(); });
+    });
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ representantes=representantes.filter(x=>x.id!==c.id); renderRepresentantes(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-representante').addEventListener('click',()=>{
+  representantes.push(novoRepresentante()); renderRepresentantes(); scheduleRender();
+});
+representantes.push(novoRepresentante());
+renderRepresentantes();
+
+/* ---------- áreas de atuação (checklist PJ/Condomínio) ---------- */
+const AREAS=[
+  ['conformidade_legal','Conformidade Legal (Compliance)'],['administrativo','Direito Administrativo'],
+  ['agrario','Direito Agrário'],['ambiental','Direito Ambiental'],['animal','Direito Animal'],
+  ['bancario','Direito Bancário'],['civil','Direito Civil'],['condominial','Direito Condominial'],
+  ['contratual','Direito Contratual'],['crianca_adolescente','Direito da Criança e do Adolescente'],
+  ['familias','Direito das Famílias'],['energia','Direito de Energia'],['digital_dados','Direito Digital e Proteção de Dados'],
+  ['consumidor','Direito do Consumidor'],['educacional','Direito Educacional'],['empresarial_societario','Direito Empresarial e Societário'],
+  ['habitacional','Direito Habitacional'],['imobiliario','Direito Imobiliário'],['licitatorio','Direito Licitatório'],
+  ['locaticio','Direito Locatício'],['medico_saude','Direito Médico e da Saúde'],['negocial','Direito Negocial'],
+  ['notarial_registral','Direito Notarial e Registral'],['penal','Direito Penal'],['possessorio','Direito Possessório'],
+  ['previdenciario','Direito Previdenciário'],['publico','Direito Público'],['regulatorio','Direito Regulatório'],
+  ['securitario','Direito Securitário (Seguros)'],['sucessorio','Direito Sucessório'],['trabalhista','Direito Trabalhista'],
+  ['tributario','Direito Tributário'],['urbanistico','Direito Urbanístico'],['paralegal','Paralegal']
+];
+const areas={};
+AREAS.forEach(([k])=>areas[k]=false);
+function renderAreaGrid(){
+  const wrap=document.getElementById('area-grid');
+  wrap.innerHTML='';
+  AREAS.forEach(([k,label])=>{
+    const div=document.createElement('label');
+    div.className='area-item';
+    div.innerHTML=`<input type="checkbox" ${areas[k]?'checked':''}> ${esc(label)}`;
+    div.querySelector('input').addEventListener('change',e=>{ areas[k]=e.target.checked; scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+renderAreaGrid();
+
+/* ---------- escopo da proposta PF/PJ (seção 7) ---------- */
+let ppEscopo=['orientações jurídicas consultivas de rotina','análise e revisão jurídica de instrumentos negociais usuais','suporte jurídico relacionado a situações operacionais correntes'];
+function renderPPEscopo(){
+  const wrap=document.getElementById('pp-escopo-list');
+  wrap.innerHTML='';
+  ppEscopo.forEach((item,idx)=>{
+    const row=document.createElement('div');
+    row.className='list-item';
+    row.innerHTML=`<div class="letter">➢</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.querySelector('textarea').addEventListener('input',e=>{ ppEscopo[idx]=e.target.value; scheduleRender(); });
+    row.querySelector('button').addEventListener('click',()=>{ ppEscopo.splice(idx,1); renderPPEscopo(); scheduleRender(); });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('btn-add-pp-escopo').addEventListener('click',()=>{ ppEscopo.push(''); renderPPEscopo(); scheduleRender(); });
+renderPPEscopo();
+
+/* ---------- alterna campos PF/PJ dentro da Proposta PF/PJ ---------- */
+function atualizarSubtipoPP(){
+  const sub = document.getElementById('pp-subtipo').value;
+  document.querySelectorAll('[data-tipo-only-pp]').forEach(el=>{
+    el.classList.toggle('tipo-hidden', el.dataset.tipoOnlyPp!==sub);
+  });
+}
+document.getElementById('pp-subtipo').addEventListener('change',()=>{ atualizarSubtipoPP(); scheduleRender(); });
+atualizarSubtipoPP();
+
+function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+
+/* ---------- coleta de dados do formulário ---------- */
+function coletarDados(){
+  document.getElementById('h-valor-extenso').value = valorExtenso(document.getElementById('h-valor').value);
+  document.getElementById('m-valor-extenso').value = valorExtenso(document.getElementById('m-valor').value);
+  return {
+    tipo: currentTipo,
+    contratantes: contratantes.filter(c=>c.nome.trim()!==''),
+    pj:{
+      razaoSocial: val('pj-razao-social'), nomeFantasia: val('pj-nome-fantasia'), cnpj: val('pj-cnpj'), email: val('pj-email'),
+      sedeEnd: val('pj-sede-end'), sedeNum: val('pj-sede-num'), sedeCompl: val('pj-sede-compl'),
+      bairro: val('pj-bairro'), cidadeUf: val('pj-cidade-uf'), cep: val('pj-cep'),
+      cel: val('pj-cel'), tel: val('pj-tel'), whatsapp: val('pj-whatsapp'),
+      representantes: representantes.filter(r=>r.nome.trim()!=='')
+    },
+    condominio:{
+      razaoSocial: val('cd-razao-social'), nomeFantasia: val('cd-nome-fantasia'), cnpj: val('cd-cnpj'), email: val('cd-email'),
+      sedeEnd: val('cd-sede-end'), sedeNum: val('cd-sede-num'), sedeCompl: val('cd-sede-compl'),
+      bairro: val('cd-bairro'), cidadeUf: val('cd-cidade-uf'), cep: val('cd-cep'),
+      cel: val('cd-cel'), tel: val('cd-tel'), whatsapp: val('cd-whatsapp')
+    },
+    sindico:{
+      nome: val('sn-nome'), nacionalidade: val('sn-nacionalidade'), estadoCivil: val('sn-estado-civil'), profissao: val('sn-profissao'),
+      rg: val('sn-rg'), rgOrgao: val('sn-rg-orgao'), cpf: val('sn-cpf'), email: val('sn-email'),
+      logradouro: val('sn-end'), numero: val('sn-end-num'), complemento: val('sn-end-compl'),
+      bairro: val('sn-bairro'), cidadeUf: val('sn-cidade-uf'), cep: val('sn-cep'),
+      cel: val('sn-cel'), tel: val('sn-tel'), whatsapp: val('sn-whatsapp')
+    },
+    areas: Object.assign({},areas),
+    mensal:{
+      valor: val('m-valor'), valorExtenso: document.getElementById('m-valor-extenso').value,
+      data1: val('m-data1'), qtdParcelas: val('m-qtd-parcelas'), boleto: val('m-boleto'),
+      indice: val('m-indice'), correcao: val('m-correcao'), penal: val('m-penal'),
+      multa: val('m-multa'), juros: val('m-juros'), cobranca: val('m-cobranca'),
+      cobrancaExtra: val('m-cobranca-extra'), cobrancaJudicial: val('m-cobranca-judicial'), exito: val('m-exito'),
+      desconto: val('m-desconto'), valorDesconto: val('m-valor-desconto'),
+      hon13: val('m-13'), hon13Forma: val('m-13-forma'), hon13Data: val('m-13-data'),
+      valorPos: val('m-valor-pos'), mesPos: val('m-mes-pos'),
+      carenciaOn: document.getElementById('m-carencia-on').checked,
+      carenciaAno: val('m-carencia-ano'), carenciaValor: val('m-carencia-valor'), carenciaData: val('m-carencia-data'),
+      km: val('m-km'), diaria: val('m-diaria'), multaRescisoria: val('m-multa-rescisoria'),
+      cdKm: val('cd-km'), cdDiaria: val('cd-diaria')
+    },
+    caso:{
+      objeto: document.getElementById('f-objeto').value.trim(),
+      escopoIntro: document.getElementById('f-escopo-intro').value.trim(),
+      escopo: escopo.filter(x=>x.trim()!=='')
+    },
+    hon:{
+      valor: document.getElementById('h-valor').value.trim(),
+      valorExtenso: document.getElementById('h-valor-extenso').value,
+      forma: document.getElementById('h-forma').value,
+      dataAvista: document.getElementById('h-data-avista').value,
+      entrada: document.getElementById('h-entrada').value,
+      dataEntrada: document.getElementById('h-data-entrada').value,
+      valorParcela: document.getElementById('h-valor-parcela').value,
+      qtdParcelas: document.getElementById('h-qtd-parcelas').value,
+      data1Parc: document.getElementById('h-data-1parc').value,
+      hon13: document.getElementById('h-13').value,
+      data13: document.getElementById('h-data-13').value,
+      cons: document.getElementById('h-cons').value,
+      consForma: document.getElementById('h-cons-forma').value,
+      consParcelas: document.getElementById('h-cons-parcelas').value,
+      consData1: document.getElementById('h-cons-data1').value,
+      cons13: document.getElementById('h-cons-13').value,
+      consData13: document.getElementById('h-cons-data13').value,
+      boleto: document.getElementById('h-boleto').value,
+      multa: document.getElementById('h-multa').value,
+      juros: document.getElementById('h-juros').value,
+      correcao: document.getElementById('h-correcao').value,
+      indice: document.getElementById('h-indice').value,
+      penal: document.getElementById('h-penal').value,
+      cobranca: document.getElementById('h-cobranca').value,
+      exito: document.getElementById('h-exito').value
+    },
+    cidade: document.getElementById('f-cidade').value.trim()||'Uberlândia',
+    dataExtenso: fmtDataExtenso(document.getElementById('f-data').value),
+    foroRef: document.getElementById('f-foro-ref').value.trim()||'do(a) Contratante',
+    proposta:{
+      subtipo: document.getElementById('pp-subtipo').value,
+      nome: val('pp-nome'), responsavel: val('pp-responsavel'), cnpj: val('pp-cnpj'),
+      dataAbertura: val('pp-data-abertura'), porte: val('pp-porte'), atividades: val('pp-atividades'),
+      cpf: val('pp-cpf'), profissao: val('pp-profissao'), cidadeUf: val('pp-cidade-uf'),
+      escopoBase: val('pp-escopo-base'), entendimentos: document.getElementById('pp-entendimentos').value.trim(),
+      escopoItens: ppEscopo.filter(x=>x.trim()!==''),
+      implantacao: val('pp-implantacao'), valorMensal: val('pp-valor-mensal'), tributacao: val('pp-tributacao'),
+      taxaBoleto: val('pp-taxa-boleto'), inicioPrestacao: val('pp-inicio-prestacao'), formaPagamento: val('pp-forma-pagamento'),
+      data1Venc: val('pp-data-1venc'), dataVencs: val('pp-data-vencs'), exito: val('pp-exito'), prazo: val('pp-prazo'),
+      localEmissao: val('pp-local-emissao'), dataEmissao: fmtDataExtenso(document.getElementById('pp-data-emissao').value),
+      localTrabalhos: val('pp-local-trabalhos'), validade: fmtDataExtenso(document.getElementById('pp-validade').value)
+    },
+    propostaCondominio:{
+      objeto: document.getElementById('pc-objeto').value.trim(), tribunal: val('pc-tribunal'),
+      honInicial: val('pc-hon-inicial'), tributacao: val('pc-tributacao'), taxaBoleto: val('pc-taxa-boleto'),
+      exito: val('pc-exito'), dataPagamento: val('pc-data-pagamento'), inicioTrabalhos: val('pc-inicio-trabalhos'),
+      localEmissao: val('pp-local-emissao'), dataEmissao: fmtDataExtenso(document.getElementById('pp-data-emissao').value),
+      localTrabalhos: val('pp-local-trabalhos'), validade: fmtDataExtenso(document.getElementById('pp-validade').value)
+    }
+  };
+}
+
+/* ---------- construção dos blocos do Contrato Pessoa Física ---------- */
+function qualTableContratante(c){
+  return `<div class="qual-table">
+    <div class="qual-row"><div class="qual-cell"><b>NOME:</b> ${esc(c.nome)}</div></div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>NACIONALIDADE:</b> ${esc(c.nacionalidade)}</div>
+      <div class="qual-cell"><b>ESTADO CIVIL:</b> ${esc(c.estadoCivil)}</div>
+      <div class="qual-cell"><b>PROFISSÃO:</b> ${esc(c.profissao)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>CI/RG:</b> ${esc(c.rg)} ${esc(c.rgOrgao)}</div>
+      <div class="qual-cell"><b>CPF:</b> ${esc(c.cpf)}</div>
+      <div class="qual-cell"><b>E-MAIL(S):</b> ${esc(c.email)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>END.:</b> ${esc(c.logradouro)}</div>
+      <div class="qual-cell"><b>Nº:</b> ${esc(c.numero)}</div>
+      <div class="qual-cell"><b>COMPL.:</b> ${esc(c.complemento)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>BAIRRO:</b> ${esc(c.bairro)}</div>
+      <div class="qual-cell"><b>CIDADE/UF:</b> ${esc(c.cidadeUf)}</div>
+      <div class="qual-cell"><b>CEP.:</b> ${esc(c.cep)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>CEL:</b> ${esc(c.cel)}</div>
+      <div class="qual-cell"><b>TEL.:</b> ${esc(c.tel)}</div>
+      <div class="qual-cell"><b>WHATSAPP:</b> ${esc(c.whatsapp)}</div>
+    </div>
+  </div>`;
+}
+function qualEmpresaTable(c){
+  return `<div class="qual-table">
+    <div class="qual-row"><div class="qual-cell"><b>RAZÃO SOCIAL:</b> ${esc(c.razaoSocial)}</div></div>
+    <div class="qual-row"><div class="qual-cell"><b>NOME DE FANTASIA:</b> ${esc(c.nomeFantasia)}</div></div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>PESSOA JURÍDICA DE DIREITO PRIVADO</b> — CNPJ/MF: ${esc(c.cnpj)}</div>
+      <div class="qual-cell"><b>E-MAIL:</b> ${esc(c.email)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>SEDE:</b> ${esc(c.sedeEnd)}</div>
+      <div class="qual-cell"><b>Nº:</b> ${esc(c.sedeNum)}</div>
+      <div class="qual-cell"><b>COMPL.:</b> ${esc(c.sedeCompl)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>BAIRRO:</b> ${esc(c.bairro)}</div>
+      <div class="qual-cell"><b>CIDADE/UF:</b> ${esc(c.cidadeUf)}</div>
+      <div class="qual-cell"><b>CEP.:</b> ${esc(c.cep)}</div>
+    </div>
+    <div class="qual-row">
+      <div class="qual-cell"><b>CEL:</b> ${esc(c.cel)}</div>
+      <div class="qual-cell"><b>TEL.:</b> ${esc(c.tel)}</div>
+      <div class="qual-cell"><b>WHATSAPP:</b> ${esc(c.whatsapp)}</div>
+    </div>
+  </div>`;
+}
+function honRow(label,value,first){
+  return `<div class="hon-row${first?' first':''}"><div class="k">${esc(label)}</div><div class="v">${esc(value)}</div></div>`;
+}
+function areaTableBlocks(d){
+  const blocks=[];
+  for(let i=0;i<AREAS.length;i+=2){
+    const [k1,l1]=AREAS[i];
+    const pair2 = AREAS[i+1];
+    let html = `<div class="hon-row${i===0?' first':''}" style="font-size:8pt;"><div class="k" style="flex:0 0 46mm;">${esc(l1)}</div><div class="v" style="flex:0 0 16mm;">${d.areas[k1]?'SIM':'NÃO'}</div>`;
+    if(pair2){
+      const [k2,l2]=pair2;
+      html += `<div class="k" style="flex:0 0 46mm;border-left:1pt solid #1a1a1a;">${esc(l2)}</div><div class="v" style="flex:1;">${d.areas[k2]?'SIM':'NÃO'}</div>`;
+    }
+    html += `</div>`;
+    blocks.push(C(html));
+  }
+  return blocks;
+}
+function C(html){ return {type:'raw', html}; }
+function clause(num,text){ return {type:'clause', num, text}; }
+function sub(letter,text){ return {type:'sub', letter, text}; }
+function clauseTitle(text){ return C(`<div class="blk" style="font-weight:700;margin-top:2.6mm;">${esc(text)}</div>`); }
+
+function buildContratoPF(d){
+  const blocks=[];
+  blocks.push(C(`<div class="blk center" style="font-weight:700;font-size:10.5pt;margin-bottom:3.5mm;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS ADVOCATÍCIOS</div>`));
+  blocks.push(C(`<div class="blk"><strong>CONTRATANTE(S):</strong></div>`));
+  d.contratantes.forEach(c=>blocks.push(C(qualTableContratante(c))));
+
+  if(d.contratantes.length>1){
+    const nomes=bJoinNames(d.contratantes,'nome').toUpperCase();
+    blocks.push(C(`<div class="blk"><strong>${esc(nomes)}</strong>, já qualificados, serão considerados, para todos os fins deste Contrato, em conjunto e indistintamente, como uma única parte contratual, doravante denominada simplesmente <strong>CONTRATANTE</strong>, respondendo solidariamente pelo cumprimento integral das obrigações contratuais e financeiras assumidas neste Instrumento.</div>`));
+  } else if(d.contratantes.length===1){
+    blocks.push(C(`<div class="blk"><strong>${esc(d.contratantes[0].nome.toUpperCase())}</strong>, já qualificado(a), doravante denominado(a) simplesmente <strong>CONTRATANTE</strong>.</div>`));
+  }
+
+  blocks.push(C(`<div class="blk"><strong>CONTRATADA: FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</strong> (JONATHAN FONSECA SOCIEDADE INDIVIDUAL DE ADVOCACIA), pessoa jurídica de direito privado, inscrita no <strong>CNPJ</strong> sob o nº <strong>57.704.224/0001-00</strong>, com sede nesta cidade de Uberlândia, Estado de Minas Gerais, na Rua Senador Salgado Filho, 426, Bairro Tabajaras, CEP 38400-236, neste ato representada pelo sócio-administrador <strong>JONATHAN FONSECA</strong>, brasileiro, casado, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>163.443</strong>, e pelo sócio <strong>HECY BRAGA</strong>, brasileiro, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>95.948</strong>, ambos residentes e domiciliados nesta cidade de Uberlândia, Estado de Minas Gerais.</div>`));
+
+  blocks.push(clause('1.', fmt(d.caso.objeto || 'O presente Contrato tem por objeto a prestação de serviços advocatícios em favor do(a) **CONTRATANTE**.')));
+  blocks.push(clause('2.', fmt(d.caso.escopoIntro)));
+  d.caso.escopo.forEach((item,idx)=>blocks.push(sub(String.fromCharCode(97+idx)+')', fmt(item))));
+
+  blocks.push(clause('3.', 'Em caso de divergência entre a Proposta e este Contrato, prevalecerá o disposto neste Instrumento.'));
+  blocks.push(clause('4.', 'A inclusão de qualquer outro bem, direito, obrigação ou interessado que não esteja abrangido pelas informações fornecidas até a assinatura deste Contrato dependerá de contratação complementar.'));
+  blocks.push(clause('5.', 'As atividades poderão ser executadas no âmbito extrajudicial e, se necessário, perante o juízo competente, exclusivamente em 1ª (primeira) instância, não abrangendo recursos de qualquer natureza, contrarrazões, remessa necessária ou atuação perante tribunais, salvo contratação complementar.'));
+  blocks.push(clause('6.', 'Não estão incluídas medidas litigiosas autônomas, ações conexas, defesas tributárias, regularizações patrimoniais independentes, representação individual de qualquer dos integrantes do(a) **CONTRATANTE** em oposição aos demais ou outras providências não expressamente previstas neste Contrato, salvo contratação complementar.'));
+  blocks.push(clause('7.', 'A presente contratação pressupõe a existência e a manutenção de convergência de interesses entre os integrantes do(a) **CONTRATANTE**. Se surgir divergência, litígio ou conflito de interesses que inviabilize ou torne inadequada a representação conjunta, a **CONTRATADA** poderá suspender ou encerrar a atuação, renunciar ou substabelecer os mandatos, adotando as providências jurídicas e éticas cabíveis, sem prejuízo dos honorários, custos, despesas e demais valores contratualmente devidos.'));
+
+  blocks.push(clause('8.', '<strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS:</strong>'));
+  let honHtml='';
+  const h=d.hon;
+  honHtml+=honRow('8.1.  VALOR', 'R$ '+h.valor+' ('+h.valorExtenso+')', true);
+  honHtml+=honRow('8.2.  FORMA(S) DE PAGAMENTO', h.forma);
+  honHtml+=honRow('8.3.  DATA DE PAGAMENTO (À VISTA)', h.dataAvista);
+  honHtml+=honRow('8.4.  ENTRADA', h.entrada);
+  honHtml+=honRow('8.5.  DATA(S) DE PAGAMENTO (ENTRADA)', h.dataEntrada);
+  honHtml+=honRow('8.6.  VALOR DA PARCELA', h.valorParcela);
+  honHtml+=honRow('8.7.  QUANTIDADE DE PARCELAS', h.qtdParcelas);
+  honHtml+=honRow('8.8.  DATA DO(A) 1º PAGTO./1ª PARC./1ª MENS.', h.data1Parc);
+  honHtml+=honRow('8.9.  13º PAGAMENTO/13ª PARCELA/13ª MENSALIDADE', h.hon13);
+  honHtml+=honRow('8.10.  DATA(S) DO(A) 13º PAGTO./13ª PARC./13ª MENS.', h.data13);
+  honHtml+=honRow('8.11.  HONORÁRIOS DE CONSULTORIA', h.cons);
+  honHtml+=honRow('8.12.  FORMA(S) DE PAGAMENTO', h.consForma);
+  honHtml+=honRow('8.13.  QUANTIDADE DE PARCELAS', h.consParcelas);
+  honHtml+=honRow('8.14.  DATA DO 1º (PRIMEIRO) PAGTO. (CONS./MENS.)', h.consData1);
+  honHtml+=honRow('8.15.  13º PAGAMENTO/13ª PARCELA (CONS./MENS.)', h.cons13);
+  honHtml+=honRow('8.16.  DATA(S) DO(A) 13º PAGTO./13ª PARC. (CONS./MENS.)', h.consData13);
+  honHtml+=honRow('8.17.  BOLETO(S)/FATURA(S)', h.boleto);
+  honHtml+=honRow('8.18.  MULTA/ATRASO (PAGTO./PARC./MENS./CONS.)', h.multa);
+  honHtml+=honRow('8.19.  JUROS/ATRASO (PAGTO./PARC./MENS./CONS.)', h.juros);
+  honHtml+=honRow('8.20.  CORREÇÃO MONETÁRIA (PAGTO./PARC./MENS./CONS.)', h.correcao);
+  honHtml+=honRow('8.21.  ÍNDICE DE ATUALIZAÇÃO', h.indice);
+  honHtml+=honRow('8.22.  CLÁUSULA PENAL', h.penal);
+  honHtml+=honRow('8.23.  HONORÁRIOS (COBRANÇA EXTRAJUD. E/OU JUD.)', h.cobranca);
+  honHtml+=honRow('8.24.  HONORÁRIOS DE ÊXITO', h.exito);
+  // cada linha é um bloco atômico próprio para permitir quebra de página no meio da tabela, como no modelo original
+  honHtml.match(/<div class="hon-row[^>]*>.*?<\/div><\/div>/g).forEach(rowHtml=>blocks.push(C(rowHtml)));
+
+  blocks.push(clause('9.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** conforme o **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, mediante boleto bancário, fatura e/ou PIX, cujos dados ou instruções serão disponibilizados pela **CONTRATADA** juntamente com o link para formalização eletrônica.'));
+  blocks.push(clause('10.', 'O boleto bancário e/ou a fatura serão emitidos em nome de um dos integrantes do(a) **CONTRATANTE**, conforme indicação prévia dos interessados. O pagamento por PIX poderá ser realizado por qualquer um deles, desde que a operação seja devidamente identificada.'));
+  blocks.push(clause('11.', 'O pagamento realizado por qualquer dos meios previstos na **Cláusula 9** deste Contrato dispensa a emissão de recibo específico, servindo o respectivo comprovante como documento hábil e suficiente para demonstrar o adimplemento parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('12.', 'A prestação dos serviços terá início após a assinatura deste Contrato e a confirmação do pagamento integral dos honorários advocatícios.'));
+  blocks.push(clause('13.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de boleto bancário e/ou fatura, quando utilizados, serão de responsabilidade exclusiva do(a) **CONTRATANTE** e acrescidos ao valor devido, conforme a Tabela de Custos Administrativos vigente na data do respectivo lançamento, mantida e periodicamente atualizada pela **CONTRATADA**. Em caso de necessidade de substituição, reemissão, prorrogação ou alteração de qualquer desses instrumentos, por inadimplência ou solicitação do(a) **CONTRATANTE**, poderá ser acrescido novo encargo operacional correspondente.'));
+  blocks.push(clause('14.', 'Não haverá cobrança de custo administrativo quando o pagamento for realizado por PIX.'));
+  blocks.push(clause('15.', 'Os custos administrativos previstos na **Cláusula 13** deste Contrato não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
+  blocks.push(clause('16.', 'VALOR DOS HONORÁRIOS EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO: TOTALIDADE.'));
+  blocks.push(clause('17.', 'As atividades relacionadas ao objeto deste Contrato serão desenvolvidas, preferencialmente, em '+esc(d.cidade)+', de forma presencial e/ou remota, conforme a natureza da demanda, a conveniência operacional e a estratégia definida para o caso.'));
+  blocks.push(clause('18.', 'No que for aplicável, os atos extrajudiciais poderão ser praticados perante tabelionato de notas ou órgão competente escolhido pelos interessados.'));
+  blocks.push(clause('19.', 'Caso seja necessária a via judicial, a atuação ocorrerá perante o juízo competente da Comarca de '+esc(d.cidade)+', correspondente ao domicílio/sede '+esc(d.foroRef)+', exclusivamente em 1ª (primeira) instância, observados os limites do escopo contratado.'));
+  blocks.push(clause('20.', 'A interposição ou o acompanhamento de recursos, a apresentação de contrarrazões, o acompanhamento de remessa necessária e qualquer atuação perante os Tribunais Superiores dependerão de contratação complementar.'));
+  blocks.push(clause('21.', 'Os serviços poderão ser realizados pela **CONTRATADA** ou por advogado(a)(s), associado(a)(s), colaborador(a)(es), parceiro(a)(s) e/ou preposto(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que devidamente habilitado(a)(s) para a execução.'));
+  blocks.push(clause('22.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão coordenadas pela **CONTRATADA**, podendo ser executadas na forma prevista na **Cláusula 21** deste Contrato.'));
+  blocks.push(clause('23.', 'Os valores referentes à prestação dos serviços profissionais serão pagos pelo(a) **CONTRATANTE** à **CONTRATADA** nas condições e nos prazos estabelecidos no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, mediante uma das formas de pagamento previstas na **Cláusula 9** deste Contrato.'));
+  blocks.push(clause('24.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, dentro de prazo definido pela **CONTRATADA**, ressalvado acordo entre as partes para prazos diferentes.'));
+  blocks.push(clause('25.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) **CONTRATANTE**, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
+  blocks.push(clause('26.', 'Se houver ampliação do escopo, aumento da complexidade ou da carga laboral, de forma desproporcional ou excessiva, a **CONTRATADA** poderá propor a readequação dos honorários advocatícios, mediante anuência do(a) **CONTRATANTE**.'));
+  blocks.push(clause('27.', 'Atividades não abrangidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
+  blocks.push(clause('28.', 'O atraso no pagamento acarretará a incidência de multa de '+esc(h.multa)+', juros de '+esc(h.juros)+' e correção monetária, sem prejuízo de perdas e danos e da aplicação da Cláusula Penal.'));
+  blocks.push(clause('29.', 'Caso o pagamento venha a ser parcelado mediante ajuste escrito posterior, a inadimplência de qualquer parcela poderá acarretar o vencimento antecipado das demais, independentemente de notificação, sem prejuízo das medidas legais cabíveis.'));
+  blocks.push(clause('30.', 'A inadimplência, independentemente de sua duração, autorizará a **CONTRATADA** a suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('31.', 'O inadimplemento também autoriza a **CONTRATADA** a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ação de cobrança, a execução deste Contrato, o protesto em cartório e as demais providências legais aplicáveis. Todas essas medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**, nos termos da legislação vigente.'));
+  blocks.push(clause('32.', 'Não haverá incidência de honorários de êxito no âmbito da presente contratação, salvo se posteriormente ajustados, de forma expressa e escrita, mediante aditivo contratual referente a atividade, medida ou resultado não abrangido pelo objeto original.'));
+  blocks.push(clause('33.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de retenção, reserva, dedução, compensação e/ou pagamento direto dos honorários advocatícios contratuais, custas, despesas, encargos e demais valores previstos neste Contrato, sempre que houver abatimento, acordo, alvará, compensação, crédito, depósito judicial ou extrajudicial, levantamento, restituição, vantagem econômica ou qualquer resultado patrimonial decorrente da atuação da **CONTRATADA**.'));
+  blocks.push(clause('34.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('35.', 'Expedido alvará no âmbito dos trabalhos contratados, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+  blocks.push(clause('36.', 'O(A) **CONTRATANTE** autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a **CONTRATADA** proceda à compensação, ao desconto e/ou à retenção de valores que lhe sejam devidos ou destinados, decorrentes de acordo, alvará, depósito judicial, levantamento, precatório e/ou requisição de pequeno valor, até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('37.', 'O valor total dos honorários contratados poderá ser exigido de imediato ou, se já adimplido, retido e não devolvido, conforme o caso, nas seguintes hipóteses:'));
+  blocks.push(sub('a)', 'caso haja acordo, ajuste direto ou composição entre os interessados, sem a intervenção da **CONTRATADA**, ainda que parcialmente;'));
+  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) **CONTRATANTE**, ou por qualquer circunstância não imputável à **CONTRATADA**;'));
+  blocks.push(sub('c)', 'renúncia da **CONTRATADA**, quando decorrente de conduta do(a) **CONTRATANTE** que comprometa a confiança, a independência técnica ou a continuidade da atuação profissional, inclusive por imposição de estratégia, interferência indevida ou descumprimento de orientações essenciais;'));
+  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da **CONTRATADA**.'));
+  blocks.push(clause('38.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
+  blocks.push(clause('39.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas, deslocamentos, despesas administrativas, bancárias, cartorárias, notariais, paralegais, processuais e registrais, digitalizações, diligências, documentos, emolumentos, escrituras públicas, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, taxas, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
+  blocks.push(clause('40.', 'Na hipótese excepcional de ser necessária a realização de diligência presencial fora da Comarca de '+esc(d.cidade)+', previamente comunicada e autorizada pelo(a) **CONTRATANTE**, serão observadas as seguintes disposições:'));
+  blocks.push(sub('a)', 'as despesas efetivamente necessárias com passagens, pedágios, estacionamentos, alimentação, estadia, locação de veículo, combustível e outros gastos indispensáveis à realização da diligência correrão por conta do(a) **CONTRATANTE**, mediante pagamento direto ou reembolso;'));
+  blocks.push(sub('b)', 'eventual remuneração adicional decorrente do deslocamento, da permanência e da disponibilidade profissional da **CONTRATADA** fora da Comarca será previamente ajustada entre as partes, por escrito, considerando-se a natureza, o local, a duração e a complexidade da diligência;'));
+  blocks.push(sub('c)', 'nenhum valor complementar relacionado ao deslocamento, à permanência ou à disponibilidade profissional fora da Comarca será devido sem a prévia concordância expressa do(a) **CONTRATANTE**;'));
+  blocks.push(sub('d)', 'as audiências e os despachos poderão ser realizados por advogado(a)(s), associado(a)(s), correspondente(s) e/ou parceiro(a)(s) devidamente habilitado(a)(s); as diligências e os protocolos poderão também ser executados por colaborador(a)(es) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os respectivos custos e despesas, desde que previamente informados e autorizados.'));
+  blocks.push(clause('41.', 'O(A) **CONTRATANTE** não arcará com outros honorários advocatícios fixos além daqueles expressamente ajustados neste Contrato, ressalvados os custos, despesas, tributos, encargos e demais valores previstos neste Instrumento, inclusive aqueles relacionados na **Cláusula 39**, desde que previamente informados ou recomendados pela **CONTRATADA**.'));
+  blocks.push(clause('42.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
+  blocks.push(clause('43.', 'As diligências externas, tais como o acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, reuniões administrativas ou institucionais e atividades análogas, somente serão realizadas após prévia comunicação e autorização expressa do(a) **CONTRATANTE**, inclusive quanto às despesas e à modalidade de custeio aplicável, nos termos da **Cláusula 40** deste Contrato.'));
+  blocks.push(clause('44.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, sem prejuízo das obrigações já constituídas e da observância dos prazos legais aplicáveis ao mandato.'));
+  blocks.push(clause('45.', 'Ocorrendo rescisão contratual unilateral, renúncia, revogação ou substabelecimento, a **CONTRATADA** preservará o direito à integralidade dos honorários advocatícios fixos contratados, nos termos deste Contrato, bem como ao reembolso das despesas, custos e encargos incorridos durante a execução dos trabalhos.'));
+  blocks.push(clause('46.', 'Em caso de renúncia ao mandato, a **CONTRATADA** continuará a representar o(a) **CONTRATANTE** durante os 10 (dez) dias seguintes à notificação, salvo se houver substituição antes do término desse prazo.'));
+  blocks.push(clause('47.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que lhe der causa ficará sujeita à Cláusula Penal correspondente a '+esc(h.penal)+' sobre o valor total do presente Instrumento.'));
+  blocks.push(clause('48.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(h.cobranca)+' sobre o valor total do débito, a título de remuneração pelo trabalho de cobrança, sem prejuízo da incidência dos demais encargos contratuais e de eventual apuração de perdas e danos.'));
+  blocks.push(clause('49.', 'O presente Contrato obriga as partes, bem como seus respectivos herdeiros e sucessores.'));
+  blocks.push(clause('50.', 'Os serviços advocatícios constituem obrigação de meio, e não de resultado, razão pela qual a **CONTRATADA** não garante decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
+  blocks.push(clause('51.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+  blocks.push(clause('52.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelas partes.'));
+  blocks.push(clause('53.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
+  blocks.push(clause('54.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+  blocks.push(clause('55.', 'O(A) **CONTRATANTE** declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
+  blocks.push(clause('56.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('57.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('58.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+  blocks.push(clause('59.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
+  blocks.push(clause('60.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('61.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+  blocks.push(clause('62.', 'O(A) **CONTRATANTE** declara ter lido este Contrato, recebido os esclarecimentos solicitados e compreendido integralmente o seu conteúdo, assinando-o em local próprio.'));
+  blocks.push(clause('63.', 'O(A) **CONTRATANTE** e a **CONTRATADA** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+  blocks.push(clause('64.', 'O(A) **CONTRATANTE** e a **CONTRATADA** elegem o Foro da Comarca de '+esc(d.cidade)+' para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+  blocks.push(clause('65.', 'E assim, por estarem justas e contratadas, as partes firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS ADVOCATÍCIOS</strong>, física ou eletronicamente, juntamente com 2 (duas) testemunhas, para que produza seus efeitos jurídicos e legais.'));
+
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:4mm;"><strong>CONTRATANTE(S):</strong></div>`));
+  d.contratantes.forEach(c=>{
+    blocks.push(C(`<div class="sig-line"><div class="rule"></div><div class="name">${esc(c.nome)}</div><div class="doc">CPF nº ${esc(c.cpf)}</div></div>`));
+  });
+
+  blocks.push(C(`<div class="blk center" style="margin-top:6mm;"><strong>CONTRATADA:</strong></div>`));
+  blocks.push(C(`<div class="sig-line"><div class="name">Fonseca e Braga Sociedade de Advogados</div><div class="doc">(Jonathan Fonseca Sociedade Individual de Advocacia)<br>CNPJ nº 57.704.224/0001-00</div></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:8mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG nº 163.443</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Hecy Braga</div><div class="doc">OAB/MG nº 95.948</div></div>
+  </div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:8mm;"><strong>TESTEMUNHAS:</strong></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:14mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+  </div>`));
+
+  return blocks;
+}
+
+/* ---------- construção dos blocos do Contrato Pessoa Jurídica ---------- */
+function buildContratoPJ(d){
+  const blocks=[];
+  const m=d.mensal;
+  const reps = d.pj.representantes;
+  const pfReps = reps.filter(r=>r.tambemPF);
+  blocks.push(C(`<div class="blk center" style="font-weight:700;font-size:10pt;margin-bottom:3.5mm;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICA EMPRESARIAL</div>`));
+  blocks.push(C(`<div class="blk"><strong>CONTRATANTE(S):</strong></div>`));
+  blocks.push(C(qualEmpresaTable(d.pj)));
+  blocks.push(C(`<div class="blk"><strong>REPRESENTANTE(S) LEGAL(IS) / SÓCIO(A)(S)-ADMINISTRADOR(A)(S):</strong></div>`));
+  reps.forEach(r=>blocks.push(C(qualTableContratante(r))));
+  if(pfReps.length){
+    blocks.push(C(`<div class="blk"><strong>CONTRATANTE(S):</strong></div>`));
+    pfReps.forEach(r=>blocks.push(C(qualTableContratante(r))));
+  }
+  blocks.push(C(`<div class="blk"><strong>CONTRATADA: FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</strong> (JONATHAN FONSECA SOCIEDADE INDIVIDUAL DE ADVOCACIA), pessoa jurídica de direito privado, inscrita no <strong>CNPJ/MF</strong> sob o nº <strong>57.704.224/0001-00</strong>, com sede nesta cidade de Uberlândia, Estado de Minas Gerais, na Rua Senador Salgado Filho, 426, Bairro Tabajaras, CEP 38400-236, neste ato representada pelo sócio-administrador <strong>JONATHAN FONSECA</strong>, brasileiro, casado, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>163.443</strong>, e pelo sócio <strong>HECY BRAGA</strong>, brasileiro, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>95.948</strong>, ambos residentes e domiciliados nesta cidade de Uberlândia, Estado de Minas Gerais.</div>`));
+
+  blocks.push(clauseTitle('CLÁUSULA PRIMEIRA – DO OBJETO E DO ESCOPO OPERACIONAL DOS SERVIÇOS'));
+  blocks.push(clause('1.1.', 'O presente Contrato tem por objeto a prestação contínua de serviços de advocacia, assessoria e consultoria jurídica empresarial, em favor do(a) **CONTRATANTE**, de forma preventiva, personalizada, estratégica e alinhada às necessidades legais e operacionais abrangidas pelas áreas de atuação contempladas neste Instrumento.'));
+  blocks.push(clause('1.2.', 'A atuação da **CONTRATADA** compreenderá orientação jurídica qualificada, análise e mitigação de riscos, apoio à tomada de decisões, revisão de situações concretas, elaboração, análise e revisão documental, bem como acompanhamento das demandas inerentes à rotina empresarial do(a) **CONTRATANTE**, nos limites do escopo ajustado neste Contrato.'));
+  blocks.push(clause('1.3.', 'Observadas a necessidade, a pertinência e a aderência à realidade da operação empresarial do(a) **CONTRATANTE**, a assessoria abrangerá, em caráter contínuo, preventivo e estratégico, as seguintes frentes de atuação (<strong>ÁREAS DE ATUAÇÃO</strong>):'));
+  areaTableBlocks(d).forEach(b=>blocks.push(b));
+  blocks.push(clause('1.4.', 'Integram o escopo ordinário dos serviços contratados, entre outras atividades compatíveis com a rotina empresarial do(a) **CONTRATANTE** e com as frentes de atuação acima descritas:'));
+  blocks.push(sub('a)', 'orientações jurídicas consultivas de rotina;'));
+  blocks.push(sub('b)', 'análise, revisão e elaboração de instrumentos negociais usuais;'));
+  blocks.push(sub('c)', 'apoio preventivo em questões bancárias, civis, contratuais, empresariais, societárias, imobiliárias, securitárias e trabalhistas ordinárias;'));
+  blocks.push(sub('d)', 'suporte jurídico relacionado a situações operacionais correntes; e'));
+  blocks.push(sub('e)', 'interlocução estratégica voltada à prevenção de passivos, à racionalização de riscos e à construção de soluções juridicamente seguras e empresarialmente úteis.'));
+  blocks.push(clause('1.5.', 'No âmbito do escopo ordinário ora contratado, não se submetem a limites quantitativos anuais as análises contratuais, as participações em reuniões, as tratativas operacionais e as demais providências jurídicas compatíveis com a dinâmica empresarial do(a) **CONTRATANTE**.'));
+  blocks.push(clause('1.6.', 'Sempre que a demanda exigir atuação extraordinária, projeto específico, dedicação técnica não compatível com a dinâmica ordinária da advocacia empresarial contínua, ou versar sobre matéria não abrangida pelas frentes descritas nesta Cláusula, a **CONTRATADA** poderá apresentar proposta complementar e/ou aditivo contratual, mediante prévio alinhamento de escopo e honorários.'));
+
+  blocks.push(clauseTitle('CLÁUSULA SEGUNDA – DO QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS'));
+  const rows18=[
+    ['2.1.1.  VALOR (MENSALIDADE)', 'R$ '+m.valor+' ('+m.valorExtenso+')'],
+    ['2.1.2.  FORMA(S) DE PAGAMENTO', 'MENSALIDADE'],
+    ['2.1.3.  DATA DO 1º (PRIMEIRO) PAGAMENTO', m.data1],
+    ['2.1.4.  QUANTIDADE DE PARCELAS', m.qtdParcelas],
+    ['2.1.5.  BOLETO BANCÁRIO', m.boleto],
+    ['2.1.6.  ÍNDICE DE ATUALIZAÇÃO', m.indice],
+    ['2.1.7.  CORREÇÃO MONETÁRIA', m.correcao],
+    ['2.1.8.  DESCONTO', m.desconto],
+    ['2.1.9.  VALOR C/ DESCONTO', m.valorDesconto],
+    ['2.1.10.  13º PAGAMENTO', m.hon13],
+    ['2.1.11.  FORMA(S) DE PAGAMENTO DO 13º', m.hon13Forma],
+    ['2.1.12.  DATA(S) DE PAGAMENTO DO 13º', m.hon13Data],
+    ['2.1.13.  MULTA / ATRASO / PAGTO.', m.multa],
+    ['2.1.14.  JUROS / ATRASO / PAGTO.', m.juros],
+    ['2.1.15.  CLÁUSULA PENAL', m.penal],
+    ['2.1.16.  HONORÁRIOS (COBRANÇA EXTRAJUDICIAL)', m.cobrancaExtra],
+    ['2.1.17.  HONORÁRIOS (COBRANÇA JUDICIAL)', m.cobrancaJudicial],
+    ['2.1.18.  HONORÁRIOS DE ÊXITO', m.exito]
+  ];
+  rows18.forEach((r,idx)=>blocks.push(C(honRow(r[0],r[1],idx===0))));
+  if(m.valorPos){
+    blocks.push(clause('2.2.', 'Encerrado o período inicial previsto neste Contrato, os honorários advocatícios mensais passarão a ser de R$ '+esc(m.valorPos)+', a partir do '+esc(m.mesPos)+' mês de vigência, permanecendo inalteradas as demais disposições contratuais aplicáveis à cobrança, ao vencimento, ao reajuste e aos encargos moratórios.'));
+  }
+  blocks.push(clause('2.3.', 'Os serviços poderão ser realizados tanto pela **CONTRATADA** como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
+  blocks.push(clause('2.4.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela **CONTRATADA** e conforme facultado no item 2.1. deste Contrato.'));
+
+  blocks.push(clauseTitle('CLÁUSULA TERCEIRA – DA ABRANGÊNCIA'));
+  blocks.push(clause('3.1.', 'A prestação dos serviços contratados atenderá ao(à)(s) seguinte(s) **CONTRATANTE(S)**:'));
+  blocks.push(sub('a)', esc(d.pj.razaoSocial)+', pessoa jurídica de direito privado, inscrita no CNPJ sob o nº '+esc(d.pj.cnpj)+(pfReps.length?';':'.')));
+  pfReps.forEach((r,idx)=>blocks.push(sub(String.fromCharCode(98+idx)+')', esc(r.nome)+', inscrito(a) no CPF sob o nº '+esc(r.cpf)+(idx===pfReps.length-1?'.':';'))));
+  if(pfReps.length){
+    blocks.push(clause('3.2.', 'Em relação ao(à)(s) **CONTRATANTE**(S) pessoa(s) física(s) indicado(a)(s) no item 3.1., a contratação abrangerá advocacia, assessoria e consultoria, inclusive em matérias de natureza particular, sob os aspectos consultivo, documental, estratégico, negocial e preventivo, desde que compreendidas nas áreas de atuação contempladas neste Contrato, não se limitando exclusivamente às repercussões decorrentes da atividade empresarial da pessoa jurídica.'));
+  }
+
+  blocks.push(clauseTitle('CLÁUSULA QUARTA – DO VALOR DOS HONORÁRIOS ADVOCATÍCIOS, DA DATA E DA FORMA DE PAGAMENTO'));
+  blocks.push(clause('4.1.', 'O(A) **CONTRATANTE** adimplirá à **CONTRATADA** pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**.'));
+  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s) emitido(s) pela **CONTRATADA**, ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova da quitação parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('4.3.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de(s) boleto(s) bancário(s) e/ou fatura(s) serão de responsabilidade exclusiva do(a) **CONTRATANTE**, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela **CONTRATADA**. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
+  if(m.carenciaOn){
+    blocks.push(clause('4.4.', 'É expressamente convencionado que, no ano de '+esc(m.carenciaAno)+', a mensalidade permanecerá em R$ '+esc(m.carenciaValor)+', sem incidência de reajuste, sendo a primeira recomposição contratual autorizada apenas a partir de '+esc(m.carenciaData)+', nos termos da Cláusula Quinta.'));
+  }
+  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, dentro de prazo definido pela **CONTRATADA**, ressalvado acordo entre as partes para prazos diferentes.'));
+  blocks.push(clause('4.6.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) **CONTRATANTE**, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
+  blocks.push(clause('4.7.', 'Atividades não atendidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
+
+  blocks.push(clauseTitle('CLÁUSULA QUINTA – DO REAJUSTE E DA CORREÇÃO MONETÁRIA'));
+  blocks.push(clause('5.1.', (m.carenciaOn?'Ressalvada a regra excepcional prevista no item 4.4, os':'Os')+' honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, ou por qualquer outro que venha a substituí-lo, sendo que o(a) **CONTRATANTE** se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
+  if(m.carenciaOn){
+    blocks.push(clause('5.2.', 'A correção monetária prevista nesta Cláusula observará a mesma regra temporal do item 5.1., ficando expressamente convencionado que, no ano de '+esc(m.carenciaAno)+', não haverá atualização dos valores nem reajuste, de modo que a primeira aplicação ocorrerá apenas a partir de '+esc(m.carenciaData)+'.'));
+  }
+  blocks.push(clause('5.3.', 'A base de cálculos a ser aplicada, tanto no reajuste (item 5.1.) quanto na atualização (item 5.2.), obedecerá ao montante vigente naquela oportunidade.'));
+
+  blocks.push(clauseTitle('CLÁUSULA SEXTA – DA MULTA POR ATRASO, DOS JUROS E DA CORREÇÃO MONETÁRIA'));
+  blocks.push(clause('6.1.', 'Em caso de atraso no pagamento, sobre os valores vencidos serão aplicados multa de '+esc(m.multa)+', juros de '+esc(m.juros)+' e correção monetária, sem prejuízo de perdas e danos e aplicação da Cláusula Penal.'));
+  blocks.push(clause('6.2.', 'Na hipótese de inadimplência de qualquer parcela, a **CONTRATADA** notificará formalmente o(a) **CONTRATANTE** para que promova a regularização do débito no prazo de 5 (cinco) dias, contados do recebimento da notificação. Não havendo pagamento no prazo assinalado, as parcelas vincendas poderão ser consideradas antecipadamente vencidas, caracterizando a perda do benefício do pagamento parcelado, sem prejuízo das demais medidas legais e contratuais cabíveis.'));
+  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a **CONTRATADA** suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('6.4.', 'Em caso de inadimplemento, fica autorizada a **CONTRATADA** a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ações judiciais de cobrança, execução do presente Contrato, protesto em cartório e demais providências legais aplicáveis. Todas as medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**, nos termos da legislação vigente.'));
+
+  blocks.push(clauseTitle('CLÁUSULA SÉTIMA – DOS HONORÁRIOS AD EXITUM, DO PAGAMENTO QUOTA LITIS E DA RESERVA DE PERCENTUAL EM JUÍZO'));
+  blocks.push(clause('7.1.', 'Quando houver atuação da **CONTRATADA** apta a gerar resultado econômico positivo direto em favor da **CONTRATANTE** e/ou, nos limites da Cláusula Terceira deste Contrato, em favor da pessoa física nela abrangida, incidirão honorários advocatícios de êxito no percentual de '+esc(m.exito)+', exclusivamente sobre os valores que efetivamente vierem a ser auferidos, recebidos ou recuperados, em razão direta da atuação da **CONTRATADA**.'));
+  blocks.push(clause('7.2.', 'Os honorários de êxito não incidirão sobre valores cuja exigibilidade seja apenas afastada, desconstituída, reduzida, renegociada, postergada ou neutralizada, sem ingresso financeiro ou patrimonial correspondente em favor da **CONTRATANTE**.'));
+  blocks.push(clause('7.3.', 'Para os fins desta Cláusula, considera-se resultado econômico positivo direto, entre outras hipóteses semelhantes, o ingresso financeiro ou patrimonial decorrente de acordo, alvará, indenização, levantamento, liberação de valores, pagamento, recebimento, recuperação de crédito, restituição, reembolso, ressarcimento ou qualquer outra vantagem econômica concreta e mensurável obtida em favor da **CONTRATANTE**, desde que relacionada à atuação da **CONTRATADA**.'));
+  blocks.push(clause('7.4.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de reserva, dedução, retenção e/ou destaque dos honorários advocatícios de êxito, para pagamento direto à **CONTRATADA**, nos termos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('7.5.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios de êxito sejam descontados de eventual acordo, crédito, alvará, depósito, levantamento ou qualquer outro valor economicamente revertido em seu favor, observado o percentual previsto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** e a legislação vigente.'));
+  blocks.push(clause('7.6.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA OITAVA – DO DIREITO DE RETENÇÃO EM CASO DE INADIMPLÊNCIA'));
+  blocks.push(clause('8.1.', 'O(A) **CONTRATANTE** autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a **CONTRATADA** proceda à compensação, ao desconto e/ou à retenção de valores recebidos em seu favor — seja em razão de acordo, alvará, depósito bancário, levantamento, precatório e/ou requisição de pequeno valor — até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+
+  blocks.push(clauseTitle('CLÁUSULA NONA – DO PAGAMENTO DE HONORÁRIOS ADVOCATÍCIOS EM CASO DE ACORDO E/OU PARCELAMENTO DE CRÉDITO A SER RECEBIDO PELO(A) CONTRATANTE'));
+  blocks.push(clause('9.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) **CONTRATANTE**, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
+  blocks.push(clause('9.2.', 'O valor total dos honorários contratados poderá ser exigido de imediato ou, se já adimplido, retido e não devolvido, conforme o caso, nas seguintes hipóteses:'));
+  blocks.push(sub('a)', 'acordo, ajuste direto ou composição com a parte adversa, sem a intervenção da **CONTRATADA**, ainda que parcial;'));
+  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) **CONTRATANTE**, ou por qualquer circunstância não imputável à **CONTRATADA**;'));
+  blocks.push(sub('c)', 'renúncia, quando decorrente de condutas do(a) **CONTRATANTE** que comprometam, de forma objetiva, a independência profissional e técnica dos advogados, inclusive pela exigência de providências manifestamente inadequadas ou juridicamente inviáveis, pela imposição reiterada de estratégia incompatível com a orientação profissional adotada, pela omissão injustificada de informações ou documentos essenciais à condução dos trabalhos, ou por outras formas de ingerência indevida que inviabilizem o regular desempenho da atuação contratada;'));
+  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da **CONTRATADA**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA – DOS HONORÁRIOS ADVOCATÍCIOS AVULSOS E SUCUMBENCIAIS'));
+  blocks.push(clause('10.1.', 'Há possibilidade de contratação de honorários advocatícios avulsos nas situações não atendidas por este Contrato e/ou naquelas que, pela complexidade, exijam novo acordo de prestação de serviços e remuneração.'));
+  blocks.push(clause('10.2.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA PRIMEIRA – DA EVENTUAL ONEROSIDADE EXCESSIVA DE ATIVIDADE E/OU TRABALHO E DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO'));
+  blocks.push(clause('11.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a **CONTRATADA** readequar o valor dos honorários advocatícios, desde que com anuência do(a) **CONTRATANTE**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEGUNDA – DOS CUSTOS EXTRAS'));
+  blocks.push(clause('12.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
+  blocks.push(clause('12.2.', 'As despesas de alimentação, estadia(s) e locomoção da **CONTRATADA**, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) **CONTRATANTE**, observando-se:'));
+  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo e combustível, alimentação e estadia(s) correm por conta do(a) **CONTRATANTE**, ou mediante o pagamento, à **CONTRATADA**, de '+esc(m.km)+' por quilômetro;'));
+  blocks.push(sub('b)', 'não haverá custos com diária, exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) **CONTRATANTE** pagará à **CONTRATADA** a importância de '+esc(m.diaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
+  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os custos e as despesas.'));
+  blocks.push(clause('12.3.', 'O(A) **CONTRATANTE** não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a **CONTRATADA** responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
+  blocks.push(clause('12.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA TERCEIRA – DAS DILIGÊNCIAS EXTERNAS ESPECIAIS'));
+  blocks.push(clause('13.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) **CONTRATANTE**, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUARTA – DA VIGÊNCIA'));
+  blocks.push(clause('14.1.', 'Este Contrato vigorará pelo prazo disposto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
+  blocks.push(clause('14.2.', 'A renovação automática deste Contrato operará caso nenhuma das partes manifeste interesse diverso, no prazo de 30 (trinta) dias que antecede o vencimento.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUINTA – DA RESCISÃO E DA MULTA EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO'));
+  blocks.push(clause('15.1.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, enviada à outra parte com antecedência mínima de 30 (trinta) dias.'));
+  blocks.push(clause('15.2.', 'Considerando que o presente Contrato é celebrado por prazo determinado de '+esc(m.qtdParcelas)+' meses, fica expressamente ajustado que, na hipótese de cancelamento, desistência, dissolução, rescisão, revogação, rompimento ou qualquer outra forma de encerramento antecipado da relação entre as partes por iniciativa do(a) **CONTRATANTE**, antes do termo final de vigência, incidirá multa compensatória correspondente a '+esc(m.multaRescisoria)+' do saldo das parcelas vincendas até o respectivo término, sem prejuízo do pagamento dos honorários vencidos, dos encargos moratórios, dos honorários de êxito eventualmente devidos, das despesas adiantadas e de outras obrigações já constituídas até a data da efetiva extinção do vínculo.'));
+  blocks.push(clause('15.3.', 'A multa prevista no item anterior será exigível independentemente da efetiva utilização integral dos serviços até a data da rescisão, por decorrer da ruptura antecipada de contratação firmada por prazo certo, da reserva operacional e técnica assumida pela **CONTRATADA** e da legítima expectativa de continuidade da relação contratual durante todo o período pactuado.'));
+  blocks.push(clause('15.4.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso, a **CONTRATADA** preservará o direito ao recebimento dos honorários de êxito pactuados, quando cabíveis, nos termos deste Contrato.'));
+  blocks.push(clause('15.5.', 'No prazo de 30 (trinta) dias contados da notificação de rescisão, a **CONTRATADA** iniciará o processo de renúncia e/ou substabelecimento do(s) mandato(s) eventualmente outorgado(s), observadas as normas legais e éticas aplicáveis.'));
+  blocks.push(clause('15.6.', 'Caso seja de interesse da **CONTRATANTE** que determinado(s) processo(s), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso permaneça(m) sob o patrocínio da **CONTRATADA**, deverá ser formalizado instrumento contratual próprio, com ajuste específico de escopo e honorários.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEXTA – DA CLÁUSULA PENAL'));
+  blocks.push(clause('16.1.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que der causa poderá ser responsabilizada em Cláusula Penal correspondente a '+esc(m.penal)+' sobre o valor total do presente Instrumento.'));
+  blocks.push(clause('16.2.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(m.cobrancaExtra)+' (extrajudicial) ou '+esc(m.cobrancaJudicial)+' (judicial) sobre o valor total do débito, a título de remuneração pelo trabalho, sem prejuízo de eventual apuração de perdas e danos.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SÉTIMA – DOS HERDEIROS E/OU SUCESSORES'));
+  blocks.push(clause('17.1.', 'O presente Contrato vincula e obriga o(a) **CONTRATANTE**, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA OITAVA – DA NATUREZA ADVOCATÍCIA'));
+  blocks.push(clause('18.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a **CONTRATADA** dar garantias de decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
+  blocks.push(clause('18.2.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA NONA – DA CONFIDENCIALIDADE E DO SIGILO'));
+  blocks.push(clause('19.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos **CONTRATANTES**.'));
+  blocks.push(clause('19.2.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA – DA AUTORIZAÇÃO E UTILIZAÇÃO DOS DADOS'));
+  blocks.push(clause('20.1.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA PRIMEIRA – DA ATUALIZAÇÃO E VERACIDADE DOS DADOS'));
+  blocks.push(clause('21.1.', 'O(A) **CONTRATANTE** declara que os dados fornecidos estão atualizados e são verdadeiros, responsabilizando-se integralmente pela atualização e veracidade das informações prestadas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA SEGUNDA – DAS AUDIÊNCIAS VIRTUAIS E DA RESPONSABILIDADE PELA CONEXÃO'));
+  blocks.push(clause('22.1.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('22.2.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('22.3.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA TERCEIRA – DOS RISCOS DIGITAIS E DA ISENÇÃO DE RESPONSABILIDADE'));
+  blocks.push(clause('23.1.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
+  blocks.push(clause('23.2.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('23.3.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUARTA – DAS CONSIDERAÇÕES FINAIS'));
+  blocks.push(clause('24.1.', 'A **CONTRATADA** compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) **CONTRATANTE** o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
+  blocks.push(clause('24.2.', 'Os **CONTRATANTES** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUINTA – DO FORO'));
+  blocks.push(clause('25.1.', 'Os **CONTRATANTES** elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+
+  blocks.push(C(`<div class="blk" style="margin-top:3mm;">E assim, por ser esta a expressão do que ajustaram, os <strong>CONTRATANTES</strong> firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICA EMPRESARIAL</strong>, em 02 (duas) vias de igual teor e forma, juntamente de 02 (duas) testemunhas.</div>`));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:4mm;"><strong>CONTRATANTE(S):</strong></div>`));
+  blocks.push(C(`<div class="sig-line"><div class="rule"></div><div class="name">${esc(d.pj.razaoSocial)}</div><div class="doc">CNPJ/MF nº ${esc(d.pj.cnpj)}</div></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:8mm;">${reps.map(r=>`<div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">${esc(r.nome)}</div><div class="doc">CPF/MF nº ${esc(r.cpf)}</div></div>`).join('')}</div>`));
+
+  blocks.push(C(`<div class="blk center" style="margin-top:6mm;"><strong>CONTRATADA:</strong></div>`));
+  blocks.push(C(`<div class="sig-line"><div class="name">Fonseca e Braga Sociedade de Advogados</div><div class="doc">(Jonathan Fonseca Sociedade Individual de Advogados)<br>CNPJ/MF nº 57.704.224/0001-00</div></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:8mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG nº 163.443</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Hecy Braga</div><div class="doc">OAB/MG nº 95.948</div></div>
+  </div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:8mm;"><strong>TESTEMUNHAS:</strong></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:14mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+  </div>`));
+
+  return blocks;
+}
+
+/* ---------- construção dos blocos do Contrato de Condomínio ---------- */
+function buildContratoCondominio(d){
+  const blocks=[];
+  const m=d.mensal;
+  blocks.push(C(`<div class="blk center" style="font-weight:700;font-size:10pt;margin-bottom:3.5mm;">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICA CONDOMINIAL</div>`));
+  blocks.push(C(`<div class="blk"><strong>CONTRATANTE(S):</strong></div>`));
+  blocks.push(C(qualEmpresaTable(d.condominio)));
+  blocks.push(C(`<div class="blk"><strong>REPRESENTANTE LEGAL / SÍNDICO(A):</strong></div>`));
+  blocks.push(C(qualTableContratante(d.sindico)));
+  blocks.push(C(`<div class="blk"><strong>CONTRATADA: FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</strong> (JONATHAN FONSECA SOCIEDADE INDIVIDUAL DE ADVOCACIA), pessoa jurídica de direito privado, inscrita no <strong>CNPJ/MF</strong> sob o nº <strong>57.704.224/0001-00</strong>, com sede nesta cidade de Uberlândia, Estado de Minas Gerais, na Rua Senador Salgado Filho, 426, Bairro Tabajaras, CEP 38400-236, neste ato representada pelo sócio-administrador <strong>JONATHAN FONSECA</strong>, brasileiro, casado, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>163.443</strong>, e pelo sócio <strong>HECY BRAGA</strong>, brasileiro, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>95.948</strong>, ambos residentes e domiciliados nesta cidade de Uberlândia, Estado de Minas Gerais.</div>`));
+
+  blocks.push(clauseTitle('CLÁUSULA PRIMEIRA – DO OBJETO E DA ESPECIFICAÇÃO DOS SERVIÇOS'));
+  blocks.push(clause('1.1.', 'A **CONTRATADA** prestará serviços de advocacia, assessoria e consultoria jurídicas nas seguintes <strong>ÁREAS DE ATUAÇÃO</strong>:'));
+  areaTableBlocks(d).forEach(b=>blocks.push(b));
+
+  blocks.push(clauseTitle('CLÁUSULA SEGUNDA – DO QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS'));
+  const rows=[
+    ['VALOR (MENSALIDADE)', 'R$ '+m.valor+' ('+m.valorExtenso+')'],
+    ['FORMA(S) DE PAGAMENTO', 'MENSALIDADE'],
+    ['DATA DO 1º (PRIMEIRO) PAGAMENTO', m.data1],
+    ['QUANTIDADE DE PARCELAS', m.qtdParcelas],
+    ['BOLETO', m.boleto],
+    ['ÍNDICE DE ATUALIZAÇÃO', m.indice],
+    ['CORREÇÃO MONETÁRIA', m.correcao],
+    ['DESCONTO', m.desconto],
+    ['VALOR C/ DESCONTO', m.valorDesconto],
+    ['13º PAGAMENTO', m.hon13],
+    ['FORMA(S) DE PAGAMENTO DO 13º', m.hon13Forma],
+    ['DATA(S) DE PAGAMENTO DO 13º', m.hon13Data],
+    ['MULTA / ATRASO / PAGTO.', m.multa],
+    ['JUROS / ATRASO / PAGTO.', m.juros],
+    ['CLÁUSULA PENAL', m.penal],
+    ['HONORÁRIOS (COBRANÇA EXTRAJUDICIAL)', m.cobranca],
+    ['HONORÁRIOS DE ÊXITO', m.exito]
+  ];
+  rows.forEach((r,idx)=>blocks.push(C(honRow('2.1.'+(idx+1)+'.  '+r[0],r[1],idx===0))));
+  blocks.push(clause('2.2.', 'Os serviços poderão ser realizados tanto pela **CONTRATADA** como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
+  blocks.push(clause('2.3.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela **CONTRATADA** e conforme facultado no item 2.2. deste Contrato.'));
+
+  blocks.push(clauseTitle('CLÁUSULA TERCEIRA – DA ABRANGÊNCIA'));
+  blocks.push(clause('3.1.', 'A prestação dos serviços contratados atenderá a(s) seguinte(s) pessoa(s):'));
+  blocks.push(C(`<div class="blk sub" style="margin-left:6mm;">⮚ ${esc(d.condominio.razaoSocial)} – CNPJ/MF nº ${esc(d.condominio.cnpj)}.</div>`));
+
+  blocks.push(clauseTitle('CLÁUSULA QUARTA – DO VALOR DOS HONORÁRIOS ADVOCATÍCIOS, DA DATA E DA FORMA DE PAGAMENTO'));
+  blocks.push(clause('4.1.', 'O(A) **CONTRATANTE** adimplirá à **CONTRATADA** pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**.'));
+  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s), emitido(s) pela **CONTRATADA** ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova do adimplemento parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('4.3.', 'Fica desde já pactuado que os custos administrativos relativos à emissão e à gestão dos boletos bancários e/ou faturas são de responsabilidade exclusiva do(a) **CONTRATANTE**, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela **CONTRATADA**. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos, de natureza complementar.'));
+  blocks.push(clause('4.4.', 'O valor do(s) boleto(s) bancário(s) e/ou fatura(s) será reajustado anualmente, sempre no dia 1º (primeiro) de janeiro de cada ano de vigência contratual, com base na tabela interna de reajustes praticada pela **CONTRATADA**, refletindo os custos operacionais e de manutenção administrativa.'));
+  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, no prazo definido pela **CONTRATADA**, salvo ajuste diverso entre as partes.'));
+  blocks.push(clause('4.6.', 'Os honorários advocatícios não serão devolvidos em caso de êxito, ou não, de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, visto que a atividade advocatícia é de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
+  blocks.push(clause('4.7.', 'Atividades não atendidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
+
+  blocks.push(clauseTitle('CLÁUSULA QUINTA – DO REAJUSTE E DA CORREÇÃO MONETÁRIA'));
+  blocks.push(clause('5.1.', 'Os honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, ou por qualquer outro que venha a lhe substituir, sendo que o(a) **CONTRATANTE** se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
+  blocks.push(clause('5.2.', 'Os honorários advocatícios também terão seus valores monetariamente atualizados, sempre no dia 1º (primeiro) de janeiro, de acordo com a variação anual da Tabela de Fatores de Atualização Monetária utilizada pelo Tribunal de Justiça do Estado de Minas Gerais – TJMG – acumulada no período.'));
+  blocks.push(clause('5.3.', 'A base de cálculos a ser aplicada, tanto no reajuste (item 5.1.) quanto na atualização (item 5.2.), obedecerá ao montante vigente naquela oportunidade.'));
+
+  blocks.push(clauseTitle('CLÁUSULA SEXTA – DA MULTA POR ATRASO, DOS JUROS E DA CORREÇÃO MONETÁRIA'));
+  blocks.push(clause('6.1.', 'Em caso de atraso no pagamento, sobre os valores vencidos serão aplicados multa de '+esc(m.multa)+', juros de '+esc(m.juros)+' e correção monetária, sem prejuízo de perdas e danos e aplicação da Cláusula Penal.'));
+  blocks.push(clause('6.2.', 'Na circunstância de inadimplência de qualquer parcela, as demais (vincendas) poderão ser consideradas automaticamente vencidas, ou seja, haverá o vencimento antecipado deste Contrato com a consequente perda do benefício do pagamento mensal, tudo a critério da **CONTRATADA**.'));
+  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a **CONTRATADA** suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('6.4.', 'Em caso de não cumprimento das obrigações de pagamento, ou configurada a inadimplência, fica autorizada à **CONTRATADA** a adoção de medidas administrativas e/ou judiciais cabíveis para o recebimento dos honorários devidos, incluindo a propositura de ações judiciais, inserção do nome do(a) **CONTRATANTE** em cadastros de proteção ao crédito (SERASA, SPC Brasil) e a realização de protestos em cartório, nos termos da legislação vigente. Todas as medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA SÉTIMA – DOS HONORÁRIOS AD EXITUM, DO PAGAMENTO QUOTA LITIS E DA RESERVA DE PERCENTUAL EM JUÍZO'));
+  blocks.push(clause('7.1.', 'Nas atividades, processos e trabalhos em geral, sejam administrativos e/ou judiciais, em que o(a) **CONTRATANTE** receber bem, capital, compensação, cota, crédito, desconto, dinheiro, direito, fruto, indenização, numerário, provento, quantia, reembolso, remuneração, rendimento, reparação, ressarcimento, resultado, revisão, salário, saldo, título, valor, vantagem e/ou verba, caberá à **CONTRATADA** o percentual de '+esc(m.exito)+' do valor total do êxito da ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, a título de honorários advocatícios *ad exitum*.'));
+  blocks.push(clause('7.2.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de reserva e dedução dos honorários, de qualquer natureza, inclusive sobre o valor total do êxito, para pagamento direto à **CONTRATADA**.'));
+  blocks.push(clause('7.3.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('7.4.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA OITAVA – DO PAGAMENTO DE HONORÁRIOS ADVOCATÍCIOS EM CASO DE ACORDO E/OU PARCELAMENTO DE CRÉDITO A SER RECEBIDO PELO(A) CONTRATANTE'));
+  blocks.push(clause('8.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) **CONTRATANTE**, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
+  blocks.push(clause('8.2.', 'O total dos honorários poderá ser exigido imediatamente nas seguintes situações:'));
+  blocks.push(sub('a)', 'quando houver composição com a parte *ex adversa*, sem a intervenção da **CONTRATADA**;'));
+  blocks.push(sub('b)', 'em caso de não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por qualquer circunstância não determinada pela **CONTRATADA**;'));
+  blocks.push(sub('c)', 'havendo revogação de mandato(s) antes do término de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que ocorra culpa da **CONTRATADA**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA NONA – DOS HONORÁRIOS ADVOCATÍCIOS AVULSOS E SUCUMBENCIAIS'));
+  blocks.push(clause('9.1.', 'Há possibilidade de contratação de honorários advocatícios avulsos nas situações não atendidas por este Contrato e/ou naquelas que, pela complexidade, exijam novo acordo de prestação de serviços e remuneração.'));
+  blocks.push(clause('9.2.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA – DA EVENTUAL ONEROSIDADE EXCESSIVA DE ATIVIDADE E/OU TRABALHO E DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO'));
+  blocks.push(clause('10.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a **CONTRATADA** readequar o valor dos honorários advocatícios, desde que com anuência do(a) **CONTRATANTE**.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA PRIMEIRA – DOS CUSTOS EXTRAS'));
+  blocks.push(clause('11.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
+  blocks.push(clause('11.2.', 'As despesas de alimentação, estadia(s) e locomoção da **CONTRATADA**, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) **CONTRATANTE**, observando-se:'));
+  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo(s) e combustível, alimentação e estadia(s) correm por conta do(a) **CONTRATANTE** ou mediante o pagamento, à **CONTRATADA**, de '+esc(m.cdKm)+' por quilômetro;'));
+  blocks.push(sub('b)', 'não haverá custos com diária(s), exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) **CONTRATANTE** pagará à **CONTRATADA** a importância de '+esc(m.cdDiaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
+  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os custos e as despesas.'));
+  blocks.push(clause('11.3.', 'O(A) **CONTRATANTE** não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a **CONTRATADA** responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
+  blocks.push(clause('11.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEGUNDA – DAS DILIGÊNCIAS EXTERNAS ESPECIAIS'));
+  blocks.push(clause('12.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) **CONTRATANTE**, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA TERCEIRA – DA VIGÊNCIA'));
+  blocks.push(clause('13.1.', 'Este Contrato vigorará pelo prazo disposto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
+  blocks.push(clause('13.2.', 'A renovação automática deste Contrato operará caso nenhuma das partes manifeste interesse diverso, no prazo de 30 (trinta) dias que antecede o vencimento.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUARTA – DA RESCISÃO E DA MULTA EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO'));
+  blocks.push(clause('14.1.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, enviada à outra parte com antecedência mínima de 30 (trinta) dias.'));
+  blocks.push(clause('14.2.', 'Em caso de rescisão unilateral, será aplicada multa correspondente ao valor integral deste Contrato, como forma de compensação pelos compromissos assumidos e prejuízos decorrentes da interrupção da relação contratual.'));
+  blocks.push(clause('14.3.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões) em curso que venha(m) a ser renunciada(s) ou substabelecida(s), a **CONTRATADA** terá direito ao recebimento integral dos honorários de êxito pactuados neste Contrato, independentemente da etapa processual em que se encontre(m), nos termos acordados.'));
+  blocks.push(clause('14.4.', 'No prazo de 30 (trinta) dias da notificação, a **CONTRATADA** iniciará o processo de renúncia ou substabelecimento do(s) mandato(s) outorgado(s) pelo(a) **CONTRATANTE**.'));
+  blocks.push(clause('14.5.', 'Caso seja de interesse do(a) **CONTRATANTE** que o(s) processo(s) em curso(s) permaneça(m) sob o patrocínio da **CONTRATADA**, deverá ser pactuado novo Contrato de Prestação de Serviços e Honorários Advocatícios.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUINTA – DA CLÁUSULA PENAL'));
+  blocks.push(clause('15.1.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que der causa poderá ser responsabilizada em Cláusula Penal correspondente a '+esc(m.penal)+' sobre o valor total do presente Instrumento.'));
+  blocks.push(clause('15.2.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(m.cobranca)+' sobre o valor total do débito, a título de remuneração pelo trabalho, sem prejuízo de eventual apuração de perdas e danos.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEXTA – DOS HERDEIROS E/OU SUCESSORES'));
+  blocks.push(clause('16.1.', 'O presente Contrato vincula e obriga o(a) **CONTRATANTE**, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA SÉTIMA – DA NATUREZA ADVOCATÍCIA'));
+  blocks.push(clause('17.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a **CONTRATADA** dar garantias de decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
+  blocks.push(clause('17.2.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA OITAVA – DA CONFIDENCIALIDADE E DO SIGILO'));
+  blocks.push(clause('18.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos **CONTRATANTES**.'));
+  blocks.push(clause('18.2.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
+
+  blocks.push(clauseTitle('CLÁUSULA DÉCIMA NONA – DA AUTORIZAÇÃO E UTILIZAÇÃO DOS DADOS'));
+  blocks.push(clause('19.1.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA – DA VERACIDADE E ATUALIZAÇÃO DOS DADOS'));
+  blocks.push(clause('20.1.', 'O(A) **CONTRATANTE** declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA PRIMEIRA – DAS AUDIÊNCIAS VIRTUAIS E DA RESPONSABILIDADE PELA CONEXÃO'));
+  blocks.push(clause('21.1.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('21.2.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('21.3.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA SEGUNDA – DOS RISCOS DIGITAIS E DA ISENÇÃO DE RESPONSABILIDADE'));
+  blocks.push(clause('22.1.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
+  blocks.push(clause('22.2.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('22.3.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA TERCEIRA – DAS CONSIDERAÇÕES FINAIS'));
+  blocks.push(clause('23.1.', 'A **CONTRATADA** compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) **CONTRATANTE** o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
+  blocks.push(clause('23.2.', 'Os **CONTRATANTES** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+
+  blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUARTA – DO FORO'));
+  blocks.push(clause('24.1.', 'Os **CONTRATANTES** elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+
+  blocks.push(C(`<div class="blk" style="margin-top:3mm;">E assim, por ser esta a expressão do que ajustaram, os <strong>CONTRATANTES</strong> firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICAS</strong>, em 02 (duas) vias de igual teor e forma, juntamente de 02 (duas) testemunhas.</div>`));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:4mm;"><strong>CONTRATANTE(S):</strong></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:6mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">${esc(d.condominio.razaoSocial)}</div><div class="doc">CNPJ/MF nº ${esc(d.condominio.cnpj)}</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">${esc(d.sindico.nome)}</div><div class="doc">CPF/MF nº ${esc(d.sindico.cpf)}</div></div>
+  </div>`));
+
+  blocks.push(C(`<div class="blk center" style="margin-top:6mm;"><strong>CONTRATADA:</strong></div>`));
+  blocks.push(C(`<div class="sig-line"><div class="name">Fonseca e Braga Sociedade de Advogados</div><div class="doc">(Jonathan Fonseca Sociedade Individual de Advogados)<br>CNPJ/MF nº 57.704.224/0001-00</div></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:8mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG nº 163.443</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Hecy Braga</div><div class="doc">OAB/MG nº 95.948</div></div>
+  </div>`));
+  blocks.push(C(`<div class="blk" style="margin-top:8mm;"><strong>TESTEMUNHAS:</strong></div>`));
+  blocks.push(C(`<div class="sig-pair" style="margin-top:14mm;">
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+    <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">&nbsp;</div></div>
+  </div>`));
+
+  return blocks;
+}
+
+function secBar(text){ return C(`<div class="sec-bar">${esc(text)}</div>`); }
+function arrowItem(html){ return C(`<div class="blk arrow"><div class="mk">➢</div><div class="txt">${html}</div></div>`); }
+function assinaturaSociosBlock(){
+  return C(`<div class="blk center" style="margin-top:4mm;">Atenciosamente,</div>
+    <div class="sig-pair" style="margin-top:10mm;">
+      <div class="sig-line" style="margin:0;"><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG nº 163.443</div></div>
+      <div class="sig-line" style="margin:0;"><div class="name">Hecy Braga</div><div class="doc">OAB/MG nº 95.948</div></div>
+    </div>`);
+}
+
+/* ---------- construção dos blocos da Proposta Pessoa Física/Jurídica ---------- */
+function buildPropostaPFPJ(d){
+  const blocks=[];
+  const p=d.proposta;
+  const pj = p.subtipo==='pj';
+  const ref = pj ? 'a Empresa' : 'o(a) Cliente';
+  const nomeDoc = pj ? esc(p.nome) : esc(p.nome);
+  const docNum = pj ? ('CNPJ nº '+esc(p.cnpj)) : ('CPF nº '+esc(p.cpf));
+
+  blocks.push(C(`<div class="cover-rule"></div>`));
+  blocks.push(C(`<div class="cover-title">PROPOSTA DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA${pj?', ASSESSORIA E CONSULTORIA JURÍDICA EMPRESARIAL':''}</div>`));
+  blocks.push(C(`<div class="cover-rule"></div>`));
+  blocks.push(C(`<div class="cover-sub">elaborada especialmente para <strong>${nomeDoc}</strong>.</div>`));
+
+  const idRows = pj ? [
+    ['Empresa', p.nome], ['Responsável', p.responsavel], ['CNPJ', p.cnpj], ['Data de Abertura', p.dataAbertura],
+    ['Porte', p.porte], ['Atividades Econômicas', p.atividades], ['Cidade/UF', p.cidadeUf], ['Escopo-base', p.escopoBase]
+  ] : [
+    ['Nome', p.nome], ['CPF', p.cpf], ['Profissão', p.profissao], ['Cidade/UF', p.cidadeUf], ['Escopo-base', p.escopoBase]
+  ];
+  idRows.forEach((r,idx)=>blocks.push(C(honRow(r[0].toUpperCase(), r[1], idx===0))));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(p.localEmissao)}, <strong>${esc(p.dataEmissao)}</strong>.</div>`));
+
+  blocks.push(secBar('1. APRESENTAÇÃO'));
+  blocks.push(clause('1.1.', 'Agradecemos a confiança depositada e a oportunidade de apresentar esta Proposta de Prestação de Serviços Advocatícios, elaborada pela Fonseca e Braga Sociedade de Advogados.'));
+  blocks.push(clause('1.2.', 'A presente Proposta foi concebida para oferecer suporte jurídico'+(pj?' empresarial':' pessoal')+' contínuo, técnico e estratégico, com foco na prevenção de riscos, no aprimoramento das decisões e na consolidação da segurança jurídica.'));
+  blocks.push(clause('1.3.', 'Com a concordância quanto aos termos desta Proposta, solicitamos o envio do respectivo aceite para o e-mail proposta@fonsecaebraga.com.br, a fim de viabilizar a imediata formalização contratual e o início da prestação dos serviços.'));
+
+  blocks.push(secBar('2. ENTENDIMENTOS E PREMISSAS'));
+  blocks.push(clause('2.1.', fmt(p.entendimentos || 'Esta Proposta foi estruturada com base nas informações cadastrais e nas respostas ao questionário encaminhado.')));
+
+  blocks.push(secBar('3. FILOSOFIA DE TRABALHO'));
+  blocks.push(clause('3.1.', 'A atuação da Fonseca e Braga Sociedade de Advogados será orientada por critérios de técnica, responsabilidade institucional, estratégia e agilidade, com ênfase na racionalização de riscos, na prevenção de passivos e na construção de soluções juridicamente seguras.'));
+  blocks.push(clause('3.2.', 'O trabalho será desenvolvido com abordagem próxima, executiva e diligente, preservando a qualidade técnica da advocacia sem perder de vista a realidade operacional, financeira e decisória de '+ref+'.'));
+
+  blocks.push(secBar('4. RELAÇÃO DE ATIVIDADES E TRABALHOS'));
+  blocks.push(clause('4.1.', 'A presente Proposta tem por objeto a prestação contínua de serviços de advocacia, assessoria e consultoria jurídica, em favor de '+ref+', de forma personalizada, estratégica e alinhada às suas necessidades jurídicas.'));
+  blocks.push(clause('4.2.', 'A atuação do Escritório compreenderá orientação jurídica qualificada, análise e mitigação de riscos, apoio à tomada de decisões, revisão de situações concretas e acompanhamento das demandas, nos limites do escopo ajustado nesta Proposta.'));
+  blocks.push(clause('4.3.', 'Observadas a necessidade, a pertinência e a aderência à realidade de '+ref+', a assessoria abrangerá, em caráter contínuo, preventivo e estratégico, as seguintes frentes (<strong>ÁREAS DE ATUAÇÃO</strong>):'));
+  areaTableBlocks(d).forEach(b=>blocks.push(b));
+  blocks.push(clause('4.4.', 'Em razão da complexidade própria da matéria tributária, a atuação do Escritório nessa frente compreende suporte consultivo ordinário e preventivo, podendo demandas específicas ou de maior profundidade técnica ser objeto de alinhamento próprio.'));
+  blocks.push(clause('4.5.', 'Sempre que a demanda exigir atuação extraordinária, projeto específico ou dedicação técnica não compatível com a dinâmica ordinária, o Escritório poderá apresentar proposta complementar correspondente, com prévio alinhamento de escopo e honorários.'));
+
+  blocks.push(secBar(pj?'5. EMPRESA ATENDIDA':'5. CLIENTE ATENDIDO(A)'));
+  blocks.push(clause('5.1.', 'Os serviços objeto desta Proposta serão prestados exclusivamente em favor de <strong>'+esc(p.nome)+'</strong> – '+docNum+'.'));
+
+  blocks.push(secBar('6. HONORÁRIOS E FORMA DE PAGAMENTO'));
+  blocks.push(clause('6.1.', 'Para a execução dos serviços descritos nesta Proposta, a Fonseca e Braga Sociedade de Advogados apresenta as seguintes condições relativas aos honorários advocatícios:'));
+  blocks.push(arrowItem('<strong>Honorários de implantação:</strong> '+esc(p.implantacao)));
+  blocks.push(arrowItem('<strong>Honorários mensais:</strong> R$ '+esc(p.valorMensal)));
+  blocks.push(arrowItem('<strong>Tributação:</strong> '+esc(p.tributacao)));
+  blocks.push(arrowItem('<strong>Início da prestação dos serviços:</strong> '+esc(p.inicioPrestacao)));
+  blocks.push(arrowItem('<strong>Data do primeiro vencimento:</strong> '+esc(p.data1Venc)));
+  blocks.push(arrowItem('<strong>Data dos demais vencimentos:</strong> '+esc(p.dataVencs)));
+  blocks.push(arrowItem('<strong>Forma de pagamento:</strong> '+esc(p.formaPagamento)+', com taxa de emissão de '+esc(p.taxaBoleto)+' já incluída no valor dos honorários.'));
+  blocks.push(clause('6.2.', 'A condição econômica ora apresentada foi concebida de forma proporcional à estrutura atual, preservando equilíbrio entre viabilidade comercial, qualidade técnica e continuidade do suporte jurídico.'));
+
+  blocks.push(secBar('7. ESCOPO RESUMIDO DOS TRABALHOS INCLUSOS'));
+  blocks.push(clause('7.1.', 'Integram o escopo ordinário, entre outras atividades compatíveis:'));
+  p.escopoItens.forEach(item=>blocks.push(arrowItem(fmt(item))));
+
+  blocks.push(secBar('8. HONORÁRIOS DE ÊXITO'));
+  blocks.push(clause('8.1.', 'Quando houver atuação apta a gerar resultado econômico positivo direto a '+ref+', incidirão honorários de êxito de '+esc(p.exito)+', exclusivamente sobre os valores que '+ref+' efetivamente vier a auferir, receber ou recuperar em razão da direta atuação do Escritório.'));
+  blocks.push(clause('8.2.', 'Os honorários de êxito não incidirão sobre valores cuja exigibilidade seja apenas afastada, desconstituída ou reduzida, sem ingresso financeiro correspondente.'));
+
+  blocks.push(secBar('9. PRAZO DA CONTRATAÇÃO'));
+  blocks.push(clause('9.1.', 'Para fins de estabilidade, continuidade e amadurecimento da prestação dos serviços, esta Proposta considera como referência contratação pelo prazo de '+esc(p.prazo)+'.'));
+  blocks.push(clause('9.2.', 'A definição final das condições de vigência será refletida no instrumento contratual próprio, a ser formalizado após o aceite desta Proposta.'));
+
+  blocks.push(secBar('10. CUSTAS, DESPESAS E TRIBUTOS'));
+  blocks.push(clause('10.1.', 'Os valores informados nesta Proposta referem-se exclusivamente aos honorários advocatícios, já com a devida tributação, não estando incluídas custas judiciais, despesas cartorárias, deslocamentos extraordinários, diligências externas, emolumentos, taxas, ou quaisquer outros dispêndios eventualmente necessários, os quais correrão por conta de '+ref+', mediante prévio alinhamento.'));
+
+  blocks.push(secBar('11. DIFERENCIAL: INTERLOCUÇÃO DO ATENDIMENTO'));
+  blocks.push(clause('11.1.', 'A Fonseca e Braga Sociedade de Advogados designará interlocutor(a) permanente para atendimento a '+ref+', a fim de garantir comunicação ágil, eficaz e organizada durante toda a prestação dos serviços.'));
+  blocks.push(clause('11.2.', ref.charAt(0).toUpperCase()+ref.slice(1)+' deverá indicar responsável pelo acompanhamento e pela tramitação das informações pertinentes à execução dos trabalhos, favorecendo alinhamento, celeridade e segurança na condução das demandas.'));
+
+  blocks.push(secBar('12. LOCAL DOS TRABALHOS'));
+  blocks.push(clause('12.1.', 'As atividades e os serviços objeto desta Proposta serão desenvolvidos na cidade de '+esc(p.localTrabalhos)+', bem como por meios remotos, conforme a natureza da demanda e a conveniência operacional do atendimento.'));
+
+  blocks.push(secBar('13. VALIDADE DA PROPOSTA'));
+  blocks.push(clause('13.1.', 'A presente Proposta de Prestação de Serviços Advocatícios terá validade até o dia <strong>'+esc(p.validade)+'</strong>.'));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(p.localEmissao)}, <strong>${esc(p.dataEmissao)}</strong>.</div>`));
+
+  return blocks;
+}
+
+/* ---------- construção dos blocos da Proposta de Condomínio ---------- */
+function buildPropostaCondominio(d){
+  const blocks=[];
+  const p=d.propostaCondominio;
+  const nome = d.condominio.razaoSocial;
+
+  blocks.push(C(`<div class="cover-rule"></div>`));
+  blocks.push(C(`<div class="cover-title">PROPOSTA DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA</div>`));
+  blocks.push(C(`<div class="cover-rule"></div>`));
+  blocks.push(C(`<div class="cover-sub" style="font-weight:700;">${esc(nome)}.</div>`));
+
+  blocks.push(secBar('APRESENTAÇÃO'));
+  blocks.push(C(`<div class="blk">Agradecemos a confiança depositada e a oportunidade de apresentar esta Proposta de Prestação de Serviços Advocatícios, elaborada pela Fonseca e Braga Sociedade de Advogados (Fonseca e Braga – F&amp;B).</div>`));
+  blocks.push(C(`<div class="blk">Em caso de concordância, solicitamos o envio do aceite da Proposta para o e-mail proposta@fonsecaebraga.com.br.</div>`));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(p.localEmissao)}, ${esc(p.dataEmissao)}.</div>`));
+  blocks.push(assinaturaSociosBlock());
+
+  blocks.push(secBar('1. ENTENDIMENTOS E PREMISSAS'));
+  blocks.push(clause('1.1.', 'Esta Proposta foi preparada com base nas melhores práticas profissionais da F&B na prestação de serviços de advocacia, assessoria e consultoria jurídicas, pautando-se nos princípios de agilidade, ética, excelência e transparência.'));
+
+  blocks.push(secBar('2. FILOSOFIA DE TRABALHO'));
+  blocks.push(clause('2.1.', 'A F&B compromete-se a alcançar os objetivos de seus Clientes com eficiência, contando com uma equipe técnica multidisciplinar e altamente qualificada. Valorizamos o atendimento personalizado e a excelência em todas as etapas do trabalho.'));
+
+  blocks.push(secBar('3. RELAÇÃO DE ATIVIDADES E TRABALHOS'));
+  blocks.push(clause('3.1.', 'A presente contratação tem por objeto a atuação da Fonseca e Braga Sociedade de Advogados na qualidade de patrona do '+esc(nome)+', exclusivamente para fins de '+fmt(p.objeto||'')+'.'));
+  blocks.push(clause('3.2.', 'A atuação compreenderá todas as fases processuais, desde a análise inicial até o trânsito em julgado, incluindo a interposição de recursos perante o '+esc(p.tribunal)+' e Tribunais Superiores, assegurando acompanhamento contínuo e diligente até a solução definitiva da demanda.'));
+
+  blocks.push(secBar('4. PESSOA(S) ATENDIDA(S)'));
+  blocks.push(arrowItem('<strong>'+esc(nome)+'</strong> – CNPJ/MF nº <strong>'+esc(d.condominio.cnpj)+'</strong>.'));
+
+  blocks.push(secBar('5. HONORÁRIOS E FORMA DE PAGAMENTO'));
+  blocks.push(clause('5.1.', 'Para a execução dos serviços descritos nesta Proposta Comercial, a Fonseca e Braga Sociedade de Advogados apresenta as seguintes condições referentes aos honorários advocatícios:'));
+  blocks.push(arrowItem('<strong>Honorários Iniciais – Propositura de Ação Judicial:</strong> R$ '+esc(p.honInicial)));
+  blocks.push(arrowItem('<strong>Tributação:</strong> '+esc(p.tributacao)+'% (já incluída no valor dos honorários)'));
+  blocks.push(arrowItem('<strong>Taxa de Boleto Bancário:</strong> R$ '+esc(p.taxaBoleto)+' (já incluída no valor dos honorários)'));
+  blocks.push(arrowItem('<strong>Data de Pagamento:</strong> '+esc(p.dataPagamento)));
+  blocks.push(arrowItem('<strong>Início dos Trabalhos:</strong> '+esc(p.inicioTrabalhos)));
+  blocks.push(arrowItem('<strong>Honorários de Êxito:</strong> '+esc(p.exito)+'% sobre a vantagem econômica ou financeira efetivamente auferida pelo Condomínio, decorrente da atuação da Contratada no curso da demanda.'));
+
+  blocks.push(secBar('6. CUSTAS, DESPESAS E TRIBUTOS'));
+  blocks.push(clause('6.1.', 'Os valores informados nesta Proposta referem-se exclusivamente aos honorários advocatícios, já com a devida tributação inclusa, não abrangendo quaisquer custas judiciais, despesas cartorárias, operacionais ou processuais, tampouco taxas administrativas ou cálculos trabalhistas, as quais correrão integralmente por conta do(a) Contratante.'));
+
+  blocks.push(secBar('7. DIFERENCIAL: INTERLOCUTOR(ES) DAS ATIVIDADES'));
+  blocks.push(clause('7.1.', 'A F&B designará um(a) interlocutor(a) permanente para atendimento ao(à) Contratante, a fim de garantir comunicação ágil e eficaz durante toda a vigência da prestação dos serviços.'));
+  blocks.push(clause('7.2.', 'O(A) Contratante deverá indicar formalmente um responsável pelo acompanhamento e pela tramitação de todas as informações pertinentes à execução dos serviços.'));
+
+  blocks.push(secBar('8. LOCAL DOS TRABALHOS'));
+  blocks.push(clause('8.1.', 'Todas as atividades e serviços objeto desta Proposta serão desenvolvidos na cidade de '+esc(p.localTrabalhos)+', salvo disposição expressa em contrário.'));
+
+  blocks.push(secBar('9. VALIDADE DA PROPOSTA'));
+  blocks.push(clause('9.1.', 'A presente Proposta de Prestação de Serviços Advocatícios terá validade até o dia <strong>'+esc(p.validade)+'</strong>.'));
+  blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(p.localEmissao)}, ${esc(p.dataEmissao)}.</div>`));
+
+  blocks.push(assinaturaSociosBlock());
+  blocks.push(C(`<div class="blk center" style="margin-top:22mm;">Ciente e aceite da Proposta: _________________________________________.</div>`));
+  blocks.push(C(`<div class="blk center">${esc(nome)}</div>`));
+
+  return blocks;
+}
+
+function blockToHtml(b){
+  if(b.type==='raw') return b.html;
+  if(b.type==='clause') return `<div class="blk clause"><div class="num">${esc(b.num)}</div><div class="txt">${b.text}</div></div>`;
+  if(b.type==='sub') return `<div class="blk sub"><div class="let">${esc(b.letter)}</div><div class="txt">${b.text}</div></div>`;
+  return '';
+}
+
+/* ---------- montagem visual da carta / rodapé / marca d'água ---------- */
+function docHeaderHtml(){
+  return `<div class="doc-watermark"><img src="../../assets/favicon.png" alt=""></div>
+  <div class="doc-header"><img src="../../assets/logo-light.png" alt="Fonseca e Braga"></div>`;
+}
+function docFooterHtml(pageNum,totalPages){
+  return `<div class="doc-pagenum">${pageNum}/${totalPages}</div>
+  <div class="doc-footer">
+    <div class="l1"><svg viewBox="0 0 24 24" fill="#8a1f1a"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.3 21 3 13.7 3 4.9 3 4.4 3.4 4 4 4h3.2c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg><span>+55 34 3225-2737</span>
+      <svg viewBox="0 0 24 24" fill="#8a1f1a" style="margin-left:6px;"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6H15.7a15.9 15.9 0 00-1.3-4A8 8 0 0118.9 8zM12 4c.8 1.2 1.6 3 2 4H10c.4-1 1.2-2.8 2-4zM4.3 14a8 8 0 010-4h3.1a17 17 0 000 4H4.3zm.8 2h3.2c.3 1.5.8 2.9 1.3 4a8 8 0 01-4.5-4zm3.2-8H5.1a8 8 0 014.5-4c-.5 1.1-1 2.5-1.3 4zM12 20c-.8-1.2-1.6-3-2-4h4c-.4 1-1.2 2.8-2 4zm2.4-6H9.6a14 14 0 010-4h4.8a14 14 0 010 4zm.3 6c.5-1.1 1-2.5 1.3-4h3.2a8 8 0 01-4.5 4zm1.7-6a17 17 0 000-4h3.1a8 8 0 010 4h-3.1z"/></svg><span>www.FONSECAEBRAGA.com.br</span></div>
+    <div class="l2"><svg viewBox="0 0 24 24" fill="#333"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7.2.2.5.3.7.3s.5-.1.7-.3C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg><span>Rua Senador Salgado Filho, 426, B. Tabajaras | UBERLÂNDIA / MG | CEP 38400-236</span></div>
+  </div>`;
+}
+function makePageShell(){
+  const page=document.createElement('div');
+  page.className='doc-page';
+  page.innerHTML = docHeaderHtml() + `<div class="doc-content"></div>` + docFooterHtml(0,0);
+  return page;
+}
+
+function paginate(blocks, wrap){
+  // as páginas precisam estar anexadas ao DOM vivo enquanto medimos scrollHeight/clientHeight,
+  // senão o navegador não calcula layout e a paginação nunca detecta estouro de página.
+  wrap.innerHTML='';
+  const pages=[makePageShell()];
+  wrap.appendChild(pages[0]);
+  let content = pages[0].querySelector('.doc-content');
+  blocks.forEach(b=>{
+    const html = blockToHtml(b);
+    const wrapper=document.createElement('div');
+    wrapper.innerHTML=html;
+    const node = wrapper.firstElementChild || document.createTextNode(html);
+    content.appendChild(node);
+    if(content.scrollHeight > content.clientHeight){
+      content.removeChild(node);
+      const p=makePageShell();
+      wrap.appendChild(p);
+      pages.push(p);
+      content = p.querySelector('.doc-content');
+      content.appendChild(node);
+    }
+  });
+  // numera paginas
+  pages.forEach((p,idx)=>{
+    p.querySelector('.doc-pagenum').textContent=(idx+1)+'/'+pages.length;
+  });
+  return pages;
+}
+
+/* ---------- render principal ---------- */
+let renderTimer=null;
+function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(render, 280); }
+
+function validar(d){
+  if(d.tipo==='contrato_pf') return d.contratantes.length>0 ? null : 'Preencha ao menos um contratante.';
+  if(d.tipo==='contrato_pj') return d.pj.razaoSocial.trim()!=='' && d.pj.representantes.length>0 ? null : 'Preencha a razão social e ao menos um representante.';
+  if(d.tipo==='contrato_condominio') return (d.condominio.razaoSocial.trim()!=='' && d.sindico.nome.trim()!=='') ? null : 'Preencha o condomínio e o(a) síndico(a).';
+  if(d.tipo==='proposta_pf_pj') return d.proposta.nome.trim()!=='' ? null : 'Preencha o nome ou razão social do cliente.';
+  if(d.tipo==='proposta_condominio') return d.condominio.razaoSocial.trim()!=='' ? null : 'Preencha a razão social do condomínio.';
+  return 'Modelo ainda não disponível.';
+}
+function nomeArquivo(d){
+  let base='documento';
+  if(d.tipo==='contrato_pf') base=d.contratantes[0]?d.contratantes[0].nome:'contrato';
+  if(d.tipo==='contrato_pj') base=d.pj.razaoSocial||'contrato';
+  if(d.tipo==='contrato_condominio') base=d.condominio.razaoSocial||'contrato';
+  if(d.tipo==='proposta_pf_pj') base=d.proposta.nome||'proposta';
+  if(d.tipo==='proposta_condominio') base=d.condominio.razaoSocial||'proposta';
+  return base.replace(/[^\p{L}\p{N} ]/gu,'').trim().replace(/\s+/g,'_')||'documento';
+}
+function buildDocumento(d){
+  if(d.tipo==='contrato_pf') return buildContratoPF(d);
+  if(d.tipo==='contrato_pj') return buildContratoPJ(d);
+  if(d.tipo==='contrato_condominio') return buildContratoCondominio(d);
+  if(d.tipo==='proposta_pf_pj') return buildPropostaPFPJ(d);
+  if(d.tipo==='proposta_condominio') return buildPropostaCondominio(d);
+  return [];
+}
+
+function render(){
+  const status=document.getElementById('pag-status');
+  const d = coletarDados();
+  const erro = validar(d);
+  if(erro){
+    document.getElementById('doc-pages').innerHTML='';
+    status.textContent=erro;
+    status.className='status';
+    return;
+  }
+  const blocks = buildDocumento(d);
+  const wrap=document.getElementById('doc-pages');
+  const pages = paginate(blocks, wrap);
+  status.textContent = pages.length+' página(s)';
+  status.className='status ok';
+}
+
+/* ---------- seletor de tipo de documento ---------- */
+const TIPOS=[
+  {id:'contrato_pf', label:'Contrato — Pessoa Física', ready:true},
+  {id:'contrato_pj', label:'Contrato — Pessoa Jurídica', ready:true},
+  {id:'contrato_condominio', label:'Contrato — Condomínio', ready:true},
+  {id:'proposta_pf_pj', label:'Proposta — Pessoa Física/Jurídica', ready:true},
+  {id:'proposta_condominio', label:'Proposta — Condomínio', ready:true}
+];
+let currentTipo='contrato_pf';
+const seg=document.getElementById('tipo-seg');
+TIPOS.forEach(t=>{
+  const btn=document.createElement('button');
+  btn.textContent=t.label+(t.ready?'':' (em breve)');
+  btn.disabled=!t.ready;
+  btn.dataset.tipo=t.id;
+  if(t.id===currentTipo) btn.classList.add('active');
+  btn.addEventListener('click',()=>setTipo(t.id));
+  seg.appendChild(btn);
+});
+function setTipo(id){
+  currentTipo=id;
+  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.tipo===id));
+  document.querySelectorAll('[data-tipo-only]').forEach(el=>{
+    const tipos = el.dataset.tipoOnly.split(' ');
+    el.classList.toggle('tipo-hidden', !tipos.includes(id));
+  });
+  render();
+}
+setTipo(currentTipo);
+
+/* ---------- geração de PDF ---------- */
+document.getElementById('btn-gerar').addEventListener('click',()=>{
+  const statusEl=document.getElementById('gerar-status');
+  const d = coletarDados();
+  const erro = validar(d);
+  if(erro){ statusEl.textContent=erro; return; }
+  statusEl.textContent='Gerando PDF…';
+  render();
+  setTimeout(()=>{
+    const filename = 'Documento_'+nomeArquivo(d)+'.pdf';
+    const el = document.getElementById('doc-pages');
+    html2pdf().set({
+      margin:0,
+      filename,
+      image:{type:'jpeg',quality:0.96},
+      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
+      pagebreak:{mode:['css'], after:'.doc-page'}
+    }).from(el).save().then(()=>{ statusEl.textContent='PDF baixado.'; })
+      .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
+  }, 60);
+});
+
+render();
+</script>
+</body>
+</html>
