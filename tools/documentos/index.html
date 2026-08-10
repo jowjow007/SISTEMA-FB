@@ -1058,7 +1058,32 @@ setTipo(new URLSearchParams(location.search).get('tipo') || currentTipo);
 document.querySelector('.form-col').addEventListener('input', scheduleRender);
 document.querySelector('.form-col').addEventListener('change', scheduleRender);
 
-/* ---------- geração de PDF ---------- */
+/* ---------- geração de PDF ----------
+   html2pdf().from(container).save() tem um bug conhecido: qualquer elemento capturado
+   com altura EXATA de uma página A4 (297mm — exatamente a altura de cada .doc-page aqui)
+   dispara uma página extra quase em branco na paginação automática da lib. Com 2+ páginas
+   reais isso aparecia como grandes espaços em branco intercalados no PDF final. Solução:
+   nunca deixar a lib paginar sozinha — capturar cada .doc-page individualmente via
+   toCanvas() (sem nenhuma lógica de paginação envolvida) e montar o PDF manualmente,
+   uma imagem por página, esticada para exatamente 210x297mm. */
+const PDF_CANVAS_OPTS = {margin:0, image:{type:'jpeg',quality:0.96}, html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
+async function renderPageCanvas(pageEl){
+  return await html2pdf().set(PDF_CANVAS_OPTS).from(pageEl).toCanvas().get('canvas');
+}
+async function gerarPdfArquivo(pageEls, filename){
+  const seed=document.createElement('div');
+  seed.style.cssText='width:2px;height:2px;';
+  document.body.appendChild(seed);
+  const pdf = await html2pdf().set(PDF_CANVAS_OPTS).from(seed).toPdf().get('pdf');
+  document.body.removeChild(seed);
+  while(pdf.internal.getNumberOfPages()>1){ pdf.deletePage(pdf.internal.getNumberOfPages()); }
+  for(let i=0;i<pageEls.length;i++){
+    const canvas = await renderPageCanvas(pageEls[i]);
+    if(i>0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.96), 'JPEG', 0, 0, 210, 297);
+  }
+  pdf.save(filename);
+}
 document.getElementById('btn-gerar').addEventListener('click',()=>{
   const statusEl=document.getElementById('gerar-status');
   const d = coletarDados();
@@ -1068,15 +1093,8 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
   render();
   setTimeout(()=>{
     const filename = prefixoArquivo(d.tipo)+nomeArquivo(d)+'.pdf';
-    const el = document.getElementById('doc-pages');
-    html2pdf().set({
-      margin:0,
-      filename,
-      image:{type:'jpeg',quality:0.96},
-      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'},
-      jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
-      pagebreak:{mode:['css'], after:'.doc-page'}
-    }).from(el).save().then(()=>{ statusEl.textContent='PDF baixado.'; })
+    const pageEls = Array.from(document.querySelectorAll('#doc-pages .doc-page'));
+    gerarPdfArquivo(pageEls, filename).then(()=>{ statusEl.textContent='PDF baixado.'; })
       .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
   }, 60);
 });
