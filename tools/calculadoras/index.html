@@ -17,7 +17,6 @@
     --red-bright:#c9463c;
     --red-deep:#5c1a16;
     --ok:#4caf7d;
-    --warn:#d9a441;
     --err:#ffb4ae;
     --silver:#a9adb2;
     --line:rgba(236,230,225,0.10);
@@ -56,7 +55,6 @@
   .card .desc{font-size:.78rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
 
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .grid.g3{grid-template-columns:1fr 1fr 1fr;}
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
   .field .hint{font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;}
@@ -67,10 +65,6 @@
   .field input:focus,.field select:focus{border-color:var(--red);}
   .field input:disabled{color:var(--muted);background:var(--panel-3);}
   .field input[readonly]{color:var(--silver);background:var(--panel-3);}
-
-  .checkline{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
-  .checkline input[type=checkbox]{width:16px;height:16px;accent-color:var(--red);}
-  .checkline label{font-size:.82rem;color:var(--paper);}
 
   .btn{
     padding:11px 20px;border-radius:8px;border:none;background:var(--red);
@@ -83,7 +77,6 @@
   .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 
   .msg-err{color:var(--err);font-size:.82rem;margin-top:12px;display:none;}
-  .msg-warn{color:var(--warn);font-size:.78rem;margin-top:8px;display:none;line-height:1.4;}
 
   .result-box{margin-top:20px;padding-top:18px;border-top:1px solid var(--line-strong);display:none;}
   .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px;}
@@ -114,12 +107,73 @@
   details summary{cursor:pointer;font-size:.78rem;color:var(--silver);padding:6px 0;}
   details summary:hover{color:var(--paper);}
 
+  /* ---- calculadora simples ---- */
+  .calc-sessions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .calc-session-tab{
+    display:flex;align-items:center;gap:8px;padding:8px 10px 8px 14px;border-radius:20px;
+    background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);font-size:.78rem;cursor:pointer;
+  }
+  .calc-session-tab.active{background:var(--red);color:#fff;border-color:var(--red-bright);}
+  .calc-session-tab .close{
+    width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.18);font-size:.7rem;line-height:1;
+  }
+  .calc-session-tab .close:hover{background:rgba(0,0,0,.35);}
+  .calc-session-add{
+    width:34px;height:34px;border-radius:50%;border:1px dashed var(--line-strong);background:transparent;
+    color:var(--silver);font-size:1rem;cursor:pointer;
+  }
+  .calc-session-add:hover{border-color:var(--red);color:var(--paper);}
+
+  .calc-layout{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start;}
+  .calc-box{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:16px;}
+  .calc-display{
+    background:var(--ink);border:1px solid var(--line-strong);border-radius:10px;padding:16px 14px;
+    text-align:right;font-family:var(--font-mono);font-size:1.7rem;color:var(--paper);margin-bottom:12px;
+    overflow-x:auto;white-space:nowrap;
+  }
+  .calc-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .ck{
+    padding:14px 0;border-radius:9px;border:1px solid var(--line-strong);background:var(--panel-3);
+    color:var(--paper);font-size:1.05rem;font-weight:600;cursor:pointer;transition:background .1s;
+  }
+  .ck:hover{background:var(--panel);}
+  .ck:active{background:var(--red-deep);}
+  .ck-op{background:var(--panel);color:var(--silver);}
+  .ck-op:hover{background:var(--panel-3);}
+  .ck-eq{background:var(--red);color:#fff;grid-row:span 1;}
+  .ck-eq:hover{background:var(--red-bright);}
+
+  .saved-values{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .saved-chip{
+    display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:16px;background:var(--panel-3);
+    border:1px solid var(--line-strong);font-size:.75rem;color:var(--paper);cursor:pointer;
+  }
+  .saved-chip:hover{border-color:var(--red);}
+  .saved-chip .lbl{color:var(--muted);}
+  .saved-chip .rm{color:var(--muted);font-weight:700;padding:0 2px;}
+  .saved-chip .rm:hover{color:var(--err);}
+
+  .calc-history-box{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:16px;min-height:200px;}
+  .calc-history{max-height:460px;overflow:auto;display:flex;flex-direction:column-reverse;gap:8px;}
+  .calc-history .hist-item{
+    padding:9px 12px;border-radius:8px;background:var(--panel-3);border:1px solid var(--line-strong);cursor:pointer;
+  }
+  .calc-history .hist-item:hover{border-color:var(--red);}
+  .calc-history .hist-item .expr{font-size:.74rem;color:var(--muted);font-family:var(--font-mono);}
+  .calc-history .hist-item .res{font-size:.92rem;color:var(--paper);font-family:var(--font-mono);font-weight:600;}
+  .calc-history .empty{color:var(--muted);font-size:.78rem;text-align:center;padding:30px 0;}
+
+  @media(max-width:700px){
+    .calc-layout{grid-template-columns:1fr;}
+  }
+
   footer.note{
     max-width:960px;margin:0 auto;padding:0 20px 40px;font-size:.72rem;color:var(--muted);line-height:1.6;
   }
 
   @media(max-width:700px){
-    .grid,.grid.g3{grid-template-columns:1fr;}
+    .grid{grid-template-columns:1fr;}
     .result-grid{grid-template-columns:1fr 1fr;}
   }
 </style>
@@ -128,14 +182,14 @@
 
 <header>
   <h1>Calculadoras</h1>
-  <p class="sub">Juros e parcelas fixas (Tabela Price) · Atualização monetária de valores processuais</p>
+  <p class="sub">Juros e parcelas fixas (Tabela Price) · Calculadora com histórico e valores guardados</p>
 </header>
 
 <main>
 
   <div class="segmented">
     <button id="tab-price" class="active">Juros e Parcelas</button>
-    <button id="tab-atual">Atualização de Processos</button>
+    <button id="tab-atual">Calculadora</button>
   </div>
 
   <!-- ===================== PAINEL 1 — PRICE ===================== -->
@@ -162,7 +216,7 @@
         </div>
         <div class="field">
           <label>Taxa de juros ao mês (%)</label>
-          <input type="text" id="price-i" inputmode="decimal" placeholder="Ex: 1,5">
+          <input type="text" id="price-i" inputmode="decimal" placeholder="Ex: 1,5" value="3">
         </div>
         <div class="field">
           <label>Número de parcelas</label>
@@ -204,131 +258,59 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Conversor de taxas equivalentes</h2>
-      <p class="desc">Converte taxa mensal em taxa anual equivalente (juros compostos) e vice-versa.</p>
-      <div class="grid">
-        <div class="field">
-          <label>Taxa ao mês (%)</label>
-          <input type="text" id="conv-mensal" inputmode="decimal" placeholder="Ex: 2">
-        </div>
-        <div class="field">
-          <label>Taxa ao ano (%)</label>
-          <input type="text" id="conv-anual" inputmode="decimal" placeholder="Ex: 26,82">
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn secondary" id="conv-para-anual">Mês → Ano</button>
-        <button class="btn secondary" id="conv-para-mensal">Ano → Mês</button>
-      </div>
-      <p class="hint" id="conv-out" style="margin-top:12px;"></p>
-    </div>
-
   </div>
 
-  <!-- ===================== PAINEL 2 — ATUALIZAÇÃO ===================== -->
+  <!-- ===================== PAINEL 2 — CALCULADORA ===================== -->
   <div id="panel-atual" class="panel">
 
     <div class="card">
-      <h2>Atualização de valores processuais</h2>
-      <p class="desc">Correção monetária (índices oficiais, buscados em tempo real no Banco Central — Sistema Gerenciador de Séries Temporais/SGS) + juros de mora + multa, no mesmo espírito das calculadoras do TJMG e do Dr. Calc.</p>
+      <h2>Calculadora</h2>
+      <p class="desc">Calculadora simples, com histórico de cada cálculo e valores que podem ser guardados para reaproveitar depois. Use o "+" para abrir mais de um cálculo ao mesmo tempo, sem perder o que já estava em andamento nos outros.</p>
 
-      <div class="grid">
-        <div class="field">
-          <label>Valor original (R$)</label>
-          <input type="text" id="at-valor" inputmode="decimal" placeholder="Ex: 5000">
-        </div>
-        <div class="field">
-          <label>Índice de correção</label>
-          <select id="at-indice">
-            <option value="10764">IPCA-E</option>
-            <option value="188">INPC</option>
-            <option value="189">IGP-M</option>
-            <option value="433">IPCA</option>
-            <option value="4390">Taxa Selic (já inclui juros)</option>
-            <option value="0">Sem correção monetária</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Data do valor original (data-base)</label>
-          <input type="date" id="at-data-base">
-        </div>
-        <div class="field">
-          <label>Data final do cálculo</label>
-          <input type="date" id="at-data-fim">
-        </div>
-      </div>
+      <div class="calc-sessions" id="calc-sessions"></div>
 
-      <div class="checkline">
-        <input type="checkbox" id="at-manual-fator">
-        <label for="at-manual-fator">Informar o fator de correção manualmente (ex.: já calculado no site do tribunal)</label>
-      </div>
-      <div class="field" id="at-fator-manual-field" style="display:none;">
-        <label>Percentual de correção acumulada no período (%)</label>
-        <input type="text" id="at-fator-manual" inputmode="decimal" placeholder="Ex: 8,42">
-      </div>
+      <div class="calc-layout">
+        <div class="calc-box">
+          <div class="calc-display" id="calc-display">0</div>
+          <div class="calc-keys" id="calc-keys">
+            <button data-k="ac" class="ck ck-op">AC</button>
+            <button data-k="bs" class="ck ck-op">⌫</button>
+            <button data-k="pct" class="ck ck-op">%</button>
+            <button data-k="div" class="ck ck-op">÷</button>
 
-      <div class="checkline">
-        <input type="checkbox" id="at-juros-check" checked>
-        <label for="at-juros-check">Aplicar juros de mora</label>
-      </div>
-      <div id="at-juros-fields">
-        <div class="grid g3">
-          <div class="field">
-            <label>Taxa de juros ao mês (%)</label>
-            <input type="text" id="at-juros-taxa" inputmode="decimal" value="1">
+            <button data-k="7" class="ck">7</button>
+            <button data-k="8" class="ck">8</button>
+            <button data-k="9" class="ck">9</button>
+            <button data-k="mul" class="ck ck-op">×</button>
+
+            <button data-k="4" class="ck">4</button>
+            <button data-k="5" class="ck">5</button>
+            <button data-k="6" class="ck">6</button>
+            <button data-k="sub" class="ck ck-op">−</button>
+
+            <button data-k="1" class="ck">1</button>
+            <button data-k="2" class="ck">2</button>
+            <button data-k="3" class="ck">3</button>
+            <button data-k="add" class="ck ck-op">+</button>
+
+            <button data-k="sign" class="ck">±</button>
+            <button data-k="0" class="ck">0</button>
+            <button data-k="dot" class="ck">,</button>
+            <button data-k="eq" class="ck ck-eq">=</button>
           </div>
-          <div class="field">
-            <label>Regime</label>
-            <select id="at-juros-regime">
-              <option value="simples">Simples</option>
-              <option value="composto">Composto</option>
-            </select>
+          <div class="btn-row" style="margin-top:14px;">
+            <input type="text" id="calc-guardar-label" placeholder="Rótulo (opcional)" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.82rem;">
+            <button class="btn secondary" id="calc-guardar-btn">💾 Guardar valor atual</button>
           </div>
-          <div class="field">
-            <label>Juros a partir de</label>
-            <input type="date" id="at-juros-data">
-          </div>
-        </div>
-      </div>
-      <p class="msg-warn" id="at-selic-warn">A Selic já embute correção monetária e juros no mesmo índice (Tema 905/STJ; EC 113/2021) — normalmente não se cumulam juros de mora adicionais quando este índice é usado.</p>
-
-      <div class="field">
-        <label>Multa (%) — opcional, incide uma única vez sobre o valor corrigido</label>
-        <input type="text" id="at-multa" inputmode="decimal" placeholder="Ex: 2" value="0">
-      </div>
-
-      <div class="btn-row">
-        <button class="btn" id="at-calc-btn">Calcular atualização</button>
-      </div>
-      <div class="msg-err" id="at-err"></div>
-
-      <div class="result-box" id="at-result">
-        <div class="result-grid">
-          <div class="stat"><div class="k">Valor original</div><div class="v" id="at-out-original">—</div></div>
-          <div class="stat"><div class="k">Fator de correção</div><div class="v" id="at-out-fator">—</div></div>
-          <div class="stat"><div class="k">Valor corrigido</div><div class="v" id="at-out-corrigido">—</div></div>
-          <div class="stat"><div class="k">Juros de mora</div><div class="v" id="at-out-juros">—</div></div>
-          <div class="stat"><div class="k">Multa</div><div class="v" id="at-out-multa">—</div></div>
-          <div class="stat hi"><div class="k">Valor total atualizado</div><div class="v" id="at-out-total">—</div></div>
+          <div class="saved-values" id="saved-values"></div>
         </div>
 
-        <details id="at-detalhe-indices" style="display:none;">
-          <summary>Ver meses e variações usadas na correção</summary>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Mês de referência</th><th>Variação (%)</th><th>Fator acumulado</th></tr></thead>
-              <tbody id="at-indices-body"></tbody>
-            </table>
+        <div class="calc-history-box">
+          <div class="btn-row" style="justify-content:space-between;margin-bottom:10px;">
+            <h2 style="margin:0;font-size:.9rem;">Histórico</h2>
+            <button class="btn secondary" id="calc-limpar-hist" style="padding:6px 12px;font-size:.72rem;">Limpar</button>
           </div>
-        </details>
-
-        <div class="field" style="margin-top:18px;">
-          <label>Memória de cálculo (para copiar na peça)</label>
-          <textarea class="memoria" id="at-memoria" readonly></textarea>
-        </div>
-        <div class="btn-row">
-          <button class="btn secondary" id="at-copiar-btn">Copiar memória de cálculo</button>
+          <div class="calc-history" id="calc-history"></div>
         </div>
       </div>
     </div>
@@ -338,7 +320,7 @@
 </main>
 
 <footer class="note">
-  Índices de correção monetária consultados ao vivo na API pública do Banco Central do Brasil (SGS — Sistema Gerenciador de Séries Temporais). Convenção adotada: a variação de cada mês é aplicada a partir do mês seguinte ao da data-base até o mês da data final (inclusive) — mesma lógica geral usada pelas calculadoras oficiais dos tribunais. Confira sempre o resultado na calculadora oficial do tribunal (ex.: TJMG) antes de juntar o cálculo aos autos, sobretudo em casos com regras específicas (Fazenda Pública, EC 113/2021, contratos com índice pactuado). Esta ferramenta é um apoio de cálculo e não substitui a conferência profissional.
+  A tabela de amortização Price segue o mesmo princípio da "Calculadora do Cidadão" do Banco Central. A calculadora simples guarda histórico e valores salvos apenas neste navegador (não sincroniza entre computadores).
 </footer>
 
 <script>
@@ -370,15 +352,6 @@
     var p = iso.split('-').map(Number);
     var d = new Date(Date.UTC(p[0], p[1]-1+n, p[2]));
     return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
-  }
-  function todayISO(){
-    var d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  }
-  function diffDias(iso1, iso2){
-    var a = new Date(iso1 + 'T00:00:00Z');
-    var b = new Date(iso2 + 'T00:00:00Z');
-    return Math.round((b - a) / 86400000);
   }
 
   // ---------- tabs ----------
@@ -529,206 +502,266 @@
     a.click();
   });
 
-  // conversor de taxas
-  document.getElementById('conv-para-anual').addEventListener('click', function(){
-    var m = parseNumBR(document.getElementById('conv-mensal').value) / 100;
-    if (!isFinite(m)) return;
-    var anualComposto = (Math.pow(1 + m, 12) - 1) * 100;
-    var anualSimples = m * 12 * 100;
-    document.getElementById('conv-anual').value = anualComposto.toFixed(4).replace('.', ',');
-    document.getElementById('conv-out').textContent = 'Equivalente composta ao ano: ' + fmtPct(anualComposto, 4) + '  ·  Nominal simples (×12): ' + fmtPct(anualSimples, 4);
-  });
-  document.getElementById('conv-para-mensal').addEventListener('click', function(){
-    var a = parseNumBR(document.getElementById('conv-anual').value) / 100;
-    if (!isFinite(a)) return;
-    var mensalComposto = (Math.pow(1 + a, 1/12) - 1) * 100;
-    var mensalSimples = a / 12 * 100;
-    document.getElementById('conv-mensal').value = mensalComposto.toFixed(4).replace('.', ',');
-    document.getElementById('conv-out').textContent = 'Equivalente composta ao mês: ' + fmtPct(mensalComposto, 4) + '  ·  Nominal simples (÷12): ' + fmtPct(mensalSimples, 4);
-  });
-
   // ======================================================
-  // PAINEL 2 — ATUALIZAÇÃO DE VALORES PROCESSUAIS
+  // PAINEL 2 — CALCULADORA SIMPLES (sessões + histórico + valores guardados)
   // ======================================================
-  var atDataBase = document.getElementById('at-data-base');
-  var atDataFim = document.getElementById('at-data-fim');
-  atDataFim.value = todayISO();
+  var LS_SESSIONS = 'fbcalc_sessions_v1';
+  var LS_VALORES = 'fbcalc_valores_v1';
 
-  var atManualCheck = document.getElementById('at-manual-fator');
-  var atFatorManualField = document.getElementById('at-fator-manual-field');
-  atManualCheck.addEventListener('change', function(){
-    atFatorManualField.style.display = atManualCheck.checked ? 'block' : 'none';
-  });
-
-  var atIndice = document.getElementById('at-indice');
-  var atJurosCheck = document.getElementById('at-juros-check');
-  var atJurosFields = document.getElementById('at-juros-fields');
-  var atSelicWarn = document.getElementById('at-selic-warn');
-
-  function atualizaAvisoSelic(){
-    var isSelic = atIndice.value === '4390';
-    atSelicWarn.style.display = (isSelic && atJurosCheck.checked) ? 'block' : 'none';
-  }
-  atIndice.addEventListener('change', atualizaAvisoSelic);
-  atJurosCheck.addEventListener('change', function(){
-    atJurosFields.style.display = atJurosCheck.checked ? 'block' : 'none';
-    atualizaAvisoSelic();
-  });
-
-  async function buscarFatorIndice(codigo, dataBaseISO, dataFimISO){
-    var bi = dataBaseISO.split('-').map(Number);
-    var bf = dataFimISO.split('-').map(Number);
-    var mIni = bi[1] + 1, aIni = bi[0];
-    if (mIni > 12){ mIni = 1; aIni++; }
-    var mFim = bf[1], aFim = bf[0];
-    if ((aIni * 12 + mIni) > (aFim * 12 + mFim)){
-      return { fator: 1, meses: [] };
+  function carregarEstadoCalc(){
+    var estado = null;
+    try { estado = JSON.parse(localStorage.getItem(LS_SESSIONS)); } catch (e) { estado = null; }
+    if (!estado || !estado.sessions || !estado.sessions.length){
+      estado = { nextId: 2, activeId: 1, sessions: [ novaSessaoObj(1, 'Cálculo 1') ] };
     }
-    var dataInicial = String(mIni).padStart(2,'0') + '/01/' + aIni;
-    var dataFinal = String(mFim).padStart(2,'0') + '/01/' + aFim;
-    var url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.' + codigo + '/dados?formato=json&dataInicial=' + dataInicial + '&dataFinal=' + dataFinal;
-    var resp = await fetch(url);
-    if (!resp.ok) throw new Error('Falha ao consultar o Banco Central (HTTP ' + resp.status + ').');
-    var dados = await resp.json();
-    var fator = 1;
-    var meses = [];
-    dados.forEach(function(d){
-      var v = parseFloat(String(d.valor).replace(',', '.')) / 100;
-      fator *= (1 + v);
-      meses.push({ data: d.data, variacao: v * 100, fatorAcumulado: fator });
-    });
-    return { fator: fator, meses: meses };
+    return estado;
+  }
+  function novaSessaoObj(id, nome){
+    return { id: id, nome: nome, display: '0', acc: null, pendingOp: null, overwrite: true, historico: [] };
+  }
+  function salvarEstadoCalc(){
+    localStorage.setItem(LS_SESSIONS, JSON.stringify(calcEstado));
+  }
+  function carregarValoresGuardados(){
+    var v = null;
+    try { v = JSON.parse(localStorage.getItem(LS_VALORES)); } catch (e) { v = null; }
+    return v || [];
+  }
+  function salvarValoresGuardados(){
+    localStorage.setItem(LS_VALORES, JSON.stringify(valoresGuardados));
   }
 
-  document.getElementById('at-calc-btn').addEventListener('click', async function(){
-    var errEl = document.getElementById('at-err');
-    var resultEl = document.getElementById('at-result');
-    errEl.style.display = 'none';
-    resultEl.style.display = 'none';
+  var calcEstado = carregarEstadoCalc();
+  var valoresGuardados = carregarValoresGuardados();
+  var proximoValorId = (valoresGuardados.reduce(function(m, v){ return Math.max(m, v.id); }, 0)) + 1;
 
-    var valor = parseNumBR(document.getElementById('at-valor').value);
-    var dataBase = atDataBase.value;
-    var dataFim = atDataFim.value;
+  var elSessions = document.getElementById('calc-sessions');
+  var elDisplay = document.getElementById('calc-display');
+  var elHistory = document.getElementById('calc-history');
+  var elSavedValues = document.getElementById('saved-values');
 
-    if (!(valor > 0) || !dataBase || !dataFim){
-      errEl.textContent = 'Informe o valor original, a data-base e a data final.';
-      errEl.style.display = 'block';
-      return;
-    }
-    if (dataFim < dataBase){
-      errEl.textContent = 'A data final não pode ser anterior à data-base.';
-      errEl.style.display = 'block';
-      return;
-    }
+  function sessaoAtiva(){
+    var s = calcEstado.sessions.find(function(x){ return x.id === calcEstado.activeId; });
+    return s || calcEstado.sessions[0];
+  }
 
-    var btn = this;
-    btn.disabled = true;
-    var textoOriginal = btn.textContent;
-    btn.textContent = 'Calculando...';
+  function formatNumero(n){
+    if (!isFinite(n)) return 'Erro';
+    var r = Math.round(n * 1e10) / 1e10;
+    var s = r.toString().replace('.', ',');
+    return s;
+  }
 
-    try {
-      var fator, meses = [];
-      if (atManualCheck.checked){
-        var fp = parseNumBR(document.getElementById('at-fator-manual').value);
-        if (!isFinite(fp)) throw 'Informe o percentual de correção manual.';
-        fator = 1 + fp / 100;
-      } else if (atIndice.value === '0'){
-        fator = 1;
-      } else {
-        var res = await buscarFatorIndice(atIndice.value, dataBase, dataFim);
-        fator = res.fator;
-        meses = res.meses;
-      }
-
-      var valorCorrigido = valor * fator;
-
-      var juros = 0, jurosTexto = 'Não aplicado';
-      if (atJurosCheck.checked){
-        var taxa = parseNumBR(document.getElementById('at-juros-taxa').value) / 100;
-        var regime = document.getElementById('at-juros-regime').value;
-        var dataJuros = document.getElementById('at-juros-data').value || dataBase;
-        if (dataJuros < dataFim){
-          var dias = diffDias(dataJuros, dataFim);
-          var meses30 = dias / 30;
-          juros = regime === 'composto'
-            ? valorCorrigido * (Math.pow(1 + taxa, meses30) - 1)
-            : valorCorrigido * taxa * meses30;
-          jurosTexto = fmtPct(taxa * 100, 2) + ' a.m. (' + (regime === 'composto' ? 'composto' : 'simples') + '), ' + dias + ' dias desde ' + fmtDataISO(dataJuros);
-        }
-      }
-
-      var multaPct = parseNumBR(document.getElementById('at-multa').value) || 0;
-      var multa = valorCorrigido * multaPct / 100;
-
-      var total = valorCorrigido + juros + multa;
-
-      document.getElementById('at-out-original').textContent = fmtBRL(valor);
-      document.getElementById('at-out-fator').textContent = fmtPct((fator - 1) * 100, 4);
-      document.getElementById('at-out-corrigido').textContent = fmtBRL(valorCorrigido);
-      document.getElementById('at-out-juros').textContent = fmtBRL(juros);
-      document.getElementById('at-out-multa').textContent = fmtBRL(multa);
-      document.getElementById('at-out-total').textContent = fmtBRL(total);
-
-      var indicesBody = document.getElementById('at-indices-body');
-      var detalhe = document.getElementById('at-detalhe-indices');
-      indicesBody.innerHTML = '';
-      if (meses.length){
-        meses.forEach(function(m){
-          var tr = document.createElement('tr');
-          tr.innerHTML = '<td>' + m.data + '</td><td>' + fmtPct(m.variacao, 2) + '</td><td>' + fmtPct((m.fatorAcumulado - 1) * 100, 4) + '</td>';
-          indicesBody.appendChild(tr);
+  function renderSessions(){
+    elSessions.innerHTML = '';
+    calcEstado.sessions.forEach(function(s){
+      var tab = document.createElement('div');
+      tab.className = 'calc-session-tab' + (s.id === calcEstado.activeId ? ' active' : '');
+      var span = document.createElement('span');
+      span.textContent = s.nome;
+      tab.appendChild(span);
+      if (calcEstado.sessions.length > 1){
+        var close = document.createElement('span');
+        close.className = 'close';
+        close.textContent = '×';
+        close.title = 'Fechar este cálculo';
+        close.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          calcEstado.sessions = calcEstado.sessions.filter(function(x){ return x.id !== s.id; });
+          if (calcEstado.activeId === s.id) calcEstado.activeId = calcEstado.sessions[0].id;
+          salvarEstadoCalc();
+          renderTudo();
         });
-        detalhe.style.display = 'block';
-      } else {
-        detalhe.style.display = 'none';
+        tab.appendChild(close);
       }
-
-      var nomeIndice = atManualCheck.checked ? 'fator informado manualmente' : atIndice.options[atIndice.selectedIndex].text;
-      var memoria = [
-        'MEMÓRIA DE CÁLCULO — ATUALIZAÇÃO DE VALOR',
-        '',
-        'Valor original: ' + fmtBRL(valor) + ' (data-base: ' + fmtDataISO(dataBase) + ')',
-        'Data final do cálculo: ' + fmtDataISO(dataFim),
-        'Índice de correção: ' + nomeIndice,
-        'Fator de correção acumulado: ' + fmtPct((fator - 1) * 100, 4),
-        'Valor corrigido monetariamente: ' + fmtBRL(valorCorrigido),
-        'Juros de mora: ' + jurosTexto + (atJurosCheck.checked ? ' = ' + fmtBRL(juros) : ''),
-        'Multa (' + fmtPct(multaPct, 2) + '): ' + fmtBRL(multa),
-        '',
-        'VALOR TOTAL ATUALIZADO: ' + fmtBRL(total)
-      ].join('\n');
-      document.getElementById('at-memoria').value = memoria;
-
-      resultEl.style.display = 'block';
-    } catch (e) {
-      errEl.textContent = typeof e === 'string' ? e : ('Não foi possível concluir o cálculo (' + (e && e.message ? e.message : 'erro de conexão com o Banco Central') + '). Tente novamente ou use o fator manual.');
-      errEl.style.display = 'block';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = textoOriginal;
-    }
-  });
-
-  document.getElementById('at-copiar-btn').addEventListener('click', function(){
-    var ta = document.getElementById('at-memoria');
-    var btn = this;
-    var original = btn.textContent;
-    function marcarCopiado(){
-      btn.textContent = 'Copiado!';
-      setTimeout(function(){ btn.textContent = original; }, 1500);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(ta.value).then(marcarCopiado, function(){
-        ta.select();
-        document.execCommand('copy');
-        marcarCopiado();
+      tab.addEventListener('click', function(){
+        calcEstado.activeId = s.id;
+        salvarEstadoCalc();
+        renderTudo();
       });
-    } else {
-      ta.select();
-      document.execCommand('copy');
-      marcarCopiado();
+      elSessions.appendChild(tab);
+    });
+    var add = document.createElement('button');
+    add.className = 'calc-session-add';
+    add.textContent = '+';
+    add.title = 'Novo cálculo';
+    add.addEventListener('click', function(){
+      var id = calcEstado.nextId++;
+      var nova = novaSessaoObj(id, 'Cálculo ' + id);
+      calcEstado.sessions.push(nova);
+      calcEstado.activeId = id;
+      salvarEstadoCalc();
+      renderTudo();
+    });
+    elSessions.appendChild(add);
+  }
+
+  function renderDisplay(){
+    elDisplay.textContent = sessaoAtiva().display;
+  }
+
+  function renderHistory(){
+    var s = sessaoAtiva();
+    elHistory.innerHTML = '';
+    if (!s.historico.length){
+      var vazio = document.createElement('div');
+      vazio.className = 'empty';
+      vazio.textContent = 'Nenhum cálculo ainda neste bloco.';
+      elHistory.appendChild(vazio);
+      return;
     }
+    s.historico.forEach(function(h){
+      var item = document.createElement('div');
+      item.className = 'hist-item';
+      item.innerHTML = '<div class="expr">' + h.expr + '</div><div class="res">' + h.resultado + '</div>';
+      item.addEventListener('click', function(){
+        s.display = h.resultado;
+        s.acc = null;
+        s.pendingOp = null;
+        s.overwrite = true;
+        salvarEstadoCalc();
+        renderDisplay();
+      });
+      elHistory.appendChild(item);
+    });
+  }
+
+  function renderSavedValues(){
+    elSavedValues.innerHTML = '';
+    valoresGuardados.forEach(function(v){
+      var chip = document.createElement('div');
+      chip.className = 'saved-chip';
+      if (v.label){
+        var lbl = document.createElement('span');
+        lbl.className = 'lbl';
+        lbl.textContent = v.label + ':';
+        chip.appendChild(lbl);
+      }
+      var valSpan = document.createElement('span');
+      valSpan.textContent = v.valor;
+      chip.appendChild(valSpan);
+      var rm = document.createElement('span');
+      rm.className = 'rm';
+      rm.textContent = '×';
+      rm.title = 'Remover';
+      chip.appendChild(rm);
+
+      rm.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        valoresGuardados = valoresGuardados.filter(function(x){ return x.id !== v.id; });
+        salvarValoresGuardados();
+        renderSavedValues();
+      });
+      chip.addEventListener('click', function(){
+        var s = sessaoAtiva();
+        s.display = v.valor;
+        s.overwrite = true;
+        salvarEstadoCalc();
+        renderDisplay();
+      });
+      elSavedValues.appendChild(chip);
+    });
+  }
+
+  function renderTudo(){
+    renderSessions();
+    renderDisplay();
+    renderHistory();
+    renderSavedValues();
+  }
+
+  function aplicarOp(a, op, b){
+    switch (op){
+      case 'add': return a + b;
+      case 'sub': return a - b;
+      case 'mul': return a * b;
+      case 'div': return b === 0 ? NaN : a / b;
+      default: return b;
+    }
+  }
+  function simboloOp(op){
+    return { add: '+', sub: '−', mul: '×', div: '÷' }[op] || '';
+  }
+
+  function pressionar(k){
+    var s = sessaoAtiva();
+    var d = parseNumBR(s.display);
+
+    if (/^[0-9]$/.test(k)){
+      if (s.overwrite || s.display === '0'){ s.display = k; s.overwrite = false; }
+      else { s.display += k; }
+    } else if (k === 'dot'){
+      if (s.overwrite){ s.display = '0,'; s.overwrite = false; }
+      else if (s.display.indexOf(',') === -1){ s.display += ','; }
+    } else if (k === 'sign'){
+      s.display = formatNumero(-d);
+    } else if (k === 'bs'){
+      if (!s.overwrite && s.display.length > 1){ s.display = s.display.slice(0, -1); }
+      else { s.display = '0'; s.overwrite = true; }
+    } else if (k === 'ac'){
+      s.display = '0'; s.acc = null; s.pendingOp = null; s.overwrite = true;
+    } else if (k === 'pct'){
+      if (s.pendingOp !== null && s.acc !== null){ s.display = formatNumero(s.acc * d / 100); }
+      else { s.display = formatNumero(d / 100); }
+      s.overwrite = true;
+    } else if (k === 'add' || k === 'sub' || k === 'mul' || k === 'div'){
+      if (s.pendingOp !== null && !s.overwrite){
+        s.acc = aplicarOp(s.acc, s.pendingOp, d);
+        s.display = formatNumero(s.acc);
+      } else if (s.acc === null){
+        s.acc = d;
+      }
+      s.pendingOp = k;
+      s.overwrite = true;
+    } else if (k === 'eq'){
+      if (s.pendingOp !== null){
+        var a = s.acc, b = d;
+        var resultado = aplicarOp(a, s.pendingOp, b);
+        var expr = formatNumero(a) + ' ' + simboloOp(s.pendingOp) + ' ' + formatNumero(b) + ' =';
+        var resStr = formatNumero(resultado);
+        s.historico.push({ expr: expr, resultado: resStr, ts: Date.now() });
+        if (s.historico.length > 200) s.historico.shift();
+        s.display = resStr;
+        s.acc = null;
+        s.pendingOp = null;
+        s.overwrite = true;
+      }
+    }
+    salvarEstadoCalc();
+    renderDisplay();
+    if (k === 'eq') renderHistory();
+  }
+
+  document.getElementById('calc-keys').addEventListener('click', function(ev){
+    var btn = ev.target.closest('[data-k]');
+    if (!btn) return;
+    pressionar(btn.getAttribute('data-k'));
   });
+
+  document.addEventListener('keydown', function(ev){
+    if (!document.getElementById('panel-atual').classList.contains('active')) return;
+    var map = { '+':'add', '-':'sub', '*':'mul', '/':'div', 'Enter':'eq', '=':'eq', 'Backspace':'bs', 'Escape':'ac', '.':'dot', ',':'dot', '%':'pct' };
+    if (/^[0-9]$/.test(ev.key)){ pressionar(ev.key); ev.preventDefault(); }
+    else if (map[ev.key]){ pressionar(map[ev.key]); ev.preventDefault(); }
+  });
+
+  document.getElementById('calc-guardar-btn').addEventListener('click', function(){
+    var s = sessaoAtiva();
+    var labelInput = document.getElementById('calc-guardar-label');
+    var label = labelInput.value.trim();
+    valoresGuardados.push({ id: proximoValorId++, label: label, valor: s.display });
+    labelInput.value = '';
+    salvarValoresGuardados();
+    renderSavedValues();
+  });
+
+  document.getElementById('calc-limpar-hist').addEventListener('click', function(){
+    sessaoAtiva().historico = [];
+    salvarEstadoCalc();
+    renderHistory();
+  });
+
+  renderTudo();
 
 })();
 </script>
