@@ -216,6 +216,14 @@
   .msg-err{color:var(--danger-text);font-size:.8rem;margin-top:8px;display:none;}
   .actions-cell{white-space:nowrap;}
   .actions-cell button{margin-right:6px;}
+  .drag-handle{cursor:grab;color:var(--muted);font-size:1rem;user-select:none;width:20px;text-align:center;}
+  .drag-handle:active{cursor:grabbing;}
+  #tabs-tbody tr.dragging{opacity:.35;}
+  #tabs-tbody tr{transition:background-color .1s;}
+  .ordem-input{
+    width:60px;padding:6px 8px;border-radius:6px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-size:.83rem;
+  }
 
   .modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
@@ -341,7 +349,7 @@
     <div class="user-info" id="user-info-box"></div>
     <div class="logout-wrap">
       <button class="btn secondary small" id="logout-btn" style="width:auto;">Sair</button>
-      <span class="version-tag">v64</span>
+      <span class="version-tag">v66</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -419,8 +427,9 @@
           </div>
           <div class="card">
             <h3>Abas existentes</h3>
+            <p class="sub" style="margin:-6px 0 12px;">Arraste pelo <b>⠿</b> para reordenar, ou digite um número direto no campo "Ordem".</p>
             <table id="tabs-table">
-              <thead><tr><th>Nome</th><th>URL</th><th>Ordem</th><th>Ações</th></tr></thead>
+              <thead><tr><th></th><th>Nome</th><th>URL</th><th>Ordem</th><th>Ações</th></tr></thead>
               <tbody id="tabs-tbody"></tbody>
             </table>
           </div>
@@ -1098,13 +1107,60 @@
     const tbody = document.getElementById('tabs-tbody');
     if (!tbody) return;
     tbody.innerHTML = tabsCatalog.map(function(t){
-      return '<tr>' +
+      return '<tr draggable="true" data-tab-id="' + t.id + '">' +
+        '<td class="drag-handle" title="Arraste para reordenar">⠿</td>' +
         '<td>' + escapeHtml(t.label) + '</td>' +
         '<td style="word-break:break-all;">' + escapeHtml(t.url) + '</td>' +
-        '<td>' + t.order + '</td>' +
+        '<td><input type="number" class="ordem-input" value="' + t.order + '" data-tab-id="' + t.id + '"></td>' +
         '<td class="actions-cell"><button class="btn danger small" onclick="window.__deleteTab(\'' + t.id + '\')">Excluir</button></td>' +
       '</tr>';
     }).join('');
+    ativarEdicaoOrdem(tbody);
+    ativarArrastarTabs(tbody);
+  }
+
+  function ativarEdicaoOrdem(tbody){
+    Array.prototype.slice.call(tbody.querySelectorAll('.ordem-input')).forEach(function(inp){
+      inp.addEventListener('change', function(){
+        const novaOrdem = parseInt(inp.value, 10);
+        if (isNaN(novaOrdem)) return;
+        db.collection('tabs').doc(inp.dataset.tabId).update({ order: novaOrdem });
+      });
+    });
+  }
+
+  let tabArrastadoId = null;
+  function ativarArrastarTabs(tbody){
+    Array.prototype.slice.call(tbody.querySelectorAll('tr')).forEach(function(row){
+      row.addEventListener('dragstart', function(){
+        tabArrastadoId = row.dataset.tabId;
+        row.classList.add('dragging');
+      });
+      row.addEventListener('dragend', function(){
+        row.classList.remove('dragging');
+        salvarNovaOrdemTabs(tbody);
+      });
+      row.addEventListener('dragover', function(e){
+        e.preventDefault();
+        const arrastando = tbody.querySelector('tr[data-tab-id="' + tabArrastadoId + '"]');
+        if (!arrastando || arrastando === row) return;
+        const rect = row.getBoundingClientRect();
+        const antes = (e.clientY - rect.top) < rect.height / 2;
+        tbody.insertBefore(arrastando, antes ? row : row.nextSibling);
+      });
+    });
+  }
+
+  function salvarNovaOrdemTabs(tbody){
+    const linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    const batch = db.batch();
+    linhas.forEach(function(row, i){
+      const novaOrdem = (i + 1) * 10;
+      batch.update(db.collection('tabs').doc(row.dataset.tabId), { order: novaOrdem });
+      const inp = row.querySelector('.ordem-input');
+      if (inp) inp.value = novaOrdem;
+    });
+    batch.commit();
   }
 
   window.__deleteTab = function(id){
