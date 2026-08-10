@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calculadoras — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --warn:#d9a441;
+    --err:#ffb4ae;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Consolas","SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  button,input,select,textarea{font-family:inherit;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:960px;margin:0 auto;padding:24px 20px 70px;}
+
+  /* ---- segmented control ---- */
+  .segmented{display:flex;gap:8px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:6px;margin-bottom:24px;}
+  .segmented button{
+    flex:1;padding:12px 14px;border:none;border-radius:9px;background:transparent;color:var(--muted);
+    font-weight:600;font-size:.85rem;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .segmented button.active{background:var(--red);color:#fff;}
+  .segmented button:not(.active):hover{background:var(--panel-3);color:var(--paper);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;margin-bottom:20px;}
+  .card h2{font-family:var(--font-display);font-weight:600;font-size:1.05rem;margin:0 0 4px;color:var(--paper);}
+  .card .desc{font-size:.78rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
+  .field .hint{font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .field input,.field select{
+    width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-size:.92rem;outline:none;
+  }
+  .field input:focus,.field select:focus{border-color:var(--red);}
+  .field input:disabled{color:var(--muted);background:var(--panel-3);}
+  .field input[readonly]{color:var(--silver);background:var(--panel-3);}
+
+  .checkline{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .checkline input[type=checkbox]{width:16px;height:16px;accent-color:var(--red);}
+  .checkline label{font-size:.82rem;color:var(--paper);}
+
+  .btn{
+    padding:11px 20px;border-radius:8px;border:none;background:var(--red);
+    color:#fff;font-weight:600;font-size:.88rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.secondary:hover{background:var(--panel-2);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+  .msg-err{color:var(--err);font-size:.82rem;margin-top:12px;display:none;}
+  .msg-warn{color:var(--warn);font-size:.78rem;margin-top:8px;display:none;line-height:1.4;}
+
+  .result-box{margin-top:20px;padding-top:18px;border-top:1px solid var(--line-strong);display:none;}
+  .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px;}
+  .stat{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:14px 16px;}
+  .stat .k{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+  .stat .v{font-family:var(--font-display);font-size:1.15rem;color:var(--paper);font-weight:600;}
+  .stat.hi{background:linear-gradient(160deg,var(--red-deep),var(--red-bright));border-color:var(--red-bright);}
+  .stat.hi .k{color:#ffd9d5;}
+  .stat.hi .v{color:#fff;font-size:1.3rem;}
+
+  .table-wrap{max-height:420px;overflow:auto;border:1px solid var(--line-strong);border-radius:10px;margin-top:10px;}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;}
+  thead th{
+    position:sticky;top:0;background:var(--panel-3);color:var(--silver);text-align:right;
+    padding:9px 10px;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;
+    border-bottom:1px solid var(--line-strong);
+  }
+  thead th:first-child,tbody td:first-child{text-align:left;}
+  tbody td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);color:var(--paper);}
+  tbody tr:last-child td{font-weight:600;background:var(--panel-2);}
+
+  .memoria{
+    width:100%;min-height:150px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;
+    color:var(--paper);font-family:var(--font-mono);font-size:.78rem;padding:14px;line-height:1.6;resize:vertical;
+  }
+
+  details{margin-top:14px;}
+  details summary{cursor:pointer;font-size:.78rem;color:var(--silver);padding:6px 0;}
+  details summary:hover{color:var(--paper);}
+
+  footer.note{
+    max-width:960px;margin:0 auto;padding:0 20px 40px;font-size:.72rem;color:var(--muted);line-height:1.6;
+  }
+
+  @media(max-width:700px){
+    .grid,.grid.g3{grid-template-columns:1fr;}
+    .result-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Calculadoras</h1>
+  <p class="sub">Juros e parcelas fixas (Tabela Price) · Atualização monetária de valores processuais</p>
+</header>
+
+<main>
+
+  <div class="segmented">
+    <button id="tab-price" class="active">Juros e Parcelas</button>
+    <button id="tab-atual">Atualização de Processos</button>
+  </div>
+
+  <!-- ===================== PAINEL 1 — PRICE ===================== -->
+  <div id="panel-price" class="panel active">
+
+    <div class="card">
+      <h2>Financiamento — Sistema Price (parcelas fixas)</h2>
+      <p class="desc">Mesmo princípio da "Calculadora do Cidadão" (Banco Central) para prestações fixas: informe três das quatro variáveis e a calculadora encontra a quarta, junto com a tabela de amortização completa.</p>
+
+      <div class="field">
+        <label>O que você quer calcular?</label>
+        <select id="price-alvo">
+          <option value="pmt">Valor da parcela</option>
+          <option value="pv">Valor financiado (presente)</option>
+          <option value="n">Número de parcelas</option>
+          <option value="i">Taxa de juros ao mês</option>
+        </select>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label>Valor financiado (R$)</label>
+          <input type="text" id="price-pv" inputmode="decimal" placeholder="Ex: 10000">
+        </div>
+        <div class="field">
+          <label>Taxa de juros ao mês (%)</label>
+          <input type="text" id="price-i" inputmode="decimal" placeholder="Ex: 1,5">
+        </div>
+        <div class="field">
+          <label>Número de parcelas</label>
+          <input type="text" id="price-n" inputmode="numeric" placeholder="Ex: 12">
+        </div>
+        <div class="field">
+          <label>Valor da parcela (R$)</label>
+          <input type="text" id="price-pmt" inputmode="decimal" placeholder="Ex: 950">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Data da 1ª parcela (opcional)</label>
+        <input type="date" id="price-data1">
+        <p class="hint">Se informada, a tabela de amortização mostra a data de cada parcela (mensal, a partir dela).</p>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="price-calc-btn">Calcular</button>
+        <button class="btn secondary" id="price-csv-btn" style="display:none;">Baixar tabela (CSV)</button>
+      </div>
+      <div class="msg-err" id="price-err"></div>
+
+      <div class="result-box" id="price-result">
+        <div class="result-grid">
+          <div class="stat hi"><div class="k">Parcela mensal</div><div class="v" id="price-out-pmt">—</div></div>
+          <div class="stat"><div class="k">Valor financiado</div><div class="v" id="price-out-pv">—</div></div>
+          <div class="stat"><div class="k">Taxa ao mês</div><div class="v" id="price-out-i">—</div></div>
+          <div class="stat"><div class="k">Nº de parcelas</div><div class="v" id="price-out-n">—</div></div>
+          <div class="stat"><div class="k">Total pago</div><div class="v" id="price-out-total">—</div></div>
+          <div class="stat"><div class="k">Total de juros</div><div class="v" id="price-out-juros">—</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Parcela</th><th>Data</th><th>Prestação</th><th>Juros</th><th>Amortização</th><th>Saldo devedor</th></tr></thead>
+            <tbody id="price-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Conversor de taxas equivalentes</h2>
+      <p class="desc">Converte taxa mensal em taxa anual equivalente (juros compostos) e vice-versa.</p>
+      <div class="grid">
+        <div class="field">
+          <label>Taxa ao mês (%)</label>
+          <input type="text" id="conv-mensal" inputmode="decimal" placeholder="Ex: 2">
+        </div>
+        <div class="field">
+          <label>Taxa ao ano (%)</label>
+          <input type="text" id="conv-anual" inputmode="decimal" placeholder="Ex: 26,82">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="conv-para-anual">Mês → Ano</button>
+        <button class="btn secondary" id="conv-para-mensal">Ano → Mês</button>
+      </div>
+      <p class="hint" id="conv-out" style="margin-top:12px;"></p>
+    </div>
+
+  </div>
+
+  <!-- ===================== PAINEL 2 — ATUALIZAÇÃO ===================== -->
+  <div id="panel-atual" class="panel">
+
+    <div class="card">
+      <h2>Atualização de valores processuais</h2>
+      <p class="desc">Correção monetária (índices oficiais, buscados em tempo real no Banco Central — Sistema Gerenciador de Séries Temporais/SGS) + juros de mora + multa, no mesmo espírito das calculadoras do TJMG e do Dr. Calc.</p>
+
+      <div class="grid">
+        <div class="field">
+          <label>Valor original (R$)</label>
+          <input type="text" id="at-valor" inputmode="decimal" placeholder="Ex: 5000">
+        </div>
+        <div class="field">
+          <label>Índice de correção</label>
+          <select id="at-indice">
+            <option value="10764">IPCA-E</option>
+            <option value="188">INPC</option>
+            <option value="189">IGP-M</option>
+            <option value="433">IPCA</option>
+            <option value="4390">Taxa Selic (já inclui juros)</option>
+            <option value="0">Sem correção monetária</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Data do valor original (data-base)</label>
+          <input type="date" id="at-data-base">
+        </div>
+        <div class="field">
+          <label>Data final do cálculo</label>
+          <input type="date" id="at-data-fim">
+        </div>
+      </div>
+
+      <div class="checkline">
+        <input type="checkbox" id="at-manual-fator">
+        <label for="at-manual-fator">Informar o fator de correção manualmente (ex.: já calculado no site do tribunal)</label>
+      </div>
+      <div class="field" id="at-fator-manual-field" style="display:none;">
+        <label>Percentual de correção acumulada no período (%)</label>
+        <input type="text" id="at-fator-manual" inputmode="decimal" placeholder="Ex: 8,42">
+      </div>
+
+      <div class="checkline">
+        <input type="checkbox" id="at-juros-check" checked>
+        <label for="at-juros-check">Aplicar juros de mora</label>
+      </div>
+      <div id="at-juros-fields">
+        <div class="grid g3">
+          <div class="field">
+            <label>Taxa de juros ao mês (%)</label>
+            <input type="text" id="at-juros-taxa" inputmode="decimal" value="1">
+          </div>
+          <div class="field">
+            <label>Regime</label>
+            <select id="at-juros-regime">
+              <option value="simples">Simples</option>
+              <option value="composto">Composto</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Juros a partir de</label>
+            <input type="date" id="at-juros-data">
+          </div>
+        </div>
+      </div>
+      <p class="msg-warn" id="at-selic-warn">A Selic já embute correção monetária e juros no mesmo índice (Tema 905/STJ; EC 113/2021) — normalmente não se cumulam juros de mora adicionais quando este índice é usado.</p>
+
+      <div class="field">
+        <label>Multa (%) — opcional, incide uma única vez sobre o valor corrigido</label>
+        <input type="text" id="at-multa" inputmode="decimal" placeholder="Ex: 2" value="0">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="at-calc-btn">Calcular atualização</button>
+      </div>
+      <div class="msg-err" id="at-err"></div>
+
+      <div class="result-box" id="at-result">
+        <div class="result-grid">
+          <div class="stat"><div class="k">Valor original</div><div class="v" id="at-out-original">—</div></div>
+          <div class="stat"><div class="k">Fator de correção</div><div class="v" id="at-out-fator">—</div></div>
+          <div class="stat"><div class="k">Valor corrigido</div><div class="v" id="at-out-corrigido">—</div></div>
+          <div class="stat"><div class="k">Juros de mora</div><div class="v" id="at-out-juros">—</div></div>
+          <div class="stat"><div class="k">Multa</div><div class="v" id="at-out-multa">—</div></div>
+          <div class="stat hi"><div class="k">Valor total atualizado</div><div class="v" id="at-out-total">—</div></div>
+        </div>
+
+        <details id="at-detalhe-indices" style="display:none;">
+          <summary>Ver meses e variações usadas na correção</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Mês de referência</th><th>Variação (%)</th><th>Fator acumulado</th></tr></thead>
+              <tbody id="at-indices-body"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <div class="field" style="margin-top:18px;">
+          <label>Memória de cálculo (para copiar na peça)</label>
+          <textarea class="memoria" id="at-memoria" readonly></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn secondary" id="at-copiar-btn">Copiar memória de cálculo</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="note">
+  Índices de correção monetária consultados ao vivo na API pública do Banco Central do Brasil (SGS — Sistema Gerenciador de Séries Temporais). Convenção adotada: a variação de cada mês é aplicada a partir do mês seguinte ao da data-base até o mês da data final (inclusive) — mesma lógica geral usada pelas calculadoras oficiais dos tribunais. Confira sempre o resultado na calculadora oficial do tribunal (ex.: TJMG) antes de juntar o cálculo aos autos, sobretudo em casos com regras específicas (Fazenda Pública, EC 113/2021, contratos com índice pactuado). Esta ferramenta é um apoio de cálculo e não substitui a conferência profissional.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- helpers ----------
+  function parseNumBR(s){
+    if (s === null || s === undefined) return NaN;
+    s = String(s).trim();
+    if (!s) return NaN;
+    if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+    return parseFloat(s);
+  }
+  function fmtBRL(v){
+    if (!isFinite(v)) return '—';
+    return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  }
+  function fmtPct(v, casas){
+    if (!isFinite(v)) return '—';
+    return v.toLocaleString('pt-BR', { minimumFractionDigits: casas||2, maximumFractionDigits: casas||2 }) + '%';
+  }
+  function fmtDataISO(iso){
+    if (!iso) return '';
+    var p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  function addMonthsISO(iso, n){
+    var p = iso.split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1]-1+n, p[2]));
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+  }
+  function todayISO(){
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function diffDias(iso1, iso2){
+    var a = new Date(iso1 + 'T00:00:00Z');
+    var b = new Date(iso2 + 'T00:00:00Z');
+    return Math.round((b - a) / 86400000);
+  }
+
+  // ---------- tabs ----------
+  var tabPrice = document.getElementById('tab-price');
+  var tabAtual = document.getElementById('tab-atual');
+  var panelPrice = document.getElementById('panel-price');
+  var panelAtual = document.getElementById('panel-atual');
+  tabPrice.addEventListener('click', function(){
+    tabPrice.classList.add('active'); tabAtual.classList.remove('active');
+    panelPrice.classList.add('active'); panelAtual.classList.remove('active');
+  });
+  tabAtual.addEventListener('click', function(){
+    tabAtual.classList.add('active'); tabPrice.classList.remove('active');
+    panelAtual.classList.add('active'); panelPrice.classList.remove('active');
+  });
+
+  // ======================================================
+  // PAINEL 1 — SISTEMA PRICE
+  // ======================================================
+  var pvEl = document.getElementById('price-pv');
+  var iEl = document.getElementById('price-i');
+  var nEl = document.getElementById('price-n');
+  var pmtEl = document.getElementById('price-pmt');
+  var alvoEl = document.getElementById('price-alvo');
+  var data1El = document.getElementById('price-data1');
+  var priceErr = document.getElementById('price-err');
+  var priceResult = document.getElementById('price-result');
+  var priceCsvBtn = document.getElementById('price-csv-btn');
+  var ultimaTabela = null;
+
+  [pvEl, iEl, nEl, pmtEl].forEach(function(el){ el.dataset.placeholder = el.placeholder; });
+
+  function atualizaCamposDesabilitados(){
+    [pvEl, iEl, nEl, pmtEl].forEach(function(el){ el.disabled = false; el.placeholder = el.dataset.placeholder; });
+    var map = { pv: pvEl, i: iEl, n: nEl, pmt: pmtEl };
+    var alvo = map[alvoEl.value];
+    alvo.disabled = true;
+    alvo.value = '';
+    alvo.placeholder = 'será calculado';
+  }
+  alvoEl.addEventListener('change', atualizaCamposDesabilitados);
+  atualizaCamposDesabilitados();
+
+  function pmtFromRate(pv, i, n){ return i === 0 ? pv / n : pv * i / (1 - Math.pow(1 + i, -n)); }
+  function pvFromRate(pmt, i, n){ return i === 0 ? pmt * n : pmt * (1 - Math.pow(1 + i, -n)) / i; }
+  function nFromRate(pv, pmt, i){
+    if (i === 0) return pv / pmt;
+    if (pmt <= pv * i) return Infinity;
+    return -Math.log(1 - (pv * i) / pmt) / Math.log(1 + i);
+  }
+  function rateFromPmtPvN(pv, pmt, n){
+    if (pmt * n <= pv) return null;
+    var lo = 0, hi = 10;
+    for (var k = 0; k < 200; k++){
+      var mid = (lo + hi) / 2;
+      var f = pmtFromRate(pv, mid, n) - pmt;
+      if (f > 0) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  document.getElementById('price-calc-btn').addEventListener('click', function(){
+    priceErr.style.display = 'none';
+    priceResult.style.display = 'none';
+    priceCsvBtn.style.display = 'none';
+
+    var pv = parseNumBR(pvEl.value);
+    var iPct = parseNumBR(iEl.value);
+    var n = parseNumBR(nEl.value);
+    var pmt = parseNumBR(pmtEl.value);
+    var alvo = alvoEl.value;
+
+    try {
+      if (alvo === 'pmt'){
+        if (!(pv > 0) || !(iPct >= 0) || !(n > 0)) throw 'Informe valor financiado, taxa e número de parcelas válidos.';
+        n = Math.round(n);
+        var i = iPct / 100;
+        pmt = pmtFromRate(pv, i, n);
+      } else if (alvo === 'pv'){
+        if (!(pmt > 0) || !(iPct >= 0) || !(n > 0)) throw 'Informe parcela, taxa e número de parcelas válidos.';
+        n = Math.round(n);
+        var i2 = iPct / 100;
+        pv = pvFromRate(pmt, i2, n);
+      } else if (alvo === 'n'){
+        if (!(pv > 0) || !(iPct >= 0) || !(pmt > 0)) throw 'Informe valor financiado, taxa e parcela válidos.';
+        var i3 = iPct / 100;
+        var nCalc = nFromRate(pv, pmt, i3);
+        if (!isFinite(nCalc)) throw 'Com essa taxa, a parcela informada não é suficiente para quitar o valor financiado (juros perpétuos).';
+        n = Math.ceil(nCalc - 1e-9);
+      } else if (alvo === 'i'){
+        if (!(pv > 0) || !(n > 0) || !(pmt > 0)) throw 'Informe valor financiado, número de parcelas e parcela válidos.';
+        n = Math.round(n);
+        var iCalc = rateFromPmtPvN(pv, pmt, n);
+        if (iCalc === null) throw 'A parcela informada é menor ou igual à divisão simples do valor pelo número de parcelas — não há taxa de juros positiva compatível.';
+        iPct = iCalc * 100;
+      }
+
+      var iFinal = iPct / 100;
+      var pmtFinal = pmtFromRate(pv, iFinal, n);
+      var totalPago = pmtFinal * n;
+      var totalJuros = totalPago - pv;
+
+      document.getElementById('price-out-pmt').textContent = fmtBRL(pmtFinal);
+      document.getElementById('price-out-pv').textContent = fmtBRL(pv);
+      document.getElementById('price-out-i').textContent = fmtPct(iPct, 4);
+      document.getElementById('price-out-n').textContent = n;
+      document.getElementById('price-out-total').textContent = fmtBRL(totalPago);
+      document.getElementById('price-out-juros').textContent = fmtBRL(totalJuros);
+
+      // tabela de amortização
+      var tbody = document.getElementById('price-table-body');
+      tbody.innerHTML = '';
+      var saldo = pv;
+      var linhas = [];
+      for (var p = 1; p <= n; p++){
+        var jurosP = saldo * iFinal;
+        var amort = pmtFinal - jurosP;
+        var parcelaP = pmtFinal;
+        if (p === n){ amort = saldo; parcelaP = jurosP + amort; }
+        var saldoAntes = saldo;
+        saldo = saldo - amort;
+        if (p === n) saldo = 0;
+        var dataStr = data1El.value ? fmtDataISO(addMonthsISO(data1El.value, p - 1)) : ('#' + p);
+        linhas.push({ p: p, data: dataStr, parcela: parcelaP, juros: jurosP, amort: amort, saldo: saldo });
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + p + '</td><td>' + dataStr + '</td><td>' + fmtBRL(parcelaP) + '</td><td>' + fmtBRL(jurosP) + '</td><td>' + fmtBRL(amort) + '</td><td>' + fmtBRL(saldo) + '</td>';
+        tbody.appendChild(tr);
+      }
+      ultimaTabela = linhas;
+      priceResult.style.display = 'block';
+      priceCsvBtn.style.display = 'inline-block';
+    } catch (e) {
+      priceErr.textContent = typeof e === 'string' ? e : 'Erro ao calcular. Confira os valores informados.';
+      priceErr.style.display = 'block';
+    }
+  });
+
+  priceCsvBtn.addEventListener('click', function(){
+    if (!ultimaTabela) return;
+    var linhas = ['Parcela;Data;Prestacao;Juros;Amortizacao;Saldo Devedor'];
+    ultimaTabela.forEach(function(l){
+      linhas.push([l.p, l.data, l.parcela.toFixed(2).replace('.',','), l.juros.toFixed(2).replace('.',','), l.amort.toFixed(2).replace('.',','), l.saldo.toFixed(2).replace('.',',')].join(';'));
+    });
+    var blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tabela-price.csv';
+    a.click();
+  });
+
+  // conversor de taxas
+  document.getElementById('conv-para-anual').addEventListener('click', function(){
+    var m = parseNumBR(document.getElementById('conv-mensal').value) / 100;
+    if (!isFinite(m)) return;
+    var anualComposto = (Math.pow(1 + m, 12) - 1) * 100;
+    var anualSimples = m * 12 * 100;
+    document.getElementById('conv-anual').value = anualComposto.toFixed(4).replace('.', ',');
+    document.getElementById('conv-out').textContent = 'Equivalente composta ao ano: ' + fmtPct(anualComposto, 4) + '  ·  Nominal simples (×12): ' + fmtPct(anualSimples, 4);
+  });
+  document.getElementById('conv-para-mensal').addEventListener('click', function(){
+    var a = parseNumBR(document.getElementById('conv-anual').value) / 100;
+    if (!isFinite(a)) return;
+    var mensalComposto = (Math.pow(1 + a, 1/12) - 1) * 100;
+    var mensalSimples = a / 12 * 100;
+    document.getElementById('conv-mensal').value = mensalComposto.toFixed(4).replace('.', ',');
+    document.getElementById('conv-out').textContent = 'Equivalente composta ao mês: ' + fmtPct(mensalComposto, 4) + '  ·  Nominal simples (÷12): ' + fmtPct(mensalSimples, 4);
+  });
+
+  // ======================================================
+  // PAINEL 2 — ATUALIZAÇÃO DE VALORES PROCESSUAIS
+  // ======================================================
+  var atDataBase = document.getElementById('at-data-base');
+  var atDataFim = document.getElementById('at-data-fim');
+  atDataFim.value = todayISO();
+
+  var atManualCheck = document.getElementById('at-manual-fator');
+  var atFatorManualField = document.getElementById('at-fator-manual-field');
+  atManualCheck.addEventListener('change', function(){
+    atFatorManualField.style.display = atManualCheck.checked ? 'block' : 'none';
+  });
+
+  var atIndice = document.getElementById('at-indice');
+  var atJurosCheck = document.getElementById('at-juros-check');
+  var atJurosFields = document.getElementById('at-juros-fields');
+  var atSelicWarn = document.getElementById('at-selic-warn');
+
+  function atualizaAvisoSelic(){
+    var isSelic = atIndice.value === '4390';
+    atSelicWarn.style.display = (isSelic && atJurosCheck.checked) ? 'block' : 'none';
+  }
+  atIndice.addEventListener('change', atualizaAvisoSelic);
+  atJurosCheck.addEventListener('change', function(){
+    atJurosFields.style.display = atJurosCheck.checked ? 'block' : 'none';
+    atualizaAvisoSelic();
+  });
+
+  async function buscarFatorIndice(codigo, dataBaseISO, dataFimISO){
+    var bi = dataBaseISO.split('-').map(Number);
+    var bf = dataFimISO.split('-').map(Number);
+    var mIni = bi[1] + 1, aIni = bi[0];
+    if (mIni > 12){ mIni = 1; aIni++; }
+    var mFim = bf[1], aFim = bf[0];
+    if ((aIni * 12 + mIni) > (aFim * 12 + mFim)){
+      return { fator: 1, meses: [] };
+    }
+    var dataInicial = String(mIni).padStart(2,'0') + '/01/' + aIni;
+    var dataFinal = String(mFim).padStart(2,'0') + '/01/' + aFim;
+    var url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.' + codigo + '/dados?formato=json&dataInicial=' + dataInicial + '&dataFinal=' + dataFinal;
+    var resp = await fetch(url);
+    if (!resp.ok) throw new Error('Falha ao consultar o Banco Central (HTTP ' + resp.status + ').');
+    var dados = await resp.json();
+    var fator = 1;
+    var meses = [];
+    dados.forEach(function(d){
+      var v = parseFloat(String(d.valor).replace(',', '.')) / 100;
+      fator *= (1 + v);
+      meses.push({ data: d.data, variacao: v * 100, fatorAcumulado: fator });
+    });
+    return { fator: fator, meses: meses };
+  }
+
+  document.getElementById('at-calc-btn').addEventListener('click', async function(){
+    var errEl = document.getElementById('at-err');
+    var resultEl = document.getElementById('at-result');
+    errEl.style.display = 'none';
+    resultEl.style.display = 'none';
+
+    var valor = parseNumBR(document.getElementById('at-valor').value);
+    var dataBase = atDataBase.value;
+    var dataFim = atDataFim.value;
+
+    if (!(valor > 0) || !dataBase || !dataFim){
+      errEl.textContent = 'Informe o valor original, a data-base e a data final.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (dataFim < dataBase){
+      errEl.textContent = 'A data final não pode ser anterior à data-base.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    var textoOriginal = btn.textContent;
+    btn.textContent = 'Calculando...';
+
+    try {
+      var fator, meses = [];
+      if (atManualCheck.checked){
+        var fp = parseNumBR(document.getElementById('at-fator-manual').value);
+        if (!isFinite(fp)) throw 'Informe o percentual de correção manual.';
+        fator = 1 + fp / 100;
+      } else if (atIndice.value === '0'){
+        fator = 1;
+      } else {
+        var res = await buscarFatorIndice(atIndice.value, dataBase, dataFim);
+        fator = res.fator;
+        meses = res.meses;
+      }
+
+      var valorCorrigido = valor * fator;
+
+      var juros = 0, jurosTexto = 'Não aplicado';
+      if (atJurosCheck.checked){
+        var taxa = parseNumBR(document.getElementById('at-juros-taxa').value) / 100;
+        var regime = document.getElementById('at-juros-regime').value;
+        var dataJuros = document.getElementById('at-juros-data').value || dataBase;
+        if (dataJuros < dataFim){
+          var dias = diffDias(dataJuros, dataFim);
+          var meses30 = dias / 30;
+          juros = regime === 'composto'
+            ? valorCorrigido * (Math.pow(1 + taxa, meses30) - 1)
+            : valorCorrigido * taxa * meses30;
+          jurosTexto = fmtPct(taxa * 100, 2) + ' a.m. (' + (regime === 'composto' ? 'composto' : 'simples') + '), ' + dias + ' dias desde ' + fmtDataISO(dataJuros);
+        }
+      }
+
+      var multaPct = parseNumBR(document.getElementById('at-multa').value) || 0;
+      var multa = valorCorrigido * multaPct / 100;
+
+      var total = valorCorrigido + juros + multa;
+
+      document.getElementById('at-out-original').textContent = fmtBRL(valor);
+      document.getElementById('at-out-fator').textContent = fmtPct((fator - 1) * 100, 4);
+      document.getElementById('at-out-corrigido').textContent = fmtBRL(valorCorrigido);
+      document.getElementById('at-out-juros').textContent = fmtBRL(juros);
+      document.getElementById('at-out-multa').textContent = fmtBRL(multa);
+      document.getElementById('at-out-total').textContent = fmtBRL(total);
+
+      var indicesBody = document.getElementById('at-indices-body');
+      var detalhe = document.getElementById('at-detalhe-indices');
+      indicesBody.innerHTML = '';
+      if (meses.length){
+        meses.forEach(function(m){
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + m.data + '</td><td>' + fmtPct(m.variacao, 2) + '</td><td>' + fmtPct((m.fatorAcumulado - 1) * 100, 4) + '</td>';
+          indicesBody.appendChild(tr);
+        });
+        detalhe.style.display = 'block';
+      } else {
+        detalhe.style.display = 'none';
+      }
+
+      var nomeIndice = atManualCheck.checked ? 'fator informado manualmente' : atIndice.options[atIndice.selectedIndex].text;
+      var memoria = [
+        'MEMÓRIA DE CÁLCULO — ATUALIZAÇÃO DE VALOR',
+        '',
+        'Valor original: ' + fmtBRL(valor) + ' (data-base: ' + fmtDataISO(dataBase) + ')',
+        'Data final do cálculo: ' + fmtDataISO(dataFim),
+        'Índice de correção: ' + nomeIndice,
+        'Fator de correção acumulado: ' + fmtPct((fator - 1) * 100, 4),
+        'Valor corrigido monetariamente: ' + fmtBRL(valorCorrigido),
+        'Juros de mora: ' + jurosTexto + (atJurosCheck.checked ? ' = ' + fmtBRL(juros) : ''),
+        'Multa (' + fmtPct(multaPct, 2) + '): ' + fmtBRL(multa),
+        '',
+        'VALOR TOTAL ATUALIZADO: ' + fmtBRL(total)
+      ].join('\n');
+      document.getElementById('at-memoria').value = memoria;
+
+      resultEl.style.display = 'block';
+    } catch (e) {
+      errEl.textContent = typeof e === 'string' ? e : ('Não foi possível concluir o cálculo (' + (e && e.message ? e.message : 'erro de conexão com o Banco Central') + '). Tente novamente ou use o fator manual.');
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
+  });
+
+  document.getElementById('at-copiar-btn').addEventListener('click', function(){
+    var ta = document.getElementById('at-memoria');
+    var btn = this;
+    var original = btn.textContent;
+    function marcarCopiado(){
+      btn.textContent = 'Copiado!';
+      setTimeout(function(){ btn.textContent = original; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(marcarCopiado, function(){
+        ta.select();
+        document.execCommand('copy');
+        marcarCopiado();
+      });
+    } else {
+      ta.select();
+      document.execCommand('copy');
+      marcarCopiado();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
