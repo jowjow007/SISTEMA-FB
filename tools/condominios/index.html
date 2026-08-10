@@ -3,189 +3,797 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Condomínios — Fonseca e Braga</title>
+<title>Manual Operacional — Fonseca e Braga</title>
 <style>
   :root{
     --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
+    --paper:#faf7f2;
+    --card:#ffffff;
+    --card-line:#e7e1d8;
+    --text:#211a17;
+    --muted:#7c716a;
+    --red:#8a231f;
+    --red-bright:#a8332c;
     --red-deep:#5c1a16;
-    --silver:#a9adb2;
-    --gold:#c9a15a;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.20);
+    --red-pale:#f7e6e4;
+    --gold:#b8862f;
+    --green-bg:#e3f3e6;
+    --green-text:#256b38;
+    --warn-bg:#fdf0e0;
+    --warn-line:#e9c98a;
     --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+  html,body{margin:0;min-height:100%;background:var(--paper);color:var(--text);font-family:var(--font-body);}
   a{color:inherit;}
+  h1,h2,h3{font-family:var(--font-display);}
 
-  header{
-    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
-    padding:16px 20px 14px;
+  /* top bar */
+  .topbar{
+    position:sticky;top:0;z-index:6;background:var(--ink);color:#ece6e1;
+    padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   }
-  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
-  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
-
-  main{max-width:760px;margin:0 auto;padding:30px 20px 70px;}
-
-  .hub{
-    background:linear-gradient(160deg,var(--red-deep),var(--red-bright));
-    border:1px solid var(--red-bright);border-radius:14px;
-    padding:14px 26px;text-align:center;box-shadow:0 10px 30px rgba(184,54,46,.25);
-    margin:0 0 28px;
+  .brand{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .brand .box{width:34px;height:34px;border-radius:4px;background:linear-gradient(160deg,var(--red-deep),var(--red-bright));
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;color:#fff;font-size:1rem;}
+  .brand .name{font-family:var(--font-display);font-weight:600;font-size:.95rem;line-height:1.15;}
+  .brand .name small{display:block;font-family:var(--font-body);font-weight:400;font-size:.6rem;letter-spacing:.08em;color:#a9adb2;text-transform:uppercase;}
+  .search{
+    flex:1 1 260px;display:flex;align-items:center;gap:8px;background:#2a2220;border:1px solid #3a302c;border-radius:8px;
+    padding:8px 12px;color:#c9c0ba;font-size:.82rem;min-width:200px;
   }
-  .hub .kicker{font-size:.68rem;letter-spacing:.12em;color:#ffd9d5;text-transform:uppercase;font-weight:700;}
-  .hub h2{font-family:var(--font-display);font-size:1.15rem;margin:4px 0 2px;color:#fff;}
-  .hub .hint{font-size:.74rem;color:#ffe3e0;opacity:.9;}
+  .status{flex:0 0 auto;display:flex;align-items:center;gap:6px;font-size:.75rem;color:#9fd6ab;white-space:nowrap;}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:#4caf5f;}
 
-  /* vertical sub-tabs, stacked at the top */
-  .condo-tabs{
-    display:flex;flex-direction:column;gap:6px;
-    background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
-    padding:8px;margin:0 0 22px;
+  /* horizontal nav (replaces the reference site's vertical sidebar) */
+  nav.tabs{
+    position:sticky;top:63px;z-index:5;background:var(--card);border-bottom:1px solid var(--card-line);
+    display:flex;gap:2px;overflow-x:auto;padding:0 14px;
   }
-  .condo-tab{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
-    width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;
-    padding:10px 14px;font-family:var(--font-body);font-size:.86rem;color:var(--paper);
-    cursor:pointer;transition:background .15s,border-color .15s;
+  nav.tabs button{
+    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    padding:13px 14px;font-family:var(--font-body);font-size:.82rem;font-weight:600;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
   }
-  .condo-tab:hover{background:var(--panel-2);}
-  .condo-tab .name{font-weight:600;}
-  .condo-tab .flag{font-size:.68rem;color:var(--gold);opacity:.85;}
-  .condo-tab.active{background:var(--panel-2);border-color:var(--red);}
-  .condo-tab.active .name{color:#ffb4ae;}
-  .condo-tab .chev{color:var(--muted);font-size:.75rem;transform:rotate(0deg);transition:transform .15s;}
-  .condo-tab.active .chev{color:var(--red-bright);transform:rotate(90deg);}
+  nav.tabs button:hover{color:var(--text);}
+  nav.tabs button.active{color:var(--red);border-bottom-color:var(--red);}
 
-  .condo-detail{
-    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;
-    padding:24px 26px 26px;
-  }
-  .condo-detail h3{
-    font-family:var(--font-display);font-weight:600;font-size:1.35rem;margin:0 0 14px;color:var(--paper);
-  }
-  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin-bottom:18px;}
-  .field{min-width:0;}
-  .field .label{font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
-  .field .value{font-size:.9rem;color:var(--paper);word-break:break-word;}
-  .field .value.empty{color:var(--muted);}
+  main{max-width:1180px;margin:0 auto;padding:34px 22px 80px;}
+  .kicker{font-size:.68rem;letter-spacing:.12em;color:var(--red);text-transform:uppercase;font-weight:700;margin:0 0 8px;}
+  main h1{font-size:2rem;margin:0 0 10px;color:var(--text);font-weight:600;}
+  main .lead{font-size:.95rem;color:var(--muted);max-width:760px;line-height:1.55;margin:0 0 24px;}
+  hr.rule{border:none;border-top:1px solid var(--card-line);margin:0 0 30px;}
 
-  .badge-plat{
-    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:var(--gold);
-    background:rgba(201,161,90,.12);border:1px solid rgba(201,161,90,.35);border-radius:20px;
-    padding:2px 10px;
-  }
+  h2.section-h{display:flex;align-items:center;gap:10px;font-size:1.25rem;font-weight:600;color:var(--text);margin:0 0 14px;}
+  h2.section-h .ic{font-size:1.1rem;}
 
-  .note-box{
-    display:flex;gap:10px;align-items:flex-start;
-    background:rgba(184,54,46,.10);border:1px solid rgba(184,54,46,.35);border-radius:10px;
-    padding:12px 14px;margin-top:4px;
-  }
-  .note-box .ico{font-size:1rem;line-height:1.3;}
-  .note-box p{margin:0;font-size:.82rem;color:#ffd9d5;line-height:1.5;}
-  .note-box p b{color:#fff;}
+  .grid{display:grid;gap:18px;}
+  .grid.g2{grid-template-columns:1fr 1fr;}
+  .grid.g3{grid-template-columns:repeat(3,1fr);}
+  .grid.g5{grid-template-columns:repeat(3,1fr);}
 
-  .no-note{font-size:.8rem;color:var(--muted);font-style:italic;}
+  .card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:20px;}
+  .card h3{font-size:1.02rem;margin:0 0 6px;color:var(--text);}
+  .card p{font-size:.85rem;color:var(--muted);line-height:1.5;margin:0;}
+  .card .acessar{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:.8rem;font-weight:700;color:var(--red);cursor:pointer;background:none;border:none;padding:0;font-family:var(--font-body);}
 
-  footer.note{max-width:760px;margin:0 auto;padding:0 20px 40px;font-size:.72rem;color:var(--muted);text-align:center;}
+  .icon-sq{width:38px;height:38px;border-radius:9px;background:var(--red-pale);color:var(--red);display:flex;align-items:center;
+    justify-content:center;font-size:1.05rem;margin-bottom:10px;}
 
-  @media(max-width:560px){
-    .field-grid{grid-template-columns:1fr;}
-    main{padding:20px 14px 50px;}
+  .box{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .box p{font-size:.87rem;line-height:1.6;margin:0 0 10px;color:var(--text);}
+  .box p:last-child{margin-bottom:0;}
+  .box ul{margin:6px 0;padding-left:20px;font-size:.87rem;line-height:1.65;}
+  .box ol{margin:6px 0;padding-left:20px;font-size:.87rem;line-height:1.7;}
+
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--card-line);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+  .split > div{padding:16px 18px;font-size:.85rem;line-height:1.55;}
+  .split > div:first-child{border-right:1px solid var(--card-line);border-left:3px solid var(--red);}
+  .split > div:last-child{border-left:3px solid var(--gold);}
+  .split .t{font-weight:700;margin-bottom:4px;color:var(--text);font-size:.88rem;}
+  .split .t + p, .split div > p{color:var(--muted);margin:0;}
+
+  .warn{display:flex;gap:10px;background:var(--red-pale);border:1px solid #e6b9b3;border-radius:10px;padding:13px 16px;margin-bottom:16px;font-size:.84rem;line-height:1.55;color:#5c1a16;}
+  .warn.gold{background:var(--warn-bg);border-color:var(--warn-line);color:#6b4d15;}
+  .warn .ic{flex:0 0 auto;}
+
+  .steps{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .step{display:flex;gap:12px;background:var(--card);border:1px solid var(--card-line);border-radius:10px;padding:14px 16px;}
+  .step .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;font-size:.78rem;font-weight:700;
+    display:flex;align-items:center;justify-content:center;}
+  .step .b{font-weight:700;font-size:.85rem;margin-bottom:2px;}
+  .step .d{font-size:.78rem;color:var(--muted);line-height:1.45;}
+
+  table.sla{width:100%;border-collapse:collapse;font-size:.83rem;}
+  table.sla th{text-align:left;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--card-line);}
+  table.sla td{padding:9px 6px;border-bottom:1px solid var(--card-line);}
+  table.sla .pill{display:inline-block;background:var(--red-pale);color:var(--red);font-size:.72rem;font-weight:700;border-radius:14px;padding:2px 10px;}
+
+  .badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;border-radius:20px;padding:2px 10px;text-transform:uppercase;}
+  .badge.ativo{background:var(--green-bg);color:var(--green-text);}
+  .badge.atencao{background:#fbe2df;color:#a3312a;}
+  .badge.tag{background:#f1ece4;color:#6b6058;}
+
+  /* condo grid + detail */
+  .condo-card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:18px;display:flex;flex-direction:column;}
+  .condo-card .top-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .condo-card h3{margin:0 0 4px;font-size:1.05rem;}
+  .condo-card .sind{font-size:.8rem;color:var(--muted);margin:0 0 8px;}
+  .condo-card .note{font-size:.76rem;color:#a3312a;margin:0 0 10px;line-height:1.4;}
+  .condo-card button.ver{margin-top:auto;background:var(--card);border:1px solid var(--card-line);border-radius:8px;padding:9px 14px;
+    font-size:.82rem;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:var(--font-body);}
+  .condo-card button.ver:hover{border-color:var(--red);color:var(--red);}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;font-size:.83rem;color:var(--muted);background:none;border:none;
+    cursor:pointer;padding:0;margin-bottom:14px;font-family:var(--font-body);}
+  .back-link:hover{color:var(--red);}
+
+  .subtabs{display:flex;gap:4px;border-bottom:1px solid var(--card-line);margin-bottom:20px;overflow-x:auto;}
+  .subtabs button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 4px;margin-right:22px;
+    font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:var(--font-body);}
+  .subtabs button.active{color:var(--red);border-bottom-color:var(--red);}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .field-box{background:var(--card);border:1px solid var(--card-line);border-radius:10px;padding:14px 16px;}
+  .field-box .label{font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .field-box .value{font-size:.92rem;color:var(--text);}
+  .obs-box{display:flex;gap:10px;background:var(--card);border:1px solid var(--card-line);border-radius:10px;padding:14px 16px;}
+  .obs-box .label{font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .empty-tab{font-size:.85rem;color:var(--muted);font-style:italic;padding:30px 0;text-align:center;}
+
+  /* nomenclatura */
+  .nom-types{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+  .nom-types button{flex:1 1 160px;background:var(--card);border:1px solid var(--card-line);border-radius:10px;padding:16px 10px;
+    text-align:center;font-family:var(--font-body);font-size:.83rem;font-weight:600;color:var(--text);cursor:pointer;}
+  .nom-types button .ic{display:block;font-size:1.2rem;margin-bottom:6px;}
+  .nom-types button.active{background:var(--red);border-color:var(--red);color:#fff;}
+  .nom-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .nom-form label{display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .nom-form input,.nom-form select{width:100%;padding:9px 11px;border:1px solid var(--card-line);border-radius:8px;font-size:.85rem;
+    font-family:var(--font-body);background:#fff;color:var(--text);}
+  .nom-result{background:#f1ece4;border:1px solid var(--card-line);border-radius:10px;padding:16px;font-family:var(--font-mono);
+    font-size:.85rem;color:var(--text);min-height:70px;word-break:break-word;line-height:1.5;}
+  .copy-btn{margin-top:14px;background:var(--red);color:#fff;border:none;border-radius:8px;padding:11px 16px;font-weight:700;
+    font-size:.85rem;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);}
+  .copy-btn:active{background:var(--red-deep);}
+
+  .link-card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:18px;}
+  .link-card .lt{display:flex;justify-content:space-between;align-items:center;}
+  .link-card h3{margin:0;font-size:1.05rem;}
+  .link-card p{font-size:.83rem;color:var(--muted);margin:6px 0 8px;}
+  .link-card code{font-size:.78rem;color:var(--red);}
+
+  .external-btn{display:inline-flex;align-items:center;gap:8px;background:var(--red);color:#fff;border:none;border-radius:8px;
+    padding:11px 18px;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-body);}
+
+  footer.note{max-width:1180px;margin:10px auto 40px;padding:0 22px;font-size:.75rem;color:var(--muted);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+
+  @media(max-width:860px){
+    .grid.g2,.grid.g3,.grid.g5,.steps,.field-grid,.split,.nom-form{grid-template-columns:1fr;}
+    .split > div:first-child{border-right:none;}
+    main{padding:24px 16px 60px;}
   }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Condomínios Atendidos</h1>
-  <p class="sub">Síndicos, plataforma e particularidades de cada condomínio — clique em um nome para abrir.</p>
-</header>
-
-<main>
-  <div class="hub">
-    <div class="kicker">Fonseca e Braga · Sociedade de Advogados</div>
-    <h2>Condomínios</h2>
-    <div class="hint" id="hub-hint">10 condomínios ativos</div>
+<div class="topbar">
+  <div class="brand">
+    <div class="box">FB</div>
+    <div class="name">FONSECA &amp; BRAGA<small>Sociedade de Advogados</small></div>
   </div>
+  <div class="search">🔎 Buscar POPs, condomínios, procedimentos…</div>
+  <div class="status"><span class="dot"></span> Sistema online</div>
+</div>
 
-  <div class="condo-tabs" id="condo-tabs"></div>
+<nav class="tabs" id="tabs-nav"></nav>
 
-  <div class="condo-detail" id="condo-detail"></div>
-</main>
+<main id="main"></main>
 
-<footer class="note">Fonseca e Braga — Sociedade de Advogados · Documentos internos, uso restrito da equipe.</footer>
+<footer class="note">
+  <span>© Fonseca &amp; Braga Sociedade de Advogados — Uberlândia/MG</span>
+  <span>Manual Operacional Interno · v1</span>
+</footer>
 
 <script>
-  var CONDOMINIOS = [
-    { nome:"Arven", sindico:"Alessandra", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
-    { nome:"Chess", sindico:"Karen", plataforma:"BRCondos", cnpj:"", endereco:"",
-      nota:"Conselho incompleto; recursos com tramitação pausada — aguardar eleição do conselho para sessão de julgamento de recursos." },
-    { nome:"Duo", sindico:"Juliano", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
-    { nome:"Bella Vida Residence", sindico:"Lucas", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
-    { nome:"Bella Vita", sindico:"Monaline", plataforma:"BRCondos", cnpj:"", endereco:"",
-      nota:"Reabrir todas as ocorrências em nome do jurídico (encerrar as existentes primeiro)." },
-    { nome:"Smart Towers", sindico:"A verificar", plataforma:"BRCondos", cnpj:"", endereco:"",
-      nota:"Verificar composição do conselho." },
-    { nome:"Village Unique", sindico:"Alessandra", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
-    { nome:"Sense Vertical Living", sindico:"Michelle", plataforma:"BRCondos", cnpj:"", endereco:"",
-      nota:"Possui modelo próprio de notificação — não usar o padrão geral. Registro de ocorrência = notificação verbal (modelo próprio)." },
-    { nome:"Mirante das Brisas", sindico:"Andreia Machado dos Santos", plataforma:"BRCondos",
-      cnpj:"54.803.117/0001-32", endereco:"R. Ciano, 385 — Grand Ville, Uberlândia/MG, 38407-885",
-      nota:"Maior volume de ocorrências. Infrações envolvendo animais geram multa automática independente de advertência prévia (Art. 52 § único do RI). Notificações devem sempre citar Art. 14 II e Art. 15 I como artigos fixos." },
-    { nome:"Origon", sindico:"Monaline", plataforma:"BRCondos", cnpj:"", endereco:"",
-      nota:"Reabrir todas as ocorrências em nome do jurídico (encerrar as existentes primeiro)." }
+/* ---------- data ---------- */
+
+var SECTIONS = [
+  {id:'inicio', label:'Início'},
+  {id:'comece', label:'Comece por Aqui'},
+  {id:'pops', label:'POPs'},
+  {id:'condominios', label:'Condomínios'},
+  {id:'astrea', label:'ASTREA'},
+  {id:'brcondos', label:'BRCondos'},
+  {id:'notificacoes', label:'Notificações'},
+  {id:'nomenclatura', label:'Nomenclatura'},
+  {id:'links', label:'Links Úteis'}
+];
+
+var CONDOMINIOS = [
+  { nome:"Arven", sindico:"Alessandra", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
+  { nome:"Chess", sindico:"Karen", plataforma:"BRCondos", cnpj:"", endereco:"",
+    nota:"Conselho incompleto; recursos com tramitação pausada — aguardar eleição do conselho para sessão de julgamento de recursos." },
+  { nome:"Duo", sindico:"Juliano", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
+  { nome:"Bella Vida Residence", sindico:"Lucas", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
+  { nome:"Bella Vita", sindico:"Monaline", plataforma:"BRCondos", cnpj:"", endereco:"",
+    nota:"Reabrir todas as ocorrências em nome do jurídico (encerrar as existentes primeiro)." },
+  { nome:"Smart Towers", sindico:"A verificar", plataforma:"BRCondos", cnpj:"", endereco:"",
+    nota:"Verificar composição do conselho." },
+  { nome:"Village Unique", sindico:"Alessandra", plataforma:"BRCondos", cnpj:"", endereco:"", nota:"" },
+  { nome:"Sense Vertical Living", sindico:"Michelle", plataforma:"BRCondos", cnpj:"", endereco:"",
+    nota:"Possui modelo próprio de notificação — não usar o padrão geral. Registro de ocorrência = notificação verbal (modelo próprio)." },
+  { nome:"Mirante das Brisas", sindico:"Andreia Machado dos Santos", plataforma:"BRCondos",
+    cnpj:"54.803.117/0001-32", endereco:"R. Ciano, 385 — Grand Ville, Uberlândia/MG, 38407-885",
+    nota:"Maior volume de ocorrências. Infrações envolvendo animais geram multa automática independente de advertência prévia (Art. 52 § único do RI). Notificações devem sempre citar Art. 14 II e Art. 15 I como artigos fixos." },
+  { nome:"Origon", sindico:"Monaline", plataforma:"BRCondos", cnpj:"", endereco:"",
+    nota:"Reabrir todas as ocorrências em nome do jurídico (encerrar as existentes primeiro)." }
+];
+
+var POPS = [
+  { numero:"POP Nº 008/2023", titulo:"NOMENCLATURA DE DOCUMENTOS", tag:"ADMINISTRATIVO", data:"DEZ. DE 2022",
+    pdf:"../pop/pdfs/pop-008-nomenclatura-documentos.pdf" },
+  { numero:"POP Nº 009/2024", titulo:"ASTREA — Gestão de Casos e Tarefas", tag:"ASTREA", data:"JUN. DE 2026",
+    pdf:"../pop/pdfs/pop-009-tarefas-prazos-astrea.pdf" },
+  { numero:"POP Nº 010/2024", titulo:"BRCONDOS — Livro de Ocorrências", tag:"BRCONDOS", data:"JUN. DE 2026",
+    pdf:null, fallback:"brcondos" }
+];
+
+var LINKS = [
+  { nome:"ASTREA", desc:"Gestão de casos e tarefas", url:"https://astrea.net" },
+  { nome:"BRCondos", desc:"Livro de ocorrências e gestão condominial", url:"https://brcondos.com.br" },
+  { nome:"Google Drive", desc:"Documentos e templates do escritório", url:"https://drive.google.com" },
+  { nome:"Google Docs", desc:"Edição de notificações e contratos", url:"https://docs.google.com" }
+];
+
+/* ---------- state / router ---------- */
+var state = { section:'inicio', condoIdx:null, condoSubtab:'geral' };
+
+function go(section){ state.section = section; state.condoIdx = null; render(); window.scrollTo(0,0); }
+function openCondo(i){ state.condoIdx = i; state.condoSubtab='geral'; render(); window.scrollTo(0,0); }
+function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
+function setCondoSubtab(t){ state.condoSubtab = t; render(); }
+
+/* ---------- render ---------- */
+function renderNav(){
+  var nav = document.getElementById('tabs-nav');
+  nav.innerHTML = SECTIONS.map(function(s){
+    var active = s.id === state.section ? ' active' : '';
+    return '<button type="button" class="'+active+'" data-s="'+s.id+'">'+s.label+'</button>';
+  }).join('');
+  Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+    b.addEventListener('click', function(){ go(b.getAttribute('data-s')); });
+  });
+}
+
+function render(){
+  renderNav();
+  var m = document.getElementById('main');
+  if(state.section === 'inicio') m.innerHTML = viewInicio();
+  else if(state.section === 'comece') m.innerHTML = viewComece();
+  else if(state.section === 'pops') m.innerHTML = viewPops();
+  else if(state.section === 'condominios') m.innerHTML = state.condoIdx===null ? viewCondoGrid() : viewCondoDetail();
+  else if(state.section === 'astrea') m.innerHTML = viewAstrea();
+  else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
+  else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
+  else if(state.section === 'nomenclatura') m.innerHTML = viewNomenclatura();
+  else if(state.section === 'links') m.innerHTML = viewLinks();
+  bindDynamic();
+}
+
+function bindDynamic(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function(el){
+    el.addEventListener('click', function(){ go(el.getAttribute('data-go')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-open-condo]'), function(el){
+    el.addEventListener('click', function(){ openCondo(parseInt(el.getAttribute('data-open-condo'),10)); });
+  });
+  var back = document.querySelector('[data-back-condo]');
+  if(back) back.addEventListener('click', closeCondo);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-subtab]'), function(el){
+    el.addEventListener('click', function(){ setCondoSubtab(el.getAttribute('data-subtab')); });
+  });
+  if(state.section === 'nomenclatura') bindNomenclatura();
+}
+
+/* ---------- views ---------- */
+
+function viewInicio(){
+  var cards = [
+    {ic:'📋', t:'Ver POPs', d:'Procedimentos operacionais padrão', go:'pops'},
+    {ic:'🏢', t:'Consultar Condomínios', d:'Síndicos, observações e regras', go:'condominios'},
+    {ic:'⚖️', t:'Como usar o ASTREA', d:'Casos, tarefas e SLA', go:'astrea'},
+    {ic:'📝', t:'Padrão de Notificações', d:'Estrutura, blocos e fluxo', go:'notificacoes'},
+    {ic:'🏷️', t:'Nomenclatura de Documentos', d:'POP Nº 008 — gerador automático', go:'nomenclatura'}
   ];
+  return '<div class="kicker">Manual Operacional Interno</div>'
+    + '<h1>Bem-vindo(a) ao portal Fonseca &amp; Braga</h1>'
+    + '<p class="lead">Tudo que a equipe precisa para começar bem e operar com excelência: POPs, condomínios, ASTREA, notificações extrajudiciais e padrões de nomenclatura — sempre atualizado.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g3">' + cards.map(function(c){
+        return '<div class="card"><div class="icon-sq">'+c.ic+'</div><h3>'+c.t+'</h3><p>'+c.d+'</p>'
+          + '<button class="acessar" data-go="'+c.go+'">Acessar →</button></div>';
+      }).join('') + '</div>';
+}
 
-  var tabsEl = document.getElementById('condo-tabs');
-  var detailEl = document.getElementById('condo-detail');
-  var hint = document.getElementById('hub-hint');
-  hint.textContent = CONDOMINIOS.length + ' condomínios ativos';
+function viewComece(){
+  return '<div class="kicker">Onboarding</div>'
+    + '<h1>Comece por Aqui</h1>'
+    + '<p class="lead">Bem-vindo(a) à equipe Fonseca &amp; Braga. Esta página é o ponto de partida obrigatório — leia com atenção antes de iniciar suas atividades.</p>'
+    + '<hr class="rule">'
 
-  function fieldHtml(label, value){
-    var v = value && value.trim() ? value : '—';
-    return '<div class="field"><div class="label">'+label+'</div><div class="value'+(v==='—'?' empty':'')+'">'+v+'</div></div>';
-  }
+    + '<h2 class="section-h"><span class="ic">🏢</span> Como o Escritório atua com os Condomínios</h2>'
+    + '<div class="box">'
+      + '<p>O escritório Fonseca &amp; Braga presta assessoria jurídica completa a condomínios residenciais — atuando no cumprimento das normas internas, na aplicação de penalidades, na análise de contratos e pareceres jurídicos e, quando necessário, no ajuizamento de demandas judiciais.</p>'
+      + '<p>Cada condomínio possui dois documentos fundamentais que regem sua vida interna:</p>'
+      + '<div class="split"><div><div class="t">Convenção Condominial</div><p>Documento constitutivo: estrutura, direitos e deveres, administração e disposições gerais.</p></div>'
+      + '<div><div class="t">Regimento Interno</div><p>Documento operacional: normas do dia a dia, uso das áreas comuns, proibições e penalidades (advertências e multas).</p></div></div>'
+      + '<div class="warn"><span class="ic">⚠️</span><span><b>Toda atuação jurídica é fundamentada nesses dois documentos.</b> Nenhum artigo é criado ou presumido — tudo deve estar expressamente previsto no regimento do condomínio em questão.</span></div>'
+    + '</div>'
 
-  function render(idx){
-    var c = CONDOMINIOS[idx];
+    + '<h2 class="section-h"><span class="ic">🖥️</span> Como funcionam as ocorrências</h2>'
+    + '<div class="box">'
+      + '<p>Os condomínios utilizam a plataforma <b>BRCondos</b> para registro e gestão das ocorrências. Dependendo do condomínio, elas podem ser:</p>'
+      + '<ul><li>✅ Criadas diretamente pelos condôminos na plataforma</li><li>✅ Enviadas pelos síndicos ao escritório por e-mail — e nós registramos no BRCondos</li></ul>'
+      + '<p>Cada ocorrência é analisada pelo jurídico para verificar se há infração e qual a penalidade aplicável: <b>advertência escrita</b> ou <b>multa</b>.</p>'
+    + '</div>'
 
-    tabsEl.innerHTML = CONDOMINIOS.map(function(item, i){
-      var active = i === idx ? ' active' : '';
-      var flag = item.nota ? '<span class="flag">⚠ atenção</span>' : '';
-      return '<button type="button" class="condo-tab'+active+'" data-i="'+i+'">'
-        + '<span class="name">'+item.nome+'</span>'
-        + '<span style="display:flex;align-items:center;gap:10px;">'+flag+'<span class="chev">▸</span></span>'
-        + '</button>';
-    }).join('');
+    + '<h2 class="section-h"><span class="ic">✏️</span> Advertências e Multas</h2>'
+    + '<div class="split">'
+      + '<div><span class="badge atencao" style="background:#fbe2df;color:#a3312a;">ADVERTÊNCIA</span>'
+      + '<p style="margin-top:8px;">Penalidade inicial para a maioria das infrações. É formalizada por meio de <b>notificação extrajudicial</b> redigida pelo escritório e enviada ao condômino infrator.</p></div>'
+      + '<div><span class="badge atencao">MULTA</span>'
+      + '<p style="margin-top:8px;">Aplicada em casos de reincidência ou quando o regimento prevê sua aplicação direta. <b>Valor, percentual e cálculo variam</b> por condomínio.</p></div>'
+    + '</div>'
+    + '<div class="warn gold"><span class="ic">⚠️</span><span><b>Atenção:</b> nunca invente artigos, valores ou percentuais. Tudo deve estar expressamente previsto no regimento interno. Em caso de dúvida, consulte o advogado responsável antes de prosseguir.</span></div>'
 
-    Array.prototype.forEach.call(tabsEl.querySelectorAll('.condo-tab'), function(btn){
-      btn.addEventListener('click', function(){ render(parseInt(btn.getAttribute('data-i'), 10)); });
-    });
+    + '<h2 class="section-h"><span class="ic">📋</span> Como as Notificações são Redigidas e Enviadas</h2>'
+    + '<div class="steps">'
+      + step(1,'Identificação da infração no BRCondos','Verificamos a ocorrência e identificamos a unidade infratora, data, horário e descrição dos fatos.')
+      + step(2,'Verificação do Regimento Interno','Consultamos os artigos aplicáveis. Sempre incluímos os artigos fixos (direitos e deveres) e o artigo específico da infração.')
+      + step(3,'Redação no Google Docs','Seguindo o modelo padrão do escritório e nomenclatura do POP Nº 008.')
+      + step(4,'Envio para aprovação','Documento encaminhado para o advogado responsável e/ou síndico(a).')
+      + step(5,'Envio ao condômino via BRCondos','Após aprovada, a notificação é enviada pela plataforma.')
+      + step(6,'Encerramento da ocorrência','Apenas se não houver demanda pendente ou prazo em curso.')
+    + '</div>'
 
-    var noteHtml = c.nota
-      ? '<div class="note-box"><span class="ico">⚠️</span><p><b>Particularidade:</b> '+c.nota+'</p></div>'
-      : '<p class="no-note">Sem particularidades registradas — segue o procedimento padrão.</p>';
+    + '<h2 class="section-h"><span class="ic">📖</span> Outras Atuações do Escritório</h2>'
+    + '<div class="grid g3" style="margin-bottom:26px;">'
+      + '<div class="card"><div class="icon-sq">📄</div><h3>Análise contratual</h3><p>Revisão e elaboração de contratos solicitados pelos síndicos.</p></div>'
+      + '<div class="card"><div class="icon-sq">✉️</div><h3>Pareceres jurídicos</h3><p>Orientações formais sobre questões específicas do condomínio.</p></div>'
+      + '<div class="card"><div class="icon-sq">⚖️</div><h3>Demandas judiciais</h3><p>Inadimplência, danos, conflitos graves — registradas no ASTREA.</p></div>'
+    + '</div>'
 
-    detailEl.innerHTML =
-      '<h3>'+c.nome+'</h3>'
-      + '<div class="field-grid">'
-        + fieldHtml('Síndico(a)', c.sindico)
-        + '<div class="field"><div class="label">Plataforma</div><div class="value"><span class="badge-plat">'+c.plataforma+'</span></div></div>'
-        + fieldHtml('CNPJ', c.cnpj)
-        + fieldHtml('Endereço', c.endereco)
+    + '<h2 class="section-h"><span class="ic">⚖️</span> ASTREA — Sistema de Controle Interno</h2>'
+    + '<div class="box">'
+      + '<p>O <b>ASTREA</b> é a plataforma de gestão jurídica do escritório. Todo trabalho — notificação, parecer, análise contratual ou ação judicial — é registrado e acompanhado nele.</p>'
+      + '<div class="grid g3" style="margin:14px 0;">'
+        + '<div class="field-box"><div class="label">Casos</div><div class="value" style="font-size:.8rem;color:var(--muted);">Cada condomínio (e cada cliente) tem um caso ativo.</div></div>'
+        + '<div class="field-box"><div class="label">Tarefas</div><div class="value" style="font-size:.8rem;color:var(--muted);">Cada demanda específica vira uma tarefa dentro do caso.</div></div>'
+        + '<div class="field-box"><div class="label">Andamentos</div><div class="value" style="font-size:.8rem;color:var(--muted);">Cada ação é registrada com data e descrição.</div></div>'
       + '</div>'
-      + noteHtml;
-  }
+      + '<div class="warn gold"><span class="ic">📌</span><span><b>Regra de ouro:</b> tudo deve estar no ASTREA. Registre cada e-mail respondido, cada notificação enviada, cada aprovação recebida.</span></div>'
+    + '</div>'
 
-  render(0);
+    + '<h2 class="section-h" style="margin-top:30px;">Próximos passos</h2>'
+    + '<div class="grid g3">'
+      + '<div class="card"><h3>Estudar os POPs</h3><p>Procedimentos operacionais padrão do escritório.</p><button class="acessar" data-go="pops">Ver POPs →</button></div>'
+      + '<div class="card"><h3>Conhecer os Condomínios</h3><p>Particularidades e regras de cada um.</p><button class="acessar" data-go="condominios">Ver condomínios →</button></div>'
+      + '<div class="card"><h3>Aprender o ASTREA</h3><p>Como criar casos, tarefas e registrar andamentos.</p><button class="acessar" data-go="astrea">Guia ASTREA →</button></div>'
+    + '</div>';
+}
+
+function step(n,b,d){
+  return '<div class="step"><div class="n">'+n+'</div><div><div class="b">'+b+'</div><div class="d">'+d+'</div></div></div>';
+}
+
+function viewPops(){
+  return '<div class="kicker">Procedimentos</div>'
+    + '<h1>POPs — Procedimentos Operacionais Padrão</h1>'
+    + '<p class="lead">Catálogo dos POPs do escritório. Clique em um card para ler o procedimento completo.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g3">' + POPS.map(function(p){
+        var href = p.pdf ? p.pdf : '#';
+        var attrs = p.pdf ? ' target="_blank" rel="noopener"' : ' data-go="'+p.fallback+'"';
+        var label = p.pdf ? 'Ver POP completo' : 'Ver conteúdo relacionado';
+        return '<div class="card">'
+          + '<div class="icon-sq">📋</div>'
+          + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+p.numero+'</span>'
+          + '<h3 style="text-transform:uppercase;font-size:.95rem;">'+p.titulo+'</h3>'
+          + '<div style="margin:8px 0 14px;display:flex;gap:6px;flex-wrap:wrap;">'
+            + '<span class="badge tag">'+p.tag+'</span><span class="badge tag">'+p.data+'</span>'
+          + '</div>'
+          + '<a href="'+href+'"'+attrs+' style="display:block;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:11px;font-size:.83rem;font-weight:700;text-decoration:none;">'+label+'</a>'
+          + '</div>';
+      }).join('') + '</div>';
+}
+
+function viewCondoGrid(){
+  return '<div class="kicker">Carteira</div>'
+    + '<h1>Condomínios atendidos</h1>'
+    + '<p class="lead">Consulte síndicos, regras especiais e particularidades de cada condomínio.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g3">' + CONDOMINIOS.map(function(c,i){
+        return '<div class="condo-card">'
+          + '<div class="top-row"><div class="icon-sq" style="margin-bottom:0;">🏢</div><span class="badge ativo">ATIVO</span></div>'
+          + '<h3>'+c.nome+'</h3>'
+          + '<p class="sind">Síndico(a): <b>'+c.sindico+'</b></p>'
+          + (c.nota ? '<p class="note">⚠ '+truncate(c.nota,90)+'</p>' : '')
+          + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>→</span></button>'
+          + '</div>';
+      }).join('') + '</div>';
+}
+
+function truncate(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
+
+function viewCondoDetail(){
+  var c = CONDOMINIOS[state.condoIdx];
+  var subtabs = [
+    {id:'geral', label:'Informações Gerais'},
+    {id:'regimento', label:'Regimento e Convenção'},
+    {id:'procedimentos', label:'Procedimentos Específicos'},
+    {id:'historico', label:'Histórico de Notificações'}
+  ];
+  var html = '<button class="back-link" data-back-condo>← Voltar para condomínios</button>'
+    + '<div class="kicker">Condomínio</div>'
+    + '<h1 style="margin-bottom:4px;">'+c.nome+'</h1>'
+    + '<p class="lead" style="margin-bottom:20px;">Síndico(a): '+c.sindico+'</p>'
+    + '<div class="subtabs">' + subtabs.map(function(t){
+        var active = t.id===state.condoSubtab ? ' active' : '';
+        return '<button class="'+active+'" data-subtab="'+t.id+'">'+t.label+'</button>';
+      }).join('') + '</div>';
+
+  if(state.condoSubtab === 'geral'){
+    html += '<div class="field-grid">'
+      + fieldBox('Nome', c.nome)
+      + fieldBox('CNPJ', c.cnpj)
+      + '</div>'
+      + '<div class="field-grid">'
+      + fieldBox('Endereço', c.endereco)
+      + fieldBox('Síndico(a)', c.sindico)
+      + '</div>'
+      + '<div class="field-grid">'
+      + '<div class="field-box"><div class="label">Plataforma</div><div class="value"><span class="badge tag" style="background:var(--red-pale);color:var(--red);">'+c.plataforma.toUpperCase()+'</span></div></div>'
+      + '<div></div>'
+      + '</div>'
+      + (c.nota
+          ? '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;line-height:1.55;">'+c.nota+'</div></div></div>'
+          : '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;color:var(--muted);">Nenhuma particularidade registrada — segue o procedimento padrão.</div></div></div>');
+  } else {
+    html += '<div class="empty-tab">Nenhuma informação registrada para esta seção ainda.</div>';
+  }
+  return html;
+}
+
+function fieldBox(label, value){
+  var v = value && value.trim() ? value : '—';
+  return '<div class="field-box"><div class="label">'+label+'</div><div class="value">'+v+'</div></div>';
+}
+
+function viewAstrea(){
+  return '<div class="kicker">Plataforma</div>'
+    + '<h1>ASTREA — Gestão de Casos</h1>'
+    + '<p class="lead">Plataforma de gestão jurídica utilizada pelo escritório para cadastro de casos, tarefas, prazos e comunicação interna.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g2" style="margin-bottom:24px;">'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">⚖️</span> Como criar um caso</h2>'
+        + step(1,'Acesso','Acesse astrea.net com seu login e senha.')
+        + step(2,'Novo Caso','No menu, clique em "Casos" → "+ Novo Caso".')
+        + step(3,'Preenchimento','Título seguindo POP Nº 008, Tipo, Cliente/Parte, Responsável, Data de abertura.')
+        + step(4,'Partes','Cadastre todas as partes envolvidas (autor, réu, terceiros).')
+        + step(5,'Documentos','Anexe documentos seguindo a nomenclatura do POP Nº 008.')
+        + step(6,'Salvar','O caso ficará disponível para toda a equipe.')
+      + '</div>'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">✅</span> Como criar uma tarefa</h2>'
+        + step(1,'Acesse o caso','Abra o caso ao qual uma tarefa pertence.')
+        + step(2,'Nova Tarefa','Dentro do caso, clique em "Tarefas" → "+ Nova Tarefa".')
+        + step(3,'Preenchimento','Título específico, Responsável, Prazo (ver SLA), Descrição e Prioridade.')
+        + step(4,'Vincular ao caso','Confirme o vínculo correto antes de salvar.')
+      + '</div>'
+    + '</div>'
+
+    + '<h2 class="section-h"><span class="ic">⏱️</span> SLA — Prazos do escritório</h2>'
+    + '<div class="box">'
+      + '<table class="sla"><thead><tr><th>Atividade</th><th>Volume</th><th>Prazo</th></tr></thead><tbody>'
+      + slaRow('Cadastro de ocorrência','Até 10 cond.','D+1')
+      + slaRow('Cadastro de ocorrência','11 a 20 cond.','D+2')
+      + slaRow('Cadastro de ocorrência','21 a 30 cond.','D+3')
+      + slaRow('Notificação / Multa','Até 10 cond.','D+2')
+      + slaRow('Notificação / Multa','11 a 20 cond.','D+3')
+      + slaRow('Notificação / Multa','21 a 30 cond.','D+4')
+      + slaRow('Reaberta no sistema','—','D+3')
+      + slaRow('Aberta por morador','—','D+2')
+      + slaRow('Resposta a recurso','—','D+3')
+      + slaRow('Agendamento de sessão','—','D+5')
+      + slaRow('Lançamento de julgamento','—','D+10')
+      + slaRow('Notif./Contrato/Parecer simples','—','D+7 (D+5 produção + D+2 aprovação)')
+      + slaRow('Notif./Contrato/Parecer complexo','—','D+12')
+      + slaRow('Distribuição de ações','—','20 dias úteis')
+      + '</tbody></table>'
+      + '<div class="warn gold" style="margin-top:14px;margin-bottom:0;"><span class="ic">⚠️</span><span>Os prazos iniciam apenas após o recebimento de toda a documentação necessária.</span></div>'
+    + '</div>'
+
+    + '<h2 class="section-h">Cadastro de Ocorrências</h2>'
+    + '<div class="box"><ol>'
+      + '<li>Identifique a ocorrência no BRCondos (número, data, unidade, descrição, multa).</li>'
+      + '<li>Localize/abra o caso do condomínio no ASTREA.</li>'
+      + '<li>Crie tarefa vinculada com título: <code>Notificação – [CONDOMÍNIO] – T[X], Apto [XXX] – #[OCORRÊNCIA]</code></li>'
+      + '<li>Registre andamentos a cada etapa (elaboração, aprovação, envio).</li>'
+    + '</ol></div>';
+}
+
+function slaRow(a,v,p){
+  return '<tr><td>'+a+'</td><td>'+v+'</td><td><span class="pill">'+p+'</span></td></tr>';
+}
+
+function viewBrcondos(){
+  return '<div class="kicker">Plataforma</div>'
+    + '<h1>BRCondos — Plataforma de Ocorrências</h1>'
+    + '<p class="lead">A plataforma pela qual temos acesso às ocorrências dos condomínios. Por ela, condôminos e administradores registram infrações, reclamações e comunicados.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g3" style="margin-bottom:24px;">'
+      + '<div class="card"><h3>Consultar e registrar</h3><p>Acompanhar ocorrências abertas e registrar novas quando recebidas por e-mail dos síndicos.</p></div>'
+      + '<div class="card"><h3>Enviar notificações</h3><p>Após aprovação, a notificação extrajudicial é enviada ao condômino diretamente pela plataforma.</p></div>'
+      + '<div class="card"><h3>Encerrar ocorrências</h3><p>Após o envio da notificação, desde que não haja prazo em curso ou demanda pendente.</p></div>'
+    + '</div>'
+
+    + '<h2 class="section-h">Origens das ocorrências</h2>'
+    + '<div class="box">'
+      + '<p>Dependendo do condomínio, as ocorrências chegam ao escritório de formas diferentes:</p>'
+      + '<ul><li><b>A</b> — Diretamente pela plataforma (registradas pelos próprios condôminos ou administradores)</li>'
+      + '<li><b>B</b> — Por e-mail enviado pelo(a) síndico(a) ao escritório</li></ul>'
+      + '<div class="warn gold" style="margin-bottom:0;"><span class="ic">ℹ️</span><span><b>Independente da origem:</b> toda ocorrência deve ser registrada no BRCondos e no ASTREA.</span></div>'
+    + '</div>'
+
+    + '<h2 class="section-h">Fluxo prático</h2>'
+    + '<div class="box">'
+      + '<ol>'
+        + '<li>Identificar a ocorrência (número, data, unidade, descrição)</li>'
+        + '<li>Analisar a infração à luz do regimento interno</li>'
+        + '<li>Criar tarefa correspondente no ASTREA</li>'
+        + '<li>Redigir notificação no Google Docs (POP Nº 008)</li>'
+        + '<li>Após aprovação, enviar via BRCondos ao condômino</li>'
+        + '<li>Encerrar a ocorrência (se não houver prazo pendente)</li>'
+      + '</ol>'
+      + '<div class="warn gold" style="margin-bottom:0;"><span class="ic">⚠️</span><span><b>Atenção — Sense Vertical Living:</b> esse condomínio usa modelo próprio de notificação. O registro de ocorrência já equivale à notificação verbal — não aplicar o padrão geral.</span></div>'
+    + '</div>'
+    + '<a class="external-btn" href="https://brcondos.com.br" target="_blank" rel="noopener">🖥️ Acessar BRCondos</a>';
+}
+
+function viewNotificacoes(){
+  return '<div class="kicker">Procedimentos</div>'
+    + '<h1>Notificações Extrajudiciais</h1>'
+    + '<p class="lead">Guia completo de criação, aprovação e envio de notificações extrajudiciais condominiais.</p>'
+    + '<hr class="rule">'
+
+    + '<h2 class="section-h">Fluxo geral</h2>'
+    + '<div class="box"><p style="font-family:var(--font-mono);font-size:.82rem;color:var(--text);">'
+      + 'BRCondos (ocorrência) → ASTREA (tarefa criada) → Google Docs (notificação elaborada) → Aprovação (síndica/advogado) → Envio (condômino)'
+      + '</p></div>'
+
+    + '<div class="grid g2">'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">Estrutura padrão (obrigatória)</h2><ol style="padding-left:18px;">'
+        + '<li>Cabeçalho — Logo Fonseca e Braga</li>'
+        + '<li>Título — NOTIFICAÇÃO DE INFRAÇÃO + tipo (Advertência / Multa)</li>'
+        + '<li>Caixa — TORRE: [X] | APARTAMENTO: [XXX]</li>'
+        + '<li>Abertura — "Na qualidade de procurador do Condomínio…"</li>'
+        + '<li>Faz-se saber: Art. 14 II (fixo) → Art. 15 I (fixo) → artigos da conduta</li>'
+        + '<li>Parágrafo dos fatos — "Conforme registro formal de ocorrência nº…"</li>'
+        + '<li>Parágrafo Ressalta-se — importância da norma violada</li>'
+        + '<li>⚠️ Artigo específico da conduta — entre "Ressalta-se" e "Dessa forma"</li>'
+        + '<li>Parágrafo "Dessa forma, a conduta verificada configura infração…"</li>'
+        + '<li>NOTIFICA-SE — em negrito</li>'
+        + '<li>DAS PENALIDADES — bloco (advertência ou multa)</li>'
+        + '<li>DO RECURSO — bloco padrão</li>'
+        + '<li>Data — "Uberlândia/MG, [DD] de [Mês] de [AAAA]"</li>'
+        + '<li>Assinaturas — Jonathan + Síndico(a) lado a lado / Ludmilla centralizada</li>'
+        + '<li>Rodapé — telefone, site, endereço do escritório</li>'
+      + '</ol></div>'
+      + '<div style="display:flex;flex-direction:column;gap:14px;">'
+        + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">Regras especiais por condomínio</h2>'
+          + specialRule('Sense Vertical Living','Modelo próprio de notificação. Registro = notificação verbal.')
+          + specialRule('Mirante das Brisas','Animais = multa automática (50% 1ª / 100% reincidência). Sempre Art. 14 II e Art. 15 I.')
+          + specialRule('Bella Vita / Origon','Reabrir ocorrências em nome do jurídico antes de notificar.')
+          + specialRule('Chess','Sessão de julgamento de recursos: aguardar eleição do conselho.')
+        + '</div>'
+        + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">Fluxo de aprovação</h2><ol style="padding-left:18px;">'
+          + '<li>Elaborar no Google Docs (template + nomenclatura POP 008).</li>'
+          + '<li>Registrar no ASTREA (tarefa "aguardando aprovação" + link).</li>'
+          + '<li>Enviar para aprovação (advogado responsável). SLA: D+2.</li>'
+          + '<li>Após aprovação: exportar PDF e renomear segundo POP.</li>'
+          + '<li>Confirmar envio e atualizar status no BRCondos.</li>'
+        + '</ol></div>'
+      + '</div>'
+    + '</div>'
+
+    + '<div class="grid g2" style="margin-top:20px;">'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">Bloco — Penalidades</h2>'
+        + '<span class="badge tag" style="margin-bottom:6px;display:inline-block;">SE ADVERTÊNCIA</span>'
+        + '<p>Aplicação de <b>ADVERTÊNCIA ESCRITA</b>, caráter educativo/preventivo. Citar Arts. 123 e 136 do RI; alertar sobre reincidência (multa 1/3 a 5 taxas).</p>'
+        + '<span class="badge atencao" style="margin-bottom:6px;display:inline-block;">SE MULTA</span>'
+        + '<p>Aplicação de <b>MULTA</b> com valor e percentual da taxa condominial. Fundamentar reincidência/contexto. Citar Arts. 123 e 136 do RI.</p>'
+      + '</div>'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">⚠️ Itens em negrito obrigatórios</h2><ul style="padding-left:18px;">'
+        + '<li>Nome do condomínio (na abertura)</li>'
+        + '<li>ADVERTÊNCIA ESCRITA ou MULTA</li>'
+        + '<li>Valor da multa e valor por extenso</li>'
+        + '<li>"em caso de reincidência, multa no valor de 1/3…"</li>'
+        + '<li>Art. 123 do Regimento Interno</li>'
+        + '<li>Art. 136 do Regimento Interno</li>'
+        + '<li>NOTIFICA-SE</li>'
+        + '<li>Art. 14 do Regimento Interno (bloco do recurso)</li>'
+        + '<li>Art. 129 do mesmo Regimento</li>'
+        + '<li>"30 (trinta) dias contados do recebimento desta notificação"</li>'
+        + '<li>Datas e unidades (Torre e Apto) nos parágrafos de fatos</li>'
+      + '</ul></div>'
+    + '</div>';
+}
+
+function specialRule(t,d){
+  return '<div style="margin-bottom:12px;"><b style="font-size:.85rem;">'+t+'</b> <span class="badge atencao">ATENÇÃO</span>'
+    + '<div style="font-size:.8rem;color:var(--muted);margin-top:3px;line-height:1.4;">'+d+'</div></div>';
+}
+
+function viewLinks(){
+  return '<div class="kicker">Plataformas</div>'
+    + '<h1>Links Úteis</h1>'
+    + '<p class="lead">Acesso rápido às plataformas utilizadas pelo escritório.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g3">' + LINKS.map(function(l){
+        return '<div class="link-card"><div class="lt"><h3>'+l.nome+'</h3>'
+          + '<a href="'+l.url+'" target="_blank" rel="noopener" style="color:var(--muted);">↗</a></div>'
+          + '<p>'+l.desc+'</p>'
+          + '<code>'+l.url.replace(/^https?:\/\//,'')+'</code></div>';
+      }).join('') + '</div>';
+}
+
+/* ---------- nomenclatura generator (POP nº 008/2023) ---------- */
+
+var NOM_TYPES = [
+  {id:'judicial', ic:'⚖️', label:'Judicial'},
+  {id:'administrativo', ic:'📄', label:'Administrativo'},
+  {id:'honorarios', ic:'📝', label:'Contrato de Honorários'},
+  {id:'notificacao', ic:'🏢', label:'Notificação Condominial'}
+];
+var nomState = { tipo:'judicial' };
+
+function viewNomenclatura(){
+  return '<div class="kicker">POP Nº 008/2023</div>'
+    + '<h1>Nomenclatura de Documentos</h1>'
+    + '<p class="lead">Selecione o tipo de documento, preencha os campos e copie o nome formatado conforme o padrão do escritório.</p>'
+    + '<hr class="rule">'
+    + '<div class="nom-types">' + NOM_TYPES.map(function(t){
+        var active = t.id===nomState.tipo ? ' active' : '';
+        return '<button type="button" class="'+active+'" data-nom-type="'+t.id+'"><span class="ic">'+t.ic+'</span>'+t.label+'</button>';
+      }).join('') + '</div>'
+    + '<div class="grid g2">'
+      + '<div class="box" style="margin-bottom:0;"><h3 style="margin:0 0 14px;font-size:1rem;">Preencha os campos</h3><div class="nom-form" id="nom-fields"></div></div>'
+      + '<div class="box" style="margin-bottom:0;"><h3 style="margin:0 0 14px;font-size:1rem;">Resultado</h3>'
+        + '<div class="nom-result" id="nom-result">—</div>'
+        + '<button class="copy-btn" id="nom-copy">📋 Copiar nome</button>'
+      + '</div>'
+    + '</div>';
+}
+
+var NOM_FIELD_DEFS = {
+  judicial: [
+    {k:'autor', label:'Autor'}, {k:'reu', label:'Réu'},
+    {k:'peca', label:'Nome da Peça'}, {k:'valor', label:'Valor (opcional)'},
+    {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+  ],
+  administrativo: [
+    {k:'parte1', label:'Parte 1'}, {k:'parte2', label:'Parte 2 (opcional)'},
+    {k:'arquivo', label:'Nome do Arquivo'}, {k:'valor', label:'Valor (opcional)'},
+    {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+  ],
+  honorarios: [
+    {k:'parte', label:'Parte'},
+    {k:'tipo', label:'Tipo', type:'select', options:['AVULSO JUDICIAL','AVULSO EXTRAJUDICIAL','ASSESSORIA','PARALEGAL']},
+    {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+  ],
+  notificacao: [
+    {k:'condominio', label:'Nome do Condomínio'}, {k:'torre', label:'Torre'},
+    {k:'apto', label:'Apto'}, {k:'ocorrencia', label:'Ocorrência #'},
+    {k:'titulo', label:'Título da Ocorrência'}, {k:'criador', label:'Criador'},
+    {k:'data', label:'Data', type:'date'}
+  ]
+};
+var nomValues = {};
+
+function bindNomenclatura(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-nom-type]'), function(b){
+    b.addEventListener('click', function(){ nomState.tipo = b.getAttribute('data-nom-type'); render(); });
+  });
+  renderNomFields();
+  document.getElementById('nom-copy').addEventListener('click', copyNomResult);
+}
+
+function renderNomFields(){
+  var defs = NOM_FIELD_DEFS[nomState.tipo];
+  var el = document.getElementById('nom-fields');
+  el.innerHTML = defs.map(function(f){
+    if(f.type === 'select'){
+      return '<div><label>'+f.label+'</label><select data-nk="'+f.k+'">'
+        + f.options.map(function(o){ return '<option value="'+o+'">'+o+'</option>'; }).join('')
+        + '</select></div>';
+    }
+    return '<div><label>'+f.label+'</label><input data-nk="'+f.k+'" type="'+(f.type||'text')+'" placeholder="'+f.label.toUpperCase()+'"></div>';
+  }).join('');
+  Array.prototype.forEach.call(el.querySelectorAll('[data-nk]'), function(inp){
+    inp.addEventListener('input', updateNomResult);
+    inp.addEventListener('change', updateNomResult);
+  });
+  updateNomResult();
+}
+
+function abrevData(v){
+  if(!v) return '';
+  var p = v.split('-');
+  if(p.length !== 3) return v;
+  return p[2] + '.' + p[1] + '.' + p[0].slice(2);
+}
+
+function nomVal(k){
+  var el = document.querySelector('[data-nk="'+k+'"]');
+  if(!el) return '';
+  return el.value.trim();
+}
+
+function updateNomResult(){
+  var tipo = nomState.tipo;
+  var out = '';
+  if(tipo === 'judicial'){
+    var autor=nomVal('autor').toUpperCase(), reu=nomVal('reu').toUpperCase(), peca=nomVal('peca').toUpperCase(),
+        valor=nomVal('valor').toUpperCase(), criador=nomVal('criador').toUpperCase(), data=abrevData(nomVal('data'));
+    var parts = ['('+(autor||'AUTOR')+' X '+(reu||'RÉU')+')', peca||'NOME DA PEÇA'];
+    if(valor) parts.push(valor);
+    parts.push(criador||'CRIADOR', data||'DD.MM.AA');
+    out = parts.join(' – ');
+  } else if(tipo === 'administrativo'){
+    var p1=nomVal('parte1').toUpperCase(), p2=nomVal('parte2').toUpperCase(), arq=nomVal('arquivo').toUpperCase(),
+        val=nomVal('valor').toUpperCase(), cr=nomVal('criador').toUpperCase(), dt=abrevData(nomVal('data'));
+    var partyStr = p2 ? '('+(p1||'PARTE 1')+' X '+p2+')' : '('+(p1||'PARTE')+')';
+    var parts2 = [partyStr, arq||'NOME DO ARQUIVO'];
+    if(val) parts2.push(val);
+    parts2.push(cr||'CRIADOR', dt||'DD.MM.AA');
+    out = parts2.join(' – ');
+  } else if(tipo === 'honorarios'){
+    var pt=nomVal('parte').toUpperCase(), tp=nomVal('tipo')||'AVULSO JUDICIAL',
+        cr2=nomVal('criador').toUpperCase(), dt2=abrevData(nomVal('data'));
+    out = '('+(pt||'PARTE')+') – CPSHA - '+tp+' – '+(cr2||'CRIADOR')+' – '+(dt2||'DD.MM.AA');
+  } else if(tipo === 'notificacao'){
+    var cond=nomVal('condominio').toUpperCase(), torre=nomVal('torre'), apto=nomVal('apto'),
+        oc=nomVal('ocorrencia'), tit=nomVal('titulo').toUpperCase(), cr3=nomVal('criador').toUpperCase(),
+        dt3=abrevData(nomVal('data'));
+    out = '(COND. '+(cond||'X')+' T'+(torre||'X')+', APTO '+(apto||'XXX')+') #'+(oc||'000')
+      + ' – NOTIFICAÇÃO – '+(tit||'TÍTULO DA OCORRÊNCIA')+' – '+(cr3||'CRIADOR')+' – '+(dt3||'DD.MM.AA');
+  }
+  var resEl = document.getElementById('nom-result');
+  if(resEl) resEl.textContent = out;
+}
+
+function copyNomResult(){
+  var txt = document.getElementById('nom-result').textContent;
+  var btn = document.getElementById('nom-copy');
+  var done = function(){ var old = btn.innerHTML; btn.innerHTML = '✓ Copiado'; setTimeout(function(){ btn.innerHTML = old; }, 1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){ fallbackCopy(txt, done); });
+  } else {
+    fallbackCopy(txt, done);
+  }
+}
+function fallbackCopy(txt, cb){
+  var ta = document.createElement('textarea');
+  ta.value = txt; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  if(cb) cb();
+}
+
+render();
 </script>
 
 </body>
