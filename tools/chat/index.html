@@ -118,6 +118,9 @@
   }
   .small-link-btn:hover{color:var(--paper);border-color:var(--silver);}
   .small-link-btn.on{color:var(--gold);border-color:rgba(216,178,90,.5);}
+  .small-link-btn.danger{color:#ffb4ae;border-color:rgba(184,54,46,.4);}
+  .small-link-btn.danger:hover{background:rgba(184,54,46,.12);border-color:rgba(184,54,46,.6);}
+  .archive-toggle{margin-top:10px;}
 
   .msg-list{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:4px;}
   .day-sep{align-self:center;font-size:.68rem;color:var(--muted);background:var(--panel-2);padding:3px 12px;border-radius:20px;margin:10px 0;}
@@ -278,6 +281,7 @@
         <button class="icon-btn" id="btn-nova-conversa" title="Nova conversa">+</button>
       </div>
       <div class="tag-filter-row" id="tag-filter-row"></div>
+      <button class="small-link-btn archive-toggle" id="btn-ver-arquivadas">📁 Ver arquivadas</button>
     </div>
     <div class="conv-list" id="conv-list"></div>
   </aside>
@@ -298,6 +302,8 @@
         <div class="thread-tags-row">
           <button class="small-link-btn" id="btn-pin">☆ Fixar</button>
           <button class="small-link-btn" id="btn-etiquetas">🏷 Etiquetas</button>
+          <button class="small-link-btn" id="btn-arquivar">🗄 Arquivar</button>
+          <button class="small-link-btn danger" id="btn-excluir-conversa">🗑 Excluir</button>
         </div>
       </div>
       <div class="msg-list" id="msg-list"></div>
@@ -419,6 +425,9 @@
     btnVoltar: document.getElementById('btn-voltar'),
     btnPin: document.getElementById('btn-pin'),
     btnEtiquetas: document.getElementById('btn-etiquetas'),
+    btnArquivar: document.getElementById('btn-arquivar'),
+    btnExcluirConversa: document.getElementById('btn-excluir-conversa'),
+    btnVerArquivadas: document.getElementById('btn-ver-arquivadas'),
     msgList: document.getElementById('msg-list'),
     photoPreviewRow: document.getElementById('photo-preview-row'),
     photoPreviewImg: document.getElementById('photo-preview-img'),
@@ -479,6 +488,7 @@
   var tagFilterSelected = {}; // tagId -> true (filtro da lista de conversas)
   var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
   var replyTarget = null;     // mensagem sendo respondida
+  var verArquivadas = false;  // false = lista normal, true = mostrando só as arquivadas
 
   var PALETA_ETIQUETAS = ['#c9463c','#d8823c','#d8b25a','#4c9a6a','#3c9ea8','#4a7fc9','#8a5cc9','#c95c9e','#8a6a4a','#9c908b'];
   var novaTagCor = PALETA_ETIQUETAS[0];
@@ -575,10 +585,20 @@
 
   // ---------------- render: lista de conversas ----------------
 
+  function conversaExcluida(c){
+    var prefs = tagsPorConversa[c.id];
+    if (!prefs || !prefs.excluidaAte || !prefs.excluidaAte.toMillis) return false;
+    var ultima = c.ultimaMensagemEm && c.ultimaMensagemEm.toMillis ? c.ultimaMensagemEm.toMillis() : 0;
+    return ultima <= prefs.excluidaAte.toMillis();
+  }
+
   function conversaOrdenada(){
     var termo = els.buscaConversas.value.trim().toLowerCase();
     var filtroAtivo = Object.keys(tagFilterSelected).filter(function(id){ return tagFilterSelected[id]; });
     var lista = conversas.filter(function(c){
+      if (conversaExcluida(c)) return false;
+      var arquivada = !!(tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada);
+      if (arquivada !== verArquivadas) return false;
       var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
       if (filtroAtivo.length && !filtroAtivo.some(function(id){ return tagIds.indexOf(id) !== -1; })) return false;
       if (!termo) return true;
@@ -620,11 +640,24 @@
     });
   }
 
+  function renderArquivadasToggle(){
+    var qtdArquivadas = conversas.filter(function(c){
+      return !conversaExcluida(c) && tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
+    }).length;
+    els.btnVerArquivadas.textContent = verArquivadas
+      ? '💬 Ver conversas ativas'
+      : '📁 Ver arquivadas' + (qtdArquivadas ? ' (' + qtdArquivadas + ')' : '');
+    els.btnVerArquivadas.classList.toggle('on', verArquivadas);
+  }
+
   function renderConvList(){
     renderTagFilterRow();
+    renderArquivadasToggle();
     var lista = conversaOrdenada();
     if (!lista.length){
-      els.convList.innerHTML = '<div class="conv-empty">Nenhuma conversa ainda. Toque em "+" para começar.</div>';
+      els.convList.innerHTML = '<div class="conv-empty">' + (verArquivadas
+        ? 'Nenhuma conversa arquivada.'
+        : 'Nenhuma conversa ainda. Toque em "+" para começar.') + '</div>';
       return;
     }
     els.convList.innerHTML = lista.map(function(c){
@@ -660,11 +693,21 @@
     });
   }
 
+  els.btnVerArquivadas.addEventListener('click', function(){
+    verArquivadas = !verArquivadas;
+    renderConvList();
+  });
+
   // ---------------- thread ----------------
 
   function selecionarConversa(id){
     activeId = id;
     cancelarResposta();
+    var prefsAtual = tagsPorConversa[id];
+    if (prefsAtual && prefsAtual.excluidaAte){
+      db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+        .set({ excluidaAte: null }, { merge: true }).catch(function(){});
+    }
     els.shell.classList.add('thread-open');
     els.threadEmpty.style.display = 'none';
     els.threadActive.style.display = 'flex';
@@ -677,6 +720,9 @@
       var fixada = tagsPorConversa[id] && tagsPorConversa[id].fixada;
       els.btnPin.textContent = fixada ? '★ Fixada' : '☆ Fixar';
       els.btnPin.classList.toggle('on', !!fixada);
+      var arquivada = tagsPorConversa[id] && tagsPorConversa[id].arquivada;
+      els.btnArquivar.textContent = arquivada ? '📤 Desarquivar' : '🗄 Arquivar';
+      els.btnArquivar.classList.toggle('on', !!arquivada);
     }
 
     db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
@@ -1009,6 +1055,40 @@
     var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
     db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
       .set({ fixada: !atual }, { merge: true }).catch(function(e){ alert('Erro: ' + e.message); });
+  });
+
+  // ---------------- arquivar / excluir ----------------
+
+  els.btnArquivar.addEventListener('click', function(){
+    if (!activeId) return;
+    var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].arquivada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+      .set({ arquivada: !atual }, { merge: true })
+      .then(function(){
+        if (!atual) voltarParaListaVazia();
+      })
+      .catch(function(e){ alert('Erro: ' + e.message); });
+  });
+
+  function voltarParaListaVazia(){
+    activeId = null;
+    els.threadActive.style.display = 'none';
+    els.threadEmpty.style.display = 'flex';
+    fecharThreadMobile();
+    renderConvList();
+  }
+
+  els.btnExcluirConversa.addEventListener('click', function(){
+    if (!activeId) return;
+    var ok = confirm('Excluir esta conversa da sua lista?\n\nEla continua existindo para a outra pessoa (ou para o grupo) — isso só tira ela da SUA lista. Se chegar mensagem nova aqui, a conversa volta a aparecer para você.');
+    if (!ok) return;
+    var id = activeId;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+      .set({ excluidaAte: FV.serverTimestamp(), arquivada: false }, { merge: true })
+      .then(function(){
+        if (activeId === id) voltarParaListaVazia();
+      })
+      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
   });
 
   // ---------------- etiquetas ----------------
@@ -1442,6 +1522,10 @@
         var fixada = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
         els.btnPin.textContent = fixada ? '★ Fixada' : '☆ Fixar';
         els.btnPin.classList.toggle('on', !!fixada);
+        var arquivada = tagsPorConversa[activeId] && tagsPorConversa[activeId].arquivada;
+        els.btnArquivar.textContent = arquivada ? '📤 Desarquivar' : '🗄 Arquivar';
+        els.btnArquivar.classList.toggle('on', !!arquivada);
+        if (conversaExcluida(conversas.filter(function(x){ return x.id === activeId; })[0] || {})) voltarParaListaVazia();
       }
     });
 
