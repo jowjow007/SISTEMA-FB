@@ -123,6 +123,27 @@
     cursor:pointer;padding:0;margin-bottom:14px;font-family:var(--font-body);}
   .back-link:hover{color:var(--red);}
 
+  .condo-subnav{display:inline-flex;gap:2px;background:var(--card);border:1px solid var(--card-line);border-radius:9px;
+    padding:3px;margin-bottom:22px;}
+  .condo-subnav button{background:transparent;border:none;border-radius:6px;padding:8px 16px;font-family:var(--font-body);
+    font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;}
+  .condo-subnav button.active{background:var(--red);color:#fff;}
+
+  .almah-card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;overflow:hidden;}
+  .almah-head{padding:14px 18px;color:#fff;}
+  .almah-head.open{background:#16305c;}
+  .almah-head.closed{background:#c0392b;}
+  .almah-head h3{margin:0;font-size:1rem;font-family:var(--font-body);font-weight:700;}
+  .almah-head p{margin:2px 0 0;font-size:.75rem;opacity:.85;}
+  .almah-rows{padding:6px 18px 14px;}
+  .almah-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--card-line);}
+  .almah-row:last-child{border-bottom:none;}
+  .almah-sw{flex:0 0 auto;width:26px;height:26px;border-radius:6px;border:1px solid var(--card-line);margin-top:2px;}
+  .almah-row b{display:block;font-size:.82rem;letter-spacing:.02em;}
+  .almah-row span{font-size:.8rem;color:var(--muted);line-height:1.4;}
+  .almah-legend-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.8rem;}
+  .almah-legend-row .almah-sw{width:16px;height:16px;border-radius:4px;margin-top:0;}
+
   .subtabs{display:flex;gap:4px;border-bottom:1px solid var(--card-line);margin-bottom:20px;overflow-x:auto;}
   .subtabs button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 4px;margin-right:22px;
     font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:var(--font-body);}
@@ -238,12 +259,13 @@ var LINKS = [
 ];
 
 /* ---------- state / router ---------- */
-var state = { section:'inicio', condoIdx:null, condoSubtab:'geral' };
+var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', condoView:'grid' };
 
-function go(section){ state.section = section; state.condoIdx = null; render(); window.scrollTo(0,0); }
+function go(section){ state.section = section; state.condoIdx = null; state.condoView = 'grid'; render(); window.scrollTo(0,0); }
 function openCondo(i){ state.condoIdx = i; state.condoSubtab='geral'; render(); window.scrollTo(0,0); }
 function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
 function setCondoSubtab(t){ state.condoSubtab = t; render(); }
+function setCondoView(v){ state.condoView = v; state.condoIdx = null; render(); window.scrollTo(0,0); }
 
 /* ---------- render ---------- */
 function renderNav(){
@@ -263,7 +285,7 @@ function render(){
   if(state.section === 'inicio') m.innerHTML = viewInicio();
   else if(state.section === 'comece') m.innerHTML = viewComece();
   else if(state.section === 'pops') m.innerHTML = viewPops();
-  else if(state.section === 'condominios') m.innerHTML = state.condoIdx===null ? viewCondoGrid() : viewCondoDetail();
+  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail() : (state.condoView==='almah' ? viewAlmahCondos() : viewCondoGrid());
   else if(state.section === 'astrea') m.innerHTML = viewAstrea();
   else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
@@ -284,6 +306,9 @@ function bindDynamic(){
   if(back) back.addEventListener('click', closeCondo);
   Array.prototype.forEach.call(document.querySelectorAll('[data-subtab]'), function(el){
     el.addEventListener('click', function(){ setCondoSubtab(el.getAttribute('data-subtab')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-condoview]'), function(el){
+    el.addEventListener('click', function(){ setCondoView(el.getAttribute('data-condoview')); });
   });
   if(state.section === 'nomenclatura') bindNomenclatura();
 }
@@ -400,8 +425,16 @@ function viewPops(){
       }).join('') + '</div>';
 }
 
+function condoSubnav(active){
+  return '<div class="condo-subnav">'
+    + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Condomínios</button>'
+    + '<button type="button" class="'+(active==='almah'?'active':'')+'" data-condoview="almah">AlmahCondos</button>'
+    + '</div>';
+}
+
 function viewCondoGrid(){
-  return '<div class="kicker">Carteira</div>'
+  return condoSubnav('grid')
+    + '<div class="kicker">Carteira</div>'
     + '<h1>Condomínios atendidos</h1>'
     + '<p class="lead">Consulte síndicos, regras especiais e particularidades de cada condomínio.</p>'
     + '<hr class="rule">'
@@ -460,6 +493,72 @@ function viewCondoDetail(){
 function fieldBox(label, value){
   var v = value && value.trim() ? value : '—';
   return '<div class="field-box"><div class="label">'+label+'</div><div class="value">'+v+'</div></div>';
+}
+
+var ALMAH_ABERTA = [
+  {cor:'#3b4fd6', nome:'AZUL', desc:'Reaberta pelo escritório para não identificar o morador'},
+  {cor:'#f5821f', nome:'LARANJA', desc:'Aguardando Resposta da Síndica'},
+  {cor:'#1e9e4e', nome:'VERDE', desc:'Cadastrada no sistema ASTREA'},
+  {cor:'#ffffff', nome:'BRANCO', desc:'Sem tratamento'}
+];
+var ALMAH_ENCERRADA = [
+  {cor:'#d32f2f', nome:'VERMELHO', desc:'Encerrado sem resposta'},
+  {cor:'#3b4fd6', nome:'AZUL', desc:'Encerrado com resposta'},
+  {cor:'#3ea6f5', nome:'AZUL CLARO', desc:'Encerrado com resposta e multa'},
+  {cor:'#16b3a3', nome:'TURQUESA', desc:'Encerrada e incluída outra ocorrência já cadastrada no ASTREA'},
+  {cor:'#f5821f', nome:'LARANJA', desc:'Encerrado com resposta externa – Whatsapp'}
+];
+var ALMAH_PAINEL = [
+  {cor:'#3b4fd6', label:'Reaberta pelo escritório', tempo:'Hoje, 17:14'},
+  {cor:'#f5821f', label:'Aguardando resposta da síndica', tempo:'Hoje, 16:50'},
+  {cor:'#1e9e4e', label:'Cadastrada no ASTREA', tempo:'Hoje, 15:32'},
+  {cor:'#ffffff', label:'Sem tratamento', tempo:'Hoje, 14:10'},
+  {cor:'#d32f2f', label:'Encerrado sem resposta', tempo:'Ontem, 18:20'},
+  {cor:'#3b4fd6', label:'Encerrado com resposta', tempo:'Ontem, 17:45'},
+  {cor:'#3ea6f5', label:'Encerrado com resposta e multa', tempo:'19/07/2026, 16:30'},
+  {cor:'#16b3a3', label:'Encerrada e incluída no ASTREA', tempo:'19/07/2026, 15:05'},
+  {cor:'#f5821f', label:'Encerrado via Whatsapp', tempo:'19/07/2026, 14:00'}
+];
+
+function viewAlmahCondos(){
+  return condoSubnav('almah')
+    + '<div class="kicker">Sistema ALMAH Condo</div>'
+    + '<h1>Cores nas Ocorrências</h1>'
+    + '<p class="lead">Padrão de cores utilizado no sistema ALMAH Condo para classificar o status de cada ocorrência.</p>'
+    + '<hr class="rule">'
+    + '<div class="grid g2" style="align-items:start;">'
+      + '<div class="almah-card">'
+        + '<div class="almah-head open"><h3>📁 Ocorrência Aberta</h3><p>Ocorrências em andamento</p></div>'
+        + '<div class="almah-rows">' + ALMAH_ABERTA.map(almahRow).join('') + '</div>'
+      + '</div>'
+      + '<div class="almah-card">'
+        + '<div class="almah-head closed"><h3>✅ Ocorrência Encerrada</h3><p>Ocorrências finalizadas</p></div>'
+        + '<div class="almah-rows">' + ALMAH_ENCERRADA.map(almahRow).join('') + '</div>'
+      + '</div>'
+    + '</div>'
+
+    + '<h2 class="section-h" style="margin-top:26px;">ℹ️ Como utilizar no sistema</h2>'
+    + '<div class="steps" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">'
+      + step(1,'Ao cadastrar ou editar uma ocorrência','Abra os dados da ocorrência no ALMAH Condo.')
+      + step(2,'Selecione a cor conforme o status','Use a lista de cores acima para escolher a cor certa.')
+      + step(3,'A cor será exibida no painel','Fica visível para toda a equipe no painel de ocorrências.')
+    + '</div>'
+
+    + '<div class="box">'
+      + '<h3 style="margin:0 0 4px;font-size:.9rem;">Exemplo — Painel de Ocorrências</h3>'
+      + ALMAH_PAINEL.map(function(p){
+          return '<div class="almah-legend-row" style="justify-content:space-between;border-bottom:1px solid var(--card-line);padding:8px 0;">'
+            + '<span style="display:flex;align-items:center;gap:8px;"><span class="almah-sw" style="background:'+p.cor+';"></span>'+p.label+'</span>'
+            + '<span style="color:var(--muted);font-size:.76rem;">'+p.tempo+'</span></div>';
+        }).join('')
+    + '</div>'
+
+    + '<div class="warn gold" style="margin-top:16px;margin-bottom:0;"><span class="ic">🔔</span><span><b>Lembrete importante:</b> mantenha as cores atualizadas conforme o andamento da ocorrência para garantir organização e agilidade no tratamento.</span></div>';
+}
+
+function almahRow(c){
+  return '<div class="almah-row"><div class="almah-sw" style="background:'+c.cor+';"></div>'
+    + '<div><b>'+c.nome+'</b><span>'+c.desc+'</span></div></div>';
 }
 
 function viewAstrea(){
