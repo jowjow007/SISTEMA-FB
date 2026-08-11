@@ -147,6 +147,27 @@
     display:inline-block;font-size:.65rem;padding:1px 7px;border-radius:20px;margin-left:6px;
     background:rgba(169,173,178,.15);color:var(--silver);border:1px solid var(--line-strong);
   }
+  .user-menu-wrap{position:relative;display:flex;align-items:center;gap:10px;}
+  .user-menu-btn{
+    flex:0 0 auto;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:1px solid var(--line-strong);color:var(--silver);cursor:pointer;transition:background .15s,color .15s;
+  }
+  .user-menu-btn:hover,.user-menu-btn.open,.user-menu-btn.is-active-source{background:var(--panel-2);color:var(--paper);}
+  .user-menu-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .user-menu-dropdown{
+    position:absolute;top:calc(100% + 10px);right:0;min-width:210px;background:var(--panel);
+    border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.35);
+    padding:6px;display:none;z-index:60;
+  }
+  .user-menu-dropdown.open{display:block;}
+  .user-menu-dropdown button{
+    width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;
+    background:transparent;border:none;color:var(--paper);font-size:.85rem;text-align:left;cursor:pointer;
+  }
+  .user-menu-dropdown button:hover{background:var(--panel-2);}
+  .user-menu-dropdown button.active{background:rgba(169,173,178,.15);color:var(--paper);}
+  .user-menu-dropdown button svg{flex:0 0 auto;width:16px;height:16px;opacity:.85;}
+  .user-menu-dropdown .user-menu-empty{padding:9px 10px;font-size:.78rem;color:var(--muted);}
 
   #body-wrap{flex:1;display:flex;min-height:0;}
   #tabstrip{
@@ -347,10 +368,14 @@
     </div>
     <span class="firm-name">Portal Fonseca e Braga</span>
     <div class="spacer"></div>
-    <div class="user-info" id="user-info-box"></div>
+    <div class="user-menu-wrap" id="user-menu-wrap">
+      <div class="user-info" id="user-info-box"></div>
+      <button type="button" class="user-menu-btn" id="user-menu-btn" title="Perfil e configurações" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
+    </div>
     <div class="logout-wrap">
       <button class="btn secondary small" id="logout-btn" style="width:auto;">Sair</button>
-      <span class="version-tag">v67</span>
+      <span class="version-tag">v68</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -486,6 +511,9 @@
     loginError: document.getElementById('login-error'),
     loginSubmit: document.getElementById('login-submit'),
     userInfoBox: document.getElementById('user-info-box'),
+    userMenuWrap: document.getElementById('user-menu-wrap'),
+    userMenuBtn: document.getElementById('user-menu-btn'),
+    userMenuDropdown: document.getElementById('user-menu-dropdown'),
     logoutBtn: document.getElementById('logout-btn'),
     tabstrip: document.getElementById('tabstrip-list'),
     content: document.getElementById('content'),
@@ -581,6 +609,23 @@
   });
 
   els.logoutBtn.addEventListener('click', function(){ auth.signOut(); });
+
+  // ---------- Menu do usuário (engrenagem: Perfil + Aniversários) ----------
+  els.userMenuBtn.innerHTML = iconeSvg('gear');
+  function closeUserMenu(){
+    els.userMenuDropdown.classList.remove('open');
+    els.userMenuBtn.classList.remove('open');
+    els.userMenuBtn.setAttribute('aria-expanded', 'false');
+  }
+  els.userMenuBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    const isOpen = els.userMenuDropdown.classList.toggle('open');
+    els.userMenuBtn.classList.toggle('open', isOpen);
+    els.userMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  document.addEventListener('click', function(e){
+    if (!els.userMenuWrap.contains(e.target)) closeUserMenu();
+  });
 
   // ---------- Alternar login / cadastro ----------
   els.showRegister.addEventListener('click', function(e){
@@ -777,6 +822,7 @@
     chart: '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
     settings: '<line x1="4" y1="6" x2="20" y2="6"></line><circle cx="14" cy="6" r="2"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="8" cy="12" r="2"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="16" cy="18" r="2"></circle>',
     folder: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-11z"></path>',
+    gear: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path><path d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 17.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.13.32.35.6.63.8.28.2.62.31 1 .31H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
   };
 
   function iconeSvg(chave){
@@ -797,11 +843,41 @@
     return 'folder';
   }
 
+  function isUserMenuTab(label){
+    const l = (label || '').toLowerCase();
+    return l.indexOf('perfil') !== -1 || l.indexOf('anivers') !== -1;
+  }
+
+  function renderUserMenu(menuTabs){
+    els.userMenuDropdown.innerHTML = '';
+    if (menuTabs.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'user-menu-empty';
+      empty.textContent = 'Nenhum item disponível.';
+      els.userMenuDropdown.appendChild(empty);
+      return;
+    }
+    menuTabs.forEach(function(t){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.tabId = t.id;
+      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span>';
+      btn.addEventListener('click', function(){
+        selectTab(t.id);
+        closeUserMenu();
+      });
+      els.userMenuDropdown.appendChild(btn);
+    });
+  }
+
   function renderTabstrip(){
     els.tabstrip.innerHTML = '';
     const allowed = tabsCatalog.filter(function(t){
       return (currentProfile.tabs || []).indexOf(t.id) !== -1;
     });
+    const sidebarTabs = allowed.filter(function(t){ return !isUserMenuTab(t.label); });
+    const menuTabs = allowed.filter(function(t){ return isUserMenuTab(t.label); });
+    renderUserMenu(menuTabs);
 
     if (allowed.length === 0 && currentProfile.role !== 'admin') {
       els.emptyState.classList.remove('hidden');
@@ -809,7 +885,7 @@
       els.emptyState.classList.add('hidden');
     }
 
-    allowed.forEach(function(t){
+    sidebarTabs.forEach(function(t){
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = t.id;
@@ -881,6 +957,10 @@
     Array.prototype.forEach.call(els.tabstrip.querySelectorAll('.tab-btn'), function(b){
       b.classList.toggle('active', b.dataset.tabId === tabId);
     });
+    Array.prototype.forEach.call(els.userMenuDropdown.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.dataset.tabId === tabId);
+    });
+    els.userMenuBtn.classList.toggle('is-active-source', els.userMenuDropdown.querySelector('button.active') != null);
     els.adminView.classList.toggle('active', tabId === '__admin__');
     els.emptyState.classList.add('hidden');
 
