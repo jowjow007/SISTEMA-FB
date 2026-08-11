@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sistemas — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;}
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  #shell{display:flex;flex-direction:column;height:100%;}
+
+  header{
+    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:14px 20px 12px;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.25rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.78rem;color:var(--muted);margin:0;}
+
+  nav.subtabs{
+    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    display:flex;gap:2px;overflow-x:auto;padding:0 14px;
+  }
+  nav.subtabs button{
+    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
+  }
+  nav.subtabs button:hover{color:var(--paper);}
+  nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
+
+  #panels{position:relative;flex:1 1 auto;min-height:0;}
+  .panel{position:absolute;inset:0;display:none;flex-direction:column;}
+  .panel.active{display:flex;}
+
+  .frame-toolbar{
+    flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
+    padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
+    font-size:.76rem;color:var(--muted);
+  }
+  .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+  .frame-toolbar a:hover{color:#fff;}
+  iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
+
+  .fallback{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:30px;overflow-y:auto;}
+  .fallback .card{max-width:420px;text-align:center;background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:32px 28px;}
+  .fallback .ic{font-size:2.2rem;margin-bottom:14px;}
+  .fallback h2{font-family:var(--font-display);font-size:1.15rem;margin:0 0 10px;color:var(--paper);}
+  .fallback p{font-size:.85rem;color:var(--muted);line-height:1.55;margin:0 0 20px;}
+  .btn-open{
+    display:inline-flex;align-items:center;gap:8px;background:var(--red);color:#fff;border:none;border-radius:8px;
+    padding:11px 20px;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;
+  }
+  .btn-open:hover{background:var(--red-bright);}
+
+  .links-view{flex:1 1 auto;overflow-y:auto;padding:26px 26px 40px;}
+  .links-view .lead{font-size:.83rem;color:var(--muted);max-width:640px;line-height:1.55;margin:0 0 20px;}
+  .link-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .link-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;}
+  .link-card h3{margin:0;font-size:.95rem;color:var(--paper);}
+  .link-card a.go{
+    align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;
+    color:var(--red-bright);text-decoration:none;
+  }
+  .link-card a.go:hover{color:#fff;}
+
+  @media(max-width:640px){
+    .link-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <header>
+    <h1>Sistemas</h1>
+    <p class="sub">Acesso rápido às plataformas e portais usados no dia a dia do escritório.</p>
+  </header>
+
+  <nav class="subtabs" id="subtabs-nav"></nav>
+
+  <div id="panels"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SUBTABS = [
+    { id:'astrea',     label:'ASTREA',     type:'iframe', url:'https://astrea.net' },
+    { id:'email',      label:'E-mail',     type:'iframe', url:'../gmail/index.html' },
+    { id:'digisac',    label:'Digisac',    type:'iframe', url:'https://fonsecaebragaadv.digisac.me/' },
+    { id:'zapsign',    label:'ZapSign',    type:'iframe', url:'https://app2.zapsign.com.br/access/sign-in' },
+    { id:'agenda',     label:'Agenda',     type:'blocked', url:'https://calendar.google.com/calendar/u/0/r?pli=1',
+      icon:'📅', note:'O Google Calendar não permite ser exibido dentro de outra página (bloqueio de segurança do próprio Google). Use o botão abaixo para abrir em uma nova aba.' },
+    { id:'brcondos',   label:'BRCondos',   type:'blocked', url:'https://ssl.brcondos.com.br/',
+      icon:'🏢', note:'O BRCondos não permite ser exibido dentro de outra página (bloqueio de segurança do próprio sistema). Use o botão abaixo para abrir em uma nova aba.' },
+    { id:'almahcondo', label:'AlmahCondo', type:'iframe', url:'https://app.almahcondos.com.br/principal.aspx' },
+    { id:'tribunais',  label:'Tribunais',  type:'links', links:[
+        { nome:'PJE / TJMG', url:'https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?response_type=code&client_id=pje-tjmg-1g&redirect_uri=https%3A%2F%2Fpje.tjmg.jus.br%2Fpje%2Flogin.seam&state=a11f4ff2-bf58-4d4b-9e0f-065884641cbb&login=true&scope=openid' },
+        { nome:'PJE Turma Recursal', url:'https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?response_type=code&client_id=pje-tjmg-2g&redirect_uri=https%3A%2F%2Fpjerecursal.tjmg.jus.br%2Fpje%2Flogin.seam&state=37c10bd9-8b9e-407f-85ec-93761f767076&login=true&scope=openid' },
+        { nome:'EPROC TJ/MG', url:'https://eproc1g.tjmg.jus.br/eproc/controlador.php?acao=painel_adv_listar&acao_origem=principal&hash=0ce132f53a2106d17cee21f3423eef29' },
+        { nome:'PROJUDI/GO', url:'https://projudi.tjgo.jus.br/' },
+        { nome:'ESAJ/SP', url:'https://esaj.tjsp.jus.br/esaj' },
+        { nome:'EPROC/TJSP', url:'https://sso.tjsp.jus.br/realms/eproc/protocol/openid-connect/auth?kc_idp_hint=tjsp&eproc_client_id=eproc1g.tjsp.jus.br&response_type=code&redirect_uri=https%3A%2F%2Feproc1g.tjsp.jus.br%2Feproc%2Fexterno_controlador.php%3Facao%3DSSO%2Fcallback&client_id=eproc1g.tjsp.jus.br&nonce=a199e0046245b1977d304e9af1ccdef2&state=df699c1796c8e6e7d59d4545fa1fafbe&scope=profile+openid' },
+        { nome:'JPE/TJMG', url:'https://pe.tjmg.jus.br/rupe/portaljus/intranet/principal.rupe' }
+      ] }
+  ];
+
+  var nav = document.getElementById('subtabs-nav');
+  var panelsEl = document.getElementById('panels');
+  var iframes = {};
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  SUBTABS.forEach(function(t){
+    var btn = document.createElement('button');
+    btn.textContent = t.label;
+    btn.dataset.subtabId = t.id;
+    btn.addEventListener('click', function(){ selectSubtab(t.id); });
+    nav.appendChild(btn);
+
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + t.id;
+
+    if (t.type === 'blocked') {
+      panel.innerHTML =
+        '<div class="fallback"><div class="card">' +
+          '<div class="ic">' + t.icon + '</div>' +
+          '<h2>' + escapeHtml(t.label) + '</h2>' +
+          '<p>' + escapeHtml(t.note) + '</p>' +
+          '<a class="btn-open" href="' + t.url + '" target="_blank" rel="noopener">Abrir ' + escapeHtml(t.label) + ' ↗</a>' +
+        '</div></div>';
+    } else if (t.type === 'links') {
+      var cards = t.links.map(function(l){
+        return '<div class="link-card"><h3>' + escapeHtml(l.nome) + '</h3>' +
+          '<a class="go" href="' + l.url + '" target="_blank" rel="noopener">Abrir ↗</a></div>';
+      }).join('');
+      panel.innerHTML =
+        '<div class="links-view">' +
+          '<p class="lead">Principais portais de tribunais utilizados pelo escritório.</p>' +
+          '<div class="link-grid">' + cards + '</div>' +
+        '</div>';
+    }
+    // 'iframe' panels are filled lazily on first visit in selectSubtab()
+
+    panelsEl.appendChild(panel);
+  });
+
+  function selectSubtab(id){
+    Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.dataset.subtabId === id);
+    });
+    Array.prototype.forEach.call(panelsEl.querySelectorAll('.panel'), function(p){
+      p.classList.remove('active');
+    });
+    var panel = document.getElementById('panel-' + id);
+    if (!panel) return;
+    panel.classList.add('active');
+
+    var t = SUBTABS.filter(function(x){ return x.id === id; })[0];
+    if (t && t.type === 'iframe' && !iframes[id]) {
+      var toolbar = document.createElement('div');
+      toolbar.className = 'frame-toolbar';
+      toolbar.innerHTML = '<span>' + escapeHtml(t.label) + '</span>' +
+        '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ↗</a>';
+      var ifr = document.createElement('iframe');
+      ifr.className = 'tool-frame';
+      ifr.src = t.url;
+      panel.appendChild(toolbar);
+      panel.appendChild(ifr);
+      iframes[id] = ifr;
+    }
+  }
+
+  selectSubtab(SUBTABS[0].id);
+})();
+</script>
+</body>
+</html>

@@ -211,12 +211,23 @@ cadastre, por exemplo:
 | Aniversariantes | `https://jowjow007.github.io/SISTEMA-FB/tools/aniversariantes/` |
 | Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
 | Minhas Anotações | `https://jowjow007.github.io/SISTEMA-FB/tools/minhas-anotacoes/` |
-| E-mail | `https://jowjow007.github.io/SISTEMA-FB/tools/gmail/` (precisa da configuração extra na seção 8 antes de funcionar) |
+| Sistemas | `https://jowjow007.github.io/SISTEMA-FB/tools/sistemas/` |
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
 a URL (se for outro site) ou eu publico a ferramenta em um link e você
 cadastra do mesmo jeito.
+
+> **Aba "Sistemas"**: reúne, em sub-abas dentro de uma única aba, o acesso a
+> ASTREA, E-mail, Digisac, ZapSign, Agenda (Google Calendar), BRCondos,
+> AlmahCondo e os principais links de tribunais. Se o catálogo de abas ainda
+> tiver "ASTREA" e/ou "E-mail" cadastrados como abas separadas de nível
+> superior, exclua-os em **Administração > Abas** — eles foram incorporados
+> como sub-abas dentro de "Sistemas" e ficariam duplicados se continuassem
+> como abas independentes. Agenda e BRCondos abrem em nova aba do navegador
+> em vez de aparecer embutidos, porque esses dois sites bloqueiam
+> deliberadamente ser exibidos dentro de outra página (cabeçalho
+> `X-Frame-Options`); todos os outros abrem embutidos normalmente.
 
 > **Nota:** para uma aba abrir corretamente dentro do portal (em `<iframe>`),
 > o site de destino não pode bloquear ser exibido dentro de outra página
