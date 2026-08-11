@@ -1304,8 +1304,10 @@ document.querySelector('.form-col').addEventListener('change', scheduleRender);
    reais isso aparecia como grandes espaços em branco intercalados no PDF final. Solução:
    nunca deixar a lib paginar sozinha — capturar cada .doc-page individualmente via
    toCanvas() (sem nenhuma lógica de paginação envolvida) e montar o PDF manualmente,
-   uma imagem por página, esticada para exatamente 210x297mm. */
-const PDF_CANVAS_OPTS = {margin:0, image:{type:'jpeg',quality:0.96}, html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
+   uma imagem por página, esticada para exatamente 210x297mm. Resolução 3x + PNG (sem
+   perdas) em vez de JPEG — JPEG comprime bordas de texto e deixa as letras borradas;
+   PNG é sem perdas e comprime bem em página majoritariamente branca como esta. */
+const PDF_CANVAS_OPTS = {margin:0, image:{type:'png'}, html2canvas:{scale:3, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
 async function renderPageCanvas(pageEl){
   return await html2pdf().set(PDF_CANVAS_OPTS).from(pageEl).toCanvas().get('canvas');
 }
@@ -1319,7 +1321,7 @@ async function gerarPdfArquivo(pageEls, filename){
   for(let i=0;i<pageEls.length;i++){
     const canvas = await renderPageCanvas(pageEls[i]);
     if(i>0) pdf.addPage();
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.96), 'JPEG', 0, 0, 210, 297);
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
   }
   pdf.save(filename);
 }
