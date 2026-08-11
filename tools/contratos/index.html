@@ -109,6 +109,13 @@
   .hist-dl:hover{background:var(--panel-2);color:var(--paper);}
   .hist-dl:disabled{opacity:.5;cursor:default;}
 
+  .date-wrap{display:flex;gap:6px;align-items:stretch;}
+  .date-wrap input{flex:1;min-width:0;}
+  .date-pick-btn{flex:0 0 auto;width:36px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--silver);cursor:pointer;font-size:.9rem;}
+  .date-pick-btn:hover{background:var(--panel-3);color:var(--paper);}
+  .date-hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .parcelas-preview{font-size:.7rem;color:var(--silver);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.5;}
+
   details.subgroup{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
   details.subgroup summary{cursor:pointer;font-size:.76rem;color:var(--silver);padding:2px 0 6px;}
   details.subgroup summary:hover{color:var(--paper);}
@@ -368,7 +375,7 @@
           <div class="field"><label>Forma de pagamento</label><input id="pp-forma-pagamento" value="pagamento mensal, por boleto bancário"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Data do 1º vencimento</label><input id="pp-data-1venc" placeholder="dd/mm/aaaa"></div>
+          <div class="field"><label>Data do 1º vencimento</label><input id="pp-data-1venc" class="date-field" placeholder="dd/mm/aaaa"></div>
           <div class="field"><label>Vencimentos seguintes</label><input id="pp-data-vencs" value="todo dia 10 de cada mês subsequente"></div>
         </div>
         <div class="grid2">
@@ -405,7 +412,7 @@
           <div class="field"><label>Honorários de êxito (%)</label><input id="pc-exito" value="20"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Data de pagamento</label><input id="pc-data-pagamento" value="no ato da assinatura do Contrato"></div>
+          <div class="field"><label>Data de pagamento</label><input id="pc-data-pagamento" class="date-field" value="no ato da assinatura do Contrato"></div>
           <div class="field"><label>Início dos trabalhos</label><input id="pc-inicio-trabalhos" value="imediatamente após a assinatura do Contrato"></div>
         </div>
       </div>
@@ -441,19 +448,28 @@
           </select>
         </div>
         <div class="grid2">
-          <div class="field"><label>Data de pagamento (à vista)</label><input id="h-data-avista" value="NO ATO DA ASSINATURA DO CONTRATO"></div>
+          <div class="field"><label>Data de pagamento (à vista)</label><input id="h-data-avista" class="date-field" value="NO ATO DA ASSINATURA DO CONTRATO"></div>
           <div class="field"><label>Entrada</label><input id="h-entrada" value="NÃO APLICÁVEL"></div>
         </div>
-        <details class="subgroup">
+        <details class="subgroup" id="det-parcelamento">
           <summary>Parcelamento (8.5 a 8.10)</summary>
           <div class="grid2">
-            <div class="field"><label>Data(s) de pagamento (entrada)</label><input id="h-data-entrada" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) de pagamento (entrada)</label><input id="h-data-entrada" class="date-field" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>Valor da parcela</label><input id="h-valor-parcela" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>Quantidade de parcelas</label><input id="h-qtd-parcelas" value="NÃO APLICÁVEL"></div>
-            <div class="field"><label>Data do 1º pagto./1ª parc.</label><input id="h-data-1parc" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data do 1º pagto./1ª parc.</label><input id="h-data-1parc" class="date-field" value="NÃO APLICÁVEL"></div>
+            <div class="field">
+              <label>Periodicidade</label>
+              <select id="h-periodicidade">
+                <option value="semanal">Semanalmente</option>
+                <option value="quinzenal">A cada 15 dias</option>
+                <option value="mensal" selected>Mensalmente</option>
+              </select>
+            </div>
             <div class="field"><label>13º pagamento/parcela</label><input id="h-13" value="NÃO APLICÁVEL"></div>
-            <div class="field"><label>Data(s) do 13º</label><input id="h-data-13" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º</label><input id="h-data-13" class="date-field" value="NÃO APLICÁVEL"></div>
           </div>
+          <div class="parcelas-preview" id="h-parcelas-preview" style="display:none;"></div>
         </details>
         <details class="subgroup">
           <summary>Honorários de consultoria (8.11 a 8.16)</summary>
@@ -461,9 +477,9 @@
             <div class="field"><label>Honorários de consultoria</label><input id="h-cons" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>Forma de pagamento</label><input id="h-cons-forma" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>Quantidade de parcelas</label><input id="h-cons-parcelas" value="NÃO APLICÁVEL"></div>
-            <div class="field"><label>Data do 1º pagto. (cons.)</label><input id="h-cons-data1" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data do 1º pagto. (cons.)</label><input id="h-cons-data1" class="date-field" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>13º pagamento (cons.)</label><input id="h-cons-13" value="NÃO APLICÁVEL"></div>
-            <div class="field"><label>Data(s) do 13º (cons.)</label><input id="h-cons-data13" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º (cons.)</label><input id="h-cons-data13" class="date-field" value="NÃO APLICÁVEL"></div>
           </div>
         </details>
         <details class="subgroup" open>
@@ -489,9 +505,10 @@
           <div class="field"><label>Valor por extenso</label><input id="m-valor-extenso" readonly></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Data do 1º pagamento</label><input id="m-data1" placeholder="dd/mm/aa"></div>
+          <div class="field"><label>Data do 1º pagamento</label><input id="m-data1" class="date-field" placeholder="dd/mm/aa"></div>
           <div class="field"><label>Quantidade de parcelas (prazo em meses)</label><input id="m-qtd-parcelas" value="36 (TRINTA E SEIS)"></div>
         </div>
+        <div class="parcelas-preview" id="m-parcelas-preview" style="display:none;"></div>
         <div class="grid2">
           <div class="field"><label>Boleto/fatura</label><input id="m-boleto" value="CUSTO ADMINISTRATIVO ACRESCIDO"></div>
           <div class="field"><label>Índice de atualização</label><input id="m-indice" value="INFLAÇÃO"></div>
@@ -519,7 +536,7 @@
             <div class="field"><label>Valor com desconto</label><input id="m-valor-desconto" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>13º pagamento</label><input id="m-13" value="NÃO APLICÁVEL"></div>
             <div class="field"><label>Forma de pagamento do 13º</label><input id="m-13-forma" value="NÃO APLICÁVEL"></div>
-            <div class="field"><label>Data(s) do 13º</label><input id="m-13-data" value="NÃO APLICÁVEL"></div>
+            <div class="field"><label>Data(s) do 13º</label><input id="m-13-data" class="date-field" value="NÃO APLICÁVEL"></div>
           </div>
         </details>
         <details class="subgroup" data-tipo-only="contrato_pj">
@@ -533,7 +550,7 @@
             <div class="field"><label>Ano da carência</label><input id="m-carencia-ano" placeholder="2027"></div>
             <div class="field"><label>Valor mantido nesse ano (R$)</label><input id="m-carencia-valor" placeholder="mesmo valor da mensalidade vigente"></div>
           </div>
-          <div class="field"><label>1ª recomposição a partir de</label><input id="m-carencia-data" placeholder="1º de janeiro de 2028"></div>
+          <div class="field"><label>1ª recomposição a partir de</label><input id="m-carencia-data" class="date-field" data-date-format="extenso" placeholder="1º de janeiro de 2028"></div>
         </details>
         <details class="subgroup" data-tipo-only="contrato_pj">
           <summary>Custos extras e multa rescisória (Cláusula 12/15)</summary>
@@ -587,7 +604,7 @@
 /* ---------- utilidades ---------- */
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt(s){
-  // negrito de termos definidos e referencias cruzadas, a partir de **texto**
+  // negrito de termos definidos e referencias cruzadas, a partir de <strong>texto</strong>
   let out = esc(s==null?'':s);
   out = out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   return out;
@@ -645,6 +662,68 @@ function fmtDataExtenso(iso){
   const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const [y,m,d]=iso.split('-').map(Number);
   return d+' de '+meses[m-1]+' de '+y;
+}
+function fmtDataCurta(d){
+  if(typeof d==='string') d=new Date(d+'T00:00:00');
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function parseDataBR(s){
+  const m=String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m) return null;
+  let [,d,mo,y]=m;
+  if(y.length===2) y='20'+y;
+  const dt=new Date(+y,+mo-1,+d);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+function projetarParcelas(dataInicialStr, qtdStr, periodicidade){
+  const base=parseDataBR(dataInicialStr);
+  const match=String(qtdStr||'').match(/\d+/);
+  const n=match?parseInt(match[0],10):0;
+  if(!base || !n || n<1) return [];
+  const out=[];
+  for(let i=0;i<Math.min(n,60);i++){
+    const d=new Date(base);
+    if(periodicidade==='mensal') d.setMonth(d.getMonth()+i);
+    else d.setDate(d.getDate()+(periodicidade==='quinzenal'?15:7)*i);
+    out.push(d);
+  }
+  return out;
+}
+function atualizarParcelasPreview(dataId, qtdId, periodOrId, previewId){
+  const dataEl=document.getElementById(dataId), qtdEl=document.getElementById(qtdId), previewEl=document.getElementById(previewId);
+  if(!dataEl||!qtdEl||!previewEl) return;
+  const periodEl=document.getElementById(periodOrId);
+  const periodicidade = periodEl ? periodEl.value : periodOrId;
+  const datas=projetarParcelas(dataEl.value, qtdEl.value, periodicidade);
+  if(datas.length<2){ previewEl.style.display='none'; return; }
+  const nomes={semanal:'semanal',quinzenal:'quinzenal (15 em 15 dias)',mensal:'mensal'};
+  previewEl.style.display='block';
+  previewEl.textContent = 'Parcelas previstas (periodicidade '+nomes[periodicidade]+'): '+datas.map(fmtDataCurta).join(', ');
+}
+function attachDatePicker(input){
+  const wrap=document.createElement('div');
+  wrap.className='date-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const hidden=document.createElement('input');
+  hidden.type='date';
+  hidden.className='date-hidden';
+  wrap.appendChild(hidden);
+  const btn=document.createElement('button');
+  btn.type='button';
+  btn.className='date-pick-btn';
+  btn.textContent='📅';
+  btn.title='Escolher data no calendário';
+  wrap.appendChild(btn);
+  btn.addEventListener('click',()=>{
+    if(hidden.showPicker){ try{ hidden.showPicker(); }catch(e){ hidden.click(); } }
+    else hidden.click();
+  });
+  hidden.addEventListener('change',()=>{
+    if(!hidden.value) return;
+    input.value = input.dataset.dateFormat==='extenso' ? fmtDataExtenso(hidden.value) : fmtDataCurta(hidden.value);
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+  });
 }
 
 /* ---------- estado ---------- */
@@ -1064,8 +1143,8 @@ function buildContratoPF(d){
   blocks.push(clause('3.', 'Em caso de divergência entre a Proposta e este Contrato, prevalecerá o disposto neste Instrumento.'));
   blocks.push(clause('4.', 'A inclusão de qualquer outro bem, direito, obrigação ou interessado que não esteja abrangido pelas informações fornecidas até a assinatura deste Contrato dependerá de contratação complementar.'));
   blocks.push(clause('5.', 'As atividades poderão ser executadas no âmbito extrajudicial e, se necessário, perante o juízo competente, exclusivamente em 1ª (primeira) instância, não abrangendo recursos de qualquer natureza, contrarrazões, remessa necessária ou atuação perante tribunais, salvo contratação complementar.'));
-  blocks.push(clause('6.', 'Não estão incluídas medidas litigiosas autônomas, ações conexas, defesas tributárias, regularizações patrimoniais independentes, representação individual de qualquer dos integrantes do(a) **CONTRATANTE** em oposição aos demais ou outras providências não expressamente previstas neste Contrato, salvo contratação complementar.'));
-  blocks.push(clause('7.', 'A presente contratação pressupõe a existência e a manutenção de convergência de interesses entre os integrantes do(a) **CONTRATANTE**. Se surgir divergência, litígio ou conflito de interesses que inviabilize ou torne inadequada a representação conjunta, a **CONTRATADA** poderá suspender ou encerrar a atuação, renunciar ou substabelecer os mandatos, adotando as providências jurídicas e éticas cabíveis, sem prejuízo dos honorários, custos, despesas e demais valores contratualmente devidos.'));
+  blocks.push(clause('6.', 'Não estão incluídas medidas litigiosas autônomas, ações conexas, defesas tributárias, regularizações patrimoniais independentes, representação individual de qualquer dos integrantes do(a) <strong>CONTRATANTE</strong> em oposição aos demais ou outras providências não expressamente previstas neste Contrato, salvo contratação complementar.'));
+  blocks.push(clause('7.', 'A presente contratação pressupõe a existência e a manutenção de convergência de interesses entre os integrantes do(a) <strong>CONTRATANTE</strong>. Se surgir divergência, litígio ou conflito de interesses que inviabilize ou torne inadequada a representação conjunta, a <strong>CONTRATADA</strong> poderá suspender ou encerrar a atuação, renunciar ou substabelecer os mandatos, adotando as providências jurídicas e éticas cabíveis, sem prejuízo dos honorários, custos, despesas e demais valores contratualmente devidos.'));
 
   blocks.push(clause('8.', '<strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS:</strong>'));
   let honHtml='';
@@ -1097,70 +1176,70 @@ function buildContratoPF(d){
   // cada linha é um bloco atômico próprio para permitir quebra de página no meio da tabela, como no modelo original
   honHtml.match(/<div class="hon-row[^>]*>.*?<\/div><\/div>/g).forEach(rowHtml=>blocks.push(C(rowHtml)));
 
-  blocks.push(clause('9.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** conforme o **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, mediante boleto bancário, fatura e/ou PIX, cujos dados ou instruções serão disponibilizados pela **CONTRATADA** juntamente com o link para formalização eletrônica.'));
-  blocks.push(clause('10.', 'O boleto bancário e/ou a fatura serão emitidos em nome de um dos integrantes do(a) **CONTRATANTE**, conforme indicação prévia dos interessados. O pagamento por PIX poderá ser realizado por qualquer um deles, desde que a operação seja devidamente identificada.'));
-  blocks.push(clause('11.', 'O pagamento realizado por qualquer dos meios previstos na **Cláusula 9** deste Contrato dispensa a emissão de recibo específico, servindo o respectivo comprovante como documento hábil e suficiente para demonstrar o adimplemento parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('9.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) <strong>CONTRATANTE</strong> conforme o <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>, mediante boleto bancário, fatura e/ou PIX, cujos dados ou instruções serão disponibilizados pela <strong>CONTRATADA</strong> juntamente com o link para formalização eletrônica.'));
+  blocks.push(clause('10.', 'O boleto bancário e/ou a fatura serão emitidos em nome de um dos integrantes do(a) <strong>CONTRATANTE</strong>, conforme indicação prévia dos interessados. O pagamento por PIX poderá ser realizado por qualquer um deles, desde que a operação seja devidamente identificada.'));
+  blocks.push(clause('11.', 'O pagamento realizado por qualquer dos meios previstos na <strong>Cláusula 9</strong> deste Contrato dispensa a emissão de recibo específico, servindo o respectivo comprovante como documento hábil e suficiente para demonstrar o adimplemento parcial e/ou total da obrigação contratual.'));
   blocks.push(clause('12.', 'A prestação dos serviços terá início após a assinatura deste Contrato e a confirmação do pagamento integral dos honorários advocatícios.'));
-  blocks.push(clause('13.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de boleto bancário e/ou fatura, quando utilizados, serão de responsabilidade exclusiva do(a) **CONTRATANTE** e acrescidos ao valor devido, conforme a Tabela de Custos Administrativos vigente na data do respectivo lançamento, mantida e periodicamente atualizada pela **CONTRATADA**. Em caso de necessidade de substituição, reemissão, prorrogação ou alteração de qualquer desses instrumentos, por inadimplência ou solicitação do(a) **CONTRATANTE**, poderá ser acrescido novo encargo operacional correspondente.'));
+  blocks.push(clause('13.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de boleto bancário e/ou fatura, quando utilizados, serão de responsabilidade exclusiva do(a) <strong>CONTRATANTE</strong> e acrescidos ao valor devido, conforme a Tabela de Custos Administrativos vigente na data do respectivo lançamento, mantida e periodicamente atualizada pela <strong>CONTRATADA</strong>. Em caso de necessidade de substituição, reemissão, prorrogação ou alteração de qualquer desses instrumentos, por inadimplência ou solicitação do(a) <strong>CONTRATANTE</strong>, poderá ser acrescido novo encargo operacional correspondente.'));
   blocks.push(clause('14.', 'Não haverá cobrança de custo administrativo quando o pagamento for realizado por PIX.'));
-  blocks.push(clause('15.', 'Os custos administrativos previstos na **Cláusula 13** deste Contrato não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
+  blocks.push(clause('15.', 'Os custos administrativos previstos na <strong>Cláusula 13</strong> deste Contrato não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
   blocks.push(clause('16.', 'VALOR DOS HONORÁRIOS EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO: TOTALIDADE.'));
   blocks.push(clause('17.', 'As atividades relacionadas ao objeto deste Contrato serão desenvolvidas, preferencialmente, em '+esc(d.cidade)+', de forma presencial e/ou remota, conforme a natureza da demanda, a conveniência operacional e a estratégia definida para o caso.'));
   blocks.push(clause('18.', 'No que for aplicável, os atos extrajudiciais poderão ser praticados perante tabelionato de notas ou órgão competente escolhido pelos interessados.'));
   blocks.push(clause('19.', 'Caso seja necessária a via judicial, a atuação ocorrerá perante o juízo competente da Comarca de '+esc(d.cidade)+', correspondente ao domicílio/sede '+esc(d.foroRef)+', exclusivamente em 1ª (primeira) instância, observados os limites do escopo contratado.'));
   blocks.push(clause('20.', 'A interposição ou o acompanhamento de recursos, a apresentação de contrarrazões, o acompanhamento de remessa necessária e qualquer atuação perante os Tribunais Superiores dependerão de contratação complementar.'));
-  blocks.push(clause('21.', 'Os serviços poderão ser realizados pela **CONTRATADA** ou por advogado(a)(s), associado(a)(s), colaborador(a)(es), parceiro(a)(s) e/ou preposto(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que devidamente habilitado(a)(s) para a execução.'));
-  blocks.push(clause('22.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão coordenadas pela **CONTRATADA**, podendo ser executadas na forma prevista na **Cláusula 21** deste Contrato.'));
-  blocks.push(clause('23.', 'Os valores referentes à prestação dos serviços profissionais serão pagos pelo(a) **CONTRATANTE** à **CONTRATADA** nas condições e nos prazos estabelecidos no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, mediante uma das formas de pagamento previstas na **Cláusula 9** deste Contrato.'));
-  blocks.push(clause('24.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, dentro de prazo definido pela **CONTRATADA**, ressalvado acordo entre as partes para prazos diferentes.'));
-  blocks.push(clause('25.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) **CONTRATANTE**, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
-  blocks.push(clause('26.', 'Se houver ampliação do escopo, aumento da complexidade ou da carga laboral, de forma desproporcional ou excessiva, a **CONTRATADA** poderá propor a readequação dos honorários advocatícios, mediante anuência do(a) **CONTRATANTE**.'));
+  blocks.push(clause('21.', 'Os serviços poderão ser realizados pela <strong>CONTRATADA</strong> ou por advogado(a)(s), associado(a)(s), colaborador(a)(es), parceiro(a)(s) e/ou preposto(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que devidamente habilitado(a)(s) para a execução.'));
+  blocks.push(clause('22.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão coordenadas pela <strong>CONTRATADA</strong>, podendo ser executadas na forma prevista na <strong>Cláusula 21</strong> deste Contrato.'));
+  blocks.push(clause('23.', 'Os valores referentes à prestação dos serviços profissionais serão pagos pelo(a) <strong>CONTRATANTE</strong> à <strong>CONTRATADA</strong> nas condições e nos prazos estabelecidos no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>, mediante uma das formas de pagamento previstas na <strong>Cláusula 9</strong> deste Contrato.'));
+  blocks.push(clause('24.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) <strong>CONTRATANTE</strong>, dentro de prazo definido pela <strong>CONTRATADA</strong>, ressalvado acordo entre as partes para prazos diferentes.'));
+  blocks.push(clause('25.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) <strong>CONTRATANTE</strong>, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
+  blocks.push(clause('26.', 'Se houver ampliação do escopo, aumento da complexidade ou da carga laboral, de forma desproporcional ou excessiva, a <strong>CONTRATADA</strong> poderá propor a readequação dos honorários advocatícios, mediante anuência do(a) <strong>CONTRATANTE</strong>.'));
   blocks.push(clause('27.', 'Atividades não abrangidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
   blocks.push(clause('28.', 'O atraso no pagamento acarretará a incidência de multa de '+esc(h.multa)+', juros de '+esc(h.juros)+' e correção monetária, sem prejuízo de perdas e danos e da aplicação da Cláusula Penal.'));
   blocks.push(clause('29.', 'Caso o pagamento venha a ser parcelado mediante ajuste escrito posterior, a inadimplência de qualquer parcela poderá acarretar o vencimento antecipado das demais, independentemente de notificação, sem prejuízo das medidas legais cabíveis.'));
-  blocks.push(clause('30.', 'A inadimplência, independentemente de sua duração, autorizará a **CONTRATADA** a suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
-  blocks.push(clause('31.', 'O inadimplemento também autoriza a **CONTRATADA** a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ação de cobrança, a execução deste Contrato, o protesto em cartório e as demais providências legais aplicáveis. Todas essas medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**, nos termos da legislação vigente.'));
+  blocks.push(clause('30.', 'A inadimplência, independentemente de sua duração, autorizará a <strong>CONTRATADA</strong> a suspender e/ou rescindir a prestação dos serviços, ficando o(a) <strong>CONTRATANTE</strong>, única e exclusivamente, responsável por todo e qualquer prejuízo administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('31.', 'O inadimplemento também autoriza a <strong>CONTRATADA</strong> a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ação de cobrança, a execução deste Contrato, o protesto em cartório e as demais providências legais aplicáveis. Todas essas medidas serão precedidas de comunicação formal ao(à) <strong>CONTRATANTE</strong>, nos termos da legislação vigente.'));
   blocks.push(clause('32.', 'Não haverá incidência de honorários de êxito no âmbito da presente contratação, salvo se posteriormente ajustados, de forma expressa e escrita, mediante aditivo contratual referente a atividade, medida ou resultado não abrangido pelo objeto original.'));
-  blocks.push(clause('33.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de retenção, reserva, dedução, compensação e/ou pagamento direto dos honorários advocatícios contratuais, custas, despesas, encargos e demais valores previstos neste Contrato, sempre que houver abatimento, acordo, alvará, compensação, crédito, depósito judicial ou extrajudicial, levantamento, restituição, vantagem econômica ou qualquer resultado patrimonial decorrente da atuação da **CONTRATADA**.'));
-  blocks.push(clause('34.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
-  blocks.push(clause('35.', 'Expedido alvará no âmbito dos trabalhos contratados, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
-  blocks.push(clause('36.', 'O(A) **CONTRATANTE** autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a **CONTRATADA** proceda à compensação, ao desconto e/ou à retenção de valores que lhe sejam devidos ou destinados, decorrentes de acordo, alvará, depósito judicial, levantamento, precatório e/ou requisição de pequeno valor, até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('33.', 'O(A) <strong>CONTRATANTE</strong> concorda, desde já, com o pleito de retenção, reserva, dedução, compensação e/ou pagamento direto dos honorários advocatícios contratuais, custas, despesas, encargos e demais valores previstos neste Contrato, sempre que houver abatimento, acordo, alvará, compensação, crédito, depósito judicial ou extrajudicial, levantamento, restituição, vantagem econômica ou qualquer resultado patrimonial decorrente da atuação da <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('34.', 'O(A) <strong>CONTRATANTE</strong> autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('35.', 'Expedido alvará no âmbito dos trabalhos contratados, os valores depositados e/ou levantados em favor da <strong>CONTRATADA</strong> ou do Escritório poderão ser repassados ao(à) <strong>CONTRATANTE</strong> após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+  blocks.push(clause('36.', 'O(A) <strong>CONTRATANTE</strong> autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a <strong>CONTRATADA</strong> proceda à compensação, ao desconto e/ou à retenção de valores que lhe sejam devidos ou destinados, decorrentes de acordo, alvará, depósito judicial, levantamento, precatório e/ou requisição de pequeno valor, até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 48, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
   blocks.push(clause('37.', 'O valor total dos honorários contratados poderá ser exigido de imediato ou, se já adimplido, retido e não devolvido, conforme o caso, nas seguintes hipóteses:'));
-  blocks.push(sub('a)', 'caso haja acordo, ajuste direto ou composição entre os interessados, sem a intervenção da **CONTRATADA**, ainda que parcialmente;'));
-  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) **CONTRATANTE**, ou por qualquer circunstância não imputável à **CONTRATADA**;'));
-  blocks.push(sub('c)', 'renúncia da **CONTRATADA**, quando decorrente de conduta do(a) **CONTRATANTE** que comprometa a confiança, a independência técnica ou a continuidade da atuação profissional, inclusive por imposição de estratégia, interferência indevida ou descumprimento de orientações essenciais;'));
-  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da **CONTRATADA**.'));
-  blocks.push(clause('38.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
-  blocks.push(clause('39.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas, deslocamentos, despesas administrativas, bancárias, cartorárias, notariais, paralegais, processuais e registrais, digitalizações, diligências, documentos, emolumentos, escrituras públicas, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, taxas, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
-  blocks.push(clause('40.', 'Na hipótese excepcional de ser necessária a realização de diligência presencial fora da Comarca de '+esc(d.cidade)+', previamente comunicada e autorizada pelo(a) **CONTRATANTE**, serão observadas as seguintes disposições:'));
-  blocks.push(sub('a)', 'as despesas efetivamente necessárias com passagens, pedágios, estacionamentos, alimentação, estadia, locação de veículo, combustível e outros gastos indispensáveis à realização da diligência correrão por conta do(a) **CONTRATANTE**, mediante pagamento direto ou reembolso;'));
-  blocks.push(sub('b)', 'eventual remuneração adicional decorrente do deslocamento, da permanência e da disponibilidade profissional da **CONTRATADA** fora da Comarca será previamente ajustada entre as partes, por escrito, considerando-se a natureza, o local, a duração e a complexidade da diligência;'));
-  blocks.push(sub('c)', 'nenhum valor complementar relacionado ao deslocamento, à permanência ou à disponibilidade profissional fora da Comarca será devido sem a prévia concordância expressa do(a) **CONTRATANTE**;'));
-  blocks.push(sub('d)', 'as audiências e os despachos poderão ser realizados por advogado(a)(s), associado(a)(s), correspondente(s) e/ou parceiro(a)(s) devidamente habilitado(a)(s); as diligências e os protocolos poderão também ser executados por colaborador(a)(es) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os respectivos custos e despesas, desde que previamente informados e autorizados.'));
-  blocks.push(clause('41.', 'O(A) **CONTRATANTE** não arcará com outros honorários advocatícios fixos além daqueles expressamente ajustados neste Contrato, ressalvados os custos, despesas, tributos, encargos e demais valores previstos neste Instrumento, inclusive aqueles relacionados na **Cláusula 39**, desde que previamente informados ou recomendados pela **CONTRATADA**.'));
-  blocks.push(clause('42.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
-  blocks.push(clause('43.', 'As diligências externas, tais como o acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, reuniões administrativas ou institucionais e atividades análogas, somente serão realizadas após prévia comunicação e autorização expressa do(a) **CONTRATANTE**, inclusive quanto às despesas e à modalidade de custeio aplicável, nos termos da **Cláusula 40** deste Contrato.'));
+  blocks.push(sub('a)', 'caso haja acordo, ajuste direto ou composição entre os interessados, sem a intervenção da <strong>CONTRATADA</strong>, ainda que parcialmente;'));
+  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) <strong>CONTRATANTE</strong>, ou por qualquer circunstância não imputável à <strong>CONTRATADA</strong>;'));
+  blocks.push(sub('c)', 'renúncia da <strong>CONTRATADA</strong>, quando decorrente de conduta do(a) <strong>CONTRATANTE</strong> que comprometa a confiança, a independência técnica ou a continuidade da atuação profissional, inclusive por imposição de estratégia, interferência indevida ou descumprimento de orientações essenciais;'));
+  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('38.', 'Os honorários sucumbenciais pertencem, integralmente, à <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('39.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas, deslocamentos, despesas administrativas, bancárias, cartorárias, notariais, paralegais, processuais e registrais, digitalizações, diligências, documentos, emolumentos, escrituras públicas, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, taxas, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela <strong>CONTRATADA</strong>, arcando o(a) <strong>CONTRATANTE</strong> com os respectivos pagamentos.'));
+  blocks.push(clause('40.', 'Na hipótese excepcional de ser necessária a realização de diligência presencial fora da Comarca de '+esc(d.cidade)+', previamente comunicada e autorizada pelo(a) <strong>CONTRATANTE</strong>, serão observadas as seguintes disposições:'));
+  blocks.push(sub('a)', 'as despesas efetivamente necessárias com passagens, pedágios, estacionamentos, alimentação, estadia, locação de veículo, combustível e outros gastos indispensáveis à realização da diligência correrão por conta do(a) <strong>CONTRATANTE</strong>, mediante pagamento direto ou reembolso;'));
+  blocks.push(sub('b)', 'eventual remuneração adicional decorrente do deslocamento, da permanência e da disponibilidade profissional da <strong>CONTRATADA</strong> fora da Comarca será previamente ajustada entre as partes, por escrito, considerando-se a natureza, o local, a duração e a complexidade da diligência;'));
+  blocks.push(sub('c)', 'nenhum valor complementar relacionado ao deslocamento, à permanência ou à disponibilidade profissional fora da Comarca será devido sem a prévia concordância expressa do(a) <strong>CONTRATANTE</strong>;'));
+  blocks.push(sub('d)', 'as audiências e os despachos poderão ser realizados por advogado(a)(s), associado(a)(s), correspondente(s) e/ou parceiro(a)(s) devidamente habilitado(a)(s); as diligências e os protocolos poderão também ser executados por colaborador(a)(es) e/ou preposto(a)(s), arcando o(a) <strong>CONTRATANTE</strong> com os respectivos custos e despesas, desde que previamente informados e autorizados.'));
+  blocks.push(clause('41.', 'O(A) <strong>CONTRATANTE</strong> não arcará com outros honorários advocatícios fixos além daqueles expressamente ajustados neste Contrato, ressalvados os custos, despesas, tributos, encargos e demais valores previstos neste Instrumento, inclusive aqueles relacionados na <strong>Cláusula 39</strong>, desde que previamente informados ou recomendados pela <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('42.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da <strong>CONTRATADA</strong> o recolhimento dos referidos tributos.'));
+  blocks.push(clause('43.', 'As diligências externas, tais como o acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, reuniões administrativas ou institucionais e atividades análogas, somente serão realizadas após prévia comunicação e autorização expressa do(a) <strong>CONTRATANTE</strong>, inclusive quanto às despesas e à modalidade de custeio aplicável, nos termos da <strong>Cláusula 40</strong> deste Contrato.'));
   blocks.push(clause('44.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, sem prejuízo das obrigações já constituídas e da observância dos prazos legais aplicáveis ao mandato.'));
-  blocks.push(clause('45.', 'Ocorrendo rescisão contratual unilateral, renúncia, revogação ou substabelecimento, a **CONTRATADA** preservará o direito à integralidade dos honorários advocatícios fixos contratados, nos termos deste Contrato, bem como ao reembolso das despesas, custos e encargos incorridos durante a execução dos trabalhos.'));
-  blocks.push(clause('46.', 'Em caso de renúncia ao mandato, a **CONTRATADA** continuará a representar o(a) **CONTRATANTE** durante os 10 (dez) dias seguintes à notificação, salvo se houver substituição antes do término desse prazo.'));
+  blocks.push(clause('45.', 'Ocorrendo rescisão contratual unilateral, renúncia, revogação ou substabelecimento, a <strong>CONTRATADA</strong> preservará o direito à integralidade dos honorários advocatícios fixos contratados, nos termos deste Contrato, bem como ao reembolso das despesas, custos e encargos incorridos durante a execução dos trabalhos.'));
+  blocks.push(clause('46.', 'Em caso de renúncia ao mandato, a <strong>CONTRATADA</strong> continuará a representar o(a) <strong>CONTRATANTE</strong> durante os 10 (dez) dias seguintes à notificação, salvo se houver substituição antes do término desse prazo.'));
   blocks.push(clause('47.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que lhe der causa ficará sujeita à Cláusula Penal correspondente a '+esc(h.penal)+' sobre o valor total do presente Instrumento.'));
   blocks.push(clause('48.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(h.cobranca)+' sobre o valor total do débito, a título de remuneração pelo trabalho de cobrança, sem prejuízo da incidência dos demais encargos contratuais e de eventual apuração de perdas e danos.'));
   blocks.push(clause('49.', 'O presente Contrato obriga as partes, bem como seus respectivos herdeiros e sucessores.'));
-  blocks.push(clause('50.', 'Os serviços advocatícios constituem obrigação de meio, e não de resultado, razão pela qual a **CONTRATADA** não garante decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
-  blocks.push(clause('51.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+  blocks.push(clause('50.', 'Os serviços advocatícios constituem obrigação de meio, e não de resultado, razão pela qual a <strong>CONTRATADA</strong> não garante decisões e/ou resultados favoráveis ao(à) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('51.', 'O(A) <strong>CONTRATANTE</strong> declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
   blocks.push(clause('52.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelas partes.'));
   blocks.push(clause('53.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
-  blocks.push(clause('54.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
-  blocks.push(clause('55.', 'O(A) **CONTRATANTE** declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
-  blocks.push(clause('56.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
-  blocks.push(clause('57.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
-  blocks.push(clause('58.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
-  blocks.push(clause('59.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
-  blocks.push(clause('60.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
-  blocks.push(clause('61.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
-  blocks.push(clause('62.', 'O(A) **CONTRATANTE** declara ter lido este Contrato, recebido os esclarecimentos solicitados e compreendido integralmente o seu conteúdo, assinando-o em local próprio.'));
-  blocks.push(clause('63.', 'O(A) **CONTRATANTE** e a **CONTRATADA** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
-  blocks.push(clause('64.', 'O(A) **CONTRATANTE** e a **CONTRATADA** elegem o Foro da Comarca de '+esc(d.cidade)+' para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+  blocks.push(clause('54.', 'O(A) <strong>CONTRATANTE</strong> autoriza a <strong>CONTRATADA</strong> a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+  blocks.push(clause('55.', 'O(A) <strong>CONTRATANTE</strong> declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
+  blocks.push(clause('56.', 'O(A) <strong>CONTRATANTE</strong> compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('57.', 'A <strong>CONTRATADA</strong> não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) <strong>CONTRATANTE</strong>, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('58.', 'Caso o(a) <strong>CONTRATANTE</strong> preveja a impossibilidade de participar de audiência virtual, deverá comunicar à <strong>CONTRATADA</strong> com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+  blocks.push(clause('59.', 'A <strong>CONTRATADA</strong> declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('60.', 'A <strong>CONTRATADA</strong> não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) <strong>CONTRATANTE</strong>, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('61.', 'A <strong>CONTRATADA</strong> não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+  blocks.push(clause('62.', 'O(A) <strong>CONTRATANTE</strong> declara ter lido este Contrato, recebido os esclarecimentos solicitados e compreendido integralmente o seu conteúdo, assinando-o em local próprio.'));
+  blocks.push(clause('63.', 'O(A) <strong>CONTRATANTE</strong> e a <strong>CONTRATADA</strong> declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+  blocks.push(clause('64.', 'O(A) <strong>CONTRATANTE</strong> e a <strong>CONTRATADA</strong> elegem o Foro da Comarca de '+esc(d.cidade)+' para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
   blocks.push(clause('65.', 'E assim, por estarem justas e contratadas, as partes firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS ADVOCATÍCIOS</strong>, física ou eletronicamente, juntamente com 2 (duas) testemunhas, para que produza seus efeitos jurídicos e legais.'));
 
   blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
@@ -1202,18 +1281,18 @@ function buildContratoPJ(d){
   blocks.push(C(`<div class="blk"><strong>CONTRATADA: FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</strong> (JONATHAN FONSECA SOCIEDADE INDIVIDUAL DE ADVOCACIA), pessoa jurídica de direito privado, inscrita no <strong>CNPJ/MF</strong> sob o nº <strong>57.704.224/0001-00</strong>, com sede nesta cidade de Uberlândia, Estado de Minas Gerais, na Rua Senador Salgado Filho, 426, Bairro Tabajaras, CEP 38400-236, neste ato representada pelo sócio-administrador <strong>JONATHAN FONSECA</strong>, brasileiro, casado, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>163.443</strong>, e pelo sócio <strong>HECY BRAGA</strong>, brasileiro, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>95.948</strong>, ambos residentes e domiciliados nesta cidade de Uberlândia, Estado de Minas Gerais.</div>`));
 
   blocks.push(clauseTitle('CLÁUSULA PRIMEIRA – DO OBJETO E DO ESCOPO OPERACIONAL DOS SERVIÇOS'));
-  blocks.push(clause('1.1.', 'O presente Contrato tem por objeto a prestação contínua de serviços de advocacia, assessoria e consultoria jurídica empresarial, em favor do(a) **CONTRATANTE**, de forma preventiva, personalizada, estratégica e alinhada às necessidades legais e operacionais abrangidas pelas áreas de atuação contempladas neste Instrumento.'));
-  blocks.push(clause('1.2.', 'A atuação da **CONTRATADA** compreenderá orientação jurídica qualificada, análise e mitigação de riscos, apoio à tomada de decisões, revisão de situações concretas, elaboração, análise e revisão documental, bem como acompanhamento das demandas inerentes à rotina empresarial do(a) **CONTRATANTE**, nos limites do escopo ajustado neste Contrato.'));
-  blocks.push(clause('1.3.', 'Observadas a necessidade, a pertinência e a aderência à realidade da operação empresarial do(a) **CONTRATANTE**, a assessoria abrangerá, em caráter contínuo, preventivo e estratégico, as seguintes frentes de atuação (<strong>ÁREAS DE ATUAÇÃO</strong>):'));
+  blocks.push(clause('1.1.', 'O presente Contrato tem por objeto a prestação contínua de serviços de advocacia, assessoria e consultoria jurídica empresarial, em favor do(a) <strong>CONTRATANTE</strong>, de forma preventiva, personalizada, estratégica e alinhada às necessidades legais e operacionais abrangidas pelas áreas de atuação contempladas neste Instrumento.'));
+  blocks.push(clause('1.2.', 'A atuação da <strong>CONTRATADA</strong> compreenderá orientação jurídica qualificada, análise e mitigação de riscos, apoio à tomada de decisões, revisão de situações concretas, elaboração, análise e revisão documental, bem como acompanhamento das demandas inerentes à rotina empresarial do(a) <strong>CONTRATANTE</strong>, nos limites do escopo ajustado neste Contrato.'));
+  blocks.push(clause('1.3.', 'Observadas a necessidade, a pertinência e a aderência à realidade da operação empresarial do(a) <strong>CONTRATANTE</strong>, a assessoria abrangerá, em caráter contínuo, preventivo e estratégico, as seguintes frentes de atuação (<strong>ÁREAS DE ATUAÇÃO</strong>):'));
   areaTableBlocks(d).forEach(b=>blocks.push(b));
-  blocks.push(clause('1.4.', 'Integram o escopo ordinário dos serviços contratados, entre outras atividades compatíveis com a rotina empresarial do(a) **CONTRATANTE** e com as frentes de atuação acima descritas:'));
+  blocks.push(clause('1.4.', 'Integram o escopo ordinário dos serviços contratados, entre outras atividades compatíveis com a rotina empresarial do(a) <strong>CONTRATANTE</strong> e com as frentes de atuação acima descritas:'));
   blocks.push(sub('a)', 'orientações jurídicas consultivas de rotina;'));
   blocks.push(sub('b)', 'análise, revisão e elaboração de instrumentos negociais usuais;'));
   blocks.push(sub('c)', 'apoio preventivo em questões bancárias, civis, contratuais, empresariais, societárias, imobiliárias, securitárias e trabalhistas ordinárias;'));
   blocks.push(sub('d)', 'suporte jurídico relacionado a situações operacionais correntes; e'));
   blocks.push(sub('e)', 'interlocução estratégica voltada à prevenção de passivos, à racionalização de riscos e à construção de soluções juridicamente seguras e empresarialmente úteis.'));
-  blocks.push(clause('1.5.', 'No âmbito do escopo ordinário ora contratado, não se submetem a limites quantitativos anuais as análises contratuais, as participações em reuniões, as tratativas operacionais e as demais providências jurídicas compatíveis com a dinâmica empresarial do(a) **CONTRATANTE**.'));
-  blocks.push(clause('1.6.', 'Sempre que a demanda exigir atuação extraordinária, projeto específico, dedicação técnica não compatível com a dinâmica ordinária da advocacia empresarial contínua, ou versar sobre matéria não abrangida pelas frentes descritas nesta Cláusula, a **CONTRATADA** poderá apresentar proposta complementar e/ou aditivo contratual, mediante prévio alinhamento de escopo e honorários.'));
+  blocks.push(clause('1.5.', 'No âmbito do escopo ordinário ora contratado, não se submetem a limites quantitativos anuais as análises contratuais, as participações em reuniões, as tratativas operacionais e as demais providências jurídicas compatíveis com a dinâmica empresarial do(a) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('1.6.', 'Sempre que a demanda exigir atuação extraordinária, projeto específico, dedicação técnica não compatível com a dinâmica ordinária da advocacia empresarial contínua, ou versar sobre matéria não abrangida pelas frentes descritas nesta Cláusula, a <strong>CONTRATADA</strong> poderá apresentar proposta complementar e/ou aditivo contratual, mediante prévio alinhamento de escopo e honorários.'));
 
   blocks.push(clauseTitle('CLÁUSULA SEGUNDA – DO QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS'));
   const rows18=[
@@ -1240,30 +1319,30 @@ function buildContratoPJ(d){
   if(m.valorPos){
     blocks.push(clause('2.2.', 'Encerrado o período inicial previsto neste Contrato, os honorários advocatícios mensais passarão a ser de R$ '+esc(m.valorPos)+', a partir do '+esc(m.mesPos)+' mês de vigência, permanecendo inalteradas as demais disposições contratuais aplicáveis à cobrança, ao vencimento, ao reajuste e aos encargos moratórios.'));
   }
-  blocks.push(clause('2.3.', 'Os serviços poderão ser realizados tanto pela **CONTRATADA** como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
-  blocks.push(clause('2.4.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela **CONTRATADA** e conforme facultado no item 2.1. deste Contrato.'));
+  blocks.push(clause('2.3.', 'Os serviços poderão ser realizados tanto pela <strong>CONTRATADA</strong> como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
+  blocks.push(clause('2.4.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela <strong>CONTRATADA</strong> e conforme facultado no item 2.1. deste Contrato.'));
 
   blocks.push(clauseTitle('CLÁUSULA TERCEIRA – DA ABRANGÊNCIA'));
-  blocks.push(clause('3.1.', 'A prestação dos serviços contratados atenderá ao(à)(s) seguinte(s) **CONTRATANTE(S)**:'));
+  blocks.push(clause('3.1.', 'A prestação dos serviços contratados atenderá ao(à)(s) seguinte(s) <strong>CONTRATANTE(S)</strong>:'));
   blocks.push(sub('a)', esc(d.pj.razaoSocial)+', pessoa jurídica de direito privado, inscrita no CNPJ sob o nº '+esc(d.pj.cnpj)+(pfReps.length?';':'.')));
   pfReps.forEach((r,idx)=>blocks.push(sub(String.fromCharCode(98+idx)+')', esc(r.nome)+', inscrito(a) no CPF sob o nº '+esc(r.cpf)+(idx===pfReps.length-1?'.':';'))));
   if(pfReps.length){
-    blocks.push(clause('3.2.', 'Em relação ao(à)(s) **CONTRATANTE**(S) pessoa(s) física(s) indicado(a)(s) no item 3.1., a contratação abrangerá advocacia, assessoria e consultoria, inclusive em matérias de natureza particular, sob os aspectos consultivo, documental, estratégico, negocial e preventivo, desde que compreendidas nas áreas de atuação contempladas neste Contrato, não se limitando exclusivamente às repercussões decorrentes da atividade empresarial da pessoa jurídica.'));
+    blocks.push(clause('3.2.', 'Em relação ao(à)(s) <strong>CONTRATANTE</strong>(S) pessoa(s) física(s) indicado(a)(s) no item 3.1., a contratação abrangerá advocacia, assessoria e consultoria, inclusive em matérias de natureza particular, sob os aspectos consultivo, documental, estratégico, negocial e preventivo, desde que compreendidas nas áreas de atuação contempladas neste Contrato, não se limitando exclusivamente às repercussões decorrentes da atividade empresarial da pessoa jurídica.'));
   }
 
   blocks.push(clauseTitle('CLÁUSULA QUARTA – DO VALOR DOS HONORÁRIOS ADVOCATÍCIOS, DA DATA E DA FORMA DE PAGAMENTO'));
-  blocks.push(clause('4.1.', 'O(A) **CONTRATANTE** adimplirá à **CONTRATADA** pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**.'));
-  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s) emitido(s) pela **CONTRATADA**, ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova da quitação parcial e/ou total da obrigação contratual.'));
-  blocks.push(clause('4.3.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de(s) boleto(s) bancário(s) e/ou fatura(s) serão de responsabilidade exclusiva do(a) **CONTRATANTE**, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela **CONTRATADA**. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
+  blocks.push(clause('4.1.', 'O(A) <strong>CONTRATANTE</strong> adimplirá à <strong>CONTRATADA</strong> pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>.'));
+  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) <strong>CONTRATANTE</strong> mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s) emitido(s) pela <strong>CONTRATADA</strong>, ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova da quitação parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('4.3.', 'Os custos administrativos decorrentes da emissão e/ou da gestão de(s) boleto(s) bancário(s) e/ou fatura(s) serão de responsabilidade exclusiva do(a) <strong>CONTRATANTE</strong>, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela <strong>CONTRATADA</strong>. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos e complementares.'));
   if(m.carenciaOn){
     blocks.push(clause('4.4.', 'É expressamente convencionado que, no ano de '+esc(m.carenciaAno)+', a mensalidade permanecerá em R$ '+esc(m.carenciaValor)+', sem incidência de reajuste, sendo a primeira recomposição contratual autorizada apenas a partir de '+esc(m.carenciaData)+', nos termos da Cláusula Quinta.'));
   }
-  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, dentro de prazo definido pela **CONTRATADA**, ressalvado acordo entre as partes para prazos diferentes.'));
-  blocks.push(clause('4.6.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) **CONTRATANTE**, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
+  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) <strong>CONTRATANTE</strong>, dentro de prazo definido pela <strong>CONTRATADA</strong>, ressalvado acordo entre as partes para prazos diferentes.'));
+  blocks.push(clause('4.6.', 'Os honorários advocatícios não são reembolsáveis em hipótese alguma, ainda que não seja alcançado o resultado pretendido em ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, bem como em caso de desistência ou revogação do mandato pelo(a) <strong>CONTRATANTE</strong>, considerando que a advocacia constitui obrigação de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
   blocks.push(clause('4.7.', 'Atividades não atendidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
 
   blocks.push(clauseTitle('CLÁUSULA QUINTA – DO REAJUSTE E DA CORREÇÃO MONETÁRIA'));
-  blocks.push(clause('5.1.', (m.carenciaOn?'Ressalvada a regra excepcional prevista no item 4.4, os':'Os')+' honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, ou por qualquer outro que venha a substituí-lo, sendo que o(a) **CONTRATANTE** se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
+  blocks.push(clause('5.1.', (m.carenciaOn?'Ressalvada a regra excepcional prevista no item 4.4, os':'Os')+' honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>, ou por qualquer outro que venha a substituí-lo, sendo que o(a) <strong>CONTRATANTE</strong> se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
   if(m.carenciaOn){
     blocks.push(clause('5.2.', 'A correção monetária prevista nesta Cláusula observará a mesma regra temporal do item 5.1., ficando expressamente convencionado que, no ano de '+esc(m.carenciaAno)+', não haverá atualização dos valores nem reajuste, de modo que a primeira aplicação ocorrerá apenas a partir de '+esc(m.carenciaData)+'.'));
   }
@@ -1271,97 +1350,97 @@ function buildContratoPJ(d){
 
   blocks.push(clauseTitle('CLÁUSULA SEXTA – DA MULTA POR ATRASO, DOS JUROS E DA CORREÇÃO MONETÁRIA'));
   blocks.push(clause('6.1.', 'Em caso de atraso no pagamento, sobre os valores vencidos serão aplicados multa de '+esc(m.multa)+', juros de '+esc(m.juros)+' e correção monetária, sem prejuízo de perdas e danos e aplicação da Cláusula Penal.'));
-  blocks.push(clause('6.2.', 'Na hipótese de inadimplência de qualquer parcela, a **CONTRATADA** notificará formalmente o(a) **CONTRATANTE** para que promova a regularização do débito no prazo de 5 (cinco) dias, contados do recebimento da notificação. Não havendo pagamento no prazo assinalado, as parcelas vincendas poderão ser consideradas antecipadamente vencidas, caracterizando a perda do benefício do pagamento parcelado, sem prejuízo das demais medidas legais e contratuais cabíveis.'));
-  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a **CONTRATADA** suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
-  blocks.push(clause('6.4.', 'Em caso de inadimplemento, fica autorizada a **CONTRATADA** a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ações judiciais de cobrança, execução do presente Contrato, protesto em cartório e demais providências legais aplicáveis. Todas as medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**, nos termos da legislação vigente.'));
+  blocks.push(clause('6.2.', 'Na hipótese de inadimplência de qualquer parcela, a <strong>CONTRATADA</strong> notificará formalmente o(a) <strong>CONTRATANTE</strong> para que promova a regularização do débito no prazo de 5 (cinco) dias, contados do recebimento da notificação. Não havendo pagamento no prazo assinalado, as parcelas vincendas poderão ser consideradas antecipadamente vencidas, caracterizando a perda do benefício do pagamento parcelado, sem prejuízo das demais medidas legais e contratuais cabíveis.'));
+  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a <strong>CONTRATADA</strong> suspender e/ou rescindir a prestação dos serviços, ficando o(a) <strong>CONTRATANTE</strong>, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('6.4.', 'Em caso de inadimplemento, fica autorizada a <strong>CONTRATADA</strong> a adotar as medidas administrativas e/ou judiciais cabíveis para a satisfação dos honorários, incluindo a propositura de ações judiciais de cobrança, execução do presente Contrato, protesto em cartório e demais providências legais aplicáveis. Todas as medidas serão precedidas de comunicação formal ao(à) <strong>CONTRATANTE</strong>, nos termos da legislação vigente.'));
 
   blocks.push(clauseTitle('CLÁUSULA SÉTIMA – DOS HONORÁRIOS AD EXITUM, DO PAGAMENTO QUOTA LITIS E DA RESERVA DE PERCENTUAL EM JUÍZO'));
-  blocks.push(clause('7.1.', 'Quando houver atuação da **CONTRATADA** apta a gerar resultado econômico positivo direto em favor da **CONTRATANTE** e/ou, nos limites da Cláusula Terceira deste Contrato, em favor da pessoa física nela abrangida, incidirão honorários advocatícios de êxito no percentual de '+esc(m.exito)+', exclusivamente sobre os valores que efetivamente vierem a ser auferidos, recebidos ou recuperados, em razão direta da atuação da **CONTRATADA**.'));
-  blocks.push(clause('7.2.', 'Os honorários de êxito não incidirão sobre valores cuja exigibilidade seja apenas afastada, desconstituída, reduzida, renegociada, postergada ou neutralizada, sem ingresso financeiro ou patrimonial correspondente em favor da **CONTRATANTE**.'));
-  blocks.push(clause('7.3.', 'Para os fins desta Cláusula, considera-se resultado econômico positivo direto, entre outras hipóteses semelhantes, o ingresso financeiro ou patrimonial decorrente de acordo, alvará, indenização, levantamento, liberação de valores, pagamento, recebimento, recuperação de crédito, restituição, reembolso, ressarcimento ou qualquer outra vantagem econômica concreta e mensurável obtida em favor da **CONTRATANTE**, desde que relacionada à atuação da **CONTRATADA**.'));
-  blocks.push(clause('7.4.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de reserva, dedução, retenção e/ou destaque dos honorários advocatícios de êxito, para pagamento direto à **CONTRATADA**, nos termos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
-  blocks.push(clause('7.5.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios de êxito sejam descontados de eventual acordo, crédito, alvará, depósito, levantamento ou qualquer outro valor economicamente revertido em seu favor, observado o percentual previsto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** e a legislação vigente.'));
-  blocks.push(clause('7.6.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+  blocks.push(clause('7.1.', 'Quando houver atuação da <strong>CONTRATADA</strong> apta a gerar resultado econômico positivo direto em favor da <strong>CONTRATANTE</strong> e/ou, nos limites da Cláusula Terceira deste Contrato, em favor da pessoa física nela abrangida, incidirão honorários advocatícios de êxito no percentual de '+esc(m.exito)+', exclusivamente sobre os valores que efetivamente vierem a ser auferidos, recebidos ou recuperados, em razão direta da atuação da <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('7.2.', 'Os honorários de êxito não incidirão sobre valores cuja exigibilidade seja apenas afastada, desconstituída, reduzida, renegociada, postergada ou neutralizada, sem ingresso financeiro ou patrimonial correspondente em favor da <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('7.3.', 'Para os fins desta Cláusula, considera-se resultado econômico positivo direto, entre outras hipóteses semelhantes, o ingresso financeiro ou patrimonial decorrente de acordo, alvará, indenização, levantamento, liberação de valores, pagamento, recebimento, recuperação de crédito, restituição, reembolso, ressarcimento ou qualquer outra vantagem econômica concreta e mensurável obtida em favor da <strong>CONTRATANTE</strong>, desde que relacionada à atuação da <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('7.4.', 'O(A) <strong>CONTRATANTE</strong> concorda, desde já, com o pleito de reserva, dedução, retenção e/ou destaque dos honorários advocatícios de êxito, para pagamento direto à <strong>CONTRATADA</strong>, nos termos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('7.5.', 'O(A) <strong>CONTRATANTE</strong> autoriza, desde já, que os honorários advocatícios de êxito sejam descontados de eventual acordo, crédito, alvará, depósito, levantamento ou qualquer outro valor economicamente revertido em seu favor, observado o percentual previsto no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong> e a legislação vigente.'));
+  blocks.push(clause('7.6.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da <strong>CONTRATADA</strong> ou do Escritório poderão ser repassados ao(à) <strong>CONTRATANTE</strong> após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
 
   blocks.push(clauseTitle('CLÁUSULA OITAVA – DO DIREITO DE RETENÇÃO EM CASO DE INADIMPLÊNCIA'));
-  blocks.push(clause('8.1.', 'O(A) **CONTRATANTE** autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a **CONTRATADA** proceda à compensação, ao desconto e/ou à retenção de valores recebidos em seu favor — seja em razão de acordo, alvará, depósito bancário, levantamento, precatório e/ou requisição de pequeno valor — até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('8.1.', 'O(A) <strong>CONTRATANTE</strong> autoriza, de forma expressa e prévia, que, em caso de inadimplência contratual, a <strong>CONTRATADA</strong> proceda à compensação, ao desconto e/ou à retenção de valores recebidos em seu favor — seja em razão de acordo, alvará, depósito bancário, levantamento, precatório e/ou requisição de pequeno valor — até o montante necessário à satisfação dos honorários advocatícios, custas, despesas e demais encargos previstos neste Contrato, observada a legislação vigente e o disposto no art. 22, § 4º, da Lei nº 8.906/1994 e no art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
 
   blocks.push(clauseTitle('CLÁUSULA NONA – DO PAGAMENTO DE HONORÁRIOS ADVOCATÍCIOS EM CASO DE ACORDO E/OU PARCELAMENTO DE CRÉDITO A SER RECEBIDO PELO(A) CONTRATANTE'));
-  blocks.push(clause('9.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) **CONTRATANTE**, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
+  blocks.push(clause('9.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) <strong>CONTRATANTE</strong>, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
   blocks.push(clause('9.2.', 'O valor total dos honorários contratados poderá ser exigido de imediato ou, se já adimplido, retido e não devolvido, conforme o caso, nas seguintes hipóteses:'));
-  blocks.push(sub('a)', 'acordo, ajuste direto ou composição com a parte adversa, sem a intervenção da **CONTRATADA**, ainda que parcial;'));
-  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) **CONTRATANTE**, ou por qualquer circunstância não imputável à **CONTRATADA**;'));
-  blocks.push(sub('c)', 'renúncia, quando decorrente de condutas do(a) **CONTRATANTE** que comprometam, de forma objetiva, a independência profissional e técnica dos advogados, inclusive pela exigência de providências manifestamente inadequadas ou juridicamente inviáveis, pela imposição reiterada de estratégia incompatível com a orientação profissional adotada, pela omissão injustificada de informações ou documentos essenciais à condução dos trabalhos, ou por outras formas de ingerência indevida que inviabilizem o regular desempenho da atuação contratada;'));
-  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da **CONTRATADA**.'));
+  blocks.push(sub('a)', 'acordo, ajuste direto ou composição com a parte adversa, sem a intervenção da <strong>CONTRATADA</strong>, ainda que parcial;'));
+  blocks.push(sub('b)', 'desistência, interrupção ou não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por iniciativa do(a) <strong>CONTRATANTE</strong>, ou por qualquer circunstância não imputável à <strong>CONTRATADA</strong>;'));
+  blocks.push(sub('c)', 'renúncia, quando decorrente de condutas do(a) <strong>CONTRATANTE</strong> que comprometam, de forma objetiva, a independência profissional e técnica dos advogados, inclusive pela exigência de providências manifestamente inadequadas ou juridicamente inviáveis, pela imposição reiterada de estratégia incompatível com a orientação profissional adotada, pela omissão injustificada de informações ou documentos essenciais à condução dos trabalhos, ou por outras formas de ingerência indevida que inviabilizem o regular desempenho da atuação contratada;'));
+  blocks.push(sub('d)', 'revogação do mandato antes do encerramento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que haja culpa ou infração profissional da <strong>CONTRATADA</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA – DOS HONORÁRIOS ADVOCATÍCIOS AVULSOS E SUCUMBENCIAIS'));
   blocks.push(clause('10.1.', 'Há possibilidade de contratação de honorários advocatícios avulsos nas situações não atendidas por este Contrato e/ou naquelas que, pela complexidade, exijam novo acordo de prestação de serviços e remuneração.'));
-  blocks.push(clause('10.2.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
+  blocks.push(clause('10.2.', 'Os honorários sucumbenciais pertencem, integralmente, à <strong>CONTRATADA</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA PRIMEIRA – DA EVENTUAL ONEROSIDADE EXCESSIVA DE ATIVIDADE E/OU TRABALHO E DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO'));
-  blocks.push(clause('11.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a **CONTRATADA** readequar o valor dos honorários advocatícios, desde que com anuência do(a) **CONTRATANTE**.'));
+  blocks.push(clause('11.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a <strong>CONTRATADA</strong> readequar o valor dos honorários advocatícios, desde que com anuência do(a) <strong>CONTRATANTE</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEGUNDA – DOS CUSTOS EXTRAS'));
-  blocks.push(clause('12.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
-  blocks.push(clause('12.2.', 'As despesas de alimentação, estadia(s) e locomoção da **CONTRATADA**, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) **CONTRATANTE**, observando-se:'));
-  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo e combustível, alimentação e estadia(s) correm por conta do(a) **CONTRATANTE**, ou mediante o pagamento, à **CONTRATADA**, de '+esc(m.km)+' por quilômetro;'));
-  blocks.push(sub('b)', 'não haverá custos com diária, exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) **CONTRATANTE** pagará à **CONTRATADA** a importância de '+esc(m.diaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
-  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os custos e as despesas.'));
-  blocks.push(clause('12.3.', 'O(A) **CONTRATANTE** não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a **CONTRATADA** responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
-  blocks.push(clause('12.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
+  blocks.push(clause('12.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela <strong>CONTRATADA</strong>, arcando o(a) <strong>CONTRATANTE</strong> com os respectivos pagamentos.'));
+  blocks.push(clause('12.2.', 'As despesas de alimentação, estadia(s) e locomoção da <strong>CONTRATADA</strong>, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) <strong>CONTRATANTE</strong>, observando-se:'));
+  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo e combustível, alimentação e estadia(s) correm por conta do(a) <strong>CONTRATANTE</strong>, ou mediante o pagamento, à <strong>CONTRATADA</strong>, de '+esc(m.km)+' por quilômetro;'));
+  blocks.push(sub('b)', 'não haverá custos com diária, exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> a importância de '+esc(m.diaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
+  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) <strong>CONTRATANTE</strong> com os custos e as despesas.'));
+  blocks.push(clause('12.3.', 'O(A) <strong>CONTRATANTE</strong> não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a <strong>CONTRATADA</strong> responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
+  blocks.push(clause('12.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da <strong>CONTRATADA</strong> o recolhimento dos referidos tributos.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA TERCEIRA – DAS DILIGÊNCIAS EXTERNAS ESPECIAIS'));
-  blocks.push(clause('13.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) **CONTRATANTE**, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
+  blocks.push(clause('13.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) <strong>CONTRATANTE</strong>, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUARTA – DA VIGÊNCIA'));
-  blocks.push(clause('14.1.', 'Este Contrato vigorará pelo prazo disposto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
+  blocks.push(clause('14.1.', 'Este Contrato vigorará pelo prazo disposto no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong> ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
   blocks.push(clause('14.2.', 'A renovação automática deste Contrato operará caso nenhuma das partes manifeste interesse diverso, no prazo de 30 (trinta) dias que antecede o vencimento.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUINTA – DA RESCISÃO E DA MULTA EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO'));
   blocks.push(clause('15.1.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, enviada à outra parte com antecedência mínima de 30 (trinta) dias.'));
-  blocks.push(clause('15.2.', 'Considerando que o presente Contrato é celebrado por prazo determinado de '+esc(m.qtdParcelas)+' meses, fica expressamente ajustado que, na hipótese de cancelamento, desistência, dissolução, rescisão, revogação, rompimento ou qualquer outra forma de encerramento antecipado da relação entre as partes por iniciativa do(a) **CONTRATANTE**, antes do termo final de vigência, incidirá multa compensatória correspondente a '+esc(m.multaRescisoria)+' do saldo das parcelas vincendas até o respectivo término, sem prejuízo do pagamento dos honorários vencidos, dos encargos moratórios, dos honorários de êxito eventualmente devidos, das despesas adiantadas e de outras obrigações já constituídas até a data da efetiva extinção do vínculo.'));
-  blocks.push(clause('15.3.', 'A multa prevista no item anterior será exigível independentemente da efetiva utilização integral dos serviços até a data da rescisão, por decorrer da ruptura antecipada de contratação firmada por prazo certo, da reserva operacional e técnica assumida pela **CONTRATADA** e da legítima expectativa de continuidade da relação contratual durante todo o período pactuado.'));
-  blocks.push(clause('15.4.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso, a **CONTRATADA** preservará o direito ao recebimento dos honorários de êxito pactuados, quando cabíveis, nos termos deste Contrato.'));
-  blocks.push(clause('15.5.', 'No prazo de 30 (trinta) dias contados da notificação de rescisão, a **CONTRATADA** iniciará o processo de renúncia e/ou substabelecimento do(s) mandato(s) eventualmente outorgado(s), observadas as normas legais e éticas aplicáveis.'));
-  blocks.push(clause('15.6.', 'Caso seja de interesse da **CONTRATANTE** que determinado(s) processo(s), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso permaneça(m) sob o patrocínio da **CONTRATADA**, deverá ser formalizado instrumento contratual próprio, com ajuste específico de escopo e honorários.'));
+  blocks.push(clause('15.2.', 'Considerando que o presente Contrato é celebrado por prazo determinado de '+esc(m.qtdParcelas)+' meses, fica expressamente ajustado que, na hipótese de cancelamento, desistência, dissolução, rescisão, revogação, rompimento ou qualquer outra forma de encerramento antecipado da relação entre as partes por iniciativa do(a) <strong>CONTRATANTE</strong>, antes do termo final de vigência, incidirá multa compensatória correspondente a '+esc(m.multaRescisoria)+' do saldo das parcelas vincendas até o respectivo término, sem prejuízo do pagamento dos honorários vencidos, dos encargos moratórios, dos honorários de êxito eventualmente devidos, das despesas adiantadas e de outras obrigações já constituídas até a data da efetiva extinção do vínculo.'));
+  blocks.push(clause('15.3.', 'A multa prevista no item anterior será exigível independentemente da efetiva utilização integral dos serviços até a data da rescisão, por decorrer da ruptura antecipada de contratação firmada por prazo certo, da reserva operacional e técnica assumida pela <strong>CONTRATADA</strong> e da legítima expectativa de continuidade da relação contratual durante todo o período pactuado.'));
+  blocks.push(clause('15.4.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso, a <strong>CONTRATADA</strong> preservará o direito ao recebimento dos honorários de êxito pactuados, quando cabíveis, nos termos deste Contrato.'));
+  blocks.push(clause('15.5.', 'No prazo de 30 (trinta) dias contados da notificação de rescisão, a <strong>CONTRATADA</strong> iniciará o processo de renúncia e/ou substabelecimento do(s) mandato(s) eventualmente outorgado(s), observadas as normas legais e éticas aplicáveis.'));
+  blocks.push(clause('15.6.', 'Caso seja de interesse da <strong>CONTRATANTE</strong> que determinado(s) processo(s), procedimento(s), atividade(s), demanda(s), projeto(s) e/ou trabalho(s) em curso permaneça(m) sob o patrocínio da <strong>CONTRATADA</strong>, deverá ser formalizado instrumento contratual próprio, com ajuste específico de escopo e honorários.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEXTA – DA CLÁUSULA PENAL'));
   blocks.push(clause('16.1.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que der causa poderá ser responsabilizada em Cláusula Penal correspondente a '+esc(m.penal)+' sobre o valor total do presente Instrumento.'));
   blocks.push(clause('16.2.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(m.cobrancaExtra)+' (extrajudicial) ou '+esc(m.cobrancaJudicial)+' (judicial) sobre o valor total do débito, a título de remuneração pelo trabalho, sem prejuízo de eventual apuração de perdas e danos.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SÉTIMA – DOS HERDEIROS E/OU SUCESSORES'));
-  blocks.push(clause('17.1.', 'O presente Contrato vincula e obriga o(a) **CONTRATANTE**, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
+  blocks.push(clause('17.1.', 'O presente Contrato vincula e obriga o(a) <strong>CONTRATANTE</strong>, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA OITAVA – DA NATUREZA ADVOCATÍCIA'));
-  blocks.push(clause('18.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a **CONTRATADA** dar garantias de decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
-  blocks.push(clause('18.2.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+  blocks.push(clause('18.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a <strong>CONTRATADA</strong> dar garantias de decisões e/ou resultados favoráveis ao(à) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('18.2.', 'O(A) <strong>CONTRATANTE</strong> declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA NONA – DA CONFIDENCIALIDADE E DO SIGILO'));
-  blocks.push(clause('19.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos **CONTRATANTES**.'));
+  blocks.push(clause('19.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos <strong>CONTRATANTES</strong>.'));
   blocks.push(clause('19.2.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA – DA AUTORIZAÇÃO E UTILIZAÇÃO DOS DADOS'));
-  blocks.push(clause('20.1.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+  blocks.push(clause('20.1.', 'O(A) <strong>CONTRATANTE</strong> autoriza a <strong>CONTRATADA</strong> a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA PRIMEIRA – DA ATUALIZAÇÃO E VERACIDADE DOS DADOS'));
-  blocks.push(clause('21.1.', 'O(A) **CONTRATANTE** declara que os dados fornecidos estão atualizados e são verdadeiros, responsabilizando-se integralmente pela atualização e veracidade das informações prestadas.'));
+  blocks.push(clause('21.1.', 'O(A) <strong>CONTRATANTE</strong> declara que os dados fornecidos estão atualizados e são verdadeiros, responsabilizando-se integralmente pela atualização e veracidade das informações prestadas.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA SEGUNDA – DAS AUDIÊNCIAS VIRTUAIS E DA RESPONSABILIDADE PELA CONEXÃO'));
-  blocks.push(clause('22.1.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
-  blocks.push(clause('22.2.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
-  blocks.push(clause('22.3.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+  blocks.push(clause('22.1.', 'O(A) <strong>CONTRATANTE</strong> compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('22.2.', 'A <strong>CONTRATADA</strong> não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) <strong>CONTRATANTE</strong>, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('22.3.', 'Caso o(a) <strong>CONTRATANTE</strong> preveja a impossibilidade de participar de audiência virtual, deverá comunicar à <strong>CONTRATADA</strong> com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA TERCEIRA – DOS RISCOS DIGITAIS E DA ISENÇÃO DE RESPONSABILIDADE'));
-  blocks.push(clause('23.1.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
-  blocks.push(clause('23.2.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
-  blocks.push(clause('23.3.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+  blocks.push(clause('23.1.', 'A <strong>CONTRATADA</strong> declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('23.2.', 'A <strong>CONTRATADA</strong> não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) <strong>CONTRATANTE</strong>, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('23.3.', 'A <strong>CONTRATADA</strong> não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUARTA – DAS CONSIDERAÇÕES FINAIS'));
-  blocks.push(clause('24.1.', 'A **CONTRATADA** compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) **CONTRATANTE** o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
-  blocks.push(clause('24.2.', 'Os **CONTRATANTES** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+  blocks.push(clause('24.1.', 'A <strong>CONTRATADA</strong> compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) <strong>CONTRATANTE</strong> o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
+  blocks.push(clause('24.2.', 'Os <strong>CONTRATANTES</strong> declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUINTA – DO FORO'));
-  blocks.push(clause('25.1.', 'Os **CONTRATANTES** elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+  blocks.push(clause('25.1.', 'Os <strong>CONTRATANTES</strong> elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
 
   blocks.push(C(`<div class="blk" style="margin-top:3mm;">E assim, por ser esta a expressão do que ajustaram, os <strong>CONTRATANTES</strong> firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICA EMPRESARIAL</strong>, em 02 (duas) vias de igual teor e forma, juntamente de 02 (duas) testemunhas.</div>`));
   blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
@@ -1396,7 +1475,7 @@ function buildContratoCondominio(d){
   blocks.push(C(`<div class="blk"><strong>CONTRATADA: FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</strong> (JONATHAN FONSECA SOCIEDADE INDIVIDUAL DE ADVOCACIA), pessoa jurídica de direito privado, inscrita no <strong>CNPJ/MF</strong> sob o nº <strong>57.704.224/0001-00</strong>, com sede nesta cidade de Uberlândia, Estado de Minas Gerais, na Rua Senador Salgado Filho, 426, Bairro Tabajaras, CEP 38400-236, neste ato representada pelo sócio-administrador <strong>JONATHAN FONSECA</strong>, brasileiro, casado, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>163.443</strong>, e pelo sócio <strong>HECY BRAGA</strong>, brasileiro, advogado, inscrito na <strong>OAB/MG</strong> sob o nº <strong>95.948</strong>, ambos residentes e domiciliados nesta cidade de Uberlândia, Estado de Minas Gerais.</div>`));
 
   blocks.push(clauseTitle('CLÁUSULA PRIMEIRA – DO OBJETO E DA ESPECIFICAÇÃO DOS SERVIÇOS'));
-  blocks.push(clause('1.1.', 'A **CONTRATADA** prestará serviços de advocacia, assessoria e consultoria jurídicas nas seguintes <strong>ÁREAS DE ATUAÇÃO</strong>:'));
+  blocks.push(clause('1.1.', 'A <strong>CONTRATADA</strong> prestará serviços de advocacia, assessoria e consultoria jurídicas nas seguintes <strong>ÁREAS DE ATUAÇÃO</strong>:'));
   areaTableBlocks(d).forEach(b=>blocks.push(b));
 
   blocks.push(clauseTitle('CLÁUSULA SEGUNDA – DO QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS'));
@@ -1420,113 +1499,113 @@ function buildContratoCondominio(d){
     ['HONORÁRIOS DE ÊXITO', m.exito]
   ];
   rows.forEach((r,idx)=>blocks.push(C(honRow('2.1.'+(idx+1)+'.  '+r[0],r[1],idx===0))));
-  blocks.push(clause('2.2.', 'Os serviços poderão ser realizados tanto pela **CONTRATADA** como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
-  blocks.push(clause('2.3.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela **CONTRATADA** e conforme facultado no item 2.2. deste Contrato.'));
+  blocks.push(clause('2.2.', 'Os serviços poderão ser realizados tanto pela <strong>CONTRATADA</strong> como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
+  blocks.push(clause('2.3.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela <strong>CONTRATADA</strong> e conforme facultado no item 2.2. deste Contrato.'));
 
   blocks.push(clauseTitle('CLÁUSULA TERCEIRA – DA ABRANGÊNCIA'));
   blocks.push(clause('3.1.', 'A prestação dos serviços contratados atenderá a(s) seguinte(s) pessoa(s):'));
   blocks.push(C(`<div class="blk sub" style="margin-left:6mm;">⮚ ${esc(d.condominio.razaoSocial)} – CNPJ/MF nº ${esc(d.condominio.cnpj)}.</div>`));
 
   blocks.push(clauseTitle('CLÁUSULA QUARTA – DO VALOR DOS HONORÁRIOS ADVOCATÍCIOS, DA DATA E DA FORMA DE PAGAMENTO'));
-  blocks.push(clause('4.1.', 'O(A) **CONTRATANTE** adimplirá à **CONTRATADA** pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**.'));
-  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) **CONTRATANTE** mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s), emitido(s) pela **CONTRATADA** ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova do adimplemento parcial e/ou total da obrigação contratual.'));
-  blocks.push(clause('4.3.', 'Fica desde já pactuado que os custos administrativos relativos à emissão e à gestão dos boletos bancários e/ou faturas são de responsabilidade exclusiva do(a) **CONTRATANTE**, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela **CONTRATADA**. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos, de natureza complementar.'));
-  blocks.push(clause('4.4.', 'O valor do(s) boleto(s) bancário(s) e/ou fatura(s) será reajustado anualmente, sempre no dia 1º (primeiro) de janeiro de cada ano de vigência contratual, com base na tabela interna de reajustes praticada pela **CONTRATADA**, refletindo os custos operacionais e de manutenção administrativa.'));
-  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) **CONTRATANTE**, no prazo definido pela **CONTRATADA**, salvo ajuste diverso entre as partes.'));
+  blocks.push(clause('4.1.', 'O(A) <strong>CONTRATANTE</strong> adimplirá à <strong>CONTRATADA</strong> pelos serviços profissionais conforme avençado, cujos valores encontram-se detalhados no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>.'));
+  blocks.push(clause('4.2.', 'Os honorários advocatícios ajustados neste Contrato deverão ser quitados pelo(a) <strong>CONTRATANTE</strong> mediante o(s) pagamento(s) de boleto(s) bancário(s) e/ou fatura(s), emitido(s) pela <strong>CONTRATADA</strong> ou por empresa por ela designada, com vencimento(s) na(s) data(s) previamente acordada(s) entre as partes. A quitação por tais meios dispensa a emissão de recibo(s) específico(s), servindo o(s) próprio(s) comprovante(s) de pagamento como documento(s) hábil(eis) e suficiente(s) para fins de prova do adimplemento parcial e/ou total da obrigação contratual.'));
+  blocks.push(clause('4.3.', 'Fica desde já pactuado que os custos administrativos relativos à emissão e à gestão dos boletos bancários e/ou faturas são de responsabilidade exclusiva do(a) <strong>CONTRATANTE</strong>, sendo acrescidos ao valor de cada parcela, conforme a Tabela de Custos Administrativos vigente na data da cobrança, mantida e periodicamente atualizada pela <strong>CONTRATADA</strong>. Tais valores não se confundem com os honorários advocatícios contratados, tampouco os substituem, constituindo encargos operacionais autônomos, de natureza complementar.'));
+  blocks.push(clause('4.4.', 'O valor do(s) boleto(s) bancário(s) e/ou fatura(s) será reajustado anualmente, sempre no dia 1º (primeiro) de janeiro de cada ano de vigência contratual, com base na tabela interna de reajustes praticada pela <strong>CONTRATADA</strong>, refletindo os custos operacionais e de manutenção administrativa.'));
+  blocks.push(clause('4.5.', 'Os honorários contemplam a prestação de contas, a qual será apresentada quando solicitada pelo(a) <strong>CONTRATANTE</strong>, no prazo definido pela <strong>CONTRATADA</strong>, salvo ajuste diverso entre as partes.'));
   blocks.push(clause('4.6.', 'Os honorários advocatícios não serão devolvidos em caso de êxito, ou não, de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, visto que a atividade advocatícia é de meio, e não de resultado, nos termos da legislação vigente e da jurisprudência consolidada.'));
   blocks.push(clause('4.7.', 'Atividades não atendidas e/ou não previstas neste Contrato, bem como situações de maior complexidade, serão objeto de aditivo específico ou novo contrato, com definição própria de escopo e remuneração.'));
 
   blocks.push(clauseTitle('CLÁUSULA QUINTA – DO REAJUSTE E DA CORREÇÃO MONETÁRIA'));
-  blocks.push(clause('5.1.', 'Os honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS**, ou por qualquer outro que venha a lhe substituir, sendo que o(a) **CONTRATANTE** se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
+  blocks.push(clause('5.1.', 'Os honorários advocatícios serão reajustados todo dia 1º (primeiro) de janeiro, de acordo com o índice fixado no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong>, ou por qualquer outro que venha a lhe substituir, sendo que o(a) <strong>CONTRATANTE</strong> se obriga a pagar o reajuste no primeiro vencimento do mesmo mês.'));
   blocks.push(clause('5.2.', 'Os honorários advocatícios também terão seus valores monetariamente atualizados, sempre no dia 1º (primeiro) de janeiro, de acordo com a variação anual da Tabela de Fatores de Atualização Monetária utilizada pelo Tribunal de Justiça do Estado de Minas Gerais – TJMG – acumulada no período.'));
   blocks.push(clause('5.3.', 'A base de cálculos a ser aplicada, tanto no reajuste (item 5.1.) quanto na atualização (item 5.2.), obedecerá ao montante vigente naquela oportunidade.'));
 
   blocks.push(clauseTitle('CLÁUSULA SEXTA – DA MULTA POR ATRASO, DOS JUROS E DA CORREÇÃO MONETÁRIA'));
   blocks.push(clause('6.1.', 'Em caso de atraso no pagamento, sobre os valores vencidos serão aplicados multa de '+esc(m.multa)+', juros de '+esc(m.juros)+' e correção monetária, sem prejuízo de perdas e danos e aplicação da Cláusula Penal.'));
-  blocks.push(clause('6.2.', 'Na circunstância de inadimplência de qualquer parcela, as demais (vincendas) poderão ser consideradas automaticamente vencidas, ou seja, haverá o vencimento antecipado deste Contrato com a consequente perda do benefício do pagamento mensal, tudo a critério da **CONTRATADA**.'));
-  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a **CONTRATADA** suspender e/ou rescindir a prestação dos serviços, ficando o(a) **CONTRATANTE**, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
-  blocks.push(clause('6.4.', 'Em caso de não cumprimento das obrigações de pagamento, ou configurada a inadimplência, fica autorizada à **CONTRATADA** a adoção de medidas administrativas e/ou judiciais cabíveis para o recebimento dos honorários devidos, incluindo a propositura de ações judiciais, inserção do nome do(a) **CONTRATANTE** em cadastros de proteção ao crédito (SERASA, SPC Brasil) e a realização de protestos em cartório, nos termos da legislação vigente. Todas as medidas serão precedidas de comunicação formal ao(à) **CONTRATANTE**.'));
+  blocks.push(clause('6.2.', 'Na circunstância de inadimplência de qualquer parcela, as demais (vincendas) poderão ser consideradas automaticamente vencidas, ou seja, haverá o vencimento antecipado deste Contrato com a consequente perda do benefício do pagamento mensal, tudo a critério da <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('6.3.', 'Havendo inadimplência, independente do período, poderá a <strong>CONTRATADA</strong> suspender e/ou rescindir a prestação dos serviços, ficando o(a) <strong>CONTRATANTE</strong>, única e exclusivamente, responsável por todo e qualquer prejuízo, seja administrativo, cartorário, contábil, contratual, econômico, financeiro, fiscal, jurídico, processual e/ou procedimental.'));
+  blocks.push(clause('6.4.', 'Em caso de não cumprimento das obrigações de pagamento, ou configurada a inadimplência, fica autorizada à <strong>CONTRATADA</strong> a adoção de medidas administrativas e/ou judiciais cabíveis para o recebimento dos honorários devidos, incluindo a propositura de ações judiciais, inserção do nome do(a) <strong>CONTRATANTE</strong> em cadastros de proteção ao crédito (SERASA, SPC Brasil) e a realização de protestos em cartório, nos termos da legislação vigente. Todas as medidas serão precedidas de comunicação formal ao(à) <strong>CONTRATANTE</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA SÉTIMA – DOS HONORÁRIOS AD EXITUM, DO PAGAMENTO QUOTA LITIS E DA RESERVA DE PERCENTUAL EM JUÍZO'));
-  blocks.push(clause('7.1.', 'Nas atividades, processos e trabalhos em geral, sejam administrativos e/ou judiciais, em que o(a) **CONTRATANTE** receber bem, capital, compensação, cota, crédito, desconto, dinheiro, direito, fruto, indenização, numerário, provento, quantia, reembolso, remuneração, rendimento, reparação, ressarcimento, resultado, revisão, salário, saldo, título, valor, vantagem e/ou verba, caberá à **CONTRATADA** o percentual de '+esc(m.exito)+' do valor total do êxito da ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, a título de honorários advocatícios *ad exitum*.'));
-  blocks.push(clause('7.2.', 'O(A) **CONTRATANTE** concorda, desde já, com o pleito de reserva e dedução dos honorários, de qualquer natureza, inclusive sobre o valor total do êxito, para pagamento direto à **CONTRATADA**.'));
-  blocks.push(clause('7.3.', 'O(A) **CONTRATANTE** autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
-  blocks.push(clause('7.4.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da **CONTRATADA** ou do Escritório poderão ser repassados ao(à) **CONTRATANTE** após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
+  blocks.push(clause('7.1.', 'Nas atividades, processos e trabalhos em geral, sejam administrativos e/ou judiciais, em que o(a) <strong>CONTRATANTE</strong> receber bem, capital, compensação, cota, crédito, desconto, dinheiro, direito, fruto, indenização, numerário, provento, quantia, reembolso, remuneração, rendimento, reparação, ressarcimento, resultado, revisão, salário, saldo, título, valor, vantagem e/ou verba, caberá à <strong>CONTRATADA</strong> o percentual de '+esc(m.exito)+' do valor total do êxito da ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, a título de honorários advocatícios *ad exitum*.'));
+  blocks.push(clause('7.2.', 'O(A) <strong>CONTRATANTE</strong> concorda, desde já, com o pleito de reserva e dedução dos honorários, de qualquer natureza, inclusive sobre o valor total do êxito, para pagamento direto à <strong>CONTRATADA</strong>.'));
+  blocks.push(clause('7.3.', 'O(A) <strong>CONTRATANTE</strong> autoriza, desde já, que os honorários advocatícios sejam descontados de eventual acordo e/ou crédito, para os efeitos do art. 22, § 4º, da Lei Federal nº 8.906/1994, e do art. 35, § 2º, do Código de Ética e Disciplina da Ordem dos Advogados do Brasil.'));
+  blocks.push(clause('7.4.', 'Em caso de expedição de alvará, de qualquer natureza, em qualquer juízo e/ou grau de jurisdição, os valores depositados e/ou levantados em favor da <strong>CONTRATADA</strong> ou do Escritório poderão ser repassados ao(à) <strong>CONTRATANTE</strong> após os devidos descontos de honorários advocatícios, custos, despesas e/ou diligências diversas.'));
 
   blocks.push(clauseTitle('CLÁUSULA OITAVA – DO PAGAMENTO DE HONORÁRIOS ADVOCATÍCIOS EM CASO DE ACORDO E/OU PARCELAMENTO DE CRÉDITO A SER RECEBIDO PELO(A) CONTRATANTE'));
-  blocks.push(clause('8.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) **CONTRATANTE**, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
+  blocks.push(clause('8.1.', 'Caso haja parcelamento de valor correspondente a eventual acordo e/ou crédito a ser recebido pelo(a) <strong>CONTRATANTE</strong>, os honorários retro aduzidos deverão ser adimplidos, integralmente, quando do recebimento da 1ª (primeira) parcela. Não sendo possível o pagamento quando do recebimento da 1ª (primeira) parcela, os honorários deverão ser quitados, sucessivamente, quando do recebimento das demais parcelas, até a sua efetiva liquidação.'));
   blocks.push(clause('8.2.', 'O total dos honorários poderá ser exigido imediatamente nas seguintes situações:'));
-  blocks.push(sub('a)', 'quando houver composição com a parte *ex adversa*, sem a intervenção da **CONTRATADA**;'));
-  blocks.push(sub('b)', 'em caso de não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por qualquer circunstância não determinada pela **CONTRATADA**;'));
-  blocks.push(sub('c)', 'havendo revogação de mandato(s) antes do término de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que ocorra culpa da **CONTRATADA**.'));
+  blocks.push(sub('a)', 'quando houver composição com a parte *ex adversa*, sem a intervenção da <strong>CONTRATADA</strong>;'));
+  blocks.push(sub('b)', 'em caso de não prosseguimento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho por qualquer circunstância não determinada pela <strong>CONTRATADA</strong>;'));
+  blocks.push(sub('c)', 'havendo revogação de mandato(s) antes do término de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho, sem que ocorra culpa da <strong>CONTRATADA</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA NONA – DOS HONORÁRIOS ADVOCATÍCIOS AVULSOS E SUCUMBENCIAIS'));
   blocks.push(clause('9.1.', 'Há possibilidade de contratação de honorários advocatícios avulsos nas situações não atendidas por este Contrato e/ou naquelas que, pela complexidade, exijam novo acordo de prestação de serviços e remuneração.'));
-  blocks.push(clause('9.2.', 'Os honorários sucumbenciais pertencem, integralmente, à **CONTRATADA**.'));
+  blocks.push(clause('9.2.', 'Os honorários sucumbenciais pertencem, integralmente, à <strong>CONTRATADA</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA – DA EVENTUAL ONEROSIDADE EXCESSIVA DE ATIVIDADE E/OU TRABALHO E DO DESEQUILÍBRIO ECONÔMICO-FINANCEIRO'));
-  blocks.push(clause('10.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a **CONTRATADA** readequar o valor dos honorários advocatícios, desde que com anuência do(a) **CONTRATANTE**.'));
+  blocks.push(clause('10.1.', 'No caso de aumento de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho de maior complexidade e/ou carga laboral desproporcional e excessiva, poderá a <strong>CONTRATADA</strong> readequar o valor dos honorários advocatícios, desde que com anuência do(a) <strong>CONTRATANTE</strong>.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA PRIMEIRA – DOS CUSTOS EXTRAS'));
-  blocks.push(clause('11.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela **CONTRATADA**, arcando o(a) **CONTRATANTE** com os respectivos pagamentos.'));
-  blocks.push(clause('11.2.', 'As despesas de alimentação, estadia(s) e locomoção da **CONTRATADA**, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) **CONTRATANTE**, observando-se:'));
-  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo(s) e combustível, alimentação e estadia(s) correm por conta do(a) **CONTRATANTE** ou mediante o pagamento, à **CONTRATADA**, de '+esc(m.cdKm)+' por quilômetro;'));
-  blocks.push(sub('b)', 'não haverá custos com diária(s), exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) **CONTRATANTE** pagará à **CONTRATADA** a importância de '+esc(m.cdDiaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
-  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) **CONTRATANTE** com os custos e as despesas.'));
-  blocks.push(clause('11.3.', 'O(A) **CONTRATANTE** não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a **CONTRATADA** responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
-  blocks.push(clause('11.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da **CONTRATADA** o recolhimento dos referidos tributos.'));
+  blocks.push(clause('11.1.', 'Eventuais gastos com assembleias, atas, atos, auditorias, avaliações, cálculos, certidões, certificações, contratações, cópias, correios, custas e despesas administrativas, cartorárias, paralegais e/ou processuais, deslocamentos, digitalizações, diligências, documentos, emolumentos, estudos, honorários de terceiros, laudos, notificações, pareceres, passagens, perícias, publicações, reuniões, terceirizações, transportes, viagens, virtualizações, vistorias e outros serão recomendados, quando necessário, pela <strong>CONTRATADA</strong>, arcando o(a) <strong>CONTRATANTE</strong> com os respectivos pagamentos.'));
+  blocks.push(clause('11.2.', 'As despesas de alimentação, estadia(s) e locomoção da <strong>CONTRATADA</strong>, fora da Comarca de '+esc(d.cidade)+', correrão por conta do(a) <strong>CONTRATANTE</strong>, observando-se:'));
+  blocks.push(sub('a)', 'os custos de passagens aéreas, aluguel de veículo(s) e combustível, alimentação e estadia(s) correm por conta do(a) <strong>CONTRATANTE</strong> ou mediante o pagamento, à <strong>CONTRATADA</strong>, de '+esc(m.cdKm)+' por quilômetro;'));
+  blocks.push(sub('b)', 'não haverá custos com diária(s), exceto se os trabalhos superarem 1 (um) dia. Neste caso, o(a) <strong>CONTRATANTE</strong> pagará à <strong>CONTRATADA</strong> a importância de '+esc(m.cdDiaria)+' por dia, devida a partir do 2º (segundo) dia fora da Comarca;'));
+  blocks.push(sub('c)', 'as audiências, despachos, diligências, protocolos e sustentações orais poderão ser realizados por advogado(a)(s), associado(a)(s), colaborador(a)(es), correspondente(s), parceiro(a)(s) e/ou preposto(a)(s), arcando o(a) <strong>CONTRATANTE</strong> com os custos e as despesas.'));
+  blocks.push(clause('11.3.', 'O(A) <strong>CONTRATANTE</strong> não arcará com nenhum outro valor além do acordado neste Contrato e em sede de honorários advocatícios, ficando a <strong>CONTRATADA</strong> responsável por repassar documentos hábeis para os pagamentos e/ou ressarcimentos de valores eventualmente antecipados.'));
+  blocks.push(clause('11.4.', 'Os honorários contratados já incluem a porcentagem correspondente aos impostos incidentes sobre esta contratação, sejam eles municipais, estaduais e/ou federais, sendo de responsabilidade da <strong>CONTRATADA</strong> o recolhimento dos referidos tributos.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEGUNDA – DAS DILIGÊNCIAS EXTERNAS ESPECIAIS'));
-  blocks.push(clause('12.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) **CONTRATANTE**, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
+  blocks.push(clause('12.1.', 'Diligências externas, tais como acompanhamento de audiências fora da Comarca de '+esc(d.cidade)+', despachos com autoridades, participação em sessões de julgamento, reuniões administrativas e institucionais, sustentações orais presenciais ou atividades análogas, deverão ser previamente comunicadas e autorizadas pelo(a) <strong>CONTRATANTE</strong>, a fim de viabilizar o planejamento e o custeio das despesas operacionais indispensáveis à sua realização.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA TERCEIRA – DA VIGÊNCIA'));
-  blocks.push(clause('13.1.', 'Este Contrato vigorará pelo prazo disposto no **QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS** ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
+  blocks.push(clause('13.1.', 'Este Contrato vigorará pelo prazo disposto no <strong>QUADRO DE RESUMO DOS HONORÁRIOS ADVOCATÍCIOS</strong> ('+esc(m.qtdParcelas)+' meses), independentemente da duração de ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho.'));
   blocks.push(clause('13.2.', 'A renovação automática deste Contrato operará caso nenhuma das partes manifeste interesse diverso, no prazo de 30 (trinta) dias que antecede o vencimento.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUARTA – DA RESCISÃO E DA MULTA EM SEDE DE CANCELAMENTO / DESISTÊNCIA / DISSOLUÇÃO / RENÚNCIA / RESCISÃO / REVOGAÇÃO / ROMPIMENTO'));
   blocks.push(clause('14.1.', 'A rescisão deste Contrato poderá ocorrer mediante notificação formal, por escrito, enviada à outra parte com antecedência mínima de 30 (trinta) dias.'));
   blocks.push(clause('14.2.', 'Em caso de rescisão unilateral, será aplicada multa correspondente ao valor integral deste Contrato, como forma de compensação pelos compromissos assumidos e prejuízos decorrentes da interrupção da relação contratual.'));
-  blocks.push(clause('14.3.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões) em curso que venha(m) a ser renunciada(s) ou substabelecida(s), a **CONTRATADA** terá direito ao recebimento integral dos honorários de êxito pactuados neste Contrato, independentemente da etapa processual em que se encontre(m), nos termos acordados.'));
-  blocks.push(clause('14.4.', 'No prazo de 30 (trinta) dias da notificação, a **CONTRATADA** iniciará o processo de renúncia ou substabelecimento do(s) mandato(s) outorgado(s) pelo(a) **CONTRATANTE**.'));
-  blocks.push(clause('14.5.', 'Caso seja de interesse do(a) **CONTRATANTE** que o(s) processo(s) em curso(s) permaneça(m) sob o patrocínio da **CONTRATADA**, deverá ser pactuado novo Contrato de Prestação de Serviços e Honorários Advocatícios.'));
+  blocks.push(clause('14.3.', 'Na hipótese de rescisão contratual unilateral, em relação à(s) ação(ões) em curso que venha(m) a ser renunciada(s) ou substabelecida(s), a <strong>CONTRATADA</strong> terá direito ao recebimento integral dos honorários de êxito pactuados neste Contrato, independentemente da etapa processual em que se encontre(m), nos termos acordados.'));
+  blocks.push(clause('14.4.', 'No prazo de 30 (trinta) dias da notificação, a <strong>CONTRATADA</strong> iniciará o processo de renúncia ou substabelecimento do(s) mandato(s) outorgado(s) pelo(a) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('14.5.', 'Caso seja de interesse do(a) <strong>CONTRATANTE</strong> que o(s) processo(s) em curso(s) permaneça(m) sob o patrocínio da <strong>CONTRATADA</strong>, deverá ser pactuado novo Contrato de Prestação de Serviços e Honorários Advocatícios.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA QUINTA – DA CLÁUSULA PENAL'));
   blocks.push(clause('15.1.', 'Havendo descumprimento, ainda que parcial, deste Contrato, a parte que der causa poderá ser responsabilizada em Cláusula Penal correspondente a '+esc(m.penal)+' sobre o valor total do presente Instrumento.'));
   blocks.push(clause('15.2.', 'No caso de inadimplência e necessidade de cobrança extrajudicial e/ou judicial, haverá o acréscimo de '+esc(m.cobranca)+' sobre o valor total do débito, a título de remuneração pelo trabalho, sem prejuízo de eventual apuração de perdas e danos.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SEXTA – DOS HERDEIROS E/OU SUCESSORES'));
-  blocks.push(clause('16.1.', 'O presente Contrato vincula e obriga o(a) **CONTRATANTE**, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
+  blocks.push(clause('16.1.', 'O presente Contrato vincula e obriga o(a) <strong>CONTRATANTE</strong>, independentemente de alterações contratuais, assembleias, atas, deliberações futuras, destituições, votações ou qualquer outra mudança na estrutura administrativa, permanecendo integralmente válido e exigível perante eventuais cessionários, representantes legais e/ou sucessores.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA SÉTIMA – DA NATUREZA ADVOCATÍCIA'));
-  blocks.push(clause('17.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a **CONTRATADA** dar garantias de decisões e/ou resultados favoráveis ao(à) **CONTRATANTE**.'));
-  blocks.push(clause('17.2.', 'O(A) **CONTRATANTE** declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
+  blocks.push(clause('17.1.', 'Cabe ressaltar que o serviço de natureza advocatícia é considerado de meio e não de fim, não podendo a <strong>CONTRATADA</strong> dar garantias de decisões e/ou resultados favoráveis ao(à) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('17.2.', 'O(A) <strong>CONTRATANTE</strong> declara, desde já, que está ciente dos riscos que compõem toda e qualquer ação, acordo, atividade, causa, demanda, execução, intervenção, negociação, processo e/ou trabalho relacionado à advocacia, assessoria e consultoria jurídicas.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA OITAVA – DA CONFIDENCIALIDADE E DO SIGILO'));
-  blocks.push(clause('18.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos **CONTRATANTES**.'));
+  blocks.push(clause('18.1.', 'Todos os dados e informações prestados neste Contrato são considerados confidenciais e deverão ser mantidos em absoluto sigilo pelos <strong>CONTRATANTES</strong>.'));
   blocks.push(clause('18.2.', 'A obrigação de confidencialidade e sigilo disposta neste Contrato perdurará mesmo após a extinção, rescisão ou término do presente Instrumento.'));
 
   blocks.push(clauseTitle('CLÁUSULA DÉCIMA NONA – DA AUTORIZAÇÃO E UTILIZAÇÃO DOS DADOS'));
-  blocks.push(clause('19.1.', 'O(A) **CONTRATANTE** autoriza a **CONTRATADA** a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
+  blocks.push(clause('19.1.', 'O(A) <strong>CONTRATANTE</strong> autoriza a <strong>CONTRATADA</strong> a ter acesso e a utilizar os dados pessoais fornecidos, para fins relacionados ao cumprimento do objeto deste Contrato, de acordo com a Lei Geral de Proteção de Dados – LGPD – Lei Federal nº 13.709/2018.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA – DA VERACIDADE E ATUALIZAÇÃO DOS DADOS'));
-  blocks.push(clause('20.1.', 'O(A) **CONTRATANTE** declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
+  blocks.push(clause('20.1.', 'O(A) <strong>CONTRATANTE</strong> declara que os dados fornecidos são verdadeiros e estão atualizados, e assume a responsabilidade pela veracidade das informações prestadas.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA PRIMEIRA – DAS AUDIÊNCIAS VIRTUAIS E DA RESPONSABILIDADE PELA CONEXÃO'));
-  blocks.push(clause('21.1.', 'O(A) **CONTRATANTE** compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
-  blocks.push(clause('21.2.', 'A **CONTRATADA** não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) **CONTRATANTE**, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
-  blocks.push(clause('21.3.', 'Caso o(a) **CONTRATANTE** preveja a impossibilidade de participar de audiência virtual, deverá comunicar à **CONTRATADA** com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
+  blocks.push(clause('21.1.', 'O(A) <strong>CONTRATANTE</strong> compromete-se a garantir acesso a local com infraestrutura mínima de internet, câmera e áudio, sempre que for convocado(a) para audiência virtual, reunião ou oitiva remota, de modo a viabilizar sua efetiva participação, bem como a de eventual(is) testemunha(s) por ele(a) arrolada(s).'));
+  blocks.push(clause('21.2.', 'A <strong>CONTRATADA</strong> não se responsabiliza por atrasos, ausências, falhas de conexão, problemas técnicos ou quaisquer prejuízos decorrentes da indisponibilidade ou da ineficiência de dispositivos, equipamentos ou rede de internet utilizados pelo(a) <strong>CONTRATANTE</strong>, inclusive se resultarem em decisão desfavorável, perda de prazo ou revelia.'));
+  blocks.push(clause('21.3.', 'Caso o(a) <strong>CONTRATANTE</strong> preveja a impossibilidade de participar de audiência virtual, deverá comunicar à <strong>CONTRATADA</strong> com antecedência mínima de 48 (quarenta e oito) horas, salvo em situações de força maior, devidamente justificadas e comprovadas.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA SEGUNDA – DOS RISCOS DIGITAIS E DA ISENÇÃO DE RESPONSABILIDADE'));
-  blocks.push(clause('22.1.', 'A **CONTRATADA** declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) **CONTRATANTE**.'));
-  blocks.push(clause('22.2.', 'A **CONTRATADA** não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) **CONTRATANTE**, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
-  blocks.push(clause('22.3.', 'A **CONTRATADA** não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
+  blocks.push(clause('22.1.', 'A <strong>CONTRATADA</strong> declara que adota medidas preventivas contra tentativas de fraudes e golpes praticados por terceiros, que utilizam indevidamente dados pessoais, profissionais e imagens de seus sócios, advogados, associados, colaboradores e prepostos, bem como informações extraídas de consultas públicas a processos judiciais, com o objetivo de enganar, extorquir ou ludibriar o(a) <strong>CONTRATANTE</strong>.'));
+  blocks.push(clause('22.2.', 'A <strong>CONTRATADA</strong> não se responsabiliza, em nenhuma hipótese, pelas condutas praticadas por terceiros, inclusive pelo eventual uso indevido de nome, imagem, logomarca, dados bancários ou comunicações falsas, sendo o(a) <strong>CONTRATANTE</strong>, desde já, orientado(a) a verificar a veracidade de qualquer solicitação financeira, comunicando-a imediatamente por meio dos canais oficiais do Escritório.'));
+  blocks.push(clause('22.3.', 'A <strong>CONTRATADA</strong> não responderá, nas esferas administrativa, cível ou criminal, por prejuízos decorrentes de fraudes ou golpes praticados por terceiros, inclusive por meio de aplicativos de mensagens, chamadas, e-mails, redes sociais ou quaisquer outros meios de comunicação.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA TERCEIRA – DAS CONSIDERAÇÕES FINAIS'));
-  blocks.push(clause('23.1.', 'A **CONTRATADA** compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) **CONTRATANTE** o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
-  blocks.push(clause('23.2.', 'Os **CONTRATANTES** declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
+  blocks.push(clause('23.1.', 'A <strong>CONTRATADA</strong> compromete-se a realizar a leitura integral deste Contrato e a prestar os devidos esclarecimentos sobre todas as Cláusulas aqui inseridas, razão pela qual o(a) <strong>CONTRATANTE</strong> o assina em local próprio, declarando, ainda, estar ciente e de pleno acordo com todo o seu conteúdo.'));
+  blocks.push(clause('23.2.', 'Os <strong>CONTRATANTES</strong> declaram que este Contrato poderá ser assinado por meio eletrônico, sendo consideradas plenamente válidas as assinaturas realizadas por intermédio da plataforma indicada, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001.'));
 
   blocks.push(clauseTitle('CLÁUSULA VIGÉSIMA QUARTA – DO FORO'));
-  blocks.push(clause('24.1.', 'Os **CONTRATANTES** elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
+  blocks.push(clause('24.1.', 'Os <strong>CONTRATANTES</strong> elegem o Foro da Comarca de '+esc(d.cidade)+', Estado de Minas Gerais, para dirimir judicialmente eventuais questões oriundas deste Contrato.'));
 
   blocks.push(C(`<div class="blk" style="margin-top:3mm;">E assim, por ser esta a expressão do que ajustaram, os <strong>CONTRATANTES</strong> firmam o presente <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ADVOCACIA, ASSESSORIA E CONSULTORIA JURÍDICAS</strong>, em 02 (duas) vias de igual teor e forma, juntamente de 02 (duas) testemunhas.</div>`));
   blocks.push(C(`<div class="blk center" style="margin-top:4mm;">${esc(d.cidade)}, ${esc(d.dataExtenso)}.</div>`));
@@ -1794,6 +1873,8 @@ function buildDocumento(d){
 }
 
 function render(){
+  atualizarParcelasPreview('h-data-1parc','h-qtd-parcelas','h-periodicidade','h-parcelas-preview');
+  atualizarParcelasPreview('m-data1','m-qtd-parcelas','mensal','m-parcelas-preview');
   const status=document.getElementById('pag-status');
   const d = coletarDados();
   const erro = validar(d);
@@ -2034,6 +2115,28 @@ function carregarHistorico(){
     carregarHistorico();
   });
 })();
+
+/* ---------- atualização automática da pré-visualização ----------
+   Os campos dinâmicos (contratante, escopo, representante, áreas) já disparavam
+   scheduleRender() individualmente, mas os campos "estáticos" do formulário (valor,
+   datas, honorários, dados da empresa/condomínio etc.) nunca tinham um listener —
+   por isso "Valor por extenso" (calculado dentro de coletarDados(), chamado por
+   render()) só atualizava depois de mexer em algum campo dinâmico. Um único listener
+   delegado no contêiner do formulário resolve isso para todo campo, presente e futuro. */
+document.querySelector('.form-col').addEventListener('input', e=>{
+  if(e.target.matches('input,textarea,select')) scheduleRender();
+});
+document.querySelector('.form-col').addEventListener('change', e=>{
+  if(e.target.matches('input,textarea,select')) scheduleRender();
+});
+
+document.querySelectorAll('.date-field').forEach(attachDatePicker);
+
+document.getElementById('h-forma').addEventListener('change', ()=>{
+  if(document.getElementById('h-forma').value==='PARCELADO'){
+    document.getElementById('det-parcelamento').open = true;
+  }
+});
 
 render();
 </script>
