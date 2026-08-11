@@ -8,7 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
 <style>
   :root{
     --ink:#161010;
@@ -93,6 +98,17 @@
   .checkbox-field{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.78rem;color:var(--paper);}
   .checkbox-field input{width:15px;height:15px;accent-color:var(--red);}
 
+  .hist-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-main{flex:1;min-width:0;background:none;border:none;text-align:left;cursor:pointer;padding:0;color:var(--paper);}
+  .hist-main:hover .hist-nome{color:var(--red-bright);text-decoration:underline;}
+  .hist-nome{font-size:.82rem;font-weight:600;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-meta{font-size:.7rem;color:var(--muted);margin-top:2px;}
+  .hist-tipo{display:inline-block;font-size:.62rem;color:var(--silver);background:var(--panel-3);border-radius:6px;padding:1px 6px;margin-right:6px;letter-spacing:.02em;}
+  .hist-dl{flex:0 0 auto;background:var(--panel-3);border:1px solid var(--line-strong);border-radius:7px;padding:6px 10px;font-size:.68rem;color:var(--silver);cursor:pointer;white-space:nowrap;}
+  .hist-dl:hover{background:var(--panel-2);color:var(--paper);}
+  .hist-dl:disabled{opacity:.5;cursor:default;}
+
   details.subgroup{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
   details.subgroup summary{cursor:pointer;font-size:.76rem;color:var(--silver);padding:2px 0 6px;}
   details.subgroup summary:hover{color:var(--paper);}
@@ -162,7 +178,21 @@
   .cover-rule{border-top:1.4pt solid #8a1f1a;margin:2mm 0;}
   .cover-sub{text-align:center;font-size:9.5pt;margin:2mm 0 4mm;}
 
-  @media print{ body{background:#fff;} header,.form-col,.preview-toolbar,#doc-pages-wrap{display:none !important;} }
+  @media print{
+    @page{ size:A4; margin:0; }
+    html,body{background:#fff;margin:0;padding:0;}
+    header,.form-col,.preview-toolbar,.layout{display:block;}
+    header,.form-col,.preview-toolbar{display:none !important;}
+    main{max-width:none;margin:0;padding:0;}
+    .layout{display:block;}
+    #doc-pages-wrap{background:#fff;border:none;padding:0;overflow:visible;}
+    #doc-pages{display:block;gap:0;}
+    .doc-page{
+      box-shadow:none;margin:0;page-break-after:always;break-after:page;
+      page-break-inside:avoid;break-inside:avoid;
+    }
+    .doc-page:last-child{page-break-after:auto;break-after:auto;}
+  }
 </style>
 </head>
 <body>
@@ -179,6 +209,12 @@
         <h2>Tipo de documento</h2>
         <p class="desc">Escolha o modelo desejado.</p>
         <div class="segmented" id="tipo-seg"></div>
+      </div>
+
+      <div class="card" id="card-historico">
+        <h2>Últimos documentos gerados</h2>
+        <p class="desc" id="historico-msg">Faça login no Portal para ver e reaproveitar o histórico da equipe.</p>
+        <div id="historico-list"></div>
       </div>
 
       <div class="card" data-tipo-only="contrato_pf">
@@ -895,6 +931,7 @@ function coletarDados(){
     },
     cidade: document.getElementById('f-cidade').value.trim()||'Uberlândia',
     dataExtenso: fmtDataExtenso(document.getElementById('f-data').value),
+    dataRaw: document.getElementById('f-data').value,
     foroRef: document.getElementById('f-foro-ref').value.trim()||'do(a) Contratante',
     proposta:{
       subtipo: document.getElementById('pp-subtipo').value,
@@ -915,6 +952,13 @@ function coletarDados(){
       exito: val('pc-exito'), dataPagamento: val('pc-data-pagamento'), inicioTrabalhos: val('pc-inicio-trabalhos'),
       localEmissao: val('pp-local-emissao'), dataEmissao: fmtDataExtenso(document.getElementById('pp-data-emissao').value),
       localTrabalhos: val('pp-local-trabalhos'), validade: fmtDataExtenso(document.getElementById('pp-validade').value)
+    },
+    // datas em ISO (yyyy-mm-dd) guardadas à parte só para conseguir repopular os campos <input type="date">
+    // ao reabrir um documento do histórico — os campos acima já vêm formatados por extenso para uso no texto.
+    datasRaw:{
+      data: document.getElementById('f-data').value,
+      ppDataEmissao: document.getElementById('pp-data-emissao').value,
+      ppValidade: document.getElementById('pp-validade').value
     }
   };
 }
@@ -1796,28 +1840,200 @@ function setTipo(id){
 }
 setTipo(currentTipo);
 
-/* ---------- geração de PDF ---------- */
-document.getElementById('btn-gerar').addEventListener('click',()=>{
+/* ---------- geração de PDF ----------
+   Cada .doc-page já tem exatamente o tamanho de uma folha A4 (210x297mm). Construímos
+   e paginamos os blocos num contêiner fora da tela (mas anexado ao DOM — precisa estar
+   anexado para o navegador calcular altura/scroll corretamente, ver paginate()), depois
+   renderizamos página por página com html2canvas e colamos cada uma em sua própria
+   página do PDF — evita a heurística de "onde cortar" do html2pdf.js, que fatiava a
+   pilha inteira de páginas por altura e produzia cortes/espaços em branco errados. */
+async function gerarPDFdeDados(d, filename){
+  const blocks = buildDocumento(d);
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = 'position:fixed;left:-99999px;top:0;';
+  document.body.appendChild(offscreen);
+  let numPaginas = 0;
+  try{
+    const pages = paginate(blocks, offscreen);
+    numPaginas = pages.length;
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
+    for(let i=0;i<pages.length;i++){
+      const canvas = await html2canvas(pages[i], {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+      if(i>0) pdf.addPage('a4','portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,210,297,undefined,'FAST');
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(offscreen);
+  }
+  return numPaginas;
+}
+document.getElementById('btn-gerar').addEventListener('click',async()=>{
   const statusEl=document.getElementById('gerar-status');
   const d = coletarDados();
   const erro = validar(d);
   if(erro){ statusEl.textContent=erro; return; }
   statusEl.textContent='Gerando PDF…';
-  render();
-  setTimeout(()=>{
-    const filename = 'Documento_'+nomeArquivo(d)+'.pdf';
-    const el = document.getElementById('doc-pages');
-    html2pdf().set({
-      margin:0,
-      filename,
-      image:{type:'jpeg',quality:0.96},
-      html2canvas:{scale:2, useCORS:true, backgroundColor:'#ffffff'},
-      jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
-      pagebreak:{mode:['css'], after:'.doc-page'}
-    }).from(el).save().then(()=>{ statusEl.textContent='PDF baixado.'; })
-      .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
-  }, 60);
+  const filename = 'Documento_'+nomeArquivo(d)+'.pdf';
+  try{
+    await gerarPDFdeDados(d, filename);
+    statusEl.textContent='PDF baixado.';
+    salvarHistorico(d);
+  }catch(err){
+    statusEl.textContent='Erro ao gerar PDF: '+err.message;
+  }
 });
+
+/* ---------- histórico de documentos gerados (Firestore, compartilhado com a equipe) ---------- */
+let currentUser=null;
+function labelTipo(tipo){
+  return {contrato_pf:'Contrato PF', contrato_pj:'Contrato PJ', contrato_condominio:'Contrato Condomínio',
+    proposta_pf_pj:'Proposta PF/PJ', proposta_condominio:'Proposta Condomínio'}[tipo] || tipo;
+}
+function resumoDocumento(d){
+  let nome='', valor='';
+  if(d.tipo==='contrato_pf'){ nome=d.contratantes[0]?d.contratantes[0].nome:''; valor='R$ '+d.hon.valor; }
+  else if(d.tipo==='contrato_pj'){ nome=d.pj.razaoSocial; valor='R$ '+d.mensal.valor+'/mês'; }
+  else if(d.tipo==='contrato_condominio'){ nome=d.condominio.razaoSocial; valor='R$ '+d.mensal.valor+'/mês'; }
+  else if(d.tipo==='proposta_pf_pj'){ nome=d.proposta.nome; valor='R$ '+d.proposta.valorMensal+'/mês'; }
+  else if(d.tipo==='proposta_condominio'){ nome=d.condominio.razaoSocial; valor='R$ '+d.propostaCondominio.honInicial; }
+  return { nome: nome||'(sem nome)', valor: valor||'' };
+}
+function salvarHistorico(d){
+  if(!currentUser || !window.__db) return;
+  const { nome, valor } = resumoDocumento(d);
+  window.__db.collection('contratosGerados').add({
+    tipo: d.tipo,
+    nomeDisplay: nome,
+    valorDisplay: valor,
+    dataDisplay: d.dataExtenso,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    criadoPorUid: currentUser.uid,
+    criadoPorNome: currentUser.displayName || currentUser.email,
+    dados: d
+  }).catch(err=>console.error('Não foi possível salvar no histórico:', err));
+}
+function preencherFormulario(d){
+  setTipo(d.tipo);
+  contratantes = (d.contratantes||[]).map(c=>Object.assign(novoContratante(), c));
+  if(contratantes.length===0) contratantes=[novoContratante()];
+  renderContratantes();
+  document.getElementById('f-objeto').value = (d.caso&&d.caso.objeto)||'';
+  document.getElementById('f-escopo-intro').value = (d.caso&&d.caso.escopoIntro)||document.getElementById('f-escopo-intro').value;
+  escopo = (d.caso&&d.caso.escopo&&d.caso.escopo.length) ? d.caso.escopo.slice() : [''];
+  renderEscopo();
+  const h=d.hon||{};
+  const hMap={valor:'h-valor',forma:'h-forma',dataAvista:'h-data-avista',entrada:'h-entrada',dataEntrada:'h-data-entrada',valorParcela:'h-valor-parcela',qtdParcelas:'h-qtd-parcelas',data1Parc:'h-data-1parc',hon13:'h-13',data13:'h-data-13',cons:'h-cons',consForma:'h-cons-forma',consParcelas:'h-cons-parcelas',consData1:'h-cons-data1',cons13:'h-cons-13',consData13:'h-cons-data13',boleto:'h-boleto',multa:'h-multa',juros:'h-juros',correcao:'h-correcao',indice:'h-indice',penal:'h-penal',cobranca:'h-cobranca',exito:'h-exito'};
+  Object.keys(hMap).forEach(k=>{ if(h[k]!=null) document.getElementById(hMap[k]).value=h[k]; });
+
+  const pj=d.pj||{};
+  ['razaoSocial:pj-razao-social','nomeFantasia:pj-nome-fantasia','cnpj:pj-cnpj','email:pj-email','sedeEnd:pj-sede-end','sedeNum:pj-sede-num','sedeCompl:pj-sede-compl','bairro:pj-bairro','cidadeUf:pj-cidade-uf','cep:pj-cep','cel:pj-cel','tel:pj-tel','whatsapp:pj-whatsapp']
+    .forEach(pair=>{ const [k,id]=pair.split(':'); if(pj[k]!=null) document.getElementById(id).value=pj[k]; });
+  representantes = (pj.representantes||[]).map(r=>Object.assign(novoRepresentante(), r));
+  if(representantes.length===0) representantes=[novoRepresentante()];
+  renderRepresentantes();
+
+  const cd=d.condominio||{};
+  ['razaoSocial:cd-razao-social','nomeFantasia:cd-nome-fantasia','cnpj:cd-cnpj','email:cd-email','sedeEnd:cd-sede-end','sedeNum:cd-sede-num','sedeCompl:cd-sede-compl','bairro:cd-bairro','cidadeUf:cd-cidade-uf','cep:cd-cep','cel:cd-cel','tel:cd-tel','whatsapp:cd-whatsapp']
+    .forEach(pair=>{ const [k,id]=pair.split(':'); if(cd[k]!=null) document.getElementById(id).value=cd[k]; });
+
+  const sn=d.sindico||{};
+  ['nome:sn-nome','nacionalidade:sn-nacionalidade','estadoCivil:sn-estado-civil','profissao:sn-profissao','rg:sn-rg','rgOrgao:sn-rg-orgao','cpf:sn-cpf','email:sn-email','logradouro:sn-end','numero:sn-end-num','complemento:sn-end-compl','bairro:sn-bairro','cidadeUf:sn-cidade-uf','cep:sn-cep','cel:sn-cel','tel:sn-tel','whatsapp:sn-whatsapp']
+    .forEach(pair=>{ const [k,id]=pair.split(':'); if(sn[k]!=null) document.getElementById(id).value=sn[k]; });
+
+  if(d.areas){ Object.keys(areas).forEach(k=>areas[k]=!!d.areas[k]); renderAreaGrid(); }
+
+  const m=d.mensal||{};
+  const mMap={valor:'m-valor',data1:'m-data1',qtdParcelas:'m-qtd-parcelas',boleto:'m-boleto',indice:'m-indice',correcao:'m-correcao',penal:'m-penal',multa:'m-multa',juros:'m-juros',cobranca:'m-cobranca',cobrancaExtra:'m-cobranca-extra',cobrancaJudicial:'m-cobranca-judicial',exito:'m-exito',desconto:'m-desconto',valorDesconto:'m-valor-desconto',hon13:'m-13',hon13Forma:'m-13-forma',hon13Data:'m-13-data',valorPos:'m-valor-pos',mesPos:'m-mes-pos',carenciaAno:'m-carencia-ano',carenciaValor:'m-carencia-valor',carenciaData:'m-carencia-data',km:'m-km',diaria:'m-diaria',multaRescisoria:'m-multa-rescisoria',cdKm:'cd-km',cdDiaria:'cd-diaria'};
+  Object.keys(mMap).forEach(k=>{ if(m[k]!=null) document.getElementById(mMap[k]).value=m[k]; });
+  document.getElementById('m-carencia-on').checked = !!m.carenciaOn;
+
+  document.getElementById('f-cidade').value = d.cidade||'Uberlândia';
+  document.getElementById('f-data').value = (d.datasRaw&&d.datasRaw.data)||'';
+  document.getElementById('f-foro-ref').value = d.foroRef||'do(a) Contratante';
+
+  const p=d.proposta||{};
+  document.getElementById('pp-subtipo').value = p.subtipo||'pj';
+  const ppMap={nome:'pp-nome',responsavel:'pp-responsavel',cnpj:'pp-cnpj',dataAbertura:'pp-data-abertura',porte:'pp-porte',atividades:'pp-atividades',cpf:'pp-cpf',profissao:'pp-profissao',cidadeUf:'pp-cidade-uf',escopoBase:'pp-escopo-base',implantacao:'pp-implantacao',valorMensal:'pp-valor-mensal',tributacao:'pp-tributacao',taxaBoleto:'pp-taxa-boleto',inicioPrestacao:'pp-inicio-prestacao',formaPagamento:'pp-forma-pagamento',data1Venc:'pp-data-1venc',dataVencs:'pp-data-vencs',exito:'pp-exito',prazo:'pp-prazo',localEmissao:'pp-local-emissao',localTrabalhos:'pp-local-trabalhos'};
+  Object.keys(ppMap).forEach(k=>{ if(p[k]!=null) document.getElementById(ppMap[k]).value=p[k]; });
+  document.getElementById('pp-entendimentos').value = p.entendimentos||'';
+  ppEscopo = (p.escopoItens&&p.escopoItens.length) ? p.escopoItens.slice() : [''];
+  renderPPEscopo();
+  atualizarSubtipoPP();
+
+  const pc=d.propostaCondominio||{};
+  const pcMap={objeto:'pc-objeto',tribunal:'pc-tribunal',honInicial:'pc-hon-inicial',tributacao:'pc-tributacao',taxaBoleto:'pc-taxa-boleto',exito:'pc-exito',dataPagamento:'pc-data-pagamento',inicioTrabalhos:'pc-inicio-trabalhos'};
+  Object.keys(pcMap).forEach(k=>{ if(pc[k]!=null) document.getElementById(pcMap[k]).value=pc[k]; });
+
+  const dr=d.datasRaw||{};
+  document.getElementById('pp-data-emissao').value = dr.ppDataEmissao||'';
+  document.getElementById('pp-validade').value = dr.ppValidade||'';
+
+  render();
+  document.getElementById('gerar-status').textContent = 'Documento carregado do histórico — revise e gere o PDF novamente se precisar.';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function renderHistorico(docs){
+  const wrap=document.getElementById('historico-list');
+  const msg=document.getElementById('historico-msg');
+  if(docs.length===0){ msg.textContent='Nenhum documento gerado ainda.'; wrap.innerHTML=''; return; }
+  msg.textContent='Clique no nome para carregar os dados de novo, ou em "Baixar PDF" para baixar sem alterar o formulário atual.';
+  wrap.innerHTML='';
+  docs.forEach(item=>{
+    const row=document.createElement('div');
+    row.className='hist-row';
+    row.innerHTML=`
+      <button type="button" class="hist-main">
+        <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${esc(item.nomeDisplay)}</div>
+        <div class="hist-meta">${esc(item.valorDisplay||'')}${item.valorDisplay&&item.dataDisplay?' · ':''}${esc(item.dataDisplay||'')}</div>
+      </button>
+      <button type="button" class="hist-dl">Baixar PDF</button>
+    `;
+    row.querySelector('.hist-main').addEventListener('click',()=>preencherFormulario(item.dados));
+    const dlBtn=row.querySelector('.hist-dl');
+    dlBtn.addEventListener('click',async()=>{
+      dlBtn.disabled=true; dlBtn.textContent='Gerando…';
+      try{
+        await gerarPDFdeDados(item.dados, 'Documento_'+nomeArquivo(item.dados)+'.pdf');
+        dlBtn.textContent='Baixado!';
+      }catch(err){
+        dlBtn.textContent='Erro';
+        console.error(err);
+      }
+      setTimeout(()=>{ dlBtn.disabled=false; dlBtn.textContent='Baixar PDF'; }, 2000);
+    });
+    wrap.appendChild(row);
+  });
+}
+function carregarHistorico(){
+  if(!window.__db) return;
+  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(25)
+    .onSnapshot(snap=>{
+      renderHistorico(snap.docs.map(doc=>doc.data()));
+    }, err=>{
+      document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
+    });
+}
+(function initFirebase(){
+  if(typeof firebaseConfig==='undefined' || !firebaseConfig || firebaseConfig.apiKey==='COLE_AQUI_SUA_API_KEY'){
+    document.getElementById('historico-msg').textContent = 'Histórico indisponível (configuração do Firebase pendente).';
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  window.__db = firebase.firestore();
+  auth.onAuthStateChanged(user=>{
+    currentUser = user;
+    if(!user){
+      document.getElementById('historico-msg').textContent = 'Faça login no Portal para ver e reaproveitar o histórico da equipe.';
+      document.getElementById('historico-list').innerHTML='';
+      return;
+    }
+    document.getElementById('historico-msg').textContent = 'Carregando histórico…';
+    carregarHistorico();
+  });
+})();
 
 render();
 </script>
