@@ -992,7 +992,13 @@ function validar(d){
     }
     return d.termoRepasse.valor.trim()!=='' ? null : 'Preencha o valor do repasse.';
   }
-  if(d.tipo==='recibo') return d.recibo.valor.trim()!=='' ? null : 'Preencha o valor do recibo.';
+  if(d.tipo==='recibo'){
+    const pagOk = d.recibo.pagador.tipo==='pj' ? d.recibo.pagador.razaoSocial.trim()!=='' : d.recibo.pagador.nome.trim()!=='';
+    const recOk = d.recibo.recebedor.tipo==='pj' ? d.recibo.recebedor.razaoSocial.trim()!=='' : d.recibo.recebedor.nome.trim()!=='';
+    if(!pagOk) return 'Preencha o nome (ou razão social) do pagador.';
+    if(!recOk) return 'Preencha o nome (ou razão social) do recebedor.';
+    return d.recibo.valor.trim()!=='' ? null : 'Preencha o valor do recibo.';
+  }
   return 'Modelo ainda não disponível.';
 }
 function nomeArquivo(d){
@@ -1333,6 +1339,7 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
 });
 
 render();
+
 </script>
 </body>
 </html>
