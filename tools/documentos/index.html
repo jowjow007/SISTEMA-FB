@@ -1322,7 +1322,21 @@ document.querySelector('.form-col').addEventListener('change', scheduleRender);
    PNG é sem perdas e comprime bem em página majoritariamente branca como esta. */
 const PDF_CANVAS_OPTS = {margin:0, image:{type:'png'}, html2canvas:{scale:3, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
 async function renderPageCanvas(pageEl){
-  return await html2pdf().set(PDF_CANVAS_OPTS).from(pageEl).toCanvas().get('canvas');
+  // html2canvas captura em branco quando a página (297mm ≈ 1122px) é mais alta que a
+  // janela visível — muito comum em telas estreitas, onde formulário e prévia empilham
+  // em vez de ficar lado a lado (rolagem já testada e não resolve sozinha: mesmo com a
+  // página posicionada exatamente no topo, se ela ainda é mais alta que a janela, a lib
+  // captura em branco). Solução: informar explicitamente o tamanho de "janela" que a lib
+  // deve assumir (documentElement.scrollWidth/Height, sempre maior que a própria página)
+  // e travar scrollX/scrollY em 0 — assim ela nunca depende do que está de fato visível.
+  pageEl.scrollIntoView({block:'start', inline:'nearest'});
+  await new Promise(r=>setTimeout(r,30));
+  const opts = JSON.parse(JSON.stringify(PDF_CANVAS_OPTS));
+  opts.html2canvas.scrollX = 0;
+  opts.html2canvas.scrollY = 0;
+  opts.html2canvas.windowWidth = Math.max(document.documentElement.scrollWidth, pageEl.scrollWidth+100);
+  opts.html2canvas.windowHeight = Math.max(document.documentElement.scrollHeight, pageEl.scrollHeight+200);
+  return await html2pdf().set(opts).from(pageEl).toCanvas().get('canvas');
 }
 async function gerarPdfArquivo(pageEls, filename){
   const seed=document.createElement('div');
@@ -1354,7 +1368,6 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
 });
 
 render();
-
 </script>
 </body>
 </html>
