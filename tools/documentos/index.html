@@ -290,11 +290,22 @@
       </div>
 
       <div class="card" data-tipo-only="termo_repasse">
-        <h2>Cliente e valor do repasse</h2>
+        <h2>Cliente</h2>
         <div class="grid2">
           <div class="field"><label>Nome do cliente</label><input id="tr-cliente-nome"></div>
           <div class="field"><label>CPF</label><input id="tr-cliente-cpf"></div>
         </div>
+        <div class="field">
+          <label>Modo de repasse</label>
+          <select id="tr-modo">
+            <option value="unica">Parcela única</option>
+            <option value="parcelada">Recebimento parcelado (o cliente assina uma vez só, vale para todas as parcelas)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse" id="tr-card-valor-unica">
+        <h2>Valor do repasse</h2>
         <div class="grid2">
           <div class="field"><label>Valor do repasse (R$)</label><input id="tr-valor" placeholder="10.918,92"></div>
           <div class="field"><label>Valor por extenso</label><input id="tr-valor-extenso" readonly></div>
@@ -305,14 +316,36 @@
             <option value="acordo firmado">Acordo firmado</option>
             <option value="condenação">Condenação</option>
             <option value="cumprimento de sentença">Cumprimento de sentença</option>
+            <option value="alvará">Alvará</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse" id="tr-card-parcelas" style="display:none;">
+        <h2>Parcelas do repasse</h2>
+        <p class="desc">Lembrando que os honorários do escritório são sempre descontados primeiro em cada parcela recebida.</p>
+        <div id="tr-parcelas-list"></div>
+        <button class="btn secondary small" id="btn-add-tr-parcela" type="button">+ Adicionar parcela</button>
+        <div class="grid2" style="margin-top:12px;">
+          <div class="field"><label>Total das parcelas (R$)</label><input id="tr-valor-parcelado-total" readonly></div>
+          <div class="field"><label>Total por extenso</label><input id="tr-valor-parcelado-extenso" readonly></div>
+        </div>
+        <div class="field">
+          <label>Origem do valor</label>
+          <select id="tr-origem-parcelado">
+            <option value="acordo firmado">Acordo firmado</option>
+            <option value="condenação">Condenação</option>
+            <option value="cumprimento de sentença">Cumprimento de sentença</option>
+            <option value="alvará">Alvará</option>
           </select>
         </div>
       </div>
 
       <div class="card" data-tipo-only="termo_repasse">
         <h2>Advogados que repassam</h2>
+        <p class="desc">Individualmente (advogado com OAB própria) ou como escritório (sociedade, com CNPJ e OAB da sociedade).</p>
         <div id="tr-advogados-list"></div>
-        <button class="btn secondary small" id="btn-add-tr-advogado" type="button">+ Adicionar advogado(a)</button>
+        <button class="btn secondary small" id="btn-add-tr-advogado" type="button">+ Adicionar</button>
       </div>
 
       <div class="card" data-tipo-only="termo_repasse">
@@ -328,11 +361,36 @@
       </div>
 
       <div class="card" data-tipo-only="termo_repasse">
-        <h2>Honorários e quitação</h2>
+        <h2>Honorários</h2>
         <div class="field">
-          <label>Observação sobre dedução de honorários (opcional)</label>
+          <label>Forma de cobrança dos honorários</label>
+          <select id="tr-hon-tipo">
+            <option value="percentual">Percentual sobre o valor</option>
+            <option value="percentual_reembolso">Percentual + reembolso de despesas</option>
+            <option value="saldo_entrada">Desconto de saldo de entrada não pago</option>
+            <option value="livre">Texto livre</option>
+          </select>
+        </div>
+        <div class="grid2" id="tr-hon-percentual-wrap">
+          <div class="field"><label>Percentual (%)</label><input id="tr-hon-percentual" placeholder="20"></div>
+          <div class="field"><label>Valor correspondente (R$)</label><input id="tr-hon-percentual-valor" placeholder="391,43"></div>
+        </div>
+        <div class="grid2" id="tr-hon-reembolso-wrap" style="display:none;">
+          <div class="field"><label>Reembolso (R$)</label><input id="tr-hon-reembolso-valor"></div>
+          <div class="field"><label>Referente a</label><input id="tr-hon-reembolso-desc" placeholder="despesas com custas processuais"></div>
+        </div>
+        <div class="grid2" id="tr-hon-saldo-wrap" style="display:none;">
+          <div class="field"><label>Saldo de entrada não pago (R$)</label><input id="tr-hon-saldo-valor"></div>
+          <div class="field"><label>Referente a</label><input id="tr-hon-saldo-desc" placeholder="saldo remanescente da entrada"></div>
+        </div>
+        <div class="field" id="tr-hon-livre-wrap" style="display:none;">
+          <label>Observação sobre honorários</label>
           <textarea id="tr-obs-honorarios" style="min-height:70px" placeholder="Cumpre esclarecer que foram descontados do valor os honorários advocatícios de 20%, o que equivale a R$..."></textarea>
         </div>
+      </div>
+
+      <div class="card" data-tipo-only="termo_repasse">
+        <h2>Quitação</h2>
         <div class="field">
           <label>Quitação</label>
           <select id="tr-quitacao-tipo">
@@ -364,9 +422,15 @@
       <div class="card" data-tipo-only="recibo">
         <h2>Pagador</h2>
         <p class="desc">Quem está pagando/entregando o valor.</p>
-        <div class="field">
-          <label>Preposição</label>
-          <select id="rc-prep"><option value="de">de</option><option value="do">do</option><option value="da">da</option></select>
+        <div class="grid2">
+          <div class="field"><label>Preposição ("Recebemos ___")</label>
+            <select id="rc-prep"><option value="de">de</option><option value="do">do</option><option value="da">da</option></select>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end;padding-bottom:9px;">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;font-size:.78rem;color:var(--paper);cursor:pointer;">
+              <input type="checkbox" id="rc-pagador-escritorio" style="width:15px;height:15px;"> Usar dados do escritório
+            </label>
+          </div>
         </div>
         <div id="rc-pagador-block"></div>
       </div>
@@ -374,6 +438,16 @@
       <div class="card" data-tipo-only="recibo">
         <h2>Recebedor</h2>
         <p class="desc">Quem está recebendo e assina o recibo. Já vem preenchido com o escritório; ajuste se necessário.</p>
+        <div class="grid2">
+          <div class="field"><label>Preposição ("em favor ___")</label>
+            <select id="rc-prep-recebedor"><option value="de">de</option><option value="do">do</option><option value="da">da</option></select>
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end;padding-bottom:9px;">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;font-size:.78rem;color:var(--paper);cursor:pointer;">
+              <input type="checkbox" id="rc-recebedor-escritorio" checked style="width:15px;height:15px;"> Usar dados do escritório
+            </label>
+          </div>
+        </div>
         <div id="rc-recebedor-block"></div>
       </div>
 
@@ -535,12 +609,19 @@ function assinaturaPessoa(o){
   if(o.tipo==='pj') return {nome:o.razaoSocial, doc:'CNPJ sob o nº. '+o.cnpj};
   return {nome:o.nome, doc:'CPF sob o nº. '+o.cpf};
 }
-function assinaturasBlock(pessoas){
-  const items = pessoas.map(o=>{
-    const s=assinaturaPessoa(o);
-    return `<div class="sig-line"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`;
-  }).join('');
-  return `<div class="sig-pair" style="margin-top:14mm;">${items}</div>`;
+function assinaturasBlocks(pessoas){
+  // uma dupla de assinaturas por bloco (não um bloco único com todas) — assim a
+  // paginação pode quebrar entre duplas quando há muitos outorgantes, em vez de
+  // cortar a última linha ao estourar uma página inteira de uma vez só.
+  const blocks=[];
+  for(let i=0;i<pessoas.length;i+=2){
+    const items = pessoas.slice(i,i+2).map(o=>{
+      const s=assinaturaPessoa(o);
+      return `<div class="sig-line"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`;
+    }).join('');
+    blocks.push(C(`<div class="sig-pair" style="margin-top:${i===0?'14mm':'10mm'};">${items}</div>`));
+  }
+  return blocks;
 }
 
 /* ---------- OUTORGANTES (procuração) ---------- */
@@ -650,6 +731,7 @@ renderHpProfissoes();
 
 /* ---------- advogados que repassam (termo de repasse) ---------- */
 let trAdvogados=[];
+function novoTrAdvogado(nome,oab){ return {tipo:'advogado', nome:nome||'', oab:oab||'', razaoSocial:'', cnpj:''}; }
 function renderTrAdvogados(){
   const wrap=document.getElementById('tr-advogados-list');
   wrap.innerHTML='';
@@ -657,14 +739,36 @@ function renderTrAdvogados(){
     const div=document.createElement('div');
     div.className='item-block compact';
     div.innerHTML=`
-      <div class="row-head"><strong>Advogado(a) ${idx+1}</strong>
+      <div class="row-head"><strong>${idx+1}</strong>
         ${trAdvogados.length>1?'<button type="button" class="btn ghost" data-remove="1">remover</button>':''}
       </div>
-      <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(a.nome)}"></div>
-      <div class="field"><label>OAB/MG nº</label><input data-f="oab" value="${esc(a.oab)}"></div>
+      <div class="segmented" style="margin-bottom:8px;">
+        <button type="button" data-settipo="advogado" class="${a.tipo==='advogado'?'active':''}">Advogado(a)</button>
+        <button type="button" data-settipo="escritorio" class="${a.tipo==='escritorio'?'active':''}">Escritório</button>
+      </div>
+      <div class="tr-adv-advogado" style="${a.tipo!=='advogado'?'display:none':''}">
+        <div class="field"><label>Nome completo</label><input data-f="nome" value="${esc(a.nome)}"></div>
+        <div class="field"><label>OAB/MG nº</label><input data-f="oab" value="${esc(a.oab)}"></div>
+      </div>
+      <div class="tr-adv-escritorio" style="${a.tipo!=='escritorio'?'display:none':''}">
+        <div class="field"><label>Razão social</label><input data-f="razaoSocial" value="${esc(a.razaoSocial)}"></div>
+        <div class="grid2">
+          <div class="field"><label>CNPJ</label><input data-f="cnpj" value="${esc(a.cnpj)}"></div>
+          <div class="field"><label>OAB (sociedade) nº</label><input data-f="oab" value="${esc(a.oab)}"></div>
+        </div>
+        <button type="button" class="btn secondary small" data-preencher-escritorio="1">Preencher com dados do escritório</button>
+      </div>
     `;
     div.querySelectorAll('[data-f]').forEach(inp=>{
       inp.addEventListener('input',()=>{ a[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    div.querySelectorAll('[data-settipo]').forEach(btn=>{
+      btn.addEventListener('click',()=>{ a.tipo=btn.dataset.settipo; renderTrAdvogados(); scheduleRender(); });
+    });
+    const pe=div.querySelector('[data-preencher-escritorio]');
+    if(pe) pe.addEventListener('click',()=>{
+      a.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS'; a.cnpj='57.704.224/0001-00'; a.oab='17806';
+      renderTrAdvogados(); scheduleRender();
     });
     const rm=div.querySelector('[data-remove]');
     if(rm) rm.addEventListener('click',()=>{ trAdvogados=trAdvogados.filter(x=>x!==a); renderTrAdvogados(); scheduleRender(); });
@@ -672,13 +776,18 @@ function renderTrAdvogados(){
   });
 }
 document.getElementById('btn-add-tr-advogado').addEventListener('click',()=>{
-  trAdvogados.push({nome:'',oab:''}); renderTrAdvogados(); scheduleRender();
+  trAdvogados.push(novoTrAdvogado()); renderTrAdvogados(); scheduleRender();
 });
-trAdvogados.push({nome:'JONATHAN SILVA FONSECA',oab:'163.443'});
-trAdvogados.push({nome:'HECY BRAGA DE OLIVEIRA',oab:'95.948'});
+trAdvogados.push(novoTrAdvogado('JONATHAN SILVA FONSECA','163.443'));
+trAdvogados.push(novoTrAdvogado('HECY BRAGA DE OLIVEIRA','95.948'));
 renderTrAdvogados();
 function advogadosRepasseTexto(list){
-  const partes = list.filter(a=>a.nome.trim()!=='').map(a=>`<strong>${esc(a.nome)}</strong>, inscrito na OAB/MG sob o nº ${esc(a.oab)}`);
+  const partes = list.filter(a=> a.tipo==='escritorio' ? a.razaoSocial.trim()!=='' : a.nome.trim()!=='').map(a=>{
+    if(a.tipo==='escritorio'){
+      return `<strong>${esc(a.razaoSocial)}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ${esc(a.cnpj)} e na OAB/MG sob o nº ${esc(a.oab)}`;
+    }
+    return `<strong>${esc(a.nome)}</strong>, inscrito na OAB/MG sob o nº ${esc(a.oab)}`;
+  });
   if(partes.length===0) return '';
   if(partes.length===1) return partes[0];
   return partes.slice(0,-1).join(', ')+' e '+partes[partes.length-1];
@@ -708,7 +817,74 @@ document.getElementById('tr-quitacao-tipo').addEventListener('change',e=>{
   scheduleRender();
 });
 
+/* ---------- modo de repasse: parcela única × parcelado ---------- */
+document.getElementById('tr-modo').addEventListener('change',e=>{
+  const parcelado = e.target.value==='parcelada';
+  document.getElementById('tr-card-valor-unica').style.display = parcelado?'none':'';
+  document.getElementById('tr-card-parcelas').style.display = parcelado?'':'none';
+  scheduleRender();
+});
+
+/* ---------- parcelas do repasse (modo parcelado) ---------- */
+let trParcelas=[];
+function novaTrParcela(){ return {descricao:'', valor:'', data:''}; }
+function renderTrParcelas(){
+  const wrap=document.getElementById('tr-parcelas-list');
+  wrap.innerHTML='';
+  trParcelas.forEach((p,idx)=>{
+    const div=document.createElement('div');
+    div.className='item-block compact';
+    div.innerHTML=`
+      <div class="row-head"><strong>Parcela ${idx+1}</strong>
+        ${trParcelas.length>1?'<button type="button" class="btn ghost" data-remove="1">remover</button>':''}
+      </div>
+      <div class="field"><label>Descrição</label><input data-f="descricao" value="${esc(p.descricao)}" placeholder="1ª parcela da entrada"></div>
+      <div class="grid2">
+        <div class="field"><label>Valor (R$)</label><input data-f="valor" value="${esc(p.valor)}" placeholder="6.369,37"></div>
+        <div class="field"><label>Vencimento</label><input data-f="data" value="${esc(p.data)}" placeholder="22/06/2026"></div>
+      </div>
+    `;
+    div.querySelectorAll('[data-f]').forEach(inp=>{
+      inp.addEventListener('input',()=>{ p[inp.dataset.f]=inp.value; scheduleRender(); });
+    });
+    const rm=div.querySelector('[data-remove]');
+    if(rm) rm.addEventListener('click',()=>{ trParcelas=trParcelas.filter(x=>x!==p); renderTrParcelas(); scheduleRender(); });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('btn-add-tr-parcela').addEventListener('click',()=>{ trParcelas.push(novaTrParcela()); renderTrParcelas(); scheduleRender(); });
+trParcelas.push(novaTrParcela());
+renderTrParcelas();
+function somaValoresMoeda(valores){
+  return valores.reduce((acc,v)=>{
+    const num=parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+    return acc + (isNaN(num)?0:num);
+  },0);
+}
+function fmtMoedaBr(n){
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+/* ---------- forma de cobrança dos honorários (termo de repasse) ---------- */
+document.getElementById('tr-hon-tipo').addEventListener('change',e=>{
+  const v=e.target.value;
+  document.getElementById('tr-hon-percentual-wrap').style.display = (v==='percentual'||v==='percentual_reembolso')?'':'none';
+  document.getElementById('tr-hon-reembolso-wrap').style.display = (v==='percentual_reembolso')?'':'none';
+  document.getElementById('tr-hon-saldo-wrap').style.display = (v==='saldo_entrada')?'':'none';
+  document.getElementById('tr-hon-livre-wrap').style.display = (v==='livre')?'':'none';
+  scheduleRender();
+});
+
 /* ---------- pagador / recebedor (recibo) ---------- */
+function preencherDadosEscritorio(o){
+  o.tipo='pj';
+  o.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS';
+  o.cnpj='57.704.224/0001-00';
+  o.sedeEndereco=ESCRITORIO_ENDERECO;
+  o.sedeCidade=ESCRITORIO_CIDADE;
+  o.sedeEstado=ESCRITORIO_ESTADO;
+  o.repCargo='sócio';
+}
 let rcPagador=novaPessoa();
 function renderRcPagador(){
   const wrap=document.getElementById('rc-pagador-block');
@@ -716,19 +892,21 @@ function renderRcPagador(){
   wirePessoaBlock(wrap,rcPagador,renderRcPagador);
 }
 renderRcPagador();
+document.getElementById('rc-pagador-escritorio').addEventListener('change',e=>{
+  if(e.target.checked){ preencherDadosEscritorio(rcPagador); renderRcPagador(); scheduleRender(); }
+});
 
 let rcRecebedor=novaPessoa();
-rcRecebedor.tipo='pj';
-rcRecebedor.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS';
-rcRecebedor.cnpj='57.704.224/0001-00';
-rcRecebedor.sedeEndereco=ESCRITORIO_ENDERECO;
-rcRecebedor.repCargo='sócio';
+preencherDadosEscritorio(rcRecebedor);
 function renderRcRecebedor(){
   const wrap=document.getElementById('rc-recebedor-block');
   wrap.innerHTML=pessoaFieldsHtml(rcRecebedor);
   wirePessoaBlock(wrap,rcRecebedor,renderRcRecebedor);
 }
 renderRcRecebedor();
+document.getElementById('rc-recebedor-escritorio').addEventListener('change',e=>{
+  if(e.target.checked){ preencherDadosEscritorio(rcRecebedor); renderRcRecebedor(); scheduleRender(); }
+});
 function reciboQualTexto(o){
   if(o.tipo==='pj'){
     let out = `<strong>${esc(o.razaoSocial)}</strong>, CNPJ nº ${esc(o.cnpj)}, estabelecido(a) na ${esc(o.sedeEndereco)}, em ${esc(o.sedeCidade)}/${esc(o.sedeEstado)}`;
@@ -744,6 +922,9 @@ function reciboQualTexto(o){
 function coletarDados(){
   document.getElementById('tr-valor-extenso').value = valorExtenso(val('tr-valor'));
   document.getElementById('rc-valor-extenso').value = valorExtenso(val('rc-valor'));
+  const trTotalParcelado = somaValoresMoeda(trParcelas.map(p=>p.valor));
+  document.getElementById('tr-valor-parcelado-total').value = fmtMoedaBr(trTotalParcelado);
+  document.getElementById('tr-valor-parcelado-extenso').value = valorExtenso(fmtMoedaBr(trTotalParcelado));
   return {
     tipo: currentTipo,
     cidadeUf: val('doc-cidade-uf'),
@@ -776,16 +957,25 @@ function coletarDados(){
       tipoProcesso: val('tr-tipo-processo'), vara: val('tr-vara'), acao: val('tr-acao'),
       gratuidade: val('tr-gratuidade'), custasPagas: val('tr-custas-pagas'), segredoJustica: val('tr-segredo-justica'),
       clienteNome: val('tr-cliente-nome'), clienteCpf: val('tr-cliente-cpf'),
+      modo: val('tr-modo'),
       valor: val('tr-valor'), valorExtenso: document.getElementById('tr-valor-extenso').value,
-      origem: val('tr-origem'), advogados: trAdvogados,
+      origem: val('tr-origem'),
+      parcelas: trParcelas, valorParcelado: document.getElementById('tr-valor-parcelado-total').value,
+      valorParceladoExtenso: document.getElementById('tr-valor-parcelado-extenso').value,
+      origemParcelado: val('tr-origem-parcelado'),
+      advogados: trAdvogados,
       detalharAvenca: document.getElementById('tr-detalhar-avenca').checked, avenca: trAvenca,
+      honTipo: val('tr-hon-tipo'),
+      honPercentual: val('tr-hon-percentual'), honPercentualValor: val('tr-hon-percentual-valor'),
+      honReembolsoValor: val('tr-hon-reembolso-valor'), honReembolsoDesc: val('tr-hon-reembolso-desc'),
+      honSaldoValor: val('tr-hon-saldo-valor'), honSaldoDesc: val('tr-hon-saldo-desc'),
       obsHonorarios: document.getElementById('tr-obs-honorarios').value.trim(),
       quitacaoTipo: val('tr-quitacao-tipo'), quitacaoObs: document.getElementById('tr-quitacao-obs').value.trim(),
       pagBanco: val('tr-pag-banco'), pagAgencia: val('tr-pag-agencia'), pagConta: val('tr-pag-conta'),
       pagDoc: val('tr-pag-doc'), pagNome: val('tr-pag-nome'), pagPix: val('tr-pag-pix')
     },
     recibo:{
-      prep: val('rc-prep'), pagador: rcPagador, recebedor: rcRecebedor,
+      prep: val('rc-prep'), prepRecebedor: val('rc-prep-recebedor'), pagador: rcPagador, recebedor: rcRecebedor,
       valor: val('rc-valor'), valorExtenso: document.getElementById('rc-valor-extenso').value,
       motivo: document.getElementById('rc-motivo').value.trim()
     }
@@ -795,7 +985,13 @@ function validar(d){
   if(d.tipo==='procuracao') return (d.procuracao.outorgantes.length>0 && d.procuracao.procuradores.length>0) ? null : 'Preencha ao menos um outorgante e um procurador.';
   if(d.tipo==='substabelecimento') return (d.substabelecimento.sbNome.trim()!=='' && d.substabelecimento.sbsNome.trim()!=='') ? null : 'Preencha o(a) advogado(a) que substabelece e o(a) substabelecido(a).';
   if(d.tipo==='hipossuficiencia') return d.hipossuficiencia.nome.trim()!=='' ? null : 'Preencha o nome do(a) declarante.';
-  if(d.tipo==='termo_repasse') return (d.termoRepasse.clienteNome.trim()!=='' && d.termoRepasse.valor.trim()!=='') ? null : 'Preencha o nome do cliente e o valor do repasse.';
+  if(d.tipo==='termo_repasse'){
+    if(d.termoRepasse.clienteNome.trim()==='') return 'Preencha o nome do cliente.';
+    if(d.termoRepasse.modo==='parcelada'){
+      return d.termoRepasse.parcelas.some(p=>p.valor.trim()!=='') ? null : 'Preencha ao menos uma parcela com valor.';
+    }
+    return d.termoRepasse.valor.trim()!=='' ? null : 'Preencha o valor do repasse.';
+  }
   if(d.tipo==='recibo') return d.recibo.valor.trim()!=='' ? null : 'Preencha o valor do recibo.';
   return 'Modelo ainda não disponível.';
 }
@@ -845,7 +1041,7 @@ function buildProcuracao(d){
     C(`<div class="blk doc-indent">${outorgadosTexto(p.procuradores)}.</div>`),
     C(`<div class="blk" style="margin-top:1mm;">${TEXTO_PODERES_PROCURACAO}${clausulaFinal}.</div>`),
     C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
-    C(assinaturasBlock(p.outorgantes))
+    ...assinaturasBlocks(p.outorgantes)
   ];
 }
 
@@ -871,9 +1067,34 @@ function buildHipossuficiencia(d){
   ];
 }
 
+function origemPrep(origem){
+  return ({'acordo firmado':'do','condenação':'da','cumprimento de sentença':'do','alvará':'do'})[origem]||'do';
+}
+function honorariosTexto(t){
+  if(t.honTipo==='percentual'){
+    if(!t.honPercentual.trim()) return '';
+    return `Cumpre esclarecer que foram descontados os honorários advocatícios contratuais de ${esc(t.honPercentual)}%${t.honPercentualValor.trim()?', o que equivale a R$ '+esc(t.honPercentualValor):''}.`;
+  }
+  if(t.honTipo==='percentual_reembolso'){
+    if(!t.honPercentual.trim()) return '';
+    let s = `Cumpre esclarecer que foram descontados os honorários advocatícios contratuais de ${esc(t.honPercentual)}%${t.honPercentualValor.trim()?', o que equivale a R$ '+esc(t.honPercentualValor):''}`;
+    if(t.honReembolsoValor.trim()) s += `, além do reembolso de R$ ${esc(t.honReembolsoValor)} referente a ${esc(t.honReembolsoDesc||'despesas')}`;
+    return s+'.';
+  }
+  if(t.honTipo==='saldo_entrada'){
+    if(!t.honSaldoValor.trim()) return '';
+    return `Cumpre esclarecer que foi descontado do valor o saldo de entrada ainda não pago, no montante de R$ ${esc(t.honSaldoValor)}, referente ${esc(t.honSaldoDesc||'à entrada pactuada')}.`;
+  }
+  if(t.honTipo==='livre') return t.obsHonorarios ? esc(t.obsHonorarios) : '';
+  return '';
+}
 function buildTermoRepasse(d){
   const t=d.termoRepasse;
   const clienteEhAutor = t.clientePosicao==='autor';
+  const parcelado = t.modo==='parcelada';
+  const valorPrincipal = parcelado ? t.valorParcelado : t.valor;
+  const valorExtensoPrincipal = parcelado ? t.valorParceladoExtenso : t.valorExtenso;
+  const origemUsada = parcelado ? t.origemParcelado : t.origem;
   const blocks=[
     C(`<div class="doc-h1 underline">Termo de Repasse e Quitação</div>`),
     C(`<div class="box-table">
@@ -897,22 +1118,34 @@ function buildTermoRepasse(d){
         <div class="box-cell"><b>VALOR DAS CUSTAS JÁ PAGAS:</b> R$ ${esc(t.custasPagas)}</div>
         <div class="box-cell"><b>SEGREDO DE JUSTIÇA:</b> ${esc(t.segredoJustica)}</div>
       </div>
-      <div class="box-row"><div class="box-cell"><b>VALOR DO REPASSE:</b> R$ ${esc(t.valor)} (${esc(t.valorExtenso)})</div></div>
-    </div>`),
-    C(`<div class="blk" style="margin-top:1mm;">Pelo presente instrumento, eu, <strong>${esc(t.clienteNome)}</strong>, inscrito(a) no CPF sob o nº ${esc(t.clienteCpf)}, declaro para os devidos fins que recebi dos advogados ${advogadosRepasseTexto(t.advogados)}, a quantia de R$ ${esc(t.valor)} (${esc(t.valorExtenso)}). O referido valor é proveniente ${({'acordo firmado':'do','condenação':'da','cumprimento de sentença':'do'})[t.origem]||'do'} ${esc(t.origem)} no processo nº ${esc(t.numeroProcesso)}, no qual atuaram como meus representantes legais${t.detalharAvenca && t.avenca.filter(x=>x.trim()!=='').length>0?', cuja avença total foi pactuada nos seguintes termos:':'.'}</div>`)
+      <div class="box-row"><div class="box-cell"><b>VALOR ${parcelado?'TOTAL DO REPASSE (PARCELADO)':'DO REPASSE'}:</b> R$ ${esc(valorPrincipal)} (${esc(valorExtensoPrincipal)})</div></div>
+    </div>`)
   ];
-  if(t.detalharAvenca){
-    t.avenca.filter(x=>x.trim()!=='').forEach(item=>{
-      blocks.push(C(`<div class="blk bullet">● ${esc(item)}</div>`));
+  if(!parcelado){
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">Pelo presente instrumento, eu, <strong>${esc(t.clienteNome)}</strong>, inscrito(a) no CPF sob o nº ${esc(t.clienteCpf)}, declaro para os devidos fins que recebi dos advogados ${advogadosRepasseTexto(t.advogados)}, a quantia de R$ ${esc(t.valor)} (${esc(t.valorExtenso)}). O referido valor é proveniente ${origemPrep(t.origem)} ${esc(t.origem)} no processo nº ${esc(t.numeroProcesso)}, no qual atuaram como meus representantes legais${t.detalharAvenca && t.avenca.filter(x=>x.trim()!=='').length>0?', cuja avença total foi pactuada nos seguintes termos:':'.'}</div>`));
+    if(t.detalharAvenca){
+      t.avenca.filter(x=>x.trim()!=='').forEach(item=>{
+        blocks.push(C(`<div class="blk bullet">● ${esc(item)}</div>`));
+      });
+    }
+  } else {
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">Pelo presente instrumento, eu, <strong>${esc(t.clienteNome)}</strong>, inscrito(a) no CPF sob o nº ${esc(t.clienteCpf)}, AUTORIZO, desde já e de forma irrevogável, o repasse pelos advogados ${advogadosRepasseTexto(t.advogados)}, à medida que forem recebidas, das parcelas abaixo relacionadas, provenientes ${origemPrep(origemUsada)} ${esc(origemUsada)} no processo nº ${esc(t.numeroProcesso)}, no qual atuaram como meus representantes legais, ficando desde já certo que os honorários contratuais serão sempre descontados prioritariamente de cada parcela recebida, antes do respectivo repasse, e que a presente autorização é única e vale para o repasse de todas as parcelas abaixo, independentemente de nova assinatura ou novo termo específico para cada repasse individual:</div>`));
+    t.parcelas.filter(p=>p.valor.trim()!=='').forEach(p=>{
+      blocks.push(C(`<div class="blk bullet">● ${esc(p.descricao||'Parcela')}: R$ ${esc(p.valor)}${p.data?', com vencimento em '+esc(p.data):''}.</div>`));
     });
   }
-  if(t.obsHonorarios){
-    blocks.push(C(`<div class="blk" style="margin-top:1mm;">${esc(t.obsHonorarios)}</div>`));
+  const honTxt = honorariosTexto(t);
+  if(honTxt){
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">${honTxt}</div>`));
   }
-  const quitacaoTexto = t.quitacaoTipo==='parcial'
-    ? `especificamente quanto à parcela ora recebida, nada mais havendo a reclamar a este título${t.quitacaoObs?', '+esc(t.quitacaoObs):''}.`
-    : `nada mais havendo a reclamar a esse título.`;
-  blocks.push(C(`<div class="blk" style="margin-top:1mm;">Diante do recebimento deste repasse, concedo aos referidos patronos <strong>absoluta, geral, irretratável, irrevogável, plena, rasa e total quitação</strong> ${quitacaoTexto}</div>`));
+  if(!parcelado){
+    const quitacaoTexto = t.quitacaoTipo==='parcial'
+      ? `especificamente quanto à parcela ora recebida, nada mais havendo a reclamar a este título${t.quitacaoObs?', '+esc(t.quitacaoObs):''}.`
+      : `nada mais havendo a reclamar a esse título.`;
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">Diante do recebimento deste repasse, concedo aos referidos patronos <strong>absoluta, geral, irretratável, irrevogável, plena, rasa e total quitação</strong> ${quitacaoTexto}</div>`));
+  } else {
+    blocks.push(C(`<div class="blk" style="margin-top:1mm;">Diante desta autorização, concedo aos referidos patronos <strong>quitação antecipada e irrevogável</strong> quanto a cada parcela, à medida que for repassada e comprovado o respectivo depósito/PIX, nada mais havendo a reclamar quanto a cada repasse individualmente realizado.</div>`));
+  }
   blocks.push(C(`<div class="box-table" style="margin-top:2mm;">
     <div class="box-row"><div class="box-cell"><b>DADOS DO PAGAMENTO</b></div></div>
     <div class="box-row">
@@ -939,7 +1172,7 @@ function buildRecibo(d){
     C(`<div class="doc-h1">Recibo de Quitação</div>`),
     C(`<div class="blk center" style="font-weight:700;">VALOR: R$ ${esc(r.valor)}</div>`),
     C(`<div class="blk" style="margin-top:2mm;">Recebemos ${esc(r.prep)} ${reciboQualTexto(r.pagador)}, a importância líquida e certa de R$ ${esc(r.valor)} (${esc(r.valorExtenso)}).</div>`),
-    C(`<div class="blk">O referido montante foi quitado em favor de ${reciboQualTexto(r.recebedor)}, e destina-se ${esc(r.motivo)}.</div>`),
+    C(`<div class="blk">O referido montante foi quitado em favor ${esc(r.prepRecebedor)} ${reciboQualTexto(r.recebedor)}, e destina-se ${esc(r.motivo)}.</div>`),
     C(`<div class="blk">Pela clareza e exatidão do que aqui se declara, confirmamos que a quitação ocorreu no dia ${esc(d.dataExtenso)}, firmando o presente recibo para que produza seus devidos efeitos legais, dando ao pagador plena e irrevogável quitação quanto ao valor mencionado.</div>`),
     C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
     C((()=>{ const s=assinaturaPessoa(r.recebedor); return `<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`; })())
