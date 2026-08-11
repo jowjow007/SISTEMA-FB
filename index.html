@@ -55,8 +55,9 @@
 
   /* ---------- LOGIN ---------- */
   #login-screen, #force-password-screen{
-    position:relative;overflow:hidden;
-    height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:28px;
+    position:relative;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:28px;
+    padding:40px 16px;
     background:radial-gradient(circle at 50% 20%,var(--panel-2),var(--ink) 70%);
   }
   .logo-wrap{position:relative;z-index:1;line-height:0;}
@@ -290,8 +291,24 @@
           <input type="text" id="register-surname" required>
         </div>
         <div class="field">
+          <label>CPF</label>
+          <input type="text" id="register-cpf" placeholder="000.000.000-00" required>
+        </div>
+        <div class="field">
+          <label>RG</label>
+          <input type="text" id="register-rg" required>
+        </div>
+        <div class="field">
           <label>E-mail</label>
           <input type="email" id="register-email" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label>Telefone</label>
+          <input type="tel" id="register-telefone" placeholder="(00) 00000-0000" required>
+        </div>
+        <div class="field">
+          <label>Endereço</label>
+          <input type="text" id="register-endereco" required>
         </div>
         <div class="field">
           <label>Senha</label>
@@ -300,6 +317,14 @@
         <div class="field">
           <label>Data de nascimento</label>
           <input type="date" id="register-birthdate" required>
+        </div>
+        <div class="field">
+          <label>Data de ingresso no escritório</label>
+          <input type="date" id="register-ingresso" required>
+        </div>
+        <div class="field">
+          <label>Departamento atual</label>
+          <input type="text" id="register-depto" placeholder="Ex: Cível, Trabalhista, Financeiro..." required>
         </div>
         <div class="field">
           <label>Foto (para o mural de aniversariantes)</label>
@@ -355,7 +380,7 @@
     <div class="user-info" id="user-info-box"></div>
     <div class="logout-wrap">
       <button class="btn secondary small" id="logout-btn" style="width:auto;">Sair</button>
-      <span class="version-tag">v88</span>
+      <span class="version-tag">v90</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -462,6 +487,34 @@
   </div>
 </div>
 
+<!-- ================= MODAL: DADOS CADASTRAIS DO USUÁRIO ================= -->
+<div class="modal-backdrop" id="edit-dados-backdrop">
+  <div class="modal-box" style="max-height:88vh;">
+    <h3>Dados cadastrais</h3>
+    <p class="sub" id="edit-dados-user-label"></p>
+    <div class="list" style="display:flex;flex-direction:column;gap:10px;">
+      <div><label style="font-size:.75rem;color:var(--muted);">CPF</label>
+        <input type="text" id="dados-cpf" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">RG</label>
+        <input type="text" id="dados-rg" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Telefone</label>
+        <input type="text" id="dados-telefone" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Endereço</label>
+        <input type="text" id="dados-endereco" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Data de ingresso</label>
+        <input type="date" id="dados-ingresso" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Departamento atual</label>
+        <input type="text" id="dados-depto" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Remuneração do contrato <span style="opacity:.7;">(só o admin vê/edita)</span></label>
+        <input type="text" id="dados-remuneracao" placeholder="Ex: R$ 3.500,00" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" id="edit-dados-cancelar">Cancelar</button>
+      <button class="btn" id="edit-dados-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -509,6 +562,12 @@
     registerEmail: document.getElementById('register-email'),
     registerPassword: document.getElementById('register-password'),
     registerBirthdate: document.getElementById('register-birthdate'),
+    registerCpf: document.getElementById('register-cpf'),
+    registerRg: document.getElementById('register-rg'),
+    registerTelefone: document.getElementById('register-telefone'),
+    registerEndereco: document.getElementById('register-endereco'),
+    registerIngresso: document.getElementById('register-ingresso'),
+    registerDepto: document.getElementById('register-depto'),
     registerPhoto: document.getElementById('register-photo'),
     registerPhotoPreview: document.getElementById('register-photo-preview'),
     registerError: document.getElementById('register-error'),
@@ -528,6 +587,10 @@
     forcePasswordConfirm: document.getElementById('force-password-confirm'),
     forcePasswordError: document.getElementById('force-password-error'),
     forcePasswordSubmit: document.getElementById('force-password-submit'),
+    editDadosBackdrop: document.getElementById('edit-dados-backdrop'),
+    editDadosUserLabel: document.getElementById('edit-dados-user-label'),
+    editDadosCancelar: document.getElementById('edit-dados-cancelar'),
+    editDadosSalvar: document.getElementById('edit-dados-salvar'),
   };
 
   // ---------- Tema claro/escuro ----------
@@ -647,9 +710,21 @@
     const email = els.registerEmail.value.trim();
     const senha = els.registerPassword.value;
     const nascimento = els.registerBirthdate.value;
+    const cpf = els.registerCpf.value.trim();
+    const rg = els.registerRg.value.trim();
+    const telefone = els.registerTelefone.value.trim();
+    const endereco = els.registerEndereco.value.trim();
+    const ingresso = els.registerIngresso.value;
+    const depto = els.registerDepto.value.trim();
 
-    if (!primeiroNome || !sobrenome || !email || senha.length < 6 || !nascimento) {
-      els.registerError.textContent = 'Preencha nome, sobrenome, e-mail, senha (mín. 6 caracteres) e data de nascimento.';
+    if (!primeiroNome || !sobrenome || !email || senha.length < 6 || !nascimento ||
+        !cpf || !rg || !telefone || !endereco || !ingresso || !depto) {
+      els.registerError.textContent = 'Preencha todos os campos obrigatórios (nome, sobrenome, CPF, RG, e-mail, telefone, endereço, senha, data de nascimento, data de ingresso e departamento).';
+      els.registerError.style.display = 'block';
+      return;
+    }
+    if (cpf.replace(/\D/g, '').length !== 11) {
+      els.registerError.textContent = 'CPF inválido — precisa ter 11 dígitos.';
       els.registerError.style.display = 'block';
       return;
     }
@@ -665,6 +740,12 @@
           displayName: nome,
           role: 'membro',
           tabs: [],
+          cpf: cpf,
+          rg: rg,
+          telefone: telefone,
+          endereco: endereco,
+          dataIngresso: ingresso,
+          deptoAtual: depto,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }),
         db.collection('perfis').doc(uid).set({
@@ -1032,6 +1113,7 @@
         '<td>' + chips + '</td>' +
         '<td class="actions-cell">' +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
+          '<button class="btn secondary small" onclick="window.__editUserDados(\'' + u.uid + '\')">Dados</button>' +
           '<button class="btn danger small" onclick="window.__revokeUser(\'' + u.uid + '\')">Revogar</button>' +
           '<button class="btn danger small" onclick="window.__deleteUser(\'' + u.uid + '\',\'' + escapeHtml(u.displayName || u.email || '') + '\')">Excluir</button>' +
         '</td>' +
@@ -1072,6 +1154,46 @@
       els.editTabsBackdrop.classList.add('show');
     });
   };
+
+  // ---------- Modal: dados cadastrais (CPF/RG/telefone/endereço/ingresso/depto/remuneração) ----------
+  let editDadosTargetUid = null;
+
+  window.__editUserDados = function(uid){
+    db.collection('users').doc(uid).get().then(function(doc){
+      const dados = doc.data();
+      editDadosTargetUid = uid;
+      els.editDadosUserLabel.textContent = dados.displayName || dados.email || '';
+      document.getElementById('dados-cpf').value = dados.cpf || '';
+      document.getElementById('dados-rg').value = dados.rg || '';
+      document.getElementById('dados-telefone').value = dados.telefone || '';
+      document.getElementById('dados-endereco').value = dados.endereco || '';
+      document.getElementById('dados-ingresso').value = dados.dataIngresso || '';
+      document.getElementById('dados-depto').value = dados.deptoAtual || '';
+      document.getElementById('dados-remuneracao').value = dados.remuneracao || '';
+      els.editDadosBackdrop.classList.add('show');
+    });
+  };
+
+  function fecharModalEditDados(){
+    els.editDadosBackdrop.classList.remove('show');
+    editDadosTargetUid = null;
+  }
+  els.editDadosCancelar.addEventListener('click', fecharModalEditDados);
+  els.editDadosBackdrop.addEventListener('click', function(e){
+    if (e.target === els.editDadosBackdrop) fecharModalEditDados();
+  });
+  els.editDadosSalvar.addEventListener('click', function(){
+    if (!editDadosTargetUid) return;
+    db.collection('users').doc(editDadosTargetUid).update({
+      cpf: document.getElementById('dados-cpf').value.trim(),
+      rg: document.getElementById('dados-rg').value.trim(),
+      telefone: document.getElementById('dados-telefone').value.trim(),
+      endereco: document.getElementById('dados-endereco').value.trim(),
+      dataIngresso: document.getElementById('dados-ingresso').value,
+      deptoAtual: document.getElementById('dados-depto').value.trim(),
+      remuneracao: document.getElementById('dados-remuneracao').value.trim()
+    }).then(fecharModalEditDados);
+  });
 
   function fecharModalEditTabs(){
     els.editTabsBackdrop.classList.remove('show');
