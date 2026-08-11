@@ -46,6 +46,12 @@
   .photo-actions input[type=file]{font-size:.78rem;color:var(--muted);width:100%;}
   .photo-actions .hint{font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.4;}
 
+  .section-title{
+    font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+    margin:24px 0 12px;padding-top:16px;border-top:1px solid var(--line-strong);
+  }
+  .section-title:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+
   .field{margin-bottom:16px;}
   .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
   .field input{
@@ -70,7 +76,7 @@
 
 <header>
   <h1>Meu Perfil</h1>
-  <p class="sub">Data de nascimento e foto usadas no mural de aniversariantes do escritório.</p>
+  <p class="sub">Foto e data de nascimento (mural de aniversariantes) e seus dados de cadastro.</p>
 </header>
 
 <main>
@@ -95,6 +101,29 @@
       <label>Data de nascimento</label>
       <input type="date" id="birthdate-input">
     </div>
+
+    <div class="section-title">Dados cadastrais</div>
+    <div class="field">
+      <label>CPF</label>
+      <input type="text" id="cpf-input" placeholder="000.000.000-00">
+    </div>
+    <div class="field">
+      <label>RG</label>
+      <input type="text" id="rg-input">
+    </div>
+    <div class="field">
+      <label>Telefone</label>
+      <input type="tel" id="telefone-input" placeholder="(00) 00000-0000">
+    </div>
+    <div class="field">
+      <label>Endereço</label>
+      <input type="text" id="endereco-input">
+    </div>
+    <div class="field">
+      <label>E-mail alternativo</label>
+      <input type="email" id="email-alt-input" placeholder="diferente do e-mail de acesso">
+    </div>
+
     <button class="btn" id="salvar-btn">Salvar perfil</button>
     <div class="msg-ok" id="msg-ok">Perfil salvo com sucesso.</div>
     <div class="msg-err" id="msg-err"></div>
@@ -127,6 +156,11 @@
     nomeInput: document.getElementById('nome-input'),
     sobrenomeInput: document.getElementById('sobrenome-input'),
     birthdateInput: document.getElementById('birthdate-input'),
+    cpfInput: document.getElementById('cpf-input'),
+    rgInput: document.getElementById('rg-input'),
+    telefoneInput: document.getElementById('telefone-input'),
+    enderecoInput: document.getElementById('endereco-input'),
+    emailAltInput: document.getElementById('email-alt-input'),
     salvarBtn: document.getElementById('salvar-btn'),
     msgOk: document.getElementById('msg-ok'),
     msgErr: document.getElementById('msg-err'),
@@ -197,6 +231,14 @@
         if (p.birthDate) els.birthdateInput.value = p.birthDate;
         if (p.photoBase64) els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
       }
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        els.cpfInput.value = u.cpf || '';
+        els.rgInput.value = u.rg || '';
+        els.telefoneInput.value = u.telefone || '';
+        els.enderecoInput.value = u.endereco || '';
+        els.emailAltInput.value = u.emailAlternativo || '';
+      }
     });
   });
 
@@ -223,7 +265,18 @@
     };
     if (novaFotoDataUrl) dados.photoBase64 = novaFotoDataUrl;
 
-    db.collection('perfis').doc(currentUid).set(dados, { merge: true }).then(function(){
+    const dadosCadastrais = {
+      cpf: els.cpfInput.value.trim(),
+      rg: els.rgInput.value.trim(),
+      telefone: els.telefoneInput.value.trim(),
+      endereco: els.enderecoInput.value.trim(),
+      emailAlternativo: els.emailAltInput.value.trim()
+    };
+
+    Promise.all([
+      db.collection('perfis').doc(currentUid).set(dados, { merge: true }),
+      db.collection('users').doc(currentUid).update(dadosCadastrais)
+    ]).then(function(){
       els.msgOk.style.display = 'block';
     }).catch(function(err){
       els.msgErr.textContent = 'Erro ao salvar: ' + err.message;
