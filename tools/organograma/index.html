@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Organograma — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --gold:#d8b25a;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:18px 20px 15px;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.5rem;margin:0 0 4px;color:var(--paper);text-align:center;}
+  header .sub{font-size:.82rem;color:var(--muted);margin:0;text-align:center;}
+  .admin-bar{
+    display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px;
+  }
+  .btn{
+    padding:8px 16px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--paper);font-size:.82rem;cursor:pointer;font-weight:600;
+  }
+  .btn:hover{border-color:var(--gold);color:var(--gold);}
+  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.primary:hover{background:var(--red-bright);border-color:var(--red-bright);color:#fff;}
+  .btn.small{padding:5px 12px;font-size:.72rem;}
+  .btn.danger-outline{color:var(--red-bright);}
+  .btn.danger-outline:hover{border-color:var(--red-bright);}
+  .sync-hint{
+    display:none;max-width:960px;margin:14px auto 0;padding:10px 16px;border-radius:10px;
+    background:rgba(216,178,90,.10);border:1px solid rgba(216,178,90,.35);color:var(--gold);
+    font-size:.82rem;text-align:center;
+  }
+
+  main{max-width:1100px;margin:0 auto;padding:26px 20px 60px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+  #empty{padding:80px 20px;text-align:center;color:var(--muted);font-size:.92rem;max-width:480px;margin:0 auto;}
+  #empty .big{font-size:2.2rem;margin-bottom:10px;}
+
+  .depto-section{margin-bottom:34px;}
+  .depto-title{
+    display:flex;align-items:baseline;gap:10px;font-family:var(--font-display);font-size:1.15rem;
+    color:var(--gold);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line-strong);
+  }
+  .depto-title .count{font-family:var(--font-body);font-size:.72rem;color:var(--muted);font-weight:600;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;}
+
+  .card{
+    background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line-strong);
+    border-radius:16px;padding:18px 18px 16px;position:relative;
+  }
+  .card .head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .avatar{
+    width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;
+    border:2px solid var(--gold);background-color:var(--panel-2);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.3rem;color:var(--gold);
+  }
+  .card .nome{font-family:var(--font-display);font-weight:600;font-size:1rem;color:var(--paper);line-height:1.25;}
+  .card .row{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;padding:6px 0;border-top:1px solid var(--line);}
+  .card .row .k{color:var(--muted);}
+  .card .row .v{color:var(--paper);font-weight:600;text-align:right;}
+  .card .tempo{font-size:.7rem;color:var(--muted);margin-top:2px;}
+  .card .foot{display:flex;gap:8px;margin-top:14px;}
+
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal-box{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:16px;padding:24px;
+    width:100%;max-width:420px;max-height:88vh;overflow:auto;
+  }
+  .modal-box h3{font-family:var(--font-display);margin:0 0 4px;color:var(--paper);}
+  .modal-box .sub{font-size:.8rem;color:var(--muted);margin:0 0 16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:5px;}
+  .field input,.field select{
+    width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-family:var(--font-body);font-size:.88rem;
+  }
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+  .msg-err{display:none;color:var(--red-bright);font-size:.78rem;margin-top:-6px;margin-bottom:12px;}
+
+  @media (max-width:640px){
+    .card .row{flex-direction:column;gap:2px;}
+    .card .row .v{text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗂️ Organograma</h1>
+  <p class="sub">Quadro de colaboradores por departamento.</p>
+  <div class="admin-bar" id="admin-bar" style="display:none;">
+    <button type="button" class="btn primary" id="btn-add">+ Adicionar colaborador</button>
+    <button type="button" class="btn" id="btn-sync">🔄 Sincronizar com cadastros</button>
+  </div>
+</header>
+
+<div class="sync-hint" id="sync-hint"></div>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+  <div id="empty" style="display:none;">
+    <div class="big">🗂️</div>
+    <span id="empty-texto"></span>
+  </div>
+  <div id="secoes"></div>
+</main>
+
+<!-- Modal: adicionar/editar colaborador no organograma -->
+<div class="modal-backdrop" id="edit-backdrop">
+  <div class="modal-box">
+    <h3 id="edit-titulo">Editar colaborador</h3>
+    <p class="sub" id="edit-sub"></p>
+
+    <div class="field" id="campo-selecionar" style="display:none;">
+      <label>Colaborador</label>
+      <select id="edit-select-uid"></select>
+    </div>
+
+    <div class="field">
+      <label>Departamento</label>
+      <input type="text" id="edit-depto" list="deptos-existentes" placeholder="Ex: Cível">
+      <datalist id="deptos-existentes"></datalist>
+    </div>
+    <div class="field">
+      <label>Data de ingresso</label>
+      <input type="date" id="edit-ingresso">
+    </div>
+    <div class="field">
+      <label>Remuneração</label>
+      <input type="text" id="edit-remuneracao" placeholder="Ex: R$ 3.500,00">
+    </div>
+    <div class="msg-err" id="edit-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="edit-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="edit-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const els = {
+    gate: document.getElementById('gate'),
+    empty: document.getElementById('empty'),
+    emptyTexto: document.getElementById('empty-texto'),
+    secoes: document.getElementById('secoes'),
+    adminBar: document.getElementById('admin-bar'),
+    btnAdd: document.getElementById('btn-add'),
+    btnSync: document.getElementById('btn-sync'),
+    syncHint: document.getElementById('sync-hint'),
+    editBackdrop: document.getElementById('edit-backdrop'),
+    editTitulo: document.getElementById('edit-titulo'),
+    editSub: document.getElementById('edit-sub'),
+    campoSelecionar: document.getElementById('campo-selecionar'),
+    editSelectUid: document.getElementById('edit-select-uid'),
+    editDepto: document.getElementById('edit-depto'),
+    editIngresso: document.getElementById('edit-ingresso'),
+    editRemuneracao: document.getElementById('edit-remuneracao'),
+    editErr: document.getElementById('edit-err'),
+    editCancelar: document.getElementById('edit-cancelar'),
+    editSalvar: document.getElementById('edit-salvar'),
+    deptosExistentes: document.getElementById('deptos-existentes'),
+  };
+
+  let souAdmin = false;
+  let meuUid = null;
+  let organogramaMap = {};   // uid -> {displayName, deptoAtual, dataIngresso, remuneracao}
+  let perfisMap = {};        // uid -> {photoBase64}
+  let usersMap = {};         // uid -> {displayName, email, deptoAtual, dataIngresso, remuneracao} (só carregado se admin)
+  let usersCarregado = false;
+  let editandoUid = null;    // uid alvo do modal (null = está no modo "selecionar colaborador")
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function formatarData(iso){
+    if (!iso) return '';
+    const p = iso.split('-');
+    if (p.length !== 3) return iso;
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  function tempoDeCasa(iso){
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    const hoje = new Date();
+    let anos = hoje.getFullYear() - d.getFullYear();
+    let meses = hoje.getMonth() - d.getMonth();
+    if (hoje.getDate() < d.getDate()) meses--;
+    if (meses < 0) { anos--; meses += 12; }
+    if (anos < 0) return '';
+    const partes = [];
+    if (anos > 0) partes.push(anos + (anos === 1 ? ' ano' : ' anos'));
+    if (meses > 0 || anos === 0) partes.push(meses + (meses === 1 ? ' mês' : ' meses'));
+    return 'há ' + partes.join(' e ');
+  }
+
+  // ---------- Render ----------
+  function render(){
+    const uids = Object.keys(organogramaMap);
+
+    if (uids.length === 0) {
+      els.secoes.innerHTML = '';
+      els.empty.style.display = 'block';
+      els.emptyTexto.textContent = souAdmin
+        ? 'Nenhum colaborador no organograma ainda. Clique em "Sincronizar com cadastros" para importar automaticamente quem já tem cadastro no portal, ou adicione manualmente.'
+        : 'O organograma ainda não foi preenchido. Peça a um administrador para configurá-lo.';
+      atualizarSyncHint();
+      return;
+    }
+    els.empty.style.display = 'none';
+
+    const grupos = {};
+    uids.forEach(function(uid){
+      const d = organogramaMap[uid];
+      const depto = (d.deptoAtual || '').trim() || 'Sem departamento definido';
+      if (!grupos[depto]) grupos[depto] = [];
+      grupos[depto].push(Object.assign({uid: uid}, d));
+    });
+
+    const nomesDeptos = Object.keys(grupos).sort(function(a, b){
+      if (a === 'Sem departamento definido') return 1;
+      if (b === 'Sem departamento definido') return -1;
+      return a.localeCompare(b, 'pt-BR');
+    });
+
+    els.secoes.innerHTML = nomesDeptos.map(function(depto){
+      const pessoas = grupos[depto].sort(function(a, b){
+        return (a.displayName || '').localeCompare(b.displayName || '', 'pt-BR');
+      });
+      return '<div class="depto-section">' +
+        '<h2 class="depto-title">' + escapeHtml(depto) + ' <span class="count">' + pessoas.length + (pessoas.length === 1 ? ' colaborador' : ' colaboradores') + '</span></h2>' +
+        '<div class="grid">' + pessoas.map(renderCard).join('') + '</div>' +
+      '</div>';
+    }).join('');
+
+    atualizarSyncHint();
+  }
+
+  function renderCard(p){
+    const foto = perfisMap[p.uid] && perfisMap[p.uid].photoBase64;
+    const avatarInner = foto
+      ? '<div class="avatar" style="background-image:url(' + foto + ')"></div>'
+      : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
+    const ingresso = p.dataIngresso
+      ? formatarData(p.dataIngresso) + '<div class="tempo">' + tempoDeCasa(p.dataIngresso) + '</div>'
+      : '<span style="color:var(--muted);font-weight:400;">não informado</span>';
+    const remuneracao = p.remuneracao
+      ? escapeHtml(p.remuneracao)
+      : '<span style="color:var(--muted);font-weight:400;">não informada</span>';
+
+    const rodapeAdmin = souAdmin
+      ? '<div class="foot">' +
+          '<button type="button" class="btn small" onclick="window.__orgEditar(\'' + p.uid + '\')">Editar</button>' +
+          '<button type="button" class="btn small danger-outline" onclick="window.__orgRemover(\'' + p.uid + '\',\'' + escapeHtml(p.displayName || '') + '\')">Remover</button>' +
+        '</div>'
+      : '';
+
+    return '<div class="card">' +
+      '<div class="head">' + avatarInner + '<div class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</div></div>' +
+      '<div class="row"><span class="k">Departamento</span><span class="v">' + escapeHtml((p.deptoAtual || '').trim() || 'não informado') + '</span></div>' +
+      '<div class="row"><span class="k">Ingresso</span><span class="v">' + ingresso + '</span></div>' +
+      '<div class="row"><span class="k">Remuneração</span><span class="v">' + remuneracao + '</span></div>' +
+      rodapeAdmin +
+    '</div>';
+  }
+
+  function atualizarSyncHint(){
+    if (!souAdmin || !usersCarregado) { els.syncHint.style.display = 'none'; return; }
+    const pendentes = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid]; });
+    if (pendentes.length === 0) { els.syncHint.style.display = 'none'; return; }
+    els.syncHint.style.display = 'block';
+    els.syncHint.textContent = pendentes.length + (pendentes.length === 1
+      ? ' colaborador cadastrado ainda não está no organograma.'
+      : ' colaboradores cadastrados ainda não estão no organograma.') + ' Clique em "Sincronizar com cadastros" para importá-los.';
+  }
+
+  // ---------- Modal: adicionar/editar ----------
+  function listaDeptosExistentes(){
+    const set = {};
+    Object.keys(organogramaMap).forEach(function(uid){
+      const d = (organogramaMap[uid].deptoAtual || '').trim();
+      if (d) set[d] = true;
+    });
+    els.deptosExistentes.innerHTML = Object.keys(set).sort(function(a,b){return a.localeCompare(b,'pt-BR');})
+      .map(function(d){ return '<option value="' + escapeHtml(d) + '">'; }).join('');
+  }
+
+  function abrirModalEdicao(uid){
+    editandoUid = uid;
+    els.campoSelecionar.style.display = 'none';
+    els.editTitulo.textContent = 'Editar colaborador';
+    const fonte = usersMap[uid] || organogramaMap[uid] || {};
+    els.editSub.textContent = fonte.displayName || organogramaMap[uid].displayName || '';
+    els.editDepto.value = fonte.deptoAtual || '';
+    els.editIngresso.value = fonte.dataIngresso || '';
+    els.editRemuneracao.value = fonte.remuneracao || '';
+    els.editErr.style.display = 'none';
+    listaDeptosExistentes();
+    els.editBackdrop.classList.add('show');
+  }
+  window.__orgEditar = abrirModalEdicao;
+
+  function abrirModalAdicionar(){
+    const disponiveis = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid]; });
+    if (disponiveis.length === 0) {
+      alert('Todos os colaboradores cadastrados já estão no organograma.');
+      return;
+    }
+    editandoUid = null;
+    els.editTitulo.textContent = 'Adicionar colaborador';
+    els.editSub.textContent = 'Escolha um colaborador já cadastrado no portal — os dados dele são carregados automaticamente.';
+    els.campoSelecionar.style.display = 'block';
+    disponiveis.sort(function(a, b){
+      return (usersMap[a].displayName || '').localeCompare(usersMap[b].displayName || '', 'pt-BR');
+    });
+    els.editSelectUid.innerHTML = disponiveis.map(function(uid){
+      const u = usersMap[uid];
+      return '<option value="' + uid + '">' + escapeHtml(u.displayName || u.email || uid) + '</option>';
+    }).join('');
+    preencherFormComUid(els.editSelectUid.value);
+    els.editErr.style.display = 'none';
+    listaDeptosExistentes();
+    els.editBackdrop.classList.add('show');
+  }
+  els.btnAdd.addEventListener('click', abrirModalAdicionar);
+
+  function preencherFormComUid(uid){
+    const u = usersMap[uid] || {};
+    els.editDepto.value = u.deptoAtual || '';
+    els.editIngresso.value = u.dataIngresso || '';
+    els.editRemuneracao.value = u.remuneracao || '';
+  }
+  els.editSelectUid.addEventListener('change', function(){
+    preencherFormComUid(els.editSelectUid.value);
+  });
+
+  function fecharModal(){
+    els.editBackdrop.classList.remove('show');
+    editandoUid = null;
+  }
+  els.editCancelar.addEventListener('click', fecharModal);
+  els.editBackdrop.addEventListener('click', function(e){
+    if (e.target === els.editBackdrop) fecharModal();
+  });
+
+  els.editSalvar.addEventListener('click', function(){
+    const uid = editandoUid || els.editSelectUid.value;
+    if (!uid) return;
+    const deptoAtual = els.editDepto.value.trim();
+    const dataIngresso = els.editIngresso.value;
+    const remuneracao = els.editRemuneracao.value.trim();
+    const fonte = usersMap[uid] || organogramaMap[uid] || {};
+    const displayName = fonte.displayName || '';
+
+    els.editSalvar.disabled = true;
+    Promise.all([
+      db.collection('organograma').doc(uid).set({
+        displayName: displayName,
+        deptoAtual: deptoAtual,
+        dataIngresso: dataIngresso,
+        remuneracao: remuneracao,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: meuUid
+      }, { merge: true }),
+      db.collection('users').doc(uid).update({
+        deptoAtual: deptoAtual,
+        dataIngresso: dataIngresso,
+        remuneracao: remuneracao
+      })
+    ]).then(function(){
+      fecharModal();
+    }).catch(function(err){
+      els.editErr.textContent = 'Erro ao salvar: ' + err.message;
+      els.editErr.style.display = 'block';
+    }).finally(function(){
+      els.editSalvar.disabled = false;
+    });
+  });
+
+  window.__orgRemover = function(uid, nome){
+    if (!confirm('Remover ' + (nome || 'este colaborador') + ' do organograma?\n(Isso só tira o bloco desta tela — não altera o cadastro nem o acesso da pessoa ao portal.)')) return;
+    db.collection('organograma').doc(uid).delete();
+  };
+
+  // ---------- Sincronizar com cadastros ----------
+  els.btnSync.addEventListener('click', function(){
+    if (!usersCarregado) return;
+    const uidsUsers = Object.keys(usersMap);
+    if (uidsUsers.length === 0) { alert('Nenhum colaborador cadastrado ainda.'); return; }
+    if (!confirm('Isso vai atualizar o organograma com os dados de departamento, data de ingresso e remuneração já cadastrados para todos os ' + uidsUsers.length + ' colaboradores. Continuar?')) return;
+
+    els.btnSync.disabled = true;
+    els.btnSync.textContent = 'Sincronizando...';
+
+    const lotes = [];
+    let batch = db.batch();
+    let contador = 0;
+    uidsUsers.forEach(function(uid){
+      const u = usersMap[uid];
+      const ref = db.collection('organograma').doc(uid);
+      batch.set(ref, {
+        displayName: u.displayName || '',
+        deptoAtual: u.deptoAtual || '',
+        dataIngresso: u.dataIngresso || '',
+        remuneracao: u.remuneracao || '',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: meuUid
+      }, { merge: true });
+      contador++;
+      if (contador % 450 === 0) {
+        lotes.push(batch);
+        batch = db.batch();
+      }
+    });
+    lotes.push(batch);
+
+    lotes.reduce(function(p, b){ return p.then(function(){ return b.commit(); }); }, Promise.resolve())
+      .then(function(){
+        alert('Organograma sincronizado.');
+      })
+      .catch(function(err){
+        alert('Erro ao sincronizar: ' + err.message);
+      })
+      .finally(function(){
+        els.btnSync.disabled = false;
+        els.btnSync.textContent = '🔄 Sincronizar com cadastros';
+      });
+  });
+
+  // ---------- Auth / carregamento ----------
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para ver o organograma.';
+      return;
+    }
+    meuUid = user.uid;
+    els.gate.style.display = 'none';
+
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      souAdmin = !!doc.exists && doc.data().role === 'admin';
+      els.adminBar.style.display = souAdmin ? 'flex' : 'none';
+
+      if (souAdmin) {
+        db.collection('users').onSnapshot(function(snap){
+          usersMap = {};
+          snap.docs.forEach(function(d){ usersMap[d.id] = d.data(); });
+          usersCarregado = true;
+          render();
+        });
+      }
+
+      db.collection('organograma').onSnapshot(function(snap){
+        organogramaMap = {};
+        snap.docs.forEach(function(d){ organogramaMap[d.id] = d.data(); });
+        render();
+      });
+
+      db.collection('perfis').onSnapshot(function(snap){
+        perfisMap = {};
+        snap.docs.forEach(function(d){ perfisMap[d.id] = d.data(); });
+        render();
+      });
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

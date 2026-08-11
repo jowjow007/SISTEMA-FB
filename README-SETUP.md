@@ -159,6 +159,10 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isSignedIn() && (resource.data.criadoPorUid == request.auth.uid || isAdmin());
     }
+    match /organograma/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }
 ```
@@ -180,6 +184,8 @@ service cloud.firestore {
 > As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Minhas Anotações**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
 
 > A regra de `contratosGerados` (usada pela ferramenta **Contratos e Propostas**, histórico "últimos documentos gerados") é compartilhada entre toda a equipe: qualquer usuário logado lê a lista inteira (para reaproveitar contratos gerados por colegas), mas só cria registros com o próprio `criadoPorUid`. Os registros nunca são editados depois de criados (`allow update: if false`) — cada geração de PDF cria um novo documento, não atualiza um existente. Apagar é permitido para quem criou o registro ou para admin (ex.: remover um teste/engano da lista). O campo `dados` guarda o objeto inteiro do formulário (nome, CPF, valores, cláusulas preenchidas etc.) para permitir recarregar o formulário com um clique — não guarda o PDF em si, só os dados usados para gerá-lo.
+
+> A regra de `organograma` (usada pela ferramenta **Organograma**) existe porque `users/{uid}` só pode ser lido pelo próprio dono do cadastro ou por um admin (regra `allow read` de `users` acima) — então um gestor sem papel de admin nunca conseguiria montar a lista de todo mundo direto de `users`. `organograma/{uid}` é um espelho **só com os campos não sensíveis** (`displayName`, `deptoAtual`, `dataIngresso`, `remuneracao`) que qualquer usuário logado pode ler — CPF, RG, telefone e endereço nunca são copiados para cá, continuam só em `users`. Só admin escreve (`allow write: if isAdmin()`), e a ferramenta grava nos dois lugares ao mesmo tempo (`users` e `organograma`) sempre que os 3 campos editáveis são alterados, seja pelo modal "Dados cadastrais" em Administração > Usuários, seja pelo próprio bloco do Organograma — para os dois nunca ficarem dessincronizados.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 
@@ -214,6 +220,14 @@ cadastre, por exemplo:
 | Chat Interno | `https://jowjow007.github.io/SISTEMA-FB/tools/chat/` |
 | Minhas Anotações | `https://jowjow007.github.io/SISTEMA-FB/tools/minhas-anotacoes/` |
 | Sistemas | `https://jowjow007.github.io/SISTEMA-FB/tools/sistemas/` |
+| Organograma | `https://jowjow007.github.io/SISTEMA-FB/tools/organograma/` |
+
+> **Aba "Organograma"**: diferente das demais, essa aba **não deve ser
+> liberada para todo mundo por padrão** — cadastre-a normalmente em
+> Administração > Abas, mas só marque a caixinha dela em **Editar abas**
+> para os sócios/gestores que devem acompanhar o quadro de colaboradores
+> (Depto, data de ingresso e remuneração). Quem não tiver a aba liberada
+> simplesmente não a vê no menu lateral, como qualquer outra aba restrita.
 
 Qualquer coisa nova que vocês pedirem para eu construir também pode entrar
 aqui como uma aba nova — não precisa mexer no código do portal, só cadastrar
