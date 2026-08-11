@@ -193,7 +193,7 @@
   .trend-card h3, .month-card h3, .pubarea-card h3{
     font-family:var(--font-display);font-weight:600;font-size:.98rem;margin:0 0 14px;color:var(--paper);
   }
-  .trend-chart-wrap{width:100%;}
+  .trend-chart-wrap{width:100%;position:relative;}
   svg.trend-svg{width:100%;height:auto;display:block;overflow:visible;}
   .trend-area{fill:var(--red-bright);opacity:.12;}
   .trend-line{fill:none;stroke:var(--red-bright);stroke-width:2px;stroke-linejoin:round;stroke-linecap:round;}
@@ -203,6 +203,18 @@
   .trend-peak-dot{fill:var(--red-bright);}
   .trend-peak-label{font-size:11px;font-weight:700;fill:var(--paper);font-family:var(--font-body);}
   .trend-foot{display:flex;justify-content:space-between;margin-top:2px;font-size:.68rem;color:var(--muted-2);}
+
+  .trend-crosshair{stroke:var(--silver);stroke-width:1px;opacity:.5;pointer-events:none;}
+  .trend-hover-dot{fill:var(--red-bright);stroke:var(--panel);stroke-width:2px;pointer-events:none;}
+  .trend-hit-rect{cursor:crosshair;}
+  .trend-tooltip{
+    position:absolute;top:0;pointer-events:none;z-index:5;
+    background:var(--panel-3);border:1px solid var(--line-strong);border-radius:8px;
+    padding:7px 11px;box-shadow:0 6px 18px rgba(0,0,0,0.4);white-space:nowrap;
+  }
+  .trend-tooltip .tt-date{font-size:.66rem;color:var(--muted);text-transform:capitalize;}
+  .trend-tooltip .tt-val{font-size:.86rem;color:var(--paper);font-weight:700;margin-top:1px;}
+  @media print{ .trend-tooltip, .trend-crosshair, .trend-hover-dot, .trend-hit-rect{display:none !important;} }
 
   .pubarea-card{
     background:var(--panel);border:1px solid var(--line-strong);border-radius:18px;padding:24px 28px 10px;
@@ -596,6 +608,13 @@ AREAS.forEach(a => {
 const DAILY = [["2026-01-01",0],["2026-01-02",0],["2026-01-03",0],["2026-01-04",0],["2026-01-05",0],["2026-01-06",0],["2026-01-07",1],["2026-01-08",2],["2026-01-09",6],["2026-01-10",0],["2026-01-11",0],["2026-01-12",1],["2026-01-13",2],["2026-01-14",2],["2026-01-15",2],["2026-01-16",5],["2026-01-17",0],["2026-01-18",0],["2026-01-19",0],["2026-01-20",2],["2026-01-21",9],["2026-01-22",15],["2026-01-23",8],["2026-01-24",0],["2026-01-25",0],["2026-01-26",7],["2026-01-27",8],["2026-01-28",6],["2026-01-29",5],["2026-01-30",5],["2026-01-31",0],["2026-02-01",0],["2026-02-02",3],["2026-02-03",3],["2026-02-04",1],["2026-02-05",5],["2026-02-06",7],["2026-02-07",0],["2026-02-08",0],["2026-02-09",7],["2026-02-10",11],["2026-02-11",8],["2026-02-12",11],["2026-02-13",9],["2026-02-14",0],["2026-02-15",0],["2026-02-16",1],["2026-02-17",0],["2026-02-18",3],["2026-02-19",3],["2026-02-20",8],["2026-02-21",0],["2026-02-22",0],["2026-02-23",8],["2026-02-24",7],["2026-02-25",5],["2026-02-26",9],["2026-02-27",6],["2026-02-28",0],["2026-03-01",0],["2026-03-02",4],["2026-03-03",6],["2026-03-04",8],["2026-03-05",8],["2026-03-06",10],["2026-03-07",0],["2026-03-08",0],["2026-03-09",6],["2026-03-10",9],["2026-03-11",6],["2026-03-12",7],["2026-03-13",12],["2026-03-14",0],["2026-03-15",0],["2026-03-16",7],["2026-03-17",6],["2026-03-18",3],["2026-03-19",8],["2026-03-20",5],["2026-03-21",0],["2026-03-22",0],["2026-03-23",8],["2026-03-24",4],["2026-03-25",9],["2026-03-26",8],["2026-03-27",8],["2026-03-28",0],["2026-03-29",0],["2026-03-30",5],["2026-03-31",11],["2026-04-01",4],["2026-04-02",0],["2026-04-03",0],["2026-04-04",0],["2026-04-05",0],["2026-04-06",3],["2026-04-07",11],["2026-04-08",10],["2026-04-09",4],["2026-04-10",3],["2026-04-11",0],["2026-04-12",0],["2026-04-13",7],["2026-04-14",8],["2026-04-15",6],["2026-04-16",6],["2026-04-17",5],["2026-04-18",0],["2026-04-19",0],["2026-04-20",0],["2026-04-21",2],["2026-04-22",4],["2026-04-23",8],["2026-04-24",8],["2026-04-25",0],["2026-04-26",0],["2026-04-27",5],["2026-04-28",8],["2026-04-29",7],["2026-04-30",10],["2026-05-01",4],["2026-05-02",0],["2026-05-03",0],["2026-05-04",9],["2026-05-05",6],["2026-05-06",6],["2026-05-07",8],["2026-05-08",6],["2026-05-09",0],["2026-05-10",0],["2026-05-11",6],["2026-05-12",6],["2026-05-13",8],["2026-05-14",5],["2026-05-15",8],["2026-05-16",0],["2026-05-17",0],["2026-05-18",5],["2026-05-19",5],["2026-05-20",7],["2026-05-21",5],["2026-05-22",9],["2026-05-23",0],["2026-05-24",0],["2026-05-25",4],["2026-05-26",9],["2026-05-27",6],["2026-05-28",7],["2026-05-29",4],["2026-05-30",0],["2026-05-31",0],["2026-06-01",12],["2026-06-02",11],["2026-06-03",9],["2026-06-04",2],["2026-06-05",0],["2026-06-06",0],["2026-06-07",0],["2026-06-08",8],["2026-06-09",11],["2026-06-10",15],["2026-06-11",3],["2026-06-12",6],["2026-06-13",0],["2026-06-14",0],["2026-06-15",3],["2026-06-16",7],["2026-06-17",7],["2026-06-18",7],["2026-06-19",10],["2026-06-20",0],["2026-06-21",0],["2026-06-22",11],["2026-06-23",4],["2026-06-24",5],["2026-06-25",3],["2026-06-26",7],["2026-06-27",0],["2026-06-28",0],["2026-06-29",6],["2026-06-30",7],["2026-07-01",10],["2026-07-02",10],["2026-07-03",6],["2026-07-04",0],["2026-07-05",0],["2026-07-06",6],["2026-07-07",8],["2026-07-08",10],["2026-07-09",3],["2026-07-10",10],["2026-07-11",0],["2026-07-12",0],["2026-07-13",7],["2026-07-14",6],["2026-07-15",13],["2026-07-16",12],["2026-07-17",3],["2026-07-18",0],["2026-07-19",0],["2026-07-20",12],["2026-07-21",11],["2026-07-22",3],["2026-07-23",1],["2026-07-24",5],["2026-07-25",0],["2026-07-26",0],["2026-07-27",9],["2026-07-28",7],["2026-07-29",4],["2026-07-30",6],["2026-07-31",4],["2026-08-01",0],["2026-08-02",0],["2026-08-03",6],["2026-08-04",9],["2026-08-05",4],["2026-08-06",6],["2026-08-07",13],["2026-08-08",0],["2026-08-09",0],["2026-08-10",9],["2026-08-11",7]];
 const DAILY_AVG = 4.42;
 
+const WEEKDAY_PT = ["dom","seg","ter","qua","qui","sex","sáb"];
+function formatDailyDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = WEEKDAY_PT[new Date(y, m - 1, d).getDay()];
+  return `${wd}, ${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")}/${y}`;
+}
+
 function renderTrend() {
   const W = 1000, H = 190, padTop = 26, padBottom = 24, padLeft = 4, padRight = 4;
   const plotW = W - padLeft - padRight, plotH = H - padTop - padBottom;
@@ -626,16 +645,75 @@ function renderTrend() {
 
   const avgY = y(DAILY_AVG).toFixed(2);
 
-  document.getElementById("trendChart").innerHTML = `
-    <svg class="trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+  const wrap = document.getElementById("trendChart");
+  wrap.innerHTML = `
+    <svg class="trend-svg" id="trendSvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
       <line class="trend-avg-line" x1="${padLeft}" y1="${avgY}" x2="${W-padRight}" y2="${avgY}"/>
       <polygon class="trend-area" points="${areaPts}"/>
       <polyline class="trend-line" points="${linePts}"/>
       <circle class="trend-peak-dot" cx="${peakX.toFixed(2)}" cy="${peakY.toFixed(2)}" r="3.5"/>
       <text class="trend-peak-label" x="${peakX.toFixed(2)}" y="${(peakY-9).toFixed(2)}" text-anchor="middle">${peakVal}</text>
       ${ticks}
+      <line class="trend-crosshair" x1="0" y1="${padTop}" x2="0" y2="${H-padBottom}" style="display:none"/>
+      <circle class="trend-hover-dot" r="4.5" style="display:none"/>
+      <rect class="trend-hit-rect" x="${padLeft}" y="0" width="${plotW}" height="${H}" fill="transparent"/>
     </svg>
+    <div class="trend-tooltip" id="trendTooltip" style="display:none"></div>
   `;
+
+  const svg = document.getElementById("trendSvg");
+  const hitRect = svg.querySelector(".trend-hit-rect");
+  const crosshair = svg.querySelector(".trend-crosshair");
+  const hoverDot = svg.querySelector(".trend-hover-dot");
+  const tooltip = document.getElementById("trendTooltip");
+  const pt = svg.createSVGPoint();
+
+  function svgX(clientX) {
+    pt.x = clientX; pt.y = 0;
+    const inv = svg.getScreenCTM().inverse();
+    return pt.matrixTransform(inv).x;
+  }
+
+  function showAt(clientX, clientY) {
+    const sx = svgX(clientX);
+    let idx = Math.round(((sx - padLeft) / plotW) * (n - 1));
+    idx = Math.max(0, Math.min(n - 1, idx));
+    const d = DAILY[idx];
+    const px = x(idx), py = y(d[1]);
+
+    crosshair.setAttribute("x1", px); crosshair.setAttribute("x2", px);
+    crosshair.style.display = "";
+    hoverDot.setAttribute("cx", px); hoverDot.setAttribute("cy", py);
+    hoverDot.style.display = "";
+
+    tooltip.style.display = "";
+    const dateEl = document.createElement("div");
+    dateEl.className = "tt-date";
+    dateEl.textContent = formatDailyDate(d[0]);
+    const valEl = document.createElement("div");
+    valEl.className = "tt-val";
+    valEl.textContent = d[1] + (d[1] === 1 ? " publicação" : " publicações");
+    tooltip.replaceChildren(dateEl, valEl);
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const relX = svgRect.left - wrapRect.left + (px / W) * svgRect.width;
+    let left = relX + 12;
+    const maxLeft = wrapRect.width - 130;
+    if (left > maxLeft) left = relX - 132;
+    tooltip.style.left = Math.max(0, left) + "px";
+    tooltip.style.top = "0px";
+  }
+
+  function hide() {
+    crosshair.style.display = "none";
+    hoverDot.style.display = "none";
+    tooltip.style.display = "none";
+  }
+
+  hitRect.addEventListener("pointermove", e => showAt(e.clientX, e.clientY));
+  hitRect.addEventListener("pointerdown", e => showAt(e.clientX, e.clientY));
+  hitRect.addEventListener("pointerleave", hide);
 }
 renderTrend();
 
