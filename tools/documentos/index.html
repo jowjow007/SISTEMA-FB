@@ -1407,26 +1407,36 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
 })();
 
 /* ---------- seletor de usuário do sistema (substabelecimento) ----------
-   Melhoria opcional: puxa a lista de colaboradores do Portal (mesma coleção
-   Firestore "perfis" que o Chat Interno já usa) para preencher o nome com um
-   clique. OAB e estado civil não ficam salvos no sistema hoje, então só saem
-   automáticos para os advogados já conhecidos aqui — o resto continua manual.
-   Se o Firebase não estiver configurado ou o usuário não estiver logado, o
-   seletor simplesmente fica vazio e o resto da ferramenta funciona igual. */
+   Puxa a lista de colaboradores do Portal (coleção Firestore "perfis", de
+   leitura ampla — mesma que o Chat Interno já usa) para preencher nome, OAB
+   e estado civil com um clique. OAB/estado civil vêm do que a pessoa salvou
+   em "Meu Perfil" — atualiza sozinho aqui toda vez que ela salvar de novo lá,
+   sem precisar mexer em nada nesta ferramenta. (Não usamos users/{uid} para
+   isso porque as regras do Firestore só deixam cada um ler o PRÓPRIO
+   users/{uid} ou um admin ler qualquer um — perfis existe justamente para
+   dados "públicos" como este, ver README-SETUP.md.)
+   Nacionalidade não é coletada em Meu Perfil (quase todo mundo é brasileiro),
+   então só sai automática para os 3 advogados já cadastrados manualmente
+   abaixo — o resto continua um campo livre, preenchido à mão se precisar.
+   Se o Firebase não estiver configurado, o usuário não estiver logado, ou a
+   pessoa selecionada nunca tiver salvo OAB/estado civil, os campos afetados
+   simplesmente ficam como estavam — o resto da ferramenta funciona igual. */
 const OAB_CONHECIDOS = {
-  'HECY BRAGA DE OLIVEIRA': {oab:'95.948', estadoCivil:'casado', nacionalidade:'brasileiro'},
-  'JONATHAN SILVA FONSECA': {oab:'163.443', estadoCivil:'casado', nacionalidade:'brasileiro'},
-  'MICAELA LINO COSTA': {oab:'232.521', estadoCivil:'solteira', nacionalidade:'brasileira'}
+  'HECY BRAGA DE OLIVEIRA': {nacionalidade:'brasileiro'},
+  'JONATHAN SILVA FONSECA': {nacionalidade:'brasileiro'},
+  'MICAELA LINO COSTA': {nacionalidade:'brasileira'}
 };
+const ESTADO_CIVIL_CODES = { solteiro:'solteiro(a)', casado:'casado(a)', uniao_estavel:'em união estável' };
 function preencherAdvogadoDoUsuario(prefix, perfil){
   const nome = (perfil.displayName||'').toUpperCase();
   document.getElementById(prefix+'-nome').value = nome;
-  const conhecido = OAB_CONHECIDOS[nome];
-  if(conhecido){
-    const oabEl=document.getElementById(prefix+'-oab'); if(oabEl) oabEl.value=conhecido.oab;
-    const ecEl=document.getElementById(prefix+'-estado-civil'); if(ecEl) ecEl.value=conhecido.estadoCivil;
-    const nacEl=document.getElementById(prefix+'-nacionalidade'); if(nacEl) nacEl.value=conhecido.nacionalidade;
-  }
+  const conhecido = OAB_CONHECIDOS[nome] || {};
+  const oabEl=document.getElementById(prefix+'-oab');
+  if(oabEl && perfil.oab) oabEl.value = perfil.oab;
+  const ecEl=document.getElementById(prefix+'-estado-civil');
+  if(ecEl && perfil.estadoCivil) ecEl.value = ESTADO_CIVIL_CODES[perfil.estadoCivil] || perfil.estadoCivil;
+  const nacEl=document.getElementById(prefix+'-nacionalidade');
+  if(nacEl && conhecido.nacionalidade) nacEl.value = conhecido.nacionalidade;
   scheduleRender();
 }
 /* ---------- histórico de documentos gerados (Firestore, compartilhado com a equipe) ---------- */
@@ -1459,10 +1469,17 @@ function resumoDocumento(d){
   }
   return { nome: nome||'(sem nome)', meta: meta||'' };
 }
+// Reaproveita a coleção "contratosGerados" (já tem regra de segurança publicada
+// no Firestore — ver README-SETUP.md) em vez de criar "documentosGerados" própria,
+// que exigiria pedir para colar regras novas no Console do Firebase. Os 5 tipos
+// deste app (DOCUMENTOS_TIPOS) não têm nenhuma sobreposição com os tipos do
+// Contratos (contrato_pf, proposta_pf_pj etc.), então dá pra guardar tudo junto
+// e filtrar por tipo na leitura (ver carregarHistorico) sem misturar as listas.
+const DOCUMENTOS_TIPOS = ['procuracao','substabelecimento','hipossuficiencia','termo_repasse','recibo'];
 function salvarHistorico(d){
   if(!currentUser || !window.__db) return;
   const { nome, meta } = resumoDocumento(d);
-  window.__db.collection('documentosGerados').add({
+  window.__db.collection('contratosGerados').add({
     tipo: d.tipo,
     nomeDisplay: nome,
     metaDisplay: meta,
@@ -1616,9 +1633,12 @@ function renderHistorico(docs){
 }
 function carregarHistorico(){
   if(!window.__db) return;
-  window.__db.collection('documentosGerados').orderBy('criadoEm','desc').limit(25)
+  // busca mais que 25 porque a coleção é compartilhada com o Contratos — depois
+  // de filtrar só os tipos deste app, cortamos para os 25 mais recentes.
+  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(80)
     .onSnapshot(snap=>{
-      renderHistorico(snap.docs.map(doc=>doc.data()));
+      const meus = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo)).slice(0,25);
+      renderHistorico(meus);
     }, err=>{
       document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
     });
@@ -1627,10 +1647,10 @@ function carregarHistorico(){
 /* ---------- inicialização do Firebase (opcional) ----------
    Duas melhorias progressivas, nenhuma delas obrigatória para o resto da
    ferramenta funcionar: (1) seletor de usuário do sistema no substabelecimento
-   (puxa o nome da coleção "perfis", mesma que o Chat Interno já usa; OAB e
-   estado civil só ficam automáticos para os advogados já conhecidos aqui,
-   ver OAB_CONHECIDOS acima) e (2) histórico dos últimos documentos gerados
-   pela equipe, salvo em "documentosGerados". Se o Firebase não estiver
+   (nome, OAB e estado civil puxados da coleção "perfis" — ver comentário
+   acima de OAB_CONHECIDOS) e (2) histórico dos últimos documentos gerados
+   pela equipe, salvo em "contratosGerados" (compartilhada com o Contratos,
+   ver comentário acima de DOCUMENTOS_TIPOS). Se o Firebase não estiver
    configurado ou o usuário não estiver logado, ambas ficam vazias/inativas e
    o resto da ferramenta continua funcionando normalmente. */
 try{
