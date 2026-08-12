@@ -380,10 +380,22 @@ Google" de novo.
 ## 9. Aba "Assistente IA" (chat livre com o Gemini)
 
 A ferramenta em `tools/assistente-ia/` é um chat livre estilo ChatGPT,
-usando a **API do Google Gemini** (tem cota gratuita generosa — sem custo
-para o volume de uso de um escritório). Não tem acesso a nenhum dado do
-Portal (processos, contratos, clientes) — é só um assistente de propósito
-geral embutido no sistema.
+usando a **API do Google Gemini**, com um botão opcional de **busca no
+Google** (útil para jurisprudência, notícias, qualquer coisa que precise
+de informação atual/verificável em vez do modelo "lembrar de cabeça" —
+IA sem busca pode inventar número de acórdão que não existe). Não tem
+acesso a nenhum dado do Portal (processos, contratos, clientes) — é só um
+assistente de propósito geral embutido no sistema.
+
+**A cota realmente gratuita é pequena demais para uso real do escritório**
+(testado na prática: só 20 mensagens por dia no total, para todo mundo,
+no nível sem faturamento) — e a busca do Google nem funciona sem
+faturamento ativado. Por isso o passo a passo abaixo já inclui ativar
+faturamento no projeto do Google Cloud (custo baixo, ~US$1,50 por milhão
+de tokens de entrada / US$9 por milhão de saída no `gemini-3.5-flash`) **e**
+um limite diário configurado no próprio Worker (independente do Google,
+nunca deixa passar de um teto fixo de mensagens/dia) como rede de
+segurança contra gasto inesperado.
 
 **Importante — mudou desde que o Gmail foi configurado**: as chaves novas
 que o Google AI Studio cria hoje vêm obrigatoriamente "vinculadas a uma
@@ -447,12 +459,44 @@ conversa com o Gemini.
    da "Version History" é a mesma que aparece em "Active deployment" (com
    100% de tráfego) — se não for, clique nos **"..."** da versão mais nova
    e promova/publique ela.
-8. Copie a URL pública do Worker (aparece no topo da página dele, algo
-   como `https://portal-fb-gemini.SEU-USUARIO.workers.dev`) e cole em
-   [`tools/assistente-ia/gemini-config.js`](tools/assistente-ia/gemini-config.js),
-   no lugar de `COLE_AQUI_A_URL_DO_SEU_WORKER`.
-9. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
-   tabela do passo 5, apontando para `tools/assistente-ia/`.
+8. **Ativar faturamento** (necessário — sem isso o limite fica em 20
+   mensagens/dia e a busca do Google não funciona): no
+   [Google AI Studio](https://aistudio.google.com/apikey), botão
+   **"Configurar faturamento"** no topo da tela de "Limite de taxa", ou
+   direto em https://console.cloud.google.com/billing — vincule um cartão
+   ao projeto `SISTEMA-FB`. Recomendado criar também um **orçamento com
+   alerta** (Faturamento > Orçamentos e alertas > Criar orçamento, ex:
+   avisar em US$10/mês) — é só um aviso por e-mail, não trava o gasto
+   sozinho (por isso o limite diário do passo 9 é a proteção de verdade).
+9. **Limite diário próprio, independente do Google** — cria um "cofrinho"
+   (KV Namespace) para o Worker contar quantas mensagens já saíram hoje:
+   - No Cloudflare, vá em **Compute > Workers & Pages > KV** (menu
+     lateral) → **"Create namespace"** → nome ex. `assistente-ia-usage`
+     → Criar.
+   - Volte no Worker `portal-fb-gemini` → **Settings > Bindings** → **Add
+     binding** → tipo **KV Namespace** → **Variable name** (tem que ser
+     exatamente) `USAGE_KV` → selecione o namespace criado → Salvar.
+   - Opcional: em **Settings > Variables and secrets**, adicione
+     **`DAILY_LIMIT`** (tipo **Text**) com o teto desejado de mensagens
+     por dia para o escritório inteiro (padrão sem essa variável: `200`).
+   - Confirme de novo em **Deployments** que a versão mais nova está ativa
+     (mesmo aviso do passo 7).
+10. Copie a URL pública do Worker (aparece no topo da página dele, algo
+    como `https://portal-fb-gemini.SEU-USUARIO.workers.dev`) e cole em
+    [`tools/assistente-ia/gemini-config.js`](tools/assistente-ia/gemini-config.js),
+    no lugar de `COLE_AQUI_A_URL_DO_SEU_WORKER`.
+11. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
+    tabela do passo 5, apontando para `tools/assistente-ia/`.
+
+**Botão de busca na internet**: dentro do chat, acima da caixa de
+mensagem, tem um interruptor "🔎 Pesquisar na internet" — desligado por
+padrão (fica salvo por navegador). Quando ligado, cada resposta pode
+trazer uma lista de links das fontes reais usadas (aparecem como
+"chips" clicáveis embaixo da mensagem) e o assistente é instruído a nunca
+inventar jurisprudência, sempre dizendo quando não encontrou nada em vez
+de supor. **Ainda assim é IA — sempre confira a fonte antes de citar
+algo em uma petição**, o aviso fica visível na tela sempre que a busca
+está ligada.
 
 **Testando o Worker sem precisar abrir o Portal** (útil para depurar):
 
@@ -476,6 +520,13 @@ comuns e o que significam:
 - `404 ... model ... no longer available` → o nome do modelo em
   `GEMINI_MODEL` (ou o padrão no código) ficou desatualizado — veja o
   passo 6.
+- `"O Assistente IA atingiu o limite diário..."` → o teto do `DAILY_LIMIT`
+  (passo 9) foi atingido — some sozinho à meia-noite UTC, ou aumenta o
+  valor da variável se for baixo demais para o dia a dia.
+- `429 ... RESOURCE_EXHAUSTED` vindo do Google (não do Worker) → cota do
+  Google esgotada — sem faturamento ativado (passo 8) isso acontece muito
+  rápido (20/dia); com faturamento ativado, confira o painel "Limite de
+  taxa" no AI Studio para ver o teto atual.
 
 O Worker já vem configurado para só aceitar pedidos vindos dos domínios do
 Portal (`portal.fonsecaebraga.com.br` e `jowjow007.github.io`) — qualquer

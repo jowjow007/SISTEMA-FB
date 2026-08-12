@@ -77,6 +77,31 @@
   .typing-dots span:nth-child(3){animation-delay:.4s;}
   @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
 
+  .fontes-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .fonte-chip{
+    font-size:.68rem;color:var(--silver);background:var(--panel-3);border:1px solid var(--line-strong);
+    border-radius:20px;padding:3px 10px;text-decoration:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;display:inline-block;
+  }
+  .fonte-chip:hover{border-color:var(--silver);color:var(--paper);}
+
+  .busca-row{
+    display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.76rem;color:var(--muted);
+  }
+  .busca-toggle{
+    flex:0 0 auto;width:36px;height:20px;border-radius:20px;background:var(--panel-3);border:1px solid var(--line-strong);
+    position:relative;cursor:pointer;transition:background .15s;
+  }
+  .busca-toggle .knob{
+    position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:var(--muted);
+    transition:transform .15s,background .15s;
+  }
+  .busca-toggle.on{background:rgba(76,154,106,.35);border-color:var(--green);}
+  .busca-toggle.on .knob{transform:translateX(16px);background:var(--green);}
+  .busca-label{cursor:pointer;user-select:none;}
+  .busca-hint{display:none;color:var(--gold);}
+  .busca-row.ativa .busca-hint{display:inline;}
+
   .composer{flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:12px 16px;}
   .composer-row{display:flex;align-items:flex-end;gap:8px;}
   .composer-row textarea{
@@ -124,6 +149,11 @@
   </div>
 
   <div class="composer">
+    <div class="busca-row" id="busca-row">
+      <div class="busca-toggle" id="busca-toggle"><div class="knob"></div></div>
+      <span class="busca-label" id="busca-label">🔎 Pesquisar na internet (jurisprudência, notícias, etc.)</span>
+      <span class="busca-hint">— confira a fonte antes de citar em uma petição</span>
+    </div>
     <div class="composer-row">
       <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
       <button class="send-btn" id="btn-enviar" title="Enviar">➤</button>
@@ -158,19 +188,27 @@
     msgEmpty: document.getElementById('msg-empty'),
     btnNova: document.getElementById('btn-nova'),
     composerInput: document.getElementById('composer-input'),
-    btnEnviar: document.getElementById('btn-enviar')
+    btnEnviar: document.getElementById('btn-enviar'),
+    buscaRow: document.getElementById('busca-row'),
+    buscaToggle: document.getElementById('busca-toggle'),
+    buscaLabel: document.getElementById('busca-label')
   };
 
   var myUid = null;
   var myNome = 'Você';
   var STORAGE_KEY = null;
-  var historico = []; // [{role:'user'|'model', texto, ts}]
+  var historico = []; // [{role:'user'|'model', texto, ts, fontes:[{uri,title}]}]
   var enviando = false;
+  var buscaAtiva = false;
 
   var SYSTEM_PROMPT = 'Você é o Assistente IA do Portal Fonseca e Braga, um escritório de advocacia. ' +
     'Responda sempre em português do Brasil, de forma clara e direta. Você é um assistente de uso geral ' +
     '(não tem acesso a processos, contratos, clientes ou qualquer dado interno do escritório) — se pedirem ' +
-    'algo que dependa de dados internos, explique isso e sugira a ferramenta correta do Portal quando fizer sentido.';
+    'algo que dependa de dados internos, explique isso e sugira a ferramenta correta do Portal quando fizer sentido. ' +
+    'Quando a busca na internet estiver disponível (ferramenta google_search), use-a sempre que a pergunta ' +
+    'depender de informação atual ou verificável — jurisprudência, número de processo, lei ou notícia recente — ' +
+    'e nunca invente número de acórdão, ementa ou data: se não encontrar a fonte real pela busca, diga que não ' +
+    'encontrou em vez de supor. Sempre lembre o usuário de conferir a fonte antes de citar algo em uma petição.';
 
   function escapeHtml(s){
     return String(s || '').replace(/[&<>"']/g, function(c){
@@ -208,6 +246,11 @@
       out += '<div class="msg-row ' + (own ? 'own' : (m.erro ? 'err other' : 'other')) + '">';
       if (!own) out += '<div class="msg-author">' + (m.erro ? 'Erro' : 'Assistente') + '</div>';
       out += '<div class="msg-bubble">' + escapeHtml(m.texto) + '</div>';
+      if (m.fontes && m.fontes.length){
+        out += '<div class="fontes-row">' + m.fontes.map(function(f){
+          return '<a class="fonte-chip" href="' + escapeHtml(f.uri) + '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(f.title || f.uri) + '">🔗 ' + escapeHtml(f.title || f.uri) + '</a>';
+        }).join('') + '</div>';
+      }
       out += '<div class="msg-time">' + formatHora(m.ts) + '</div>';
       out += '</div>';
     });
@@ -229,7 +272,7 @@
     if (el) el.remove();
   }
 
-  function chamarGemini(){
+  function chamarGemini(comBusca){
     if (!GEMINI_WORKER_URL || GEMINI_WORKER_URL === 'COLE_AQUI_A_URL_DO_SEU_WORKER'){
       return Promise.reject(new Error('O endereço do Worker ainda não foi configurado em tools/assistente-ia/gemini-config.js.'));
     }
@@ -240,6 +283,7 @@
       }),
       generationConfig: { temperature: 0.7, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
     };
+    if (comBusca) body.tools = [{ google_search: {} }];
     return fetch(GEMINI_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -261,7 +305,19 @@
         var motivo = cand && cand.finishReason;
         throw new Error(motivo === 'SAFETY' ? 'A resposta foi bloqueada pelos filtros de segurança do Gemini.' : 'O Gemini não retornou nenhuma resposta.');
       }
-      return texto;
+      var fontes = [];
+      var chunks = cand.groundingMetadata && cand.groundingMetadata.groundingChunks;
+      if (chunks && chunks.length){
+        var vistos = {};
+        chunks.forEach(function(c){
+          var w = c.web;
+          if (w && w.uri && !vistos[w.uri]){
+            vistos[w.uri] = true;
+            fontes.push({ uri: w.uri, title: w.title || w.uri });
+          }
+        });
+      }
+      return { texto: texto, fontes: fontes };
     });
   }
 
@@ -280,9 +336,9 @@
     els.composerInput.disabled = true;
     mostrarDigitando();
 
-    chamarGemini().then(function(resposta){
+    chamarGemini(buscaAtiva).then(function(resposta){
       removerDigitando();
-      historico.push({ role: 'model', texto: resposta, ts: Date.now() });
+      historico.push({ role: 'model', texto: resposta.texto, ts: Date.now(), fontes: resposta.fontes });
       renderMensagens();
       salvarHistorico();
     }).catch(function(err){
@@ -316,6 +372,20 @@
     salvarHistorico();
     renderMensagens();
   });
+
+  function renderBuscaToggle(){
+    els.buscaToggle.classList.toggle('on', buscaAtiva);
+    els.buscaRow.classList.toggle('ativa', buscaAtiva);
+  }
+  function alternarBusca(){
+    buscaAtiva = !buscaAtiva;
+    try { localStorage.setItem('iafb_busca_v1', buscaAtiva ? '1' : '0'); } catch(e){}
+    renderBuscaToggle();
+  }
+  els.buscaToggle.addEventListener('click', alternarBusca);
+  els.buscaLabel.addEventListener('click', alternarBusca);
+  try { buscaAtiva = localStorage.getItem('iafb_busca_v1') === '1'; } catch(e){}
+  renderBuscaToggle();
 
   auth.onAuthStateChanged(function(user){
     if (!user){

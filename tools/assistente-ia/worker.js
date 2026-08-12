@@ -25,6 +25,21 @@
 //                           JSON (cole com as quebras de linha, incluindo
 //                           "-----BEGIN PRIVATE KEY-----" e "-----END...").
 //   GEMINI_MODEL           (Variável normal, opcional) — ex: "gemini-3.5-flash"
+//   DAILY_LIMIT            (Variável normal, opcional) — teto de mensagens
+//                           por dia para o escritório inteiro (protege
+//                           contra gasto inesperado se o faturamento do
+//                           Google estiver ativado). Padrão: 200/dia. Com
+//                           o modo de raciocínio desligado e o teto de
+//                           saída em 2048 tokens, o pior caso teórico de
+//                           custo em 200/dia fica em torno de US$ 3-4/dia
+//                           mesmo que toda resposta usasse o máximo de
+//                           tokens (na prática, bem menos).
+//
+// Binding necessário (Settings > Bindings, não é uma variável de texto):
+//   USAGE_KV               (KV Namespace) — guarda a contagem de
+//                           mensagens do dia. Sem esse binding, o Worker
+//                           funciona normalmente mas sem limite próprio
+//                           (depende só da cota do Google).
 //
 // Passo a passo completo no README-SETUP.md, seção 9.
 // ============================================================
@@ -48,6 +63,21 @@ function jsonResponse(obj, status, origin) {
     status: status,
     headers: Object.assign({ 'Content-Type': 'application/json' }, corsHeaders(origin))
   });
+}
+
+function todayKey() {
+  return 'reqs:' + new Date().toISOString().slice(0, 10);
+}
+
+async function checkAndIncrementDailyUsage(env) {
+  if (!env.USAGE_KV) return true;
+  var limit = parseInt(env.DAILY_LIMIT, 10);
+  if (!limit || limit <= 0) limit = 200;
+  var key = todayKey();
+  var current = parseInt((await env.USAGE_KV.get(key)) || '0', 10);
+  if (current >= limit) return false;
+  await env.USAGE_KV.put(key, String(current + 1), { expirationTtl: 172800 });
+  return true;
 }
 
 function base64url(bytes) {
@@ -119,6 +149,16 @@ export default {
 
     if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) {
       return jsonResponse({ error: 'Credenciais da conta de serviço não configuradas no Worker.' }, 500, origin);
+    }
+
+    var podeUsar;
+    try {
+      podeUsar = await checkAndIncrementDailyUsage(env);
+    } catch (e) {
+      podeUsar = true;
+    }
+    if (!podeUsar) {
+      return jsonResponse({ error: 'O Assistente IA atingiu o limite diário de mensagens do escritório. Tente novamente amanhã.' }, 429, origin);
     }
 
     let body;
