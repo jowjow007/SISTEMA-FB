@@ -221,6 +221,7 @@ cadastre, por exemplo:
 | Minhas Anotações | `https://jowjow007.github.io/SISTEMA-FB/tools/minhas-anotacoes/` |
 | Sistemas | `https://jowjow007.github.io/SISTEMA-FB/tools/sistemas/` |
 | Organograma | `https://jowjow007.github.io/SISTEMA-FB/tools/organograma/` |
+| Assistente IA | `https://jowjow007.github.io/SISTEMA-FB/tools/assistente-ia/` |
 
 > **Aba "Organograma"**: diferente das demais, essa aba **não deve ser
 > liberada para todo mundo por padrão** — cadastre-a normalmente em
@@ -375,3 +376,45 @@ Google (o token de acesso fica só na memória da aba, não é salvo em lugar
 nenhum) — quando expira (cerca de 1h), a ferramenta tenta renovar sozinha
 em segundo plano; se não conseguir, pede para clicar em "Conectar com
 Google" de novo.
+
+## 9. Aba "Assistente IA" (chat livre com o Gemini)
+
+A ferramenta em `tools/assistente-ia/` é um chat livre estilo ChatGPT,
+usando a **API do Google Gemini** (tem cota gratuita generosa — sem custo
+para o volume de uso de um escritório). Não tem acesso a nenhum dado do
+Portal (processos, contratos, clientes) — é só um assistente de propósito
+geral embutido no sistema.
+
+Como é um site 100% estático (sem servidor próprio), a chave de API fica
+no arquivo `tools/assistente-ia/gemini-config.js` e roda direto no
+navegador de cada pessoa. Diferente da `apiKey` do Firebase, essa chave
+**precisa** ser restrita por domínio, senão qualquer pessoa que abrir o
+código-fonte da página poderia copiá-la e gastar a cota gratuita em outro
+lugar.
+
+1. Acesse https://aistudio.google.com/apikey (pode logar com a mesma conta
+   Google usada no Firebase) e clique em **"Create API key"** para gerar
+   uma chave nova.
+2. Vá para https://console.cloud.google.com/apis/credentials, no mesmo
+   projeto onde a chave foi criada, clique na chave para editá-la:
+   - Em **"Restrições de aplicativo"**, escolha **"Sites"** (referenciadores
+     HTTP) e adicione:
+     - `https://portal.fonsecaebraga.com.br/*`
+     - `https://jowjow007.github.io/*`
+   - Em **"Restrições de API"**, escolha **"Restringir chave"** e marque
+     só a **"Generative Language API"**.
+   - Salve.
+3. Cole a chave em
+   [`tools/assistente-ia/gemini-config.js`](tools/assistente-ia/gemini-config.js),
+   no lugar de `COLE_AQUI_SUA_API_KEY_DO_GEMINI`.
+4. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
+   tabela do passo 5, apontando para `tools/assistente-ia/`.
+
+**O que a ferramenta faz e não faz:** conversa livre, com histórico
+guardado só no navegador de cada pessoa (`localStorage`, não vai para o
+Firestore) — trocar de computador ou limpar os dados do navegador reinicia
+a conversa. Não lê nem grava nada do Portal. Como as mensagens saem do
+Portal e são processadas pelo Google, a própria tela mostra um aviso para
+não colar dados sigilosos de clientes (CPF, número de processo, teor de
+contratos) no chat — é só um assistente de uso geral, não uma ferramenta
+de trabalho com os dados do escritório.
