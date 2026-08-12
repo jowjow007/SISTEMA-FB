@@ -385,30 +385,57 @@ para o volume de uso de um escritório). Não tem acesso a nenhum dado do
 Portal (processos, contratos, clientes) — é só um assistente de propósito
 geral embutido no sistema.
 
-Como é um site 100% estático (sem servidor próprio), a chave de API fica
-no arquivo `tools/assistente-ia/gemini-config.js` e roda direto no
-navegador de cada pessoa. Diferente da `apiKey` do Firebase, essa chave
-**precisa** ser restrita por domínio, senão qualquer pessoa que abrir o
-código-fonte da página poderia copiá-la e gastar a cota gratuita em outro
-lugar.
+**Importante — mudou desde que o Gmail foi configurado**: as chaves novas
+que o Google AI Studio cria hoje vêm obrigatoriamente "vinculadas a uma
+conta de serviço" e **não aceitam mais** a restrição clássica por site
+(HTTP referrer) — só funcionam bem chamadas de um servidor, não direto do
+navegador. O GitHub, inclusive, bloqueia automaticamente qualquer push que
+contenha esse tipo específico de chave em texto puro (diferente da `apiKey`
+do Firebase ou do Client ID do Gmail, que são seguros para ficar públicos).
+Por isso a chave do Gemini **não fica em nenhum arquivo deste repositório**
+— ela mora só dentro de um **Cloudflare Worker** (gratuito, sem cartão de
+crédito exigido no plano free), que funciona como um pequeno intermediário:
+o navegador de cada pessoa fala só com o Worker (endereço público, sem
+segredo nenhum), e é o Worker — rodando no servidor da Cloudflare, nunca no
+navegador — quem guarda a chave de verdade e conversa com o Gemini.
 
 1. Acesse https://aistudio.google.com/apikey (pode logar com a mesma conta
    Google usada no Firebase) e clique em **"Create API key"** para gerar
-   uma chave nova.
-2. Vá para https://console.cloud.google.com/apis/credentials, no mesmo
-   projeto onde a chave foi criada, clique na chave para editá-la:
-   - Em **"Restrições de aplicativo"**, escolha **"Sites"** (referenciadores
-     HTTP) e adicione:
-     - `https://portal.fonsecaebraga.com.br/*`
-     - `https://jowjow007.github.io/*`
-   - Em **"Restrições de API"**, escolha **"Restringir chave"** e marque
-     só a **"Generative Language API"**.
-   - Salve.
-3. Cole a chave em
+   uma chave nova. Não precisa (e não dá mais para) restringir por site —
+   deixe **"Restrições do aplicativo" = Nenhum**, só confirme que em
+   **"Selecionar restrições da API"** está marcado **"Gemini API"**.
+2. Copie a chave gerada (algo como `AQ.Ab8...`) — vamos precisar dela só
+   uma vez, no passo 5.
+3. Acesse https://dash.cloudflare.com e crie uma conta gratuita (só
+   e-mail + senha, sem cartão).
+4. No menu lateral, vá em **Workers e Pages > Criar > Criar Worker**. Dê
+   um nome (ex: `portal-fb-gemini`) e clique em **"Implantar"** para criar
+   o Worker com o código padrão (vamos substituir a seguir).
+5. Clique em **"Editar código"** (ou "Edit code"), apague todo o conteúdo
+   e cole o código de
+   [`tools/assistente-ia/worker.js`](tools/assistente-ia/worker.js) deste
+   repositório. Clique em **"Implantar"/"Deploy"**.
+6. Ainda na página do Worker, vá em **Configurações > Variáveis e
+   Secrets** (Settings > Variables):
+   - Adicione uma variável do tipo **"Secret"** (criptografada) chamada
+     `GEMINI_API_KEY`, colando a chave copiada no passo 2.
+   - Opcional: adicione uma variável normal `GEMINI_MODEL` com o valor
+     `gemini-2.5-flash` (ou outro modelo Gemini disponível) — se não
+     criar essa variável, o Worker usa `gemini-2.5-flash` por padrão.
+   - Salve/implante de novo se pedir.
+7. Copie a URL pública do Worker (aparece no topo da página dele, algo
+   como `https://portal-fb-gemini.SEU-USUARIO.workers.dev`) e cole em
    [`tools/assistente-ia/gemini-config.js`](tools/assistente-ia/gemini-config.js),
-   no lugar de `COLE_AQUI_SUA_API_KEY_DO_GEMINI`.
-4. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
+   no lugar de `COLE_AQUI_A_URL_DO_SEU_WORKER`.
+8. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
    tabela do passo 5, apontando para `tools/assistente-ia/`.
+
+O Worker já vem configurado para só aceitar pedidos vindos dos domínios do
+Portal (`portal.fonsecaebraga.com.br` e `jowjow007.github.io`) — qualquer
+outro site que tentar usá-lo é recusado. Se um dia o domínio do Portal
+mudar, é só editar a lista `ALLOWED_ORIGINS` no topo do `worker.js` (tanto
+aqui no repositório quanto colando o código atualizado no editor do
+Worker) e reimplantar.
 
 **O que a ferramenta faz e não faz:** conversa livre, com histórico
 guardado só no navegador de cada pessoa (`localStorage`, não vai para o

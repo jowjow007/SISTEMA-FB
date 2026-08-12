@@ -1,15 +1,15 @@
 // ============================================================
-// CONFIGURAÇÃO DO GOOGLE GEMINI — aba "Assistente IA"
+// CONFIGURAÇÃO DO ASSISTENTE IA — endereço do proxy (Cloudflare Worker)
 // ============================================================
-// Chave de API GRATUITA do Google AI Studio (https://aistudio.google.com/apikey).
+// A chave de verdade do Gemini NÃO fica aqui nem em nenhum arquivo público
+// deste repositório — o GitHub bloqueia esse tipo específico de chave
+// (vinculada a conta de serviço) se ela aparecer em texto num commit. Ela
+// mora só dentro de um Cloudflare Worker, como "Secret" (variável de
+// ambiente criptografada, gratuito, sem servidor para manter). O
+// navegador de cada pessoa só conversa com o endereço público abaixo, que
+// aceita apenas pedidos vindos dos domínios do Portal.
 //
-// Diferente da apiKey do Firebase, esta chave PRECISA ser restrita por
-// domínio (Google Cloud Console > APIs e serviços > Credenciais > editar a
-// chave > "Restrições de aplicativo" > "Sites" > adicionar os domínios do
-// Portal). Sem essa restrição, qualquer pessoa que veja o código-fonte
-// poderia copiar a chave e gastar a cota gratuita do escritório em outro
-// lugar. Veja o passo a passo completo no README-SETUP.md.
+// Veja o passo a passo completo no README-SETUP.md, seção 9.
 // ============================================================
 
-const GEMINI_API_KEY = "COLE_AQUI_SUA_API_KEY_DO_GEMINI";
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_WORKER_URL = "COLE_AQUI_A_URL_DO_SEU_WORKER";

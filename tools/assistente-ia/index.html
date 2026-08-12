@@ -230,10 +230,9 @@
   }
 
   function chamarGemini(){
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'COLE_AQUI_SUA_API_KEY_DO_GEMINI'){
-      return Promise.reject(new Error('A chave do Gemini ainda não foi configurada em tools/assistente-ia/gemini-config.js.'));
+    if (!GEMINI_WORKER_URL || GEMINI_WORKER_URL === 'COLE_AQUI_A_URL_DO_SEU_WORKER'){
+      return Promise.reject(new Error('O endereço do Worker ainda não foi configurado em tools/assistente-ia/gemini-config.js.'));
     }
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + GEMINI_API_KEY;
     var body = {
       system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: historico.filter(function(m){ return !m.erro; }).map(function(m){
@@ -241,14 +240,15 @@
       }),
       generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
     };
-    return fetch(url, {
+    return fetch(GEMINI_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(function(r){
       return r.json().then(function(data){
         if (!r.ok){
-          throw new Error((data.error && data.error.message) || ('Erro ' + r.status + ' ao falar com o Gemini.'));
+          var msg = (data.error && (data.error.message || (typeof data.error === 'string' ? data.error : null)));
+          throw new Error(msg || ('Erro ' + r.status + ' ao falar com o Assistente.'));
         }
         return data;
       });
