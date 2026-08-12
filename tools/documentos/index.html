@@ -82,6 +82,14 @@
 
   .tipo-hidden{display:none !important;}
 
+  .hist-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-main{flex:1;min-width:0;background:none;border:none;text-align:left;cursor:pointer;padding:0;color:var(--paper);}
+  .hist-main:hover .hist-nome{color:var(--red-bright);text-decoration:underline;}
+  .hist-nome{font-size:.82rem;font-weight:600;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-meta{font-size:.7rem;color:var(--muted);margin-top:2px;}
+  .hist-tipo{display:inline-block;font-size:.62rem;color:var(--silver);background:var(--panel-3);border-radius:6px;padding:1px 6px;margin-right:6px;letter-spacing:.02em;}
+
   .preview-col{min-width:0;}
   .preview-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
   .preview-toolbar .status{font-size:.78rem;color:var(--muted);}
@@ -164,6 +172,12 @@
         <h2>Tipo de documento</h2>
         <p class="desc">Escolha o modelo desejado.</p>
         <div class="segmented" id="tipo-seg"></div>
+      </div>
+
+      <div class="card" id="card-historico">
+        <h2>Últimos documentos gerados</h2>
+        <p class="desc" id="historico-msg">Faça login no Portal para ver e reaproveitar o histórico da equipe.</p>
+        <div id="historico-list"></div>
       </div>
 
       <!-- ===================== PROCURAÇÃO ===================== -->
@@ -955,6 +969,10 @@ function coletarDados(){
   return {
     tipo: currentTipo,
     cidadeUf: val('doc-cidade-uf'),
+    // data em ISO (yyyy-mm-dd) guardada à parte só para conseguir repopular o
+    // campo <input type="date"> ao reabrir um documento do histórico —
+    // dataExtenso abaixo já vem formatada por extenso para uso no texto.
+    dataRaw: document.getElementById('doc-data').value,
     dataExtenso: fmtDataExtenso(document.getElementById('doc-data').value),
     procuracao:{
       outorgantes, procuradores,
@@ -1376,7 +1394,7 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
   setTimeout(()=>{
     const filename = prefixoArquivo(d.tipo)+nomeArquivo(d)+'.pdf';
     const pageEls = Array.from(document.querySelectorAll('#doc-pages .doc-page'));
-    gerarPdfArquivo(pageEls, filename).then(()=>{ statusEl.textContent='PDF baixado.'; })
+    gerarPdfArquivo(pageEls, filename).then(()=>{ statusEl.textContent='PDF baixado.'; salvarHistorico(d); })
       .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
   }, 60);
 });
@@ -1411,12 +1429,222 @@ function preencherAdvogadoDoUsuario(prefix, perfil){
   }
   scheduleRender();
 }
+/* ---------- histórico de documentos gerados (Firestore, compartilhado com a equipe) ---------- */
+let currentUser=null;
+function labelTipo(tipo){
+  return {procuracao:'Procuração', substabelecimento:'Substabelecimento', hipossuficiencia:'Hipossuficiência',
+    termo_repasse:'Termo de Repasse', recibo:'Recibo'}[tipo] || tipo;
+}
+function resumoDocumento(d){
+  let nome='', meta='';
+  if(d.tipo==='procuracao'){
+    const o=d.procuracao.outorgantes[0];
+    nome = o ? (o.tipo==='pj'?o.razaoSocial:o.nome) : '';
+    meta = d.procuracao.outorgantes.length>1 ? d.procuracao.outorgantes.length+' outorgantes' : '';
+  } else if(d.tipo==='substabelecimento'){
+    const c=d.substabelecimento.cliente;
+    nome = c ? (c.tipo==='pj'?c.razaoSocial:c.nome) : '';
+    meta = d.substabelecimento.sbsNome ? 'substabelecido a '+d.substabelecimento.sbsNome : '';
+  } else if(d.tipo==='hipossuficiencia'){
+    nome = d.hipossuficiencia.nome;
+    meta = d.hipossuficiencia.cpf ? 'CPF '+d.hipossuficiencia.cpf : '';
+  } else if(d.tipo==='termo_repasse'){
+    nome = d.termoRepasse.clienteNome;
+    const valor = d.termoRepasse.modo==='parcelada' ? d.termoRepasse.valorParcelado : d.termoRepasse.valor;
+    meta = valor ? 'R$ '+valor : '';
+  } else if(d.tipo==='recibo'){
+    const p=d.recibo.pagador;
+    nome = p ? (p.tipo==='pj'?p.razaoSocial:p.nome) : '';
+    meta = d.recibo.valor ? 'R$ '+d.recibo.valor : '';
+  }
+  return { nome: nome||'(sem nome)', meta: meta||'' };
+}
+function salvarHistorico(d){
+  if(!currentUser || !window.__db) return;
+  const { nome, meta } = resumoDocumento(d);
+  window.__db.collection('documentosGerados').add({
+    tipo: d.tipo,
+    nomeDisplay: nome,
+    metaDisplay: meta,
+    dataDisplay: d.dataExtenso,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    criadoPorUid: currentUser.uid,
+    criadoPorNome: currentUser.displayName || currentUser.email,
+    dados: d
+  }).catch(err=>console.error('Não foi possível salvar no histórico:', err));
+}
+function preencherFormulario(d){
+  setTipo(d.tipo);
+  document.getElementById('doc-cidade-uf').value = d.cidadeUf || 'Uberlândia/MG';
+  document.getElementById('doc-data').value = d.dataRaw || '';
+
+  if(d.tipo==='procuracao'){
+    const p = d.procuracao||{};
+    outorgantes = (p.outorgantes&&p.outorgantes.length) ? p.outorgantes.map(o=>Object.assign(novaPessoa(), o)) : [novaPessoa()];
+    renderOutorgantes();
+    procuradores = (p.procuradores&&p.procuradores.length) ? p.procuradores.map(a=>Object.assign({}, a)) : [novoProcurador('HECY BRAGA DE OLIVEIRA','casado','95.948'), novoProcurador('JONATHAN SILVA FONSECA','casado','163.443')];
+    renderProcuradores();
+    document.getElementById('pr-final-tipo').value = p.finalTipo || 'nenhum';
+    document.getElementById('pr-esfera').value = p.esfera || '';
+    document.getElementById('pr-tipo-acao').value = p.tipoAcao || '';
+    document.getElementById('pr-numero-processo').value = p.numeroProcesso || '';
+    document.getElementById('pr-movida-por').value = p.movidaPor || '';
+    document.getElementById('pr-vara').value = p.vara || '';
+    document.getElementById('pr-final-esfera').style.display = p.finalTipo==='esfera' ? '' : 'none';
+    document.getElementById('pr-final-processo').style.display = p.finalTipo==='processo' ? '' : 'none';
+  }
+
+  if(d.tipo==='substabelecimento'){
+    const s = d.substabelecimento||{};
+    document.getElementById('sb-nome').value = s.sbNome||'';
+    document.getElementById('sb-estado-civil').value = s.sbEstadoCivil||'';
+    document.getElementById('sb-oab').value = s.sbOab||'';
+    document.getElementById('sb-reserva').value = s.reserva||'com reservas';
+    clienteSub = Object.assign(novaPessoa(), s.cliente||{});
+    renderClienteSub();
+    document.getElementById('sb-tipo-acao').value = s.tipoAcao||'';
+    document.getElementById('sb-numero').value = s.numero||'';
+    document.getElementById('sb-movida-por').value = s.movidaPor||'';
+    document.getElementById('sb-vara').value = s.vara||'';
+    document.getElementById('sbs-tratamento').value = s.tratamento||'Dr.';
+    document.getElementById('sbs-nome').value = s.sbsNome||'';
+    document.getElementById('sbs-nacionalidade').value = s.sbsNacionalidade||'';
+    document.getElementById('sbs-estado-civil').value = s.sbsEstadoCivil||'';
+    document.getElementById('sbs-oab').value = s.sbsOab||'';
+  }
+
+  if(d.tipo==='hipossuficiencia'){
+    const h = d.hipossuficiencia||{};
+    document.getElementById('hp-nome').value = h.nome||'';
+    document.getElementById('hp-nacionalidade').value = h.nacionalidade||'';
+    document.getElementById('hp-estado-civil').value = h.estadoCivil||'';
+    document.getElementById('hp-rg').value = h.rg||'';
+    document.getElementById('hp-rg-orgao').value = h.rgOrgao||'';
+    document.getElementById('hp-cpf').value = h.cpf||'';
+    hpProfissoes = (h.profissoes&&h.profissoes.length) ? h.profissoes.slice() : [''];
+    renderHpProfissoes();
+    document.getElementById('hp-endereco').value = h.endereco||'';
+  }
+
+  if(d.tipo==='termo_repasse'){
+    const t = d.termoRepasse||{};
+    document.getElementById('tr-tipo-instrumento').value = t.tipoInstrumento||'';
+    document.getElementById('tr-autor').value = t.autor||'';
+    document.getElementById('tr-reu').value = t.reu||'';
+    document.getElementById('tr-cliente-posicao').value = t.clientePosicao||'autor';
+    document.getElementById('tr-numero-processo').value = t.numeroProcesso||'';
+    document.getElementById('tr-tipo-processo').value = t.tipoProcesso||'ELETRÔNICO';
+    document.getElementById('tr-vara').value = t.vara||'';
+    document.getElementById('tr-acao').value = t.acao||'';
+    document.getElementById('tr-gratuidade').value = t.gratuidade||'SIM';
+    document.getElementById('tr-custas-pagas').value = t.custasPagas||'00,00';
+    document.getElementById('tr-segredo-justica').value = t.segredoJustica||'NÃO';
+    document.getElementById('tr-cliente-nome').value = t.clienteNome||'';
+    document.getElementById('tr-cliente-cpf').value = t.clienteCpf||'';
+    document.getElementById('tr-modo').value = t.modo||'unica';
+    document.getElementById('tr-card-valor-unica').style.display = t.modo==='parcelada' ? 'none' : '';
+    document.getElementById('tr-card-parcelas').style.display = t.modo==='parcelada' ? '' : 'none';
+    document.getElementById('tr-valor').value = t.valor||'';
+    document.getElementById('tr-origem').value = t.origem||'acordo firmado';
+    trParcelas = (t.parcelas&&t.parcelas.length) ? t.parcelas.map(p=>Object.assign({},p)) : [novaTrParcela()];
+    renderTrParcelas();
+    document.getElementById('tr-origem-parcelado').value = t.origemParcelado||'acordo firmado';
+    trAdvogados = (t.advogados&&t.advogados.length) ? t.advogados.map(a=>Object.assign({},a)) : [novoTrAdvogado('JONATHAN SILVA FONSECA','163.443'), novoTrAdvogado('HECY BRAGA DE OLIVEIRA','95.948')];
+    renderTrAdvogados();
+    document.getElementById('tr-detalhar-avenca').checked = !!t.detalharAvenca;
+    document.getElementById('tr-avenca-wrap').style.display = t.detalharAvenca ? '' : 'none';
+    trAvenca = (t.avenca&&t.avenca.length) ? t.avenca.slice() : [];
+    renderTrAvenca();
+    document.getElementById('tr-hon-tipo').value = t.honTipo||'percentual';
+    document.getElementById('tr-hon-percentual').value = t.honPercentual||'';
+    document.getElementById('tr-hon-percentual-valor').value = t.honPercentualValor||'';
+    document.getElementById('tr-hon-reembolso-valor').value = t.honReembolsoValor||'';
+    document.getElementById('tr-hon-reembolso-desc').value = t.honReembolsoDesc||'';
+    document.getElementById('tr-hon-saldo-valor').value = t.honSaldoValor||'';
+    document.getElementById('tr-hon-saldo-desc').value = t.honSaldoDesc||'';
+    document.getElementById('tr-obs-honorarios').value = t.obsHonorarios||'';
+    const hv = t.honTipo;
+    document.getElementById('tr-hon-percentual-wrap').style.display = (hv==='percentual'||hv==='percentual_reembolso')?'':'none';
+    document.getElementById('tr-hon-reembolso-wrap').style.display = (hv==='percentual_reembolso')?'':'none';
+    document.getElementById('tr-hon-saldo-wrap').style.display = (hv==='saldo_entrada')?'':'none';
+    document.getElementById('tr-hon-livre-wrap').style.display = (hv==='livre')?'':'none';
+    document.getElementById('tr-quitacao-tipo').value = t.quitacaoTipo||'total';
+    document.getElementById('tr-quitacao-obs').value = t.quitacaoObs||'';
+    document.getElementById('tr-quitacao-obs-wrap').style.display = t.quitacaoTipo==='parcial' ? '' : 'none';
+    document.getElementById('tr-pag-banco').value = t.pagBanco||'';
+    document.getElementById('tr-pag-agencia').value = t.pagAgencia||'';
+    document.getElementById('tr-pag-conta').value = t.pagConta||'';
+    document.getElementById('tr-pag-doc').value = t.pagDoc||'';
+    document.getElementById('tr-pag-nome').value = t.pagNome||'';
+    document.getElementById('tr-pag-pix').value = t.pagPix||'';
+  }
+
+  if(d.tipo==='recibo'){
+    const r = d.recibo||{};
+    document.getElementById('rc-prep').value = r.prep||'de';
+    document.getElementById('rc-prep-recebedor').value = r.prepRecebedor||'de';
+    rcPagador = Object.assign(novaPessoa(), r.pagador||{});
+    renderRcPagador();
+    rcRecebedor = Object.assign(novaPessoa(), r.recebedor||{});
+    renderRcRecebedor();
+    document.getElementById('rc-valor').value = r.valor||'';
+    document.getElementById('rc-motivo').value = r.motivo||'';
+  }
+
+  render();
+  document.getElementById('gerar-status').textContent = 'Documento carregado do histórico — revise e gere o PDF novamente se precisar.';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function renderHistorico(docs){
+  const wrap=document.getElementById('historico-list');
+  const msg=document.getElementById('historico-msg');
+  if(docs.length===0){ msg.textContent='Nenhum documento gerado ainda.'; wrap.innerHTML=''; return; }
+  msg.textContent='Clique no nome para carregar os dados de novo no formulário.';
+  wrap.innerHTML='';
+  docs.forEach(item=>{
+    const row=document.createElement('div');
+    row.className='hist-row';
+    row.innerHTML=`
+      <button type="button" class="hist-main">
+        <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${esc(item.nomeDisplay)}</div>
+        <div class="hist-meta">${esc(item.metaDisplay||'')}${item.metaDisplay&&item.dataDisplay?' · ':''}${esc(item.dataDisplay||'')}</div>
+      </button>
+    `;
+    row.querySelector('.hist-main').addEventListener('click',()=>preencherFormulario(item.dados));
+    wrap.appendChild(row);
+  });
+}
+function carregarHistorico(){
+  if(!window.__db) return;
+  window.__db.collection('documentosGerados').orderBy('criadoEm','desc').limit(25)
+    .onSnapshot(snap=>{
+      renderHistorico(snap.docs.map(doc=>doc.data()));
+    }, err=>{
+      document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
+    });
+}
+
+/* ---------- inicialização do Firebase (opcional) ----------
+   Duas melhorias progressivas, nenhuma delas obrigatória para o resto da
+   ferramenta funcionar: (1) seletor de usuário do sistema no substabelecimento
+   (puxa o nome da coleção "perfis", mesma que o Chat Interno já usa; OAB e
+   estado civil só ficam automáticos para os advogados já conhecidos aqui,
+   ver OAB_CONHECIDOS acima) e (2) histórico dos últimos documentos gerados
+   pela equipe, salvo em "documentosGerados". Se o Firebase não estiver
+   configurado ou o usuário não estiver logado, ambas ficam vazias/inativas e
+   o resto da ferramenta continua funcionando normalmente. */
 try{
   if(typeof firebaseConfig !== 'undefined' && firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== 'COLE_AQUI_SUA_API_KEY'){
     firebase.initializeApp(firebaseConfig);
+    window.__db = firebase.firestore();
     firebase.auth().onAuthStateChanged(user=>{
-      if(!user) return;
-      firebase.firestore().collection('perfis').get().then(snap=>{
+      currentUser = user;
+      if(!user){
+        document.getElementById('historico-msg').textContent = 'Faça login no Portal para ver e reaproveitar o histórico da equipe.';
+        document.getElementById('historico-list').innerHTML='';
+        return;
+      }
+      window.__db.collection('perfis').get().then(snap=>{
         const perfisPorUid = {};
         const opcoes = [];
         snap.forEach(doc=>{
@@ -1441,9 +1669,13 @@ try{
           if(e.target.value) preencherAdvogadoDoUsuario('sbs', perfisPorUid[e.target.value]);
         });
       }).catch(()=>{ /* sem acesso ao Firestore — segue sem o atalho */ });
+      document.getElementById('historico-msg').textContent = 'Carregando histórico…';
+      carregarHistorico();
     });
+  } else {
+    document.getElementById('historico-msg').textContent = 'Histórico indisponível (configuração do Firebase pendente).';
   }
-}catch(err){ /* Firebase indisponível — a ferramenta continua funcionando normalmente sem o atalho */ }
+}catch(err){ /* Firebase indisponível — a ferramenta continua funcionando normalmente sem os atalhos */ }
 
 render();
 </script>
