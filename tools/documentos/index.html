@@ -206,6 +206,11 @@
       <!-- ===================== SUBSTABELECIMENTO ===================== -->
       <div class="card" data-tipo-only="substabelecimento">
         <h2>Advogado(a) que substabelece</h2>
+        <div class="field">
+          <label>Selecionar usuário do sistema (opcional)</label>
+          <select id="sb-usuario-select"><option value="">— selecionar —</option></select>
+          <p class="hint" id="sb-usuario-hint">Puxa nome automaticamente; OAB/estado civil só para quem já está cadastrado aqui.</p>
+        </div>
         <div class="field"><label>Nome completo</label><input id="sb-nome"></div>
         <div class="grid2">
           <div class="field"><label>Estado civil</label><input id="sb-estado-civil"></div>
@@ -236,6 +241,11 @@
 
       <div class="card" data-tipo-only="substabelecimento">
         <h2>Advogado(a) substabelecido(a)</h2>
+        <div class="field">
+          <label>Selecionar usuário do sistema (opcional)</label>
+          <select id="sbs-usuario-select"><option value="">— selecionar —</option></select>
+          <p class="hint" id="sbs-usuario-hint">Puxa nome automaticamente; OAB/estado civil só para quem já está cadastrado aqui.</p>
+        </div>
         <div class="grid2">
           <div class="field"><label>Tratamento</label>
             <select id="sbs-tratamento"><option value="Dr.">Dr.</option><option value="Dra.">Dra.</option></select>
@@ -503,6 +513,10 @@
   </div>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
 <script>
 /* ---------- utilidades ---------- */
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1366,6 +1380,70 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
       .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
   }, 60);
 });
+
+/* ---------- data de hoje pré-preenchida (todos os tipos usam o mesmo campo) ---------- */
+(function(){
+  const d = new Date();
+  const iso = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('doc-data').value = iso;
+})();
+
+/* ---------- seletor de usuário do sistema (substabelecimento) ----------
+   Melhoria opcional: puxa a lista de colaboradores do Portal (mesma coleção
+   Firestore "perfis" que o Chat Interno já usa) para preencher o nome com um
+   clique. OAB e estado civil não ficam salvos no sistema hoje, então só saem
+   automáticos para os advogados já conhecidos aqui — o resto continua manual.
+   Se o Firebase não estiver configurado ou o usuário não estiver logado, o
+   seletor simplesmente fica vazio e o resto da ferramenta funciona igual. */
+const OAB_CONHECIDOS = {
+  'HECY BRAGA DE OLIVEIRA': {oab:'95.948', estadoCivil:'casado', nacionalidade:'brasileiro'},
+  'JONATHAN SILVA FONSECA': {oab:'163.443', estadoCivil:'casado', nacionalidade:'brasileiro'},
+  'MICAELA LINO COSTA': {oab:'232.521', estadoCivil:'solteira', nacionalidade:'brasileira'}
+};
+function preencherAdvogadoDoUsuario(prefix, perfil){
+  const nome = (perfil.displayName||'').toUpperCase();
+  document.getElementById(prefix+'-nome').value = nome;
+  const conhecido = OAB_CONHECIDOS[nome];
+  if(conhecido){
+    const oabEl=document.getElementById(prefix+'-oab'); if(oabEl) oabEl.value=conhecido.oab;
+    const ecEl=document.getElementById(prefix+'-estado-civil'); if(ecEl) ecEl.value=conhecido.estadoCivil;
+    const nacEl=document.getElementById(prefix+'-nacionalidade'); if(nacEl) nacEl.value=conhecido.nacionalidade;
+  }
+  scheduleRender();
+}
+try{
+  if(typeof firebaseConfig !== 'undefined' && firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== 'COLE_AQUI_SUA_API_KEY'){
+    firebase.initializeApp(firebaseConfig);
+    firebase.auth().onAuthStateChanged(user=>{
+      if(!user) return;
+      firebase.firestore().collection('perfis').get().then(snap=>{
+        const perfisPorUid = {};
+        const opcoes = [];
+        snap.forEach(doc=>{
+          const data = doc.data();
+          if(!data.displayName) return;
+          perfisPorUid[doc.id] = data;
+          opcoes.push({uid:doc.id, nome:data.displayName});
+        });
+        opcoes.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+        ['sb-usuario-select','sbs-usuario-select'].forEach(selectId=>{
+          const sel = document.getElementById(selectId);
+          opcoes.forEach(o=>{
+            const opt = document.createElement('option');
+            opt.value = o.uid; opt.textContent = o.nome;
+            sel.appendChild(opt);
+          });
+        });
+        document.getElementById('sb-usuario-select').addEventListener('change', e=>{
+          if(e.target.value) preencherAdvogadoDoUsuario('sb', perfisPorUid[e.target.value]);
+        });
+        document.getElementById('sbs-usuario-select').addEventListener('change', e=>{
+          if(e.target.value) preencherAdvogadoDoUsuario('sbs', perfisPorUid[e.target.value]);
+        });
+      }).catch(()=>{ /* sem acesso ao Firestore — segue sem o atalho */ });
+    });
+  }
+}catch(err){ /* Firebase indisponível — a ferramenta continua funcionando normalmente sem o atalho */ }
 
 render();
 </script>
