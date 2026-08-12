@@ -387,48 +387,95 @@ geral embutido no sistema.
 
 **Importante — mudou desde que o Gmail foi configurado**: as chaves novas
 que o Google AI Studio cria hoje vêm obrigatoriamente "vinculadas a uma
-conta de serviço" e **não aceitam mais** a restrição clássica por site
-(HTTP referrer) — só funcionam bem chamadas de um servidor, não direto do
-navegador. O GitHub, inclusive, bloqueia automaticamente qualquer push que
-contenha esse tipo específico de chave em texto puro (diferente da `apiKey`
-do Firebase ou do Client ID do Gmail, que são seguros para ficar públicos).
-Por isso a chave do Gemini **não fica em nenhum arquivo deste repositório**
-— ela mora só dentro de um **Cloudflare Worker** (gratuito, sem cartão de
-crédito exigido no plano free), que funciona como um pequeno intermediário:
-o navegador de cada pessoa fala só com o Worker (endereço público, sem
-segredo nenhum), e é o Worker — rodando no servidor da Cloudflare, nunca no
-navegador — quem guarda a chave de verdade e conversa com o Gemini.
+conta de serviço", e esse tipo de chave **só aceita autenticação OAuth2 de
+verdade** (testado na prática: chamar a API com o formato simples `?key=`
+retorna erro 401 "Expected OAuth 2 access token"). Além disso o GitHub
+bloqueia automaticamente qualquer push que contenha esse tipo de chave em
+texto puro (diferente da `apiKey` do Firebase ou do Client ID do Gmail,
+que são seguros para ficar públicos). Por isso a autenticação do Gemini
+**não fica em nenhum arquivo deste repositório** — ela mora só dentro de
+um **Cloudflare Worker** (gratuito, sem cartão de crédito exigido no
+plano free), que funciona como um pequeno intermediário: o navegador de
+cada pessoa fala só com o Worker (endereço público, sem segredo nenhum),
+e é o Worker — rodando no servidor da Cloudflare, nunca no navegador —
+quem assina um token OAuth2 com a chave privada da conta de serviço e
+conversa com o Gemini.
 
 1. Acesse https://aistudio.google.com/apikey (pode logar com a mesma conta
    Google usada no Firebase) e clique em **"Create API key"** para gerar
-   uma chave nova. Não precisa (e não dá mais para) restringir por site —
-   deixe **"Restrições do aplicativo" = Nenhum**, só confirme que em
-   **"Selecionar restrições da API"** está marcado **"Gemini API"**.
-2. Copie a chave gerada (algo como `AQ.Ab8...`) — vamos precisar dela só
-   uma vez, no passo 5.
+   uma chave nova, escolhendo o projeto `SISTEMA-FB` (`sistema-fb-4cce5`).
+   Isso cria automaticamente uma **conta de serviço** dedicada (algo como
+   `ais-gemini-key-XXXX@...iam.gserviceaccount.com`) e ativa a Generative
+   Language API no projeto — é dela que precisamos, não da chave em si
+   (a chave simples gerada aqui não é usada em lugar nenhum).
+2. No [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts),
+   no mesmo projeto, clique na conta de serviço criada no passo 1 → aba
+   **"Chaves"** → **"Adicionar chave" → "Criar nova chave"** → formato
+   **JSON** → **Criar**. Isso baixa um arquivo `.json` para o computador
+   — ele contém duas informações que vamos usar: `client_email` e
+   `private_key`. **Guarde esse arquivo com cuidado e não o suba para
+   nenhum repositório** — quem tiver esse arquivo consegue se autenticar
+   como essa conta de serviço.
 3. Acesse https://dash.cloudflare.com e crie uma conta gratuita (só
    e-mail + senha, sem cartão).
-4. No menu lateral, vá em **Workers e Pages > Criar > Criar Worker**. Dê
-   um nome (ex: `portal-fb-gemini`) e clique em **"Implantar"** para criar
-   o Worker com o código padrão (vamos substituir a seguir).
-5. Clique em **"Editar código"** (ou "Edit code"), apague todo o conteúdo
-   e cole o código de
+4. No menu lateral, vá em **Compute > Workers & Pages > Create
+   application**, escolha **"Start with Hello World!"**, dê um nome (ex:
+   `portal-fb-gemini`) e clique em **"Deploy"**.
+5. Clique em **"Edit code"**, apague todo o conteúdo e cole o código de
    [`tools/assistente-ia/worker.js`](tools/assistente-ia/worker.js) deste
-   repositório. Clique em **"Implantar"/"Deploy"**.
-6. Ainda na página do Worker, vá em **Configurações > Variáveis e
-   Secrets** (Settings > Variables):
-   - Adicione uma variável do tipo **"Secret"** (criptografada) chamada
-     `GEMINI_API_KEY`, colando a chave copiada no passo 2.
-   - Opcional: adicione uma variável normal `GEMINI_MODEL` com o valor
-     `gemini-2.5-flash` (ou outro modelo Gemini disponível) — se não
-     criar essa variável, o Worker usa `gemini-2.5-flash` por padrão.
-   - Salve/implante de novo se pedir.
-7. Copie a URL pública do Worker (aparece no topo da página dele, algo
+   repositório. Clique em **"Deploy"**.
+6. Volte para a página do Worker → aba **"Settings" → "Variables and
+   secrets"**:
+   - Adicione **`GOOGLE_SA_EMAIL`** (tipo **Secret**) = o valor de
+     `client_email` do JSON baixado no passo 2 (algo como
+     `ais-gemini-key-...@sistema-fb-4cce5.iam.gserviceaccount.com`).
+   - Adicione **`GOOGLE_SA_PRIVATE_KEY`** (tipo **Secret**) = o valor de
+     `private_key` do mesmo JSON, **completo**, incluindo as linhas
+     `-----BEGIN PRIVATE KEY-----` e `-----END PRIVATE KEY-----` — copie
+     só o conteúdo entre as aspas do JSON, sem incluir as aspas nem a
+     vírgula do final (é o erro mais fácil de cometer aqui).
+   - Opcional: adicione **`GEMINI_MODEL`** (tipo **Text**, não Secret) com
+     o modelo desejado — em agosto de 2026 o recomendado é
+     `gemini-3.5-flash` (o `gemini-2.5-flash` antigo parou de aceitar
+     usuários novos). Sem essa variável, o Worker usa `gemini-3.5-flash`
+     por padrão. Vale conferir de tempos em tempos em
+     https://ai.google.dev/gemini-api/docs/models se saiu um modelo mais
+     novo/melhor.
+7. **Passo fácil de esquecer**: adicionar as variáveis cria uma *nova
+   versão* do Worker, mas não promove ela automaticamente para receber
+   tráfego. Vá na aba **"Deployments"** e confira se a versão mais recente
+   da "Version History" é a mesma que aparece em "Active deployment" (com
+   100% de tráfego) — se não for, clique nos **"..."** da versão mais nova
+   e promova/publique ela.
+8. Copie a URL pública do Worker (aparece no topo da página dele, algo
    como `https://portal-fb-gemini.SEU-USUARIO.workers.dev`) e cole em
    [`tools/assistente-ia/gemini-config.js`](tools/assistente-ia/gemini-config.js),
    no lugar de `COLE_AQUI_A_URL_DO_SEU_WORKER`.
-8. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
+9. Cadastre a aba **Assistente IA** em **Administração > Abas**, como na
    tabela do passo 5, apontando para `tools/assistente-ia/`.
+
+**Testando o Worker sem precisar abrir o Portal** (útil para depurar):
+
+```
+curl -s -X POST "https://portal-fb-gemini.SEU-USUARIO.workers.dev" \
+  -H "Origin: https://jowjow007.github.io" \
+  -H "Content-Type: application/json" \
+  -d '{"contents":[{"role":"user","parts":[{"text":"oi"}]}]}'
+```
+
+Uma resposta com `"candidates"` significa que está tudo funcionando. Erros
+comuns e o que significam:
+- `"Credenciais da conta de serviço não configuradas"` → a versão ativa do
+  Worker não tem as duas Secrets do passo 6 (veja o passo 7).
+- `401 ... Expected OAuth 2 access token` → algo está chamando a API com
+  `?key=` em vez de OAuth2 (não deveria acontecer com o `worker.js` atual).
+- `403 ... insufficient authentication scopes` → o `scope` usado ao gerar
+  o token está errado (tem que ser
+  `https://www.googleapis.com/auth/generative-language`, já configurado
+  no `worker.js`).
+- `404 ... model ... no longer available` → o nome do modelo em
+  `GEMINI_MODEL` (ou o padrão no código) ficou desatualizado — veja o
+  passo 6.
 
 O Worker já vem configurado para só aceitar pedidos vindos dos domínios do
 Portal (`portal.fonsecaebraga.com.br` e `jowjow007.github.io`) — qualquer
