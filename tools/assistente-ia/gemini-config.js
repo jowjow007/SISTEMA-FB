@@ -12,4 +12,4 @@
 // Veja o passo a passo completo no README-SETUP.md, seção 9.
 // ============================================================
 
-const GEMINI_WORKER_URL = "COLE_AQUI_A_URL_DO_SEU_WORKER";
+const GEMINI_WORKER_URL = "https://portal-fb-gemini.jowjow07.workers.dev";
