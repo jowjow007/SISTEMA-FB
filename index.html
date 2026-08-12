@@ -158,6 +158,13 @@
   #tabstrip.collapsed{width:60px;}
   #tabstrip.collapsed .tab-btn span:not(.pending-badge){display:none;}
   #tabstrip.collapsed .tab-btn{justify-content:center;padding:8px 6px;position:relative;}
+  #sidebar-tooltip{
+    position:fixed;padding:6px 11px;border-radius:7px;background:var(--panel-2);
+    border:1px solid var(--line-strong);color:var(--paper);font-size:.8rem;font-weight:500;white-space:nowrap;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s ease;z-index:9999;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);
+  }
+  #sidebar-tooltip.show{opacity:1;visibility:visible;}
   #tabstrip.collapsed .group-label{display:none;}
   #tabstrip.collapsed .divider{margin:10px 8px;}
   #tabstrip.collapsed .cnpj-footer{display:none;}
@@ -408,7 +415,7 @@
     <div class="user-info" id="user-info-box"></div>
     <div class="logout-wrap">
       <button class="btn secondary small" id="logout-btn" style="width:auto;">Sair</button>
-      <span class="version-tag">v104</span>
+      <span class="version-tag">v105</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -547,6 +554,8 @@
   </div>
 </div>
 
+<div id="sidebar-tooltip"></div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -610,6 +619,7 @@
     themeLabel: document.getElementById('theme-label'),
     sidebarToggle: document.getElementById('sidebar-toggle'),
     tabstripEl: document.getElementById('tabstrip'),
+    sidebarTooltip: document.getElementById('sidebar-tooltip'),
     editTabsBackdrop: document.getElementById('edit-tabs-backdrop'),
     editTabsUserLabel: document.getElementById('edit-tabs-user-label'),
     editTabsList: document.getElementById('edit-tabs-list'),
@@ -659,6 +669,22 @@
   els.sidebarToggle.addEventListener('click', function(){
     aplicarSidebarColapsada(!els.tabstripEl.classList.contains('collapsed'));
   });
+
+  // ---------- Tooltip flutuante (nome da aba ao passar o mouse com o menu recolhido) ----------
+  function ativarTooltipAba(btn, label){
+    btn.addEventListener('mouseenter', function(){
+      if (!els.tabstripEl.classList.contains('collapsed')) return;
+      const rect = btn.getBoundingClientRect();
+      els.sidebarTooltip.textContent = label;
+      els.sidebarTooltip.style.left = (rect.right + 12) + 'px';
+      els.sidebarTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+      els.sidebarTooltip.style.transform = 'translateY(-50%)';
+      els.sidebarTooltip.classList.add('show');
+    });
+    btn.addEventListener('mouseleave', function(){
+      els.sidebarTooltip.classList.remove('show');
+    });
+  }
 
   let currentProfile = null;
   let tabsCatalog = [];   // [{id,label,url,order}]
@@ -966,9 +992,9 @@
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = t.id;
-      btn.title = t.label;
       btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span>';
       btn.addEventListener('click', function(){ selectTab(t.id); });
+      ativarTooltipAba(btn, t.label);
       els.tabstrip.appendChild(btn);
     });
 
@@ -984,9 +1010,9 @@
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = '__admin__';
-      btn.title = 'Administração';
       btn.innerHTML = iconeSvg('settings') + '<span>Administração</span><span class="pending-badge" id="pending-badge"></span>';
       btn.addEventListener('click', function(){ selectTab('__admin__'); });
+      ativarTooltipAba(btn, 'Administração');
       els.tabstrip.appendChild(btn);
       updatePendingBadge();
     }
