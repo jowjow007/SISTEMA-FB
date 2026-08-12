@@ -84,11 +84,11 @@
   .login-box .sub{color:var(--muted);font-size:.85rem;margin:0 0 20px;}
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
-  .field input{
+  .field input,.field select{
     width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-size:.95rem;outline:none;
   }
-  .field input:focus{border-color:var(--red);}
+  .field input:focus,.field select:focus{border-color:var(--red);}
   .btn{
     width:100%;padding:11px 12px;border-radius:8px;border:none;background:var(--red);
     color:#fff;font-weight:600;font-size:.9rem;letter-spacing:.02em;transition:background .15s;
@@ -357,6 +357,19 @@
           <input type="text" id="register-rg" required>
         </div>
         <div class="field">
+          <label>OAB <span style="opacity:.7;">(opcional)</span></label>
+          <input type="text" id="register-oab" placeholder="Ex: 123456/MG">
+        </div>
+        <div class="field">
+          <label>Estado civil</label>
+          <select id="register-estado-civil" required>
+            <option value="" disabled selected>Selecione</option>
+            <option value="solteiro">Solteiro(a)</option>
+            <option value="casado">Casado(a)</option>
+            <option value="uniao_estavel">União estável</option>
+          </select>
+        </div>
+        <div class="field">
           <label>E-mail</label>
           <input type="email" id="register-email" autocomplete="username" required>
         </div>
@@ -562,10 +575,21 @@
         <input type="text" id="dados-cpf" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">RG</label>
         <input type="text" id="dados-rg" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">OAB</label>
+        <input type="text" id="dados-oab" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Estado civil</label>
+        <select id="dados-estado-civil" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
+          <option value="">—</option>
+          <option value="solteiro">Solteiro(a)</option>
+          <option value="casado">Casado(a)</option>
+          <option value="uniao_estavel">União estável</option>
+        </select></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Telefone</label>
         <input type="text" id="dados-telefone" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Endereço</label>
         <input type="text" id="dados-endereco" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">E-mail alternativo</label>
+        <input type="email" id="dados-email-alt" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Data de ingresso</label>
         <input type="date" id="dados-ingresso" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Departamento atual</label>
@@ -633,6 +657,8 @@
     registerBirthdate: document.getElementById('register-birthdate'),
     registerCpf: document.getElementById('register-cpf'),
     registerRg: document.getElementById('register-rg'),
+    registerOab: document.getElementById('register-oab'),
+    registerEstadoCivil: document.getElementById('register-estado-civil'),
     registerTelefone: document.getElementById('register-telefone'),
     registerEndereco: document.getElementById('register-endereco'),
     registerIngresso: document.getElementById('register-ingresso'),
@@ -827,14 +853,16 @@
     const nascimento = els.registerBirthdate.value;
     const cpf = els.registerCpf.value.trim();
     const rg = els.registerRg.value.trim();
+    const oab = els.registerOab.value.trim();
+    const estadoCivil = els.registerEstadoCivil.value;
     const telefone = els.registerTelefone.value.trim();
     const endereco = els.registerEndereco.value.trim();
     const ingresso = els.registerIngresso.value;
     const depto = els.registerDepto.value.trim();
 
     if (!primeiroNome || !sobrenome || !email || senha.length < 6 || !nascimento ||
-        !cpf || !rg || !telefone || !endereco || !ingresso || !depto) {
-      els.registerError.textContent = 'Preencha todos os campos obrigatórios (nome, sobrenome, CPF, RG, e-mail, telefone, endereço, senha, data de nascimento, data de ingresso e departamento).';
+        !cpf || !rg || !estadoCivil || !telefone || !endereco || !ingresso || !depto) {
+      els.registerError.textContent = 'Preencha todos os campos obrigatórios (nome, sobrenome, CPF, RG, estado civil, e-mail, telefone, endereço, senha, data de nascimento, data de ingresso e departamento).';
       els.registerError.style.display = 'block';
       return;
     }
@@ -857,6 +885,8 @@
           tabs: [],
           cpf: cpf,
           rg: rg,
+          oab: oab,
+          estadoCivil: estadoCivil,
           telefone: telefone,
           endereco: endereco,
           dataIngresso: ingresso,
@@ -1329,8 +1359,11 @@
       els.editDadosUserLabel.textContent = dados.displayName || dados.email || '';
       document.getElementById('dados-cpf').value = dados.cpf || '';
       document.getElementById('dados-rg').value = dados.rg || '';
+      document.getElementById('dados-oab').value = dados.oab || '';
+      document.getElementById('dados-estado-civil').value = dados.estadoCivil || '';
       document.getElementById('dados-telefone').value = dados.telefone || '';
       document.getElementById('dados-endereco').value = dados.endereco || '';
+      document.getElementById('dados-email-alt').value = dados.emailAlternativo || '';
       document.getElementById('dados-ingresso').value = dados.dataIngresso || '';
       document.getElementById('dados-depto').value = dados.deptoAtual || '';
       document.getElementById('dados-remuneracao').value = dados.remuneracao || '';
@@ -1351,8 +1384,11 @@
     db.collection('users').doc(editDadosTargetUid).update({
       cpf: document.getElementById('dados-cpf').value.trim(),
       rg: document.getElementById('dados-rg').value.trim(),
+      oab: document.getElementById('dados-oab').value.trim(),
+      estadoCivil: document.getElementById('dados-estado-civil').value,
       telefone: document.getElementById('dados-telefone').value.trim(),
       endereco: document.getElementById('dados-endereco').value.trim(),
+      emailAlternativo: document.getElementById('dados-email-alt').value.trim(),
       dataIngresso: document.getElementById('dados-ingresso').value,
       deptoAtual: document.getElementById('dados-depto').value.trim(),
       remuneracao: document.getElementById('dados-remuneracao').value.trim()

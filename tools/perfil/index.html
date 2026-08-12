@@ -54,11 +54,11 @@
 
   .field{margin-bottom:16px;}
   .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
-  .field input{
+  .field input,.field select{
     width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-size:.95rem;outline:none;
   }
-  .field input:focus{border-color:var(--red);}
+  .field input:focus,.field select:focus{border-color:var(--red);}
   .field input[readonly]{color:var(--muted);}
 
   .btn{
@@ -112,6 +112,19 @@
       <input type="text" id="rg-input">
     </div>
     <div class="field">
+      <label>OAB <span style="opacity:.7;">(opcional)</span></label>
+      <input type="text" id="oab-input" placeholder="Ex: 123456/MG">
+    </div>
+    <div class="field">
+      <label>Estado civil</label>
+      <select id="estado-civil-input">
+        <option value="" disabled>Selecione</option>
+        <option value="solteiro">Solteiro(a)</option>
+        <option value="casado">Casado(a)</option>
+        <option value="uniao_estavel">União estável</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Telefone</label>
       <input type="tel" id="telefone-input" placeholder="(00) 00000-0000">
     </div>
@@ -158,6 +171,8 @@
     birthdateInput: document.getElementById('birthdate-input'),
     cpfInput: document.getElementById('cpf-input'),
     rgInput: document.getElementById('rg-input'),
+    oabInput: document.getElementById('oab-input'),
+    estadoCivilInput: document.getElementById('estado-civil-input'),
     telefoneInput: document.getElementById('telefone-input'),
     enderecoInput: document.getElementById('endereco-input'),
     emailAltInput: document.getElementById('email-alt-input'),
@@ -235,6 +250,8 @@
         const u = userDoc.data();
         els.cpfInput.value = u.cpf || '';
         els.rgInput.value = u.rg || '';
+        els.oabInput.value = u.oab || '';
+        els.estadoCivilInput.value = u.estadoCivil || '';
         els.telefoneInput.value = u.telefone || '';
         els.enderecoInput.value = u.endereco || '';
         els.emailAltInput.value = u.emailAlternativo || '';
@@ -249,8 +266,8 @@
     const nome = els.nomeInput.value.trim();
     const sobrenome = els.sobrenomeInput.value.trim();
 
-    if (!nome || !sobrenome || !els.birthdateInput.value) {
-      els.msgErr.textContent = 'Preencha nome, sobrenome e data de nascimento.';
+    if (!nome || !sobrenome || !els.birthdateInput.value || !els.estadoCivilInput.value) {
+      els.msgErr.textContent = 'Preencha nome, sobrenome, data de nascimento e estado civil.';
       els.msgErr.style.display = 'block';
       return;
     }
@@ -268,6 +285,8 @@
     const dadosCadastrais = {
       cpf: els.cpfInput.value.trim(),
       rg: els.rgInput.value.trim(),
+      oab: els.oabInput.value.trim(),
+      estadoCivil: els.estadoCivilInput.value,
       telefone: els.telefoneInput.value.trim(),
       endereco: els.enderecoInput.value.trim(),
       emailAlternativo: els.emailAltInput.value.trim()
