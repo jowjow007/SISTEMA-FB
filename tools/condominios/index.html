@@ -340,8 +340,9 @@ try{
 function isAdminUser(){ return !!(currentProfile && currentProfile.role === 'admin'); }
 
 function onAuthResolved(){
-  if (state.section === 'gerar-notificacao') { gerarState.minhasLoaded = false; loadMinhasNotificacoes(); render(); }
-  else if (state.section === 'condominios' && state.condoView === 'aprovacao') { refreshAprovacao(); render(); }
+  if (state.section !== 'gerar-notificacao') return;
+  if (state.gerarView === 'aprovacao') { refreshAprovacao(); render(); }
+  else { gerarState.minhasLoaded = false; loadMinhasNotificacoes(); render(); }
 }
 
 if (fbReady){
@@ -382,10 +383,10 @@ function formatDateTime(ts){
 }
 
 /* ---------- state / router ---------- */
-var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', condoView:'grid' };
+var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', condoView:'grid', gerarView:'compor' };
 
 function go(section){
-  state.section = section; state.condoIdx = null; state.condoView = 'grid';
+  state.section = section; state.condoIdx = null; state.condoView = 'grid'; state.gerarView = 'compor';
   render(); window.scrollTo(0,0);
   if (section === 'gerar-notificacao') loadMinhasNotificacoes();
 }
@@ -395,7 +396,12 @@ function setCondoSubtab(t){ state.condoSubtab = t; render(); }
 function setCondoView(v){
   state.condoView = v; state.condoIdx = null;
   render(); window.scrollTo(0,0);
+}
+function setGerarView(v){
+  state.gerarView = v;
+  render(); window.scrollTo(0,0);
   if (v === 'aprovacao') refreshAprovacao();
+  else loadMinhasNotificacoes();
 }
 
 /* ---------- render ---------- */
@@ -418,12 +424,11 @@ function render(){
   else if(state.section === 'pops') m.innerHTML = viewPops();
   else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail()
     : state.condoView==='almah' ? viewAlmahCondos()
-    : state.condoView==='aprovacao' ? viewNotificacoesProntas()
     : viewCondoGrid();
   else if(state.section === 'astrea') m.innerHTML = viewAstrea();
   else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
-  else if(state.section === 'gerar-notificacao') m.innerHTML = viewGerarNotificacao();
+  else if(state.section === 'gerar-notificacao') m.innerHTML = state.gerarView==='aprovacao' ? viewNotificacoesProntas() : viewGerarNotificacao();
   else if(state.section === 'nomenclatura') m.innerHTML = viewNomenclatura();
   else if(state.section === 'links') m.innerHTML = viewLinks();
   bindDynamic();
@@ -444,8 +449,11 @@ function bindDynamic(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-condoview]'), function(el){
     el.addEventListener('click', function(){ setCondoView(el.getAttribute('data-condoview')); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-gerarview]'), function(el){
+    el.addEventListener('click', function(){ setGerarView(el.getAttribute('data-gerarview')); });
+  });
   if(state.section === 'nomenclatura') bindNomenclatura();
-  if(state.section === 'gerar-notificacao'){
+  if(state.section === 'gerar-notificacao' && state.gerarView === 'compor'){
     var gnEnviar = document.getElementById('gn-enviar');
     if (gnEnviar) gnEnviar.addEventListener('click', enviarNotificacao);
     var gnCancelar = document.getElementById('gn-cancelar');
@@ -454,7 +462,7 @@ function bindDynamic(){
       el.addEventListener('click', function(){ editarNotificacao(el.getAttribute('data-edit-notif')); });
     });
   }
-  if(state.section === 'condominios' && state.condoView === 'aprovacao') bindAprovacao();
+  if(state.section === 'gerar-notificacao' && state.gerarView === 'aprovacao') bindAprovacao();
 }
 
 /* ---------- views ---------- */
@@ -573,7 +581,13 @@ function condoSubnav(active){
   return '<div class="condo-subnav">'
     + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Condomínios</button>'
     + '<button type="button" class="'+(active==='almah'?'active':'')+'" data-condoview="almah">AlmahCondos</button>'
-    + '<button type="button" class="'+(active==='aprovacao'?'active':'')+'" data-condoview="aprovacao">Notificações Prontas</button>'
+    + '</div>';
+}
+
+function gerarSubnav(active){
+  return '<div class="condo-subnav">'
+    + '<button type="button" class="'+(active==='compor'?'active':'')+'" data-gerarview="compor">Gerar Notificação</button>'
+    + '<button type="button" class="'+(active==='aprovacao'?'active':'')+'" data-gerarview="aprovacao">Notificações Prontas</button>'
     + '</div>';
 }
 
@@ -1009,7 +1023,8 @@ function viewGerarNotificacao(){
         : gerarState.minhas.map(notifCardMinha).join('')))
     : '';
 
-  return '<div class="kicker">Aprovação de notificações</div>'
+  return gerarSubnav('compor')
+    + '<div class="kicker">Aprovação de notificações</div>'
     + '<h1>Gerar Notificação</h1>'
     + '<p class="lead">Monte a notificação (ainda manual — assim que você enviar os modelos do escritório, esta tela passa a montar o texto sozinha) e envie para aprovação do responsável pelo condomínio.</p>'
     + '<hr class="rule">'
@@ -1192,10 +1207,10 @@ function viewNotificacoesProntas(){
     ? '<div class="auth-gate">Faça login no Portal (abra esta ferramenta dentro do Portal Fonseca &amp; Braga, já logado) para ver as notificações que você pode aprovar.</div>'
     : '';
 
-  if (authBox) return condoSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">' + authBox;
+  if (authBox) return gerarSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">' + authBox;
 
   if (!aprovState.condoAprovLoaded){
-    return condoSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">'
+    return gerarSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">'
       + '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
   }
 
@@ -1203,7 +1218,7 @@ function viewNotificacoesProntas(){
   var semAcesso = meus.length === 0 && !isAdminUser();
   var itensFiltrados = aprovState.itens.filter(function(n){ return n.status === aprovState.filter; });
 
-  return condoSubnav('aprovacao')
+  return gerarSubnav('aprovacao')
     + '<div class="kicker">Aprovação</div>'
     + '<h1>Notificações Prontas</h1>'
     + '<p class="lead">Notificações enviadas para aprovação, filtradas pelos condomínios em que você é o(a) aprovador(a) designado(a).</p>'
