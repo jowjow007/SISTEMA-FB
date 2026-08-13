@@ -4,7 +4,7 @@
 // Isso garante que o app atualiza sozinho a cada alteracao publicada no site,
 // sem precisar reinstalar nada.
 
-const CACHE_NAME = 'portal-fb-cache-v1';
+const CACHE_NAME = 'portal-fb-cache-v2';
 const OFFLINE_FALLBACK = './index.html';
 
 self.addEventListener('install', () => {
