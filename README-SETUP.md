@@ -543,3 +543,96 @@ Portal e são processadas pelo Google, a própria tela mostra um aviso para
 não colar dados sigilosos de clientes (CPF, número de processo, teor de
 contratos) no chat — é só um assistente de uso geral, não uma ferramenta
 de trabalho com os dados do escritório.
+
+## 10. Exclusão definitiva de usuário (Auth + Firestore)
+
+**O problema que isto resolve**: no botão "Excluir" da tabela de usuários
+(Administração > Usuários), o app apagava só o cadastro dentro do Portal
+(Firestore) — a pessoa parava de conseguir entrar, mas o **login** dela
+(e-mail/senha) continuava existindo escondido dentro do Firebase
+Authentication. Resultado: se ela tentasse se cadastrar de novo com o
+mesmo e-mail, o sistema recusava dizendo que o e-mail já estava em uso,
+mesmo sem aparecer em lugar nenhum da tela de Administração. Isso já
+aconteceu na prática (e-mail `hecy.braga@fonsecaebraga.com.br` — corrigido
+manualmente apagando o login em Firebase Console > Authentication > Users
+enquanto este Worker não estava configurado).
+
+**Por que não dá para simplesmente apagar o login pelo navegador**: o SDK
+do Firebase usado no resto do Portal só consegue apagar a conta de login
+da **própria pessoa logada** — nunca a de outra pessoa, por desenho de
+segurança do Firebase, sem contorno possível só no navegador. Apagar o
+login de outra pessoa exige uma "conta de serviço" com permissão de
+administrador do projeto, e esse tipo de credencial não pode ficar em
+nenhum arquivo público deste repositório — por isso ela mora dentro de
+outro **Cloudflare Worker** (mesma técnica gratuita já usada na seção 9,
+Worker separado e com credencial própria, para não misturar a permissão
+"apagar contas de login" com a do Assistente IA).
+
+**Enquanto este Worker não estiver configurado**, o botão "Excluir" continua
+funcionando como antes (só limpa o cadastro no Portal) e mostra um aviso
+na confirmação lembrando que o login precisa ser apagado manualmente em
+Firebase Console > Authentication > Users. Depois de configurado, o botão
+passa a apagar tudo de uma vez automaticamente.
+
+1. No [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts),
+   confira que está no projeto `SISTEMA-FB` (`sistema-fb-4cce5`) — o mesmo
+   do Firebase — e clique em **"Criar conta de serviço"**.
+2. Dê um nome, ex: `portal-fb-admin` → **"Criar e continuar"**.
+3. Em **"Conceder a esta conta de serviço acesso ao projeto"**, adicione
+   **dois** papéis (um de cada vez, botão "Adicionar outro papel"):
+   - **Firebase Authentication Admin** (apagar o login de um usuário)
+   - **Cloud Datastore User** (ler/apagar documentos no Firestore)
+
+   Não conceda mais nada além disso — é só o suficiente para esta tarefa.
+4. **"Concluído"**. Na lista de contas de serviço, clique na que acabou de
+   criar → aba **"Chaves"** → **"Adicionar chave" → "Criar nova chave"** →
+   formato **JSON** → **Criar**. Isso baixa um arquivo `.json` — guarde com
+   cuidado e não suba para nenhum repositório (contém `client_email` e
+   `private_key`, que vamos usar a seguir).
+5. Em https://dash.cloudflare.com (mesma conta já usada na seção 9), vá em
+   **Compute > Workers & Pages > Create application** → **"Start with
+   Hello World!"** → nome ex. `portal-fb-admin` → **"Deploy"**.
+6. Clique em **"Edit code"**, apague todo o conteúdo e cole o código de
+   [`admin-worker.js`](admin-worker.js) deste repositório. Clique em
+   **"Deploy"**.
+7. Volte para a página do Worker → aba **"Settings" → "Variables and
+   secrets"**:
+   - Adicione **`ADMIN_SA_EMAIL`** (tipo **Secret**) = o valor de
+     `client_email` do JSON baixado no passo 4.
+   - Adicione **`ADMIN_SA_PRIVATE_KEY`** (tipo **Secret**) = o valor de
+     `private_key` do mesmo JSON, **completo**, incluindo as linhas
+     `-----BEGIN PRIVATE KEY-----` e `-----END PRIVATE KEY-----` — copie
+     só o conteúdo entre as aspas do JSON, sem incluir as aspas nem a
+     vírgula do final.
+   - Adicione **`FIREBASE_PROJECT_ID`** (tipo **Text**, não Secret) =
+     `sistema-fb-4cce5`.
+8. **Passo fácil de esquecer** (mesmo aviso da seção 9): adicionar as
+   variáveis cria uma *nova versão* do Worker, mas não promove ela
+   automaticamente. Vá na aba **"Deployments"** e confira se a versão mais
+   recente está mesmo em **"Active deployment"** (100% do tráfego) — se
+   não estiver, promova/publique ela.
+9. Copie a URL pública do Worker (topo da página, algo como
+   `https://portal-fb-admin.SEU-USUARIO.workers.dev`) e cole em
+   [`admin-config.js`](admin-config.js), no lugar de
+   `COLE_AQUI_A_URL_DO_SEU_WORKER`. A partir daqui o botão "Excluir" já
+   passa a apagar o login de verdade — não precisa cadastrar nada em
+   Administração > Abas, isso é só usado internamente pelo próprio botão.
+
+**Correção manual imediata (uma vez só, antes do Worker acima existir)**:
+qualquer e-mail já preso nessa situação (o login existe, mas o cadastro no
+Portal já foi apagado) precisa ser liberado manualmente: Firebase Console
+→ projeto `SISTEMA-FB` → **Authentication → Users**, encontre o e-mail na
+lista, menu **⋮** na linha dele → **"Excluir conta"**. Depois disso a
+pessoa consegue se cadastrar de novo normalmente.
+
+**O que o Worker verifica antes de apagar qualquer coisa**: confirma que
+quem está pedindo a exclusão está mesmo logado no Portal agora (verifica a
+assinatura do token de sessão do Firebase) e que essa pessoa tem
+`role: "admin"` no Firestore — qualquer outro caso é recusado. Também
+recusa se o admin tentar se auto-excluir por esse caminho. Apaga, nessa
+ordem: o login (Firebase Authentication) e os documentos `users/{uid}`,
+`perfis/{uid}` e `organograma/{uid}` da pessoa alvo. Dados pessoais sem
+relação com o cadastro em si (tags de conversa no Chat Interno, anotações
+pessoais em "Minhas Anotações") não são apagados por este Worker — ficam
+órfãos mas inofensivos, sem ninguém mais conseguindo lê-los; se um dia
+quiserem uma limpeza completa disso também, é só pedir.

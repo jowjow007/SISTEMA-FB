@@ -454,7 +454,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v110</span>
+      <span class="version-tag">v111</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -610,6 +610,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="admin-config.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1309,7 +1310,7 @@
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserDados(\'' + u.uid + '\')">Dados</button>' +
           '<button class="btn danger small" onclick="window.__revokeUser(\'' + u.uid + '\')">Revogar</button>' +
-          '<button class="btn danger small" onclick="window.__deleteUser(\'' + u.uid + '\',\'' + escapeHtml(u.displayName || u.email || '') + '\')">Excluir</button>' +
+          '<button class="btn danger small" onclick="window.__deleteUser(this,\'' + u.uid + '\',\'' + escapeHtml(u.displayName || u.email || '') + '\')">Excluir</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -1414,16 +1415,48 @@
     db.collection('users').doc(uid).update({ tabs: [] });
   };
 
-  window.__deleteUser = function(uid, nome){
+  window.__deleteUser = function(btn, uid, nome){
     if (uid === currentProfile.uid) {
       alert('Você não pode excluir a si mesmo.');
       return;
     }
-    if (!confirm('Excluir "' + nome + '" definitivamente do portal?\n\nIsso apaga o cadastro dela aqui (acesso, abas e perfil) — ela para de conseguir entrar no sistema imediatamente.\n\nO login (e-mail/senha) tecnicamente continua existindo no Firebase, mas sem o cadastro ela não passa da tela de login. Para apagar o login por completo, use Firebase Console > Authentication > Users.')) return;
-    Promise.all([
-      db.collection('users').doc(uid).delete(),
-      db.collection('perfis').doc(uid).delete()
-    ]);
+
+    const workerConfigurado = typeof ADMIN_WORKER_URL !== 'undefined'
+      && ADMIN_WORKER_URL
+      && ADMIN_WORKER_URL !== 'COLE_AQUI_A_URL_DO_SEU_WORKER';
+
+    if (!workerConfigurado) {
+      if (!confirm('Excluir "' + nome + '" definitivamente do portal?\n\nIsso apaga o cadastro dela aqui (acesso, abas e perfil) — ela para de conseguir entrar no sistema imediatamente.\n\nATENÇÃO: o Worker de exclusão definitiva ainda não foi configurado neste Portal (veja README-SETUP.md, seção 10) — por enquanto o login (e-mail/senha) tecnicamente continua existindo no Firebase, e a pessoa NÃO conseguirá se cadastrar de novo com o mesmo e-mail até você apagar o login manualmente em Firebase Console > Authentication > Users.')) return;
+      Promise.all([
+        db.collection('users').doc(uid).delete(),
+        db.collection('perfis').doc(uid).delete(),
+        db.collection('organograma').doc(uid).delete()
+      ]);
+      return;
+    }
+
+    if (!confirm('Excluir "' + nome + '" definitivamente do portal?\n\nIsso apaga o login (e-mail/senha) e o cadastro (acesso, abas e perfil) — ela para de conseguir entrar no sistema imediatamente e o e-mail fica livre para um novo cadastro na hora.\n\nEssa ação não pode ser desfeita.')) return;
+
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Excluindo...';
+
+    firebase.auth().currentUser.getIdToken().then(function(idToken){
+      return fetch(ADMIN_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: idToken, targetUid: uid })
+      });
+    }).then(function(resp){
+      return resp.json().then(function(data){ return { ok: resp.ok, data: data }; });
+    }).then(function(result){
+      if (!result.ok) throw new Error(result.data && result.data.error ? result.data.error : 'Falha ao excluir.');
+      // onSnapshot do users já re-renderiza a tabela ao remover o documento.
+    }).catch(function(err){
+      alert('Não foi possível excluir "' + nome + '": ' + err.message);
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    });
   };
 
   function criarAba(){
