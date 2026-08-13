@@ -628,6 +628,19 @@
     <h3>Dados cadastrais</h3>
     <p class="sub" id="edit-dados-user-label"></p>
     <div class="list" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="dados-foto-preview" style="width:56px;height:56px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
+        <div style="flex:1;min-width:0;">
+          <label style="font-size:.75rem;color:var(--muted);">Foto (mural de aniversariantes)</label>
+          <input type="file" id="dados-foto-input" accept="image/*" style="width:100%;font-size:.8rem;color:var(--muted);">
+        </div>
+      </div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Nome</label>
+        <input type="text" id="dados-nome" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Sobrenome</label>
+        <input type="text" id="dados-sobrenome" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Data de nascimento</label>
+        <input type="date" id="dados-nascimento" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">CPF</label>
         <input type="text" id="dados-cpf" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">RG</label>
@@ -750,6 +763,8 @@
     editDadosUserLabel: document.getElementById('edit-dados-user-label'),
     editDadosCancelar: document.getElementById('edit-dados-cancelar'),
     editDadosSalvar: document.getElementById('edit-dados-salvar'),
+    dadosFotoPreview: document.getElementById('dados-foto-preview'),
+    dadosFotoInput: document.getElementById('dados-foto-input'),
   };
 
   // ---------- Tema claro/escuro ----------
@@ -1422,14 +1437,60 @@
     });
   };
 
-  // ---------- Modal: dados cadastrais (CPF/RG/telefone/endereço/ingresso/depto/remuneração) ----------
+  // ---------- Modal: dados cadastrais (nome/foto/nascimento + CPF/RG/telefone/endereço/ingresso/depto/remuneração) ----------
   let editDadosTargetUid = null;
+  let editDadosNovaFotoDataUrl = null;
+
+  function resizeImageToDataUrl(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        img.onerror = reject;
+        img.onload = function(){
+          const lado = Math.min(img.width, img.height);
+          const sx = (img.width - lado) / 2;
+          const sy = (img.height - lado) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxDim;
+          canvas.height = maxDim;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  els.dadosFotoInput.addEventListener('change', function(){
+    const file = els.dadosFotoInput.files[0];
+    if (!file) return;
+    resizeImageToDataUrl(file, 220, 0.82).then(function(dataUrl){
+      editDadosNovaFotoDataUrl = dataUrl;
+      els.dadosFotoPreview.style.backgroundImage = 'url(' + dataUrl + ')';
+    });
+  });
 
   window.__editUserDados = function(uid){
-    db.collection('users').doc(uid).get().then(function(doc){
-      const dados = doc.data();
+    Promise.all([
+      db.collection('users').doc(uid).get(),
+      db.collection('perfis').doc(uid).get()
+    ]).then(function(results){
+      const dados = results[0].data() || {};
+      const perfil = results[1].exists ? results[1].data() : {};
       editDadosTargetUid = uid;
+      editDadosNovaFotoDataUrl = null;
       els.editDadosUserLabel.textContent = dados.displayName || dados.email || '';
+
+      const nomeCompleto = perfil.displayName || dados.displayName || '';
+      const partes = nomeCompleto.trim().split(/\s+/);
+      document.getElementById('dados-nome').value = partes[0] || '';
+      document.getElementById('dados-sobrenome').value = partes.slice(1).join(' ') || '';
+      document.getElementById('dados-nascimento').value = perfil.birthDate || '';
+      els.dadosFotoPreview.style.backgroundImage = perfil.photoBase64 ? 'url(' + perfil.photoBase64 + ')' : 'none';
+
       document.getElementById('dados-cpf').value = dados.cpf || '';
       document.getElementById('dados-rg').value = dados.rg || '';
       document.getElementById('dados-oab').value = dados.oab || '';
@@ -1447,6 +1508,8 @@
   function fecharModalEditDados(){
     els.editDadosBackdrop.classList.remove('show');
     editDadosTargetUid = null;
+    editDadosNovaFotoDataUrl = null;
+    els.dadosFotoInput.value = '';
   }
   els.editDadosCancelar.addEventListener('click', fecharModalEditDados);
   els.editDadosBackdrop.addEventListener('click', function(e){
@@ -1454,7 +1517,17 @@
   });
   els.editDadosSalvar.addEventListener('click', function(){
     if (!editDadosTargetUid) return;
-    db.collection('users').doc(editDadosTargetUid).update({
+    const nome = document.getElementById('dados-nome').value.trim();
+    const sobrenome = document.getElementById('dados-sobrenome').value.trim();
+    const nomeCompleto = (nome + ' ' + sobrenome).trim();
+
+    const perfilPatch = {
+      birthDate: document.getElementById('dados-nascimento').value
+    };
+    if (nomeCompleto) perfilPatch.displayName = nomeCompleto;
+    if (editDadosNovaFotoDataUrl) perfilPatch.photoBase64 = editDadosNovaFotoDataUrl;
+
+    const usersPatch = {
       cpf: document.getElementById('dados-cpf').value.trim(),
       rg: document.getElementById('dados-rg').value.trim(),
       oab: document.getElementById('dados-oab').value.trim(),
@@ -1465,7 +1538,13 @@
       dataIngresso: document.getElementById('dados-ingresso').value,
       deptoAtual: document.getElementById('dados-depto').value.trim(),
       remuneracao: document.getElementById('dados-remuneracao').value.trim()
-    }).then(fecharModalEditDados);
+    };
+    if (nomeCompleto) usersPatch.displayName = nomeCompleto;
+
+    Promise.all([
+      db.collection('users').doc(editDadosTargetUid).update(usersPatch),
+      db.collection('perfis').doc(editDadosTargetUid).set(perfilPatch, { merge: true })
+    ]).then(fecharModalEditDados);
   });
 
   function fecharModalEditTabs(){
