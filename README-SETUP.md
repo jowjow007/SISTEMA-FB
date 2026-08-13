@@ -163,6 +163,48 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    function isAprovadorDoCondo(slug) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/condoAprovadores/$(slug)) &&
+        get(/databases/$(database)/documents/condoAprovadores/$(slug)).data.aprovadorUid == request.auth.uid;
+    }
+    match /condoAprovadores/{slug} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /notificacoesGeradas/{docId} {
+      allow read: if isSignedIn() &&
+        (resource.data.criadoPorUid == request.auth.uid || isAdmin() || isAprovadorDoCondo(resource.data.condominioSlug));
+      allow create: if isSignedIn()
+                    && request.resource.data.criadoPorUid == request.auth.uid
+                    && request.resource.data.status == 'pendente'
+                    && request.resource.data.tentativa == 1
+                    && request.resource.data.condominio is string
+                    && request.resource.data.condominioSlug is string
+                    && request.resource.data.texto is string && request.resource.data.texto.size() > 0;
+      allow update: if isSignedIn() && (
+                      (
+                        resource.data.criadoPorUid == request.auth.uid
+                        && resource.data.status == 'rejeitada'
+                        && request.resource.data.status == 'pendente'
+                        && request.resource.data.criadoPorUid == resource.data.criadoPorUid
+                        && request.resource.data.condominio == resource.data.condominio
+                        && request.resource.data.condominioSlug == resource.data.condominioSlug
+                        && request.resource.data.tentativa == resource.data.tentativa + 1
+                      ) || (
+                        resource.data.status == 'pendente'
+                        && (isAdmin() || isAprovadorDoCondo(resource.data.condominioSlug))
+                        && request.resource.data.status in ['aprovada', 'rejeitada']
+                        && request.resource.data.decididoPorUid == request.auth.uid
+                        && request.resource.data.criadoPorUid == resource.data.criadoPorUid
+                        && request.resource.data.texto == resource.data.texto
+                        && request.resource.data.condominioSlug == resource.data.condominioSlug
+                        && (request.resource.data.status == 'aprovada'
+                            || (request.resource.data.motivoRejeicao is string && request.resource.data.motivoRejeicao.size() > 0))
+                      )
+                    );
+      allow delete: if isAdmin();
+    }
   }
 }
 ```
@@ -186,6 +228,8 @@ service cloud.firestore {
 > A regra de `contratosGerados` (usada pela ferramenta **Contratos e Propostas**, histórico "últimos documentos gerados") é compartilhada entre toda a equipe: qualquer usuário logado lê a lista inteira (para reaproveitar contratos gerados por colegas), mas só cria registros com o próprio `criadoPorUid`. Os registros nunca são editados depois de criados (`allow update: if false`) — cada geração de PDF cria um novo documento, não atualiza um existente. Apagar é permitido para quem criou o registro ou para admin (ex.: remover um teste/engano da lista). O campo `dados` guarda o objeto inteiro do formulário (nome, CPF, valores, cláusulas preenchidas etc.) para permitir recarregar o formulário com um clique — não guarda o PDF em si, só os dados usados para gerá-lo.
 
 > A regra de `organograma` (usada pela ferramenta **Organograma**) existe porque `users/{uid}` só pode ser lido pelo próprio dono do cadastro ou por um admin (regra `allow read` de `users` acima) — então um gestor sem papel de admin nunca conseguiria montar a lista de todo mundo direto de `users`. `organograma/{uid}` é um espelho **só com os campos não sensíveis** (`displayName`, `deptoAtual`, `dataIngresso`, `remuneracao`) que qualquer usuário logado pode ler — CPF, RG, telefone e endereço nunca são copiados para cá, continuam só em `users`. Só admin escreve (`allow write: if isAdmin()`), e a ferramenta grava nos dois lugares ao mesmo tempo (`users` e `organograma`) sempre que os 3 campos editáveis são alterados, seja pelo modal "Dados cadastrais" em Administração > Usuários, seja pelo próprio bloco do Organograma — para os dois nunca ficarem dessincronizados.
+
+> As regras de `condoAprovadores` e `notificacoesGeradas` (usadas pela ferramenta **Condomínios**, aba "Notificações Prontas") implementam a aprovação de notificações extrajudiciais por condomínio. `condoAprovadores/{slug}` (`slug` = nome do condomínio simplificado, ex. `mirante-das-brisas`) guarda **um aprovador por condomínio** (`aprovadorUid`/`aprovadorNome`/`aprovadorEmail`) — só admin atribui (pela própria ferramenta, botão "⚙ Atribuir aprovadores"), qualquer logado lê (necessário para a tela descobrir quem é aprovador de quê). `notificacoesGeradas/{docId}` guarda cada notificação enviada pela aba "Gerar Notificação": `criadoPorUid` só pode criar com `status:'pendente'` e `tentativa:1`; leitura é restrita a quem criou, ao admin, ou a quem estiver em `condoAprovadores` como aprovador **daquele condomínio específico** (função `isAprovadorDoCondo`, que faz `get()` no documento de `condoAprovadores` — por isso um aprovador de um condomínio nunca vê notificações de outro). `allow update` cobre exatamente dois casos: (1) o próprio criador reenviando uma notificação que **estava** `rejeitada`, sempre incrementando `tentativa` em exatamente 1 (é esse número que gera o "já rejeitada Nx antes" na tela); (2) o aprovador designado (ou admin) decidindo uma notificação `pendente`, travando que ele não altere `texto`/`criadoPorUid`/`condominioSlug` e exigindo `motivoRejeicao` preenchido sempre que a decisão for `rejeitada`. Ninguém mais pode escrever nesses documentos — nem o próprio criador altera uma notificação já aprovada.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 

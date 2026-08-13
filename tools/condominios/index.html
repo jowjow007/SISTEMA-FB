@@ -208,6 +208,43 @@
   .external-btn{display:inline-flex;align-items:center;gap:8px;background:var(--red);color:#fff;border:none;border-radius:8px;
     padding:11px 18px;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;font-family:var(--font-body);}
 
+  /* gerar notificacao / notificacoes prontas */
+  .auth-gate{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:22px;font-size:.87rem;color:var(--muted);}
+  .btn{background:var(--red);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:.83rem;font-weight:700;
+    cursor:pointer;font-family:var(--font-body);}
+  .btn.secondary{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--card-line);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  textarea{width:100%;padding:9px 11px;border:1px solid var(--card-line);border-radius:8px;font-size:.85rem;
+    font-family:var(--font-body);background:var(--card);color:var(--text);resize:vertical;}
+
+  .status-badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;border-radius:20px;padding:3px 11px;text-transform:uppercase;}
+  .status-badge.pendente{background:var(--warn-bg);color:#8a6416;}
+  .status-badge.aprovada{background:var(--green-bg);color:var(--green-text);}
+  .status-badge.rejeitada{background:#fbe2df;color:#a3312a;}
+
+  .notif-card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+  .notif-card .nc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;flex-wrap:wrap;}
+  .notif-card h4{margin:0;font-size:.95rem;font-family:var(--font-body);font-weight:700;}
+  .notif-card .nc-meta{font-size:.76rem;color:var(--muted);margin:2px 0 8px;}
+  .notif-card .nc-texto{font-size:.83rem;line-height:1.55;white-space:pre-wrap;background:var(--paper);border:1px solid var(--card-line);
+    border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+  .notif-card .nc-reason{font-size:.82rem;color:#a3312a;background:#fbe2df;border-radius:8px;padding:8px 12px;margin-top:8px;}
+  .nc-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .tentativa-tag{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--gold);font-weight:700;}
+
+  .filter-chips{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .filter-chips button{background:var(--card);border:1px solid var(--card-line);border-radius:20px;padding:7px 15px;
+    font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-body);}
+  .filter-chips button.active{background:var(--red);border-color:var(--red);color:#fff;}
+
+  .assign-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--card-line);flex-wrap:wrap;}
+  .assign-row:last-child{border-bottom:none;}
+  .assign-row .cn{flex:0 0 190px;font-size:.85rem;font-weight:600;}
+  .assign-row select{flex:1 1 220px;padding:8px 10px;border:1px solid var(--card-line);border-radius:8px;font-size:.82rem;
+    font-family:var(--font-body);background:var(--card);color:var(--text);}
+  .assign-row .cur{flex:1 1 220px;font-size:.8rem;color:var(--muted);}
+
   footer.note{max-width:1180px;margin:10px auto 40px;padding:0 22px;font-size:.75rem;color:var(--muted);
     display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;}
 
@@ -232,6 +269,10 @@
   <span>© Fonseca &amp; Braga Sociedade de Advogados — Uberlândia/MG</span>
 </footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
 <script>
 /* ---------- data ---------- */
 
@@ -284,14 +325,78 @@ var LINKS = [
   { nome:"Google Docs", desc:"Edição de notificações e contratos", url:"https://docs.google.com" }
 ];
 
+/* ---------- firebase (aprovação de notificações) ---------- */
+var fbReady = false, auth = null, db = null;
+var currentUser = null, currentProfile = null, authChecked = false;
+try{
+  if (typeof firebaseConfig !== 'undefined' && firebaseConfig && firebaseConfig.apiKey !== 'COLE_AQUI_SUA_API_KEY'){
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    fbReady = true;
+  }
+}catch(e){ fbReady = false; }
+
+function isAdminUser(){ return !!(currentProfile && currentProfile.role === 'admin'); }
+
+function onAuthResolved(){
+  if (state.section === 'gerar-notificacao') { gerarState.minhasLoaded = false; loadMinhasNotificacoes(); render(); }
+  else if (state.section === 'condominios' && state.condoView === 'aprovacao') { refreshAprovacao(); render(); }
+}
+
+if (fbReady){
+  auth.onAuthStateChanged(function(user){
+    currentUser = user || null;
+    if (!user){ currentProfile = null; authChecked = true; onAuthResolved(); return; }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      currentProfile = doc.exists ? Object.assign({uid:user.uid, email:user.email}, doc.data())
+                                   : {uid:user.uid, email:user.email, displayName:user.email};
+      authChecked = true;
+      onAuthResolved();
+    }).catch(function(){
+      currentProfile = {uid:user.uid, email:user.email, displayName:user.email};
+      authChecked = true;
+      onAuthResolved();
+    });
+  });
+} else {
+  authChecked = true;
+}
+
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function slugify(s){
+  var accentRange = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+  return (s || '').toString().toLowerCase()
+    .normalize('NFD').replace(accentRange,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'');
+}
+
+function formatDateTime(ts){
+  if (!ts || !ts.toDate) return '—';
+  return ts.toDate().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
 /* ---------- state / router ---------- */
 var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', condoView:'grid' };
 
-function go(section){ state.section = section; state.condoIdx = null; state.condoView = 'grid'; render(); window.scrollTo(0,0); }
+function go(section){
+  state.section = section; state.condoIdx = null; state.condoView = 'grid';
+  render(); window.scrollTo(0,0);
+  if (section === 'gerar-notificacao') loadMinhasNotificacoes();
+}
 function openCondo(i){ state.condoIdx = i; state.condoSubtab='geral'; render(); window.scrollTo(0,0); }
 function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
 function setCondoSubtab(t){ state.condoSubtab = t; render(); }
-function setCondoView(v){ state.condoView = v; state.condoIdx = null; render(); window.scrollTo(0,0); }
+function setCondoView(v){
+  state.condoView = v; state.condoIdx = null;
+  render(); window.scrollTo(0,0);
+  if (v === 'aprovacao') refreshAprovacao();
+}
 
 /* ---------- render ---------- */
 function renderNav(){
@@ -311,7 +416,10 @@ function render(){
   if(state.section === 'inicio') m.innerHTML = viewInicio();
   else if(state.section === 'comece') m.innerHTML = viewComece();
   else if(state.section === 'pops') m.innerHTML = viewPops();
-  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail() : (state.condoView==='almah' ? viewAlmahCondos() : viewCondoGrid());
+  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail()
+    : state.condoView==='almah' ? viewAlmahCondos()
+    : state.condoView==='aprovacao' ? viewNotificacoesProntas()
+    : viewCondoGrid();
   else if(state.section === 'astrea') m.innerHTML = viewAstrea();
   else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
@@ -337,6 +445,16 @@ function bindDynamic(){
     el.addEventListener('click', function(){ setCondoView(el.getAttribute('data-condoview')); });
   });
   if(state.section === 'nomenclatura') bindNomenclatura();
+  if(state.section === 'gerar-notificacao'){
+    var gnEnviar = document.getElementById('gn-enviar');
+    if (gnEnviar) gnEnviar.addEventListener('click', enviarNotificacao);
+    var gnCancelar = document.getElementById('gn-cancelar');
+    if (gnCancelar) gnCancelar.addEventListener('click', cancelarEdicao);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-edit-notif]'), function(el){
+      el.addEventListener('click', function(){ editarNotificacao(el.getAttribute('data-edit-notif')); });
+    });
+  }
+  if(state.section === 'condominios' && state.condoView === 'aprovacao') bindAprovacao();
 }
 
 /* ---------- views ---------- */
@@ -455,6 +573,7 @@ function condoSubnav(active){
   return '<div class="condo-subnav">'
     + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Condomínios</button>'
     + '<button type="button" class="'+(active==='almah'?'active':'')+'" data-condoview="almah">AlmahCondos</button>'
+    + '<button type="button" class="'+(active==='aprovacao'?'active':'')+'" data-condoview="aprovacao">Notificações Prontas</button>'
     + '</div>';
 }
 
@@ -751,24 +870,359 @@ function specialRule(t,d){
     + '<div style="font-size:.8rem;color:var(--muted);margin-top:3px;line-height:1.4;">'+d+'</div></div>';
 }
 
+var gerarState = { editingId:null, minhas:[], minhasLoaded:false, submitting:false };
+
+function loadMinhasNotificacoes(){
+  if (!fbReady || !currentUser || !db) return;
+  db.collection('notificacoesGeradas').where('criadoPorUid','==',currentUser.uid).get().then(function(snap){
+    gerarState.minhas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    gerarState.minhas.sort(function(a,b){
+      var ta = a.criadoEm && a.criadoEm.toMillis ? a.criadoEm.toMillis() : 0;
+      var tb = b.criadoEm && b.criadoEm.toMillis ? b.criadoEm.toMillis() : 0;
+      return tb - ta;
+    });
+    gerarState.minhasLoaded = true;
+    render();
+  }).catch(function(e){
+    gerarState.minhasLoaded = true;
+    console.error('Falha ao carregar minhas notificações', e);
+    render();
+  });
+}
+
+function gv(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function editarNotificacao(id){
+  var doc = gerarState.minhas.filter(function(n){ return n.id === id; })[0];
+  if (!doc) return;
+  gerarState.editingId = id;
+  render();
+  window.scrollTo(0,0);
+  setTimeout(function(){
+    var setVal = function(elId, v){ var el = document.getElementById(elId); if (el) el.value = v || ''; };
+    setVal('gn-condominio', doc.condominio);
+    setVal('gn-torre', doc.torre);
+    setVal('gn-apto', doc.apto);
+    setVal('gn-ocorrencia', doc.ocorrencia);
+    setVal('gn-tipo', doc.tipoPenalidade);
+    setVal('gn-texto', doc.texto);
+  }, 0);
+}
+
+function cancelarEdicao(){ gerarState.editingId = null; render(); }
+
+function enviarNotificacao(){
+  if (!fbReady || !currentUser || !currentProfile){ alert('Faça login no Portal para enviar uma notificação.'); return; }
+  var condominio = gv('gn-condominio'), torre = gv('gn-torre'), apto = gv('gn-apto'),
+      ocorrencia = gv('gn-ocorrencia'), tipoPenalidade = gv('gn-tipo'), texto = gv('gn-texto');
+  if (!condominio || !texto){ alert('Preencha ao menos o condomínio e o texto da notificação.'); return; }
+  if (gerarState.submitting) return;
+  gerarState.submitting = true;
+  var nome = currentProfile.displayName || currentProfile.email;
+
+  if (gerarState.editingId){
+    var atual = gerarState.minhas.filter(function(n){ return n.id === gerarState.editingId; })[0];
+    db.collection('notificacoesGeradas').doc(gerarState.editingId).update({
+      condominio: condominio, condominioSlug: slugify(condominio),
+      torre: torre, apto: apto, ocorrencia: ocorrencia, tipoPenalidade: tipoPenalidade, texto: texto,
+      status: 'pendente',
+      tentativa: (atual ? (atual.tentativa || 1) : 1) + 1,
+      motivoRejeicao: null,
+      decididoPorUid: null, decididoPorNome: null, decididoEm: null
+    }).then(function(){
+      gerarState.editingId = null;
+      gerarState.submitting = false;
+      loadMinhasNotificacoes();
+    }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível reenviar: ' + e.message); });
+  } else {
+    db.collection('notificacoesGeradas').add({
+      condominio: condominio, condominioSlug: slugify(condominio),
+      torre: torre, apto: apto, ocorrencia: ocorrencia, tipoPenalidade: tipoPenalidade, texto: texto,
+      status: 'pendente', tentativa: 1, historico: [], motivoRejeicao: null,
+      criadoPorUid: currentUser.uid, criadoPorNome: nome,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      decididoPorUid: null, decididoPorNome: null, decididoEm: null
+    }).then(function(){
+      ['gn-torre','gn-apto','gn-ocorrencia','gn-texto'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value=''; });
+      gerarState.submitting = false;
+      loadMinhasNotificacoes();
+    }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível enviar: ' + e.message); });
+  }
+}
+
+function statusLabel(s){ return s === 'pendente' ? 'Aguardando aprovação' : s === 'aprovada' ? 'Aprovada' : 'Rejeitada'; }
+
+function notifCardMinha(n){
+  var editing = gerarState.editingId === n.id;
+  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">🔁 tentativa nº '+n.tentativa+'</span>' : '';
+  var reason = (n.status === 'rejeitada' && n.motivoRejeicao)
+    ? '<div class="nc-reason"><b>Motivo da rejeição'+(n.decididoPorNome ? ' ('+escapeHtml(n.decididoPorNome)+')' : '')+':</b> '+escapeHtml(n.motivoRejeicao)+'</div>'
+    : '';
+  var actions = (n.status === 'rejeitada' && !editing)
+    ? '<div class="nc-actions"><button type="button" class="btn secondary" data-edit-notif="'+n.id+'">Corrigir e reenviar</button></div>'
+    : '';
+  return '<div class="notif-card">'
+    + '<div class="nc-top"><h4>'+escapeHtml(n.condominio)+' — Torre '+escapeHtml(n.torre)+', Apto '+escapeHtml(n.apto)+'</h4>'
+    + '<span class="status-badge '+n.status+'">'+statusLabel(n.status)+'</span></div>'
+    + '<div class="nc-meta">Ocorrência #'+escapeHtml(n.ocorrencia)+' · '+escapeHtml(n.tipoPenalidade)+' · enviada em '+formatDateTime(n.criadoEm)+' '+tentativaTag+'</div>'
+    + '<div class="nc-texto">'+escapeHtml(n.texto)+'</div>'
+    + reason + actions + '</div>';
+}
+
 function viewGerarNotificacao(){
-  return '<div class="kicker">Em construção</div>'
-    + '<h1>Gerar Notificação</h1>'
-    + '<p class="lead">Geração automática da notificação extrajudicial a partir dos modelos do escritório — escolha o condomínio, preencha os dados da ocorrência e receba o texto pronto, no padrão de cada condomínio.</p>'
-    + '<hr class="rule">'
-    + '<div class="box">'
-      + '<div class="warn gold" style="margin-bottom:0;"><span class="ic">🕒</span><span><b>Aguardando os modelos de notificação.</b> Assim que você enviar os modelos (padrão geral e os modelos específicos, como Sense Vertical Living e Mirante das Brisas), esta aba passa a montar a notificação completa automaticamente a partir dos dados da ocorrência — hoje ela só reserva o espaço no menu.</span></div>'
+  var formTitle = gerarState.editingId ? 'Corrigir e reenviar' : 'Nova notificação';
+  var condominioAtual = gerarState.editingId ? (gerarState.minhas.filter(function(n){return n.id===gerarState.editingId;})[0] || {}).condominio : '';
+
+  var authBox = !fbReady
+    ? '<div class="auth-gate">Este recurso depende do login do Portal, que não está configurado nesta cópia da ferramenta.</div>'
+    : !authChecked
+    ? '<div class="auth-gate">Carregando…</div>'
+    : !currentUser
+    ? '<div class="auth-gate">Faça login no Portal (abra esta ferramenta dentro do Portal Fonseca &amp; Braga, já logado) para enviar notificações para aprovação.</div>'
+    : '';
+
+  var formHtml = (fbReady && currentUser) ? (
+    '<div class="box">'
+      + '<h3 style="margin:0 0 14px;font-size:.95rem;">'+formTitle+'</h3>'
+      + '<div class="nom-form">'
+        + '<div><label>Condomínio</label><select id="gn-condominio">' + CONDOMINIOS.map(function(c){
+            var sel = c.nome === condominioAtual ? ' selected' : '';
+            return '<option value="'+escapeHtml(c.nome)+'"'+sel+'>'+escapeHtml(c.nome)+'</option>';
+          }).join('') + '</select></div>'
+        + '<div><label>Tipo</label><select id="gn-tipo"><option>Advertência</option><option>Multa</option></select></div>'
+        + '<div><label>Torre</label><input id="gn-torre" type="text" placeholder="TORRE"></div>'
+        + '<div><label>Apartamento</label><input id="gn-apto" type="text" placeholder="APTO"></div>'
+        + '<div style="grid-column:1/-1;"><label>Nº da ocorrência</label><input id="gn-ocorrencia" type="text" placeholder="OCORRÊNCIA #"></div>'
+        + '<div style="grid-column:1/-1;"><label>Texto da notificação</label><textarea id="gn-texto" rows="8" placeholder="Cole ou escreva aqui o texto completo da notificação, já no padrão do escritório."></textarea></div>'
+      + '</div>'
+      + '<div class="nc-actions">'
+        + '<button type="button" class="btn" id="gn-enviar">'+(gerarState.editingId ? 'Reenviar para aprovação' : 'Enviar para aprovação')+'</button>'
+        + (gerarState.editingId ? '<button type="button" class="btn ghost" id="gn-cancelar">Cancelar</button>' : '')
+      + '</div>'
     + '</div>'
-    + '<div class="box">'
-      + '<h3 style="margin:0 0 6px;font-size:.95rem;">O que vai dar para preencher aqui</h3>'
-      + '<ul style="padding-left:18px;">'
-        + '<li>Condomínio (lista já vem da aba Condomínios — inclui automaticamente as regras especiais de cada um)</li>'
-        + '<li>Torre, apartamento e número da ocorrência</li>'
-        + '<li>Tipo de infração e penalidade (advertência ou multa)</li>'
-        + '<li>Descrição dos fatos</li>'
-      + '</ul>'
-      + '<p style="color:var(--muted);">Pode me enviar os modelos (Google Docs, PDF ou texto) quando quiser — nesta mesma conversa.</p>'
-    + '</div>';
+  ) : '';
+
+  var minhasHtml = (fbReady && currentUser)
+    ? ('<h2 class="section-h" style="margin-top:26px;">Minhas notificações enviadas</h2>'
+      + (!gerarState.minhasLoaded ? '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>'
+        : gerarState.minhas.length === 0 ? '<p style="color:var(--muted);font-size:.85rem;">Você ainda não enviou nenhuma notificação.</p>'
+        : gerarState.minhas.map(notifCardMinha).join('')))
+    : '';
+
+  return '<div class="kicker">Aprovação de notificações</div>'
+    + '<h1>Gerar Notificação</h1>'
+    + '<p class="lead">Monte a notificação (ainda manual — assim que você enviar os modelos do escritório, esta tela passa a montar o texto sozinha) e envie para aprovação do responsável pelo condomínio.</p>'
+    + '<hr class="rule">'
+    + authBox + formHtml + minhasHtml;
+}
+
+var aprovState = {
+  filter:'pendente', loaded:false, itens:[],
+  condoAprov:[], condoAprovLoaded:false,
+  allUsers:[], allUsersLoaded:false,
+  assignMode:false, rejectingId:null
+};
+
+function refreshAprovacao(){
+  if (!fbReady || !currentUser || !db) return;
+  db.collection('condoAprovadores').get().then(function(snap){
+    aprovState.condoAprov = snap.docs.map(function(d){ return Object.assign({slug:d.id}, d.data()); });
+    aprovState.condoAprovLoaded = true;
+    return carregarFilaAprovacao();
+  }).then(function(){
+    if (isAdminUser() && !aprovState.allUsersLoaded) return carregarUsuarios();
+  }).then(function(){ render(); }).catch(function(e){
+    aprovState.condoAprovLoaded = true; aprovState.loaded = true;
+    console.error('Falha ao carregar aprovação', e); render();
+  });
+}
+
+function carregarUsuarios(){
+  return db.collection('users').get().then(function(snap){
+    aprovState.allUsers = snap.docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); });
+    aprovState.allUsersLoaded = true;
+  });
+}
+
+function meusCondosAprovador(){
+  if (!currentUser) return [];
+  return aprovState.condoAprov.filter(function(c){ return c.aprovadorUid === currentUser.uid; });
+}
+
+function carregarFilaAprovacao(){
+  var meus = meusCondosAprovador();
+  var slugs = meus.map(function(c){ return c.slug; });
+  if (!slugs.length){ aprovState.itens = []; aprovState.loaded = true; return Promise.resolve(); }
+  return db.collection('notificacoesGeradas').where('condominioSlug','in', slugs.slice(0,10)).get().then(function(snap){
+    aprovState.itens = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    aprovState.itens.sort(function(a,b){
+      var ta = a.criadoEm && a.criadoEm.toMillis ? a.criadoEm.toMillis() : 0;
+      var tb = b.criadoEm && b.criadoEm.toMillis ? b.criadoEm.toMillis() : 0;
+      return tb - ta;
+    });
+    aprovState.loaded = true;
+  });
+}
+
+function setAprovFiltro(f){ aprovState.filter = f; render(); }
+
+function aprovarNotificacao(id){
+  if (!confirm('Aprovar esta notificação?')) return;
+  var nome = currentProfile.displayName || currentProfile.email;
+  db.collection('notificacoesGeradas').doc(id).update({
+    status:'aprovada', decididoPorUid: currentUser.uid, decididoPorNome: nome,
+    decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){ refreshAprovacao(); }).catch(function(e){ alert('Erro ao aprovar: ' + e.message); });
+}
+
+function abrirRejeicao(id){ aprovState.rejectingId = id; render(); }
+function cancelarRejeicao(){ aprovState.rejectingId = null; render(); }
+
+function confirmarRejeicao(id){
+  var el = document.getElementById('rej-motivo-'+id);
+  var motivo = el ? el.value.trim() : '';
+  if (!motivo){ alert('Escreva o motivo da rejeição.'); return; }
+  var item = aprovState.itens.filter(function(n){ return n.id === id; })[0];
+  var nome = currentProfile.displayName || currentProfile.email;
+  db.collection('notificacoesGeradas').doc(id).update({
+    status:'rejeitada', motivoRejeicao: motivo,
+    decididoPorUid: currentUser.uid, decididoPorNome: nome,
+    decididoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    historico: firebase.firestore.FieldValue.arrayUnion({
+      tentativa: (item ? item.tentativa : 1) || 1, motivo: motivo, por: nome, em: new Date()
+    })
+  }).then(function(){ aprovState.rejectingId = null; refreshAprovacao(); })
+    .catch(function(e){ alert('Erro ao rejeitar: ' + e.message); });
+}
+
+function salvarAprovador(slug, condominio){
+  var sel = document.getElementById('assign-'+slug);
+  if (!sel || !sel.value){ return; }
+  var opt = sel.options[sel.selectedIndex];
+  db.collection('condoAprovadores').doc(slug).set({
+    condominio: condominio, aprovadorUid: sel.value,
+    aprovadorNome: opt.getAttribute('data-nome'), aprovadorEmail: opt.getAttribute('data-email')
+  }).then(function(){ refreshAprovacao(); }).catch(function(e){ alert('Erro ao salvar: ' + e.message); });
+}
+
+function toggleAssignMode(){ aprovState.assignMode = !aprovState.assignMode; render(); }
+
+function bindAprovacao(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-aprovar]'), function(el){
+    el.addEventListener('click', function(){ aprovarNotificacao(el.getAttribute('data-aprovar')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-rejeitar-abrir]'), function(el){
+    el.addEventListener('click', function(){ abrirRejeicao(el.getAttribute('data-rejeitar-abrir')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-rejeitar-confirmar]'), function(el){
+    el.addEventListener('click', function(){ confirmarRejeicao(el.getAttribute('data-rejeitar-confirmar')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-rejeitar-cancelar]'), function(el){
+    el.addEventListener('click', cancelarRejeicao);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-filtro]'), function(el){
+    el.addEventListener('click', function(){ setAprovFiltro(el.getAttribute('data-filtro')); });
+  });
+  var toggleBtn = document.getElementById('assign-toggle');
+  if (toggleBtn) toggleBtn.addEventListener('click', toggleAssignMode);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-assign-save]'), function(el){
+    el.addEventListener('click', function(){
+      salvarAprovador(el.getAttribute('data-assign-save'), el.getAttribute('data-condominio'));
+    });
+  });
+}
+
+function notifCardAprovador(n){
+  var rejecting = aprovState.rejectingId === n.id;
+  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">🔁 já rejeitada '+(n.tentativa-1)+'x antes</span>' : '';
+  var reason = (n.status === 'rejeitada' && n.motivoRejeicao)
+    ? '<div class="nc-reason"><b>Motivo:</b> '+escapeHtml(n.motivoRejeicao)+'</div>' : '';
+  var decidido = (n.status !== 'pendente' && n.decididoPorNome)
+    ? '<div class="nc-meta">Decidido por '+escapeHtml(n.decididoPorNome)+' em '+formatDateTime(n.decididoEm)+'</div>' : '';
+  var actions = '';
+  if (n.status === 'pendente'){
+    actions = rejecting
+      ? ('<div style="margin-top:10px;"><textarea id="rej-motivo-'+n.id+'" rows="3" placeholder="Explique o que precisa ser corrigido…"></textarea>'
+        + '<div class="nc-actions"><button type="button" class="btn" data-rejeitar-confirmar="'+n.id+'">Confirmar rejeição</button>'
+        + '<button type="button" class="btn ghost" data-rejeitar-cancelar>Cancelar</button></div></div>')
+      : ('<div class="nc-actions"><button type="button" class="btn" data-aprovar="'+n.id+'">✓ Aprovar</button>'
+        + '<button type="button" class="btn secondary" data-rejeitar-abrir="'+n.id+'">✕ Rejeitar</button></div>');
+  }
+  return '<div class="notif-card">'
+    + '<div class="nc-top"><h4>'+escapeHtml(n.condominio)+' — Torre '+escapeHtml(n.torre)+', Apto '+escapeHtml(n.apto)+'</h4>'
+    + '<span class="status-badge '+n.status+'">'+statusLabel(n.status)+'</span></div>'
+    + '<div class="nc-meta">Ocorrência #'+escapeHtml(n.ocorrencia)+' · '+escapeHtml(n.tipoPenalidade)+' · enviada por '+escapeHtml(n.criadoPorNome)+' em '+formatDateTime(n.criadoEm)+' '+tentativaTag+'</div>'
+    + '<div class="nc-texto">'+escapeHtml(n.texto)+'</div>'
+    + decidido + reason + actions + '</div>';
+}
+
+function viewAssignPanel(){
+  if (!isAdminUser()) return '';
+  var toggleLabel = aprovState.assignMode ? 'Fechar' : '⚙ Atribuir aprovadores por condomínio';
+  var body = '';
+  if (aprovState.assignMode){
+    if (!aprovState.allUsersLoaded){
+      body = '<p style="color:var(--muted);font-size:.85rem;">Carregando usuários…</p>';
+    } else {
+      body = CONDOMINIOS.map(function(c){
+        var slug = slugify(c.nome);
+        var atual = aprovState.condoAprov.filter(function(a){ return a.slug === slug; })[0];
+        return '<div class="assign-row"><div class="cn">'+escapeHtml(c.nome)+'</div>'
+          + '<select id="assign-'+slug+'"><option value="">— selecionar —</option>' + aprovState.allUsers.map(function(u){
+              var sel = atual && atual.aprovadorUid === u.uid ? ' selected' : '';
+              var nome = u.displayName || u.email;
+              return '<option value="'+u.uid+'" data-nome="'+escapeHtml(nome)+'" data-email="'+escapeHtml(u.email||'')+'"'+sel+'>'+escapeHtml(nome)+'</option>';
+            }).join('') + '</select>'
+          + '<button type="button" class="btn secondary" data-assign-save="'+slug+'" data-condominio="'+escapeHtml(c.nome)+'">Salvar</button>'
+          + '<span class="cur">'+(atual ? 'atual: '+escapeHtml(atual.aprovadorNome) : 'sem aprovador definido')+'</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+  return '<div class="box"><button type="button" class="btn ghost" id="assign-toggle">'+toggleLabel+'</button>'
+    + (aprovState.assignMode ? '<div style="margin-top:14px;">'+body+'</div>' : '') + '</div>';
+}
+
+function viewNotificacoesProntas(){
+  var authBox = !fbReady
+    ? '<div class="auth-gate">Este recurso depende do login do Portal, que não está configurado nesta cópia da ferramenta.</div>'
+    : !authChecked
+    ? '<div class="auth-gate">Carregando…</div>'
+    : !currentUser
+    ? '<div class="auth-gate">Faça login no Portal (abra esta ferramenta dentro do Portal Fonseca &amp; Braga, já logado) para ver as notificações que você pode aprovar.</div>'
+    : '';
+
+  if (authBox) return condoSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">' + authBox;
+
+  if (!aprovState.condoAprovLoaded){
+    return condoSubnav('aprovacao') + '<div class="kicker">Aprovação</div><h1>Notificações Prontas</h1><hr class="rule">'
+      + '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
+  }
+
+  var meus = meusCondosAprovador();
+  var semAcesso = meus.length === 0 && !isAdminUser();
+  var itensFiltrados = aprovState.itens.filter(function(n){ return n.status === aprovState.filter; });
+
+  return condoSubnav('aprovacao')
+    + '<div class="kicker">Aprovação</div>'
+    + '<h1>Notificações Prontas</h1>'
+    + '<p class="lead">Notificações enviadas para aprovação, filtradas pelos condomínios em que você é o(a) aprovador(a) designado(a).</p>'
+    + '<hr class="rule">'
+    + viewAssignPanel()
+    + (semAcesso
+        ? '<div class="auth-gate">Você ainda não é aprovador(a) de nenhum condomínio. '+(isAdminUser() ? 'Use "Atribuir aprovadores" acima para se designar ou designar um colega.' : 'Peça a um administrador do Portal para te atribuir a um condomínio.')+'</div>'
+        : (meus.length === 0 ? '' : (
+            '<div style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Você aprova: '+meus.map(function(c){return escapeHtml(c.condominio);}).join(', ')+'</div>'
+            + '<div class="filter-chips">'
+              + ['pendente','aprovada','rejeitada'].map(function(f){
+                  var label = f==='pendente'?'Pendentes':f==='aprovada'?'Aprovadas':'Rejeitadas';
+                  return '<button type="button" class="'+(aprovState.filter===f?'active':'')+'" data-filtro="'+f+'">'+label+'</button>';
+                }).join('')
+            + '</div>'
+            + (!aprovState.loaded ? '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>'
+              : itensFiltrados.length === 0 ? '<p style="color:var(--muted);font-size:.85rem;">Nenhuma notificação aqui.</p>'
+              : itensFiltrados.map(notifCardAprovador).join(''))
+          )));
 }
 
 function viewLinks(){
