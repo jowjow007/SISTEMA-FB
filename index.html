@@ -641,6 +641,12 @@
         <input type="text" id="dados-sobrenome" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Data de nascimento</label>
         <input type="date" id="dados-nascimento" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+      <div><label style="font-size:.75rem;color:var(--muted);">Cargo</label>
+        <select id="dados-papel" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
+          <option value="membro">Membro</option>
+          <option value="admin">Administrador</option>
+        </select>
+        <p id="dados-papel-hint" style="font-size:.68rem;color:var(--muted);margin:4px 0 0;display:none;">Você não pode alterar o próprio cargo por aqui.</p></div>
       <div><label style="font-size:.75rem;color:var(--muted);">CPF</label>
         <input type="text" id="dados-cpf" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">RG</label>
@@ -1440,6 +1446,7 @@
   // ---------- Modal: dados cadastrais (nome/foto/nascimento + CPF/RG/telefone/endereço/ingresso/depto/remuneração) ----------
   let editDadosTargetUid = null;
   let editDadosNovaFotoDataUrl = null;
+  let editDadosPapelOriginal = null;
 
   function resizeImageToDataUrl(file, maxDim, quality){
     return new Promise(function(resolve, reject){
@@ -1491,6 +1498,13 @@
       document.getElementById('dados-nascimento').value = perfil.birthDate || '';
       els.dadosFotoPreview.style.backgroundImage = perfil.photoBase64 ? 'url(' + perfil.photoBase64 + ')' : 'none';
 
+      const papelSelect = document.getElementById('dados-papel');
+      editDadosPapelOriginal = dados.role || 'membro';
+      papelSelect.value = editDadosPapelOriginal;
+      const ehVocêMesmo = uid === currentProfile.uid;
+      papelSelect.disabled = ehVocêMesmo;
+      document.getElementById('dados-papel-hint').style.display = ehVocêMesmo ? 'block' : 'none';
+
       document.getElementById('dados-cpf').value = dados.cpf || '';
       document.getElementById('dados-rg').value = dados.rg || '';
       document.getElementById('dados-oab').value = dados.oab || '';
@@ -1509,6 +1523,7 @@
     els.editDadosBackdrop.classList.remove('show');
     editDadosTargetUid = null;
     editDadosNovaFotoDataUrl = null;
+    editDadosPapelOriginal = null;
     els.dadosFotoInput.value = '';
   }
   els.editDadosCancelar.addEventListener('click', fecharModalEditDados);
@@ -1520,6 +1535,14 @@
     const nome = document.getElementById('dados-nome').value.trim();
     const sobrenome = document.getElementById('dados-sobrenome').value.trim();
     const nomeCompleto = (nome + ' ' + sobrenome).trim();
+
+    const novoPapel = document.getElementById('dados-papel').value;
+    if (novoPapel !== editDadosPapelOriginal) {
+      const msg = novoPapel === 'admin'
+        ? 'Tornar esta pessoa administradora? Ela passará a ter acesso total ao painel de Administração.'
+        : 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.';
+      if (!confirm(msg)) return;
+    }
 
     const perfilPatch = {
       birthDate: document.getElementById('dados-nascimento').value
@@ -1537,7 +1560,8 @@
       emailAlternativo: document.getElementById('dados-email-alt').value.trim(),
       dataIngresso: document.getElementById('dados-ingresso').value,
       deptoAtual: document.getElementById('dados-depto').value.trim(),
-      remuneracao: document.getElementById('dados-remuneracao').value.trim()
+      remuneracao: document.getElementById('dados-remuneracao').value.trim(),
+      role: novoPapel
     };
     if (nomeCompleto) usersPatch.displayName = nomeCompleto;
 
