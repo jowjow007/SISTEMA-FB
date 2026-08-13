@@ -26,8 +26,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // nao mexe em ferramentas/embeds de outros dominios
 
+  // 'reload' ignora o cache HTTP do navegador e força ir buscar no servidor -
+  // sem isso, o fetch() abaixo podia ser satisfeito por uma cópia guardada
+  // pelo próprio navegador (o GitHub Pages manda guardar por 10 minutos),
+  // fazendo o app parecer não ter atualizado mesmo já publicado o novo HTML.
+  const reqFresca = new Request(req, { cache: 'reload' });
+
   event.respondWith(
-    fetch(req)
+    fetch(reqFresca)
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
