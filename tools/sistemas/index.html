@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sistemas — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
 <style>
   :root{
     --ink:#161010;
@@ -22,8 +36,19 @@
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
     --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
   }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --silver:#756f6c;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+  }
+
   *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;transition:background-color .2s,color .2s}
   a{color:inherit;}
   button{font-family:inherit;}
 
@@ -101,29 +126,29 @@
   .contact-row .obs{font-size:.73rem;color:var(--muted);font-style:italic;margin-top:3px;}
   .contacts-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:.85rem;}
 
-  /* nomenclatura (copiado de tools/condominios, mesmo visual/comportamento original) */
-  .nomenclatura-view{flex:1 1 auto;overflow-y:auto;background:#faf7f2;color:#211a17;padding:34px 26px 60px;}
-  .nomenclatura-view .kicker{font-size:.68rem;letter-spacing:.12em;color:#8a231f;text-transform:uppercase;font-weight:700;margin:0 0 8px;}
-  .nomenclatura-view h1{font-family:var(--font-display);font-size:2rem;margin:0 0 10px;color:#211a17;font-weight:600;}
-  .nomenclatura-view .lead{font-size:.95rem;color:#7c716a;max-width:760px;line-height:1.55;margin:0 0 24px;}
-  .nomenclatura-view hr.rule{border:none;border-top:1px solid #e7e1d8;margin:0 0 30px;}
+  /* nomenclatura (copiado de tools/condominios, adaptado para acompanhar o tema claro/escuro) */
+  .nomenclatura-view{flex:1 1 auto;overflow-y:auto;background:var(--ink);color:var(--paper);padding:34px 26px 60px;}
+  .nomenclatura-view .kicker{font-size:.68rem;letter-spacing:.12em;color:var(--red);text-transform:uppercase;font-weight:700;margin:0 0 8px;}
+  .nomenclatura-view h1{font-family:var(--font-display);font-size:2rem;margin:0 0 10px;color:var(--paper);font-weight:600;}
+  .nomenclatura-view .lead{font-size:.95rem;color:var(--muted);max-width:760px;line-height:1.55;margin:0 0 24px;}
+  .nomenclatura-view hr.rule{border:none;border-top:1px solid var(--line-strong);margin:0 0 30px;}
   .nomenclatura-view .grid.g2{display:grid;gap:18px;grid-template-columns:1fr 1fr;}
-  .nomenclatura-view .box{background:#ffffff;border:1px solid #e7e1d8;border-radius:12px;padding:20px;}
-  .nomenclatura-view .box h3{font-family:var(--font-display);color:#211a17;}
+  .nomenclatura-view .box{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:20px;}
+  .nomenclatura-view .box h3{font-family:var(--font-display);color:var(--paper);}
   .nomenclatura-view .nom-types{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
-  .nomenclatura-view .nom-types button{flex:1 1 160px;background:#ffffff;border:1px solid #e7e1d8;border-radius:10px;padding:16px 10px;
-    text-align:center;font-family:var(--font-body);font-size:.83rem;font-weight:600;color:#211a17;cursor:pointer;}
+  .nomenclatura-view .nom-types button{flex:1 1 160px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:16px 10px;
+    text-align:center;font-family:var(--font-body);font-size:.83rem;font-weight:600;color:var(--paper);cursor:pointer;}
   .nomenclatura-view .nom-types button .ic{display:block;font-size:1.2rem;margin-bottom:6px;}
-  .nomenclatura-view .nom-types button.active{background:#8a231f;border-color:#8a231f;color:#fff;}
+  .nomenclatura-view .nom-types button.active{background:var(--red);border-color:var(--red);color:#fff;}
   .nomenclatura-view .nom-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .nomenclatura-view .nom-form label{display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c716a;margin-bottom:5px;}
-  .nomenclatura-view .nom-form input,.nomenclatura-view .nom-form select{width:100%;padding:9px 11px;border:1px solid #e7e1d8;border-radius:8px;font-size:.85rem;
-    font-family:var(--font-body);background:#fff;color:#211a17;}
-  .nomenclatura-view .nom-result{background:#f1ece4;border:1px solid #e7e1d8;border-radius:10px;padding:16px;font-family:var(--font-mono);
-    font-size:.85rem;color:#211a17;min-height:70px;word-break:break-word;line-height:1.5;}
-  .nomenclatura-view .copy-btn{margin-top:14px;background:#8a231f;color:#fff;border:none;border-radius:8px;padding:11px 16px;font-weight:700;
+  .nomenclatura-view .nom-form label{display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .nomenclatura-view .nom-form input,.nomenclatura-view .nom-form select{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;font-size:.85rem;
+    font-family:var(--font-body);background:var(--panel);color:var(--paper);}
+  .nomenclatura-view .nom-result{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:16px;font-family:var(--font-mono);
+    font-size:.85rem;color:var(--paper);min-height:70px;word-break:break-word;line-height:1.5;}
+  .nomenclatura-view .copy-btn{margin-top:14px;background:var(--red);color:#fff;border:none;border-radius:8px;padding:11px 16px;font-weight:700;
     font-size:.85rem;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);}
-  .nomenclatura-view .copy-btn:active{background:#5c1a16;}
+  .nomenclatura-view .copy-btn:active{background:var(--red-deep);}
 
   @media(max-width:640px){
     .nomenclatura-view .grid.g2,.nomenclatura-view .nom-form{grid-template-columns:1fr;}
