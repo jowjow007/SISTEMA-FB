@@ -283,6 +283,7 @@ var SECTIONS = [
   {id:'condominios', label:'Condomínios'},
   {id:'astrea', label:'ASTREA'},
   {id:'brcondos', label:'BRCondos'},
+  {id:'almahcondos', label:'AlmahCondos'},
   {id:'notificacoes', label:'Notificações'},
   {id:'gerar-notificacao', label:'Gerar Notificação'},
   {id:'nomenclatura', label:'Nomenclatura'},
@@ -383,20 +384,16 @@ function formatDateTime(ts){
 }
 
 /* ---------- state / router ---------- */
-var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', condoView:'grid', gerarView:'compor' };
+var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', gerarView:'compor' };
 
 function go(section){
-  state.section = section; state.condoIdx = null; state.condoView = 'grid'; state.gerarView = 'compor';
+  state.section = section; state.condoIdx = null; state.gerarView = 'compor';
   render(); window.scrollTo(0,0);
   if (section === 'gerar-notificacao') loadMinhasNotificacoes();
 }
 function openCondo(i){ state.condoIdx = i; state.condoSubtab='geral'; render(); window.scrollTo(0,0); }
 function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
 function setCondoSubtab(t){ state.condoSubtab = t; render(); }
-function setCondoView(v){
-  state.condoView = v; state.condoIdx = null;
-  render(); window.scrollTo(0,0);
-}
 function setGerarView(v){
   state.gerarView = v;
   render(); window.scrollTo(0,0);
@@ -422,11 +419,10 @@ function render(){
   if(state.section === 'inicio') m.innerHTML = viewInicio();
   else if(state.section === 'comece') m.innerHTML = viewComece();
   else if(state.section === 'pops') m.innerHTML = viewPops();
-  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail()
-    : state.condoView==='almah' ? viewAlmahCondos()
-    : viewCondoGrid();
+  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail() : viewCondoGrid();
   else if(state.section === 'astrea') m.innerHTML = viewAstrea();
   else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
+  else if(state.section === 'almahcondos') m.innerHTML = viewAlmahCondos();
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
   else if(state.section === 'gerar-notificacao') m.innerHTML = state.gerarView==='aprovacao' ? viewNotificacoesProntas() : viewGerarNotificacao();
   else if(state.section === 'nomenclatura') m.innerHTML = viewNomenclatura();
@@ -445,9 +441,6 @@ function bindDynamic(){
   if(back) back.addEventListener('click', closeCondo);
   Array.prototype.forEach.call(document.querySelectorAll('[data-subtab]'), function(el){
     el.addEventListener('click', function(){ setCondoSubtab(el.getAttribute('data-subtab')); });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('[data-condoview]'), function(el){
-    el.addEventListener('click', function(){ setCondoView(el.getAttribute('data-condoview')); });
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-gerarview]'), function(el){
     el.addEventListener('click', function(){ setGerarView(el.getAttribute('data-gerarview')); });
@@ -577,13 +570,6 @@ function viewPops(){
       }).join('') + '</div>';
 }
 
-function condoSubnav(active){
-  return '<div class="condo-subnav">'
-    + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Condomínios</button>'
-    + '<button type="button" class="'+(active==='almah'?'active':'')+'" data-condoview="almah">AlmahCondos</button>'
-    + '</div>';
-}
-
 function gerarSubnav(active){
   return '<div class="condo-subnav">'
     + '<button type="button" class="'+(active==='compor'?'active':'')+'" data-gerarview="compor">Gerar Notificação</button>'
@@ -592,8 +578,7 @@ function gerarSubnav(active){
 }
 
 function viewCondoGrid(){
-  return condoSubnav('grid')
-    + '<div class="kicker">Carteira</div>'
+  return '<div class="kicker">Carteira</div>'
     + '<h1>Condomínios atendidos</h1>'
     + '<p class="lead">Consulte síndicos, regras especiais e particularidades de cada condomínio.</p>'
     + '<hr class="rule">'
@@ -680,8 +665,7 @@ var ALMAH_PAINEL = [
 ];
 
 function viewAlmahCondos(){
-  return condoSubnav('almah')
-    + '<div class="kicker">Sistema ALMAH Condo</div>'
+  return '<div class="kicker">Sistema ALMAH Condo</div>'
     + '<h1>Cores nas Ocorrências</h1>'
     + '<p class="lead">Padrão de cores utilizado no sistema ALMAH Condo para classificar o status de cada ocorrência.</p>'
     + '<hr class="rule">'
