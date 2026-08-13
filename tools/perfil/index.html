@@ -96,6 +96,14 @@
 
   .msg-ok{color:var(--ok);font-size:.82rem;margin-top:12px;display:none;text-align:center;}
   .msg-err{color:#ffb4ae;font-size:.82rem;margin-top:12px;display:none;text-align:center;}
+
+  /* ---------- Campo obrigatório: asterisco + piscar quando vazio ---------- */
+  .obrig{color:var(--red);margin-left:2px;}
+  @keyframes piscaCampo{
+    0%,100%{ box-shadow:none; border-color:var(--line-strong); }
+    50%{ box-shadow:0 0 0 3px rgba(184,54,46,.4); border-color:var(--red); }
+  }
+  .campo-pisca{ animation: piscaCampo .5s ease-in-out 3; }
 </style>
 </head>
 <body>
@@ -111,30 +119,31 @@
     <div class="photo-row">
       <div id="photo-preview"></div>
       <div class="photo-actions">
+        <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:6px;">Foto<span class="obrig">*</span></label>
         <input type="file" id="photo-input" accept="image/*">
         <p class="hint">A foto é usada em tamanho pequeno e circular — recorte automático no centro.</p>
       </div>
     </div>
     <div class="field">
-      <label>Nome</label>
+      <label>Nome<span class="obrig">*</span></label>
       <input type="text" id="nome-input">
     </div>
     <div class="field">
-      <label>Sobrenome</label>
+      <label>Sobrenome<span class="obrig">*</span></label>
       <input type="text" id="sobrenome-input">
     </div>
     <div class="field">
-      <label>Data de nascimento</label>
+      <label>Data de nascimento<span class="obrig">*</span></label>
       <input type="date" id="birthdate-input">
     </div>
 
     <div class="section-title">Dados cadastrais</div>
     <div class="field">
-      <label>CPF</label>
+      <label>CPF<span class="obrig">*</span></label>
       <input type="text" inputmode="numeric" id="cpf-input" placeholder="000.000.000-00" maxlength="14">
     </div>
     <div class="field">
-      <label>RG</label>
+      <label>RG<span class="obrig">*</span></label>
       <div style="display:flex;gap:8px;">
         <input type="text" inputmode="numeric" id="rg-input" placeholder="Número" style="flex:1.6;">
         <input type="text" id="rg-orgao-input" placeholder="Órgão expedidor" style="flex:1.3;">
@@ -145,7 +154,7 @@
       </div>
     </div>
     <div class="field">
-      <label>OAB</label>
+      <label>OAB <span style="opacity:.7;">(opcional)</span></label>
       <div style="display:flex;gap:8px;">
         <input type="text" inputmode="numeric" id="oab-input" placeholder="Número" style="flex:2;">
         <select id="oab-uf-input" style="flex:1;">
@@ -155,7 +164,7 @@
       </div>
     </div>
     <div class="field">
-      <label>Estado civil</label>
+      <label>Estado civil<span class="obrig">*</span></label>
       <select id="estado-civil-input">
         <option value="" disabled>Selecione</option>
         <option value="solteiro">Solteiro(a)</option>
@@ -164,11 +173,11 @@
       </select>
     </div>
     <div class="field">
-      <label>Telefone</label>
+      <label>Telefone<span class="obrig">*</span></label>
       <input type="tel" inputmode="numeric" id="telefone-input" placeholder="(00) 00000-0000" maxlength="15">
     </div>
     <div class="field">
-      <label>Endereço</label>
+      <label>Endereço<span class="obrig">*</span></label>
       <input type="text" id="endereco-input">
     </div>
     <div class="field">
@@ -296,6 +305,18 @@
   ligarSomenteLetras(els.rgOrgaoInput);
   ligarSomenteDigitos(els.oabInput);
 
+  function piscarCampos(elementos){
+    elementos.forEach(function(el){
+      if (!el) return;
+      el.classList.remove('campo-pisca');
+      void el.offsetWidth; // força reflow para poder reiniciar a animação
+      el.classList.add('campo-pisca');
+      function limpar(){ el.classList.remove('campo-pisca'); el.removeEventListener('input', limpar); el.removeEventListener('change', limpar); }
+      el.addEventListener('input', limpar);
+      el.addEventListener('change', limpar);
+    });
+  }
+
   auth.onAuthStateChanged(function(user){
     if (!user) {
       els.gate.style.display = 'block';
@@ -361,10 +382,23 @@
     const telefone = els.telefoneInput.value.trim();
     const endereco = els.enderecoInput.value.trim();
 
-    if (!nome || !sobrenome || !els.birthdateInput.value || !els.estadoCivilInput.value ||
-        !cpf || !rgNumero || !rgOrgao || !rgUf || !oabNumero || !oabUf || !telefone || !endereco ||
-        (!novaFotoDataUrl && !fotoJaExistente)) {
-      els.msgErr.textContent = 'Preencha todos os campos, incluindo RG (número/órgão/UF), OAB (número/UF) e foto.';
+    const camposObrigatorios = [
+      { el: els.nomeInput, ok: !!nome },
+      { el: els.sobrenomeInput, ok: !!sobrenome },
+      { el: els.birthdateInput, ok: !!els.birthdateInput.value },
+      { el: els.estadoCivilInput, ok: !!els.estadoCivilInput.value },
+      { el: els.cpfInput, ok: !!cpf },
+      { el: els.rgInput, ok: !!rgNumero },
+      { el: els.rgOrgaoInput, ok: !!rgOrgao },
+      { el: els.rgUfInput, ok: !!rgUf },
+      { el: els.telefoneInput, ok: !!telefone },
+      { el: els.enderecoInput, ok: !!endereco },
+      { el: els.photoInput, ok: !!(novaFotoDataUrl || fotoJaExistente) }
+    ];
+    const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
+    if (vazios.length) {
+      piscarCampos(vazios);
+      els.msgErr.textContent = 'Preencha os campos obrigatórios em destaque (com *).';
       els.msgErr.style.display = 'block';
       return;
     }
@@ -373,7 +407,7 @@
     els.salvarBtn.textContent = 'Salvando...';
 
     const rg = rgNumero + ' ' + rgOrgao + '/' + rgUf;
-    const oab = oabNumero + '/' + oabUf;
+    const oab = oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero;
 
     const dados = {
       displayName: (nome + ' ' + sobrenome).trim(),

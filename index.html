@@ -358,6 +358,14 @@
     #admin-view{padding:16px;}
     table{display:block;overflow-x:auto;white-space:nowrap;}
   }
+
+  /* ---------- Campo obrigatório: asterisco + piscar quando vazio ---------- */
+  .obrig{color:var(--red);margin-left:2px;}
+  @keyframes piscaCampo{
+    0%,100%{ box-shadow:none; border-color:var(--line-strong); }
+    50%{ box-shadow:0 0 0 3px rgba(184,54,46,.4); border-color:var(--red); }
+  }
+  .campo-pisca{ animation: piscaCampo .5s ease-in-out 3; }
 </style>
 </head>
 <body>
@@ -394,19 +402,19 @@
       <div class="error-msg" id="register-error"></div>
       <form id="register-form">
         <div class="field">
-          <label>Nome</label>
+          <label>Nome<span class="obrig">*</span></label>
           <input type="text" id="register-name" required>
         </div>
         <div class="field">
-          <label>Sobrenome</label>
+          <label>Sobrenome<span class="obrig">*</span></label>
           <input type="text" id="register-surname" required>
         </div>
         <div class="field">
-          <label>CPF</label>
+          <label>CPF<span class="obrig">*</span></label>
           <input type="text" inputmode="numeric" id="register-cpf" placeholder="000.000.000-00" maxlength="14" required>
         </div>
         <div class="field">
-          <label>RG</label>
+          <label>RG<span class="obrig">*</span></label>
           <div style="display:flex;gap:8px;">
             <input type="text" inputmode="numeric" id="register-rg" placeholder="Número" style="flex:1.6;" required>
             <input type="text" id="register-rg-orgao" placeholder="Órgão expedidor" style="flex:1.3;" required>
@@ -417,17 +425,17 @@
           </div>
         </div>
         <div class="field">
-          <label>OAB</label>
+          <label>OAB <span style="opacity:.7;">(opcional)</span></label>
           <div style="display:flex;gap:8px;">
-            <input type="text" inputmode="numeric" id="register-oab" placeholder="Número" style="flex:2;" required>
-            <select id="register-oab-uf" style="flex:1;" required>
-              <option value="" disabled selected>UF</option>
+            <input type="text" inputmode="numeric" id="register-oab" placeholder="Número" style="flex:2;">
+            <select id="register-oab-uf" style="flex:1;">
+              <option value="" selected>UF</option>
               <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
             </select>
           </div>
         </div>
         <div class="field">
-          <label>Estado civil</label>
+          <label>Estado civil<span class="obrig">*</span></label>
           <select id="register-estado-civil" required>
             <option value="" disabled selected>Selecione</option>
             <option value="solteiro">Solteiro(a)</option>
@@ -436,35 +444,35 @@
           </select>
         </div>
         <div class="field">
-          <label>E-mail</label>
+          <label>E-mail<span class="obrig">*</span></label>
           <input type="email" id="register-email" autocomplete="username" required>
         </div>
         <div class="field">
-          <label>Telefone</label>
+          <label>Telefone<span class="obrig">*</span></label>
           <input type="tel" inputmode="numeric" id="register-telefone" placeholder="(00) 00000-0000" maxlength="15" required>
         </div>
         <div class="field">
-          <label>Endereço</label>
+          <label>Endereço<span class="obrig">*</span></label>
           <input type="text" id="register-endereco" required>
         </div>
         <div class="field">
-          <label>Senha</label>
+          <label>Senha<span class="obrig">*</span></label>
           <input type="password" id="register-password" autocomplete="new-password" placeholder="mín. 6 caracteres" required>
         </div>
         <div class="field">
-          <label>Data de nascimento</label>
+          <label>Data de nascimento<span class="obrig">*</span></label>
           <input type="date" id="register-birthdate" required>
         </div>
         <div class="field">
-          <label>Data de ingresso no escritório</label>
+          <label>Data de ingresso no escritório<span class="obrig">*</span></label>
           <input type="date" id="register-ingresso" required>
         </div>
         <div class="field">
-          <label>Departamento atual</label>
+          <label>Departamento atual<span class="obrig">*</span></label>
           <input type="text" id="register-depto" placeholder="Ex: Cível, Trabalhista, Financeiro..." required>
         </div>
         <div class="field">
-          <label>Foto (para o mural de aniversariantes)</label>
+          <label>Foto (para o mural de aniversariantes)<span class="obrig">*</span></label>
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="register-photo-preview" style="width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
             <input type="file" id="register-photo" accept="image/*" style="flex:1;min-width:0;font-size:.78rem;color:var(--muted);" required>
@@ -981,6 +989,18 @@
   ligarSomenteLetras(els.registerRgOrgao);
   ligarSomenteDigitos(els.registerOab);
 
+  function piscarCampos(elementos){
+    elementos.forEach(function(el){
+      if (!el) return;
+      el.classList.remove('campo-pisca');
+      void el.offsetWidth; // força reflow para poder reiniciar a animação
+      el.classList.add('campo-pisca');
+      function limpar(){ el.classList.remove('campo-pisca'); el.removeEventListener('input', limpar); el.removeEventListener('change', limpar); }
+      el.addEventListener('input', limpar);
+      el.addEventListener('change', limpar);
+    });
+  }
+
   let registerPhotoDataUrl = null;
   els.registerPhoto.addEventListener('change', function(){
     const file = els.registerPhoto.files[0];
@@ -1008,16 +1028,34 @@
     const rg = rgNumero && rgOrgao && rgUf ? (rgNumero + ' ' + rgOrgao + '/' + rgUf) : '';
     const oabNumero = els.registerOab.value.trim();
     const oabUf = els.registerOabUf.value;
-    const oab = oabNumero && oabUf ? (oabNumero + '/' + oabUf) : '';
+    const oab = oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero;
     const estadoCivil = els.registerEstadoCivil.value;
     const telefone = els.registerTelefone.value.trim();
     const endereco = els.registerEndereco.value.trim();
     const ingresso = els.registerIngresso.value;
     const depto = els.registerDepto.value.trim();
 
-    if (!primeiroNome || !sobrenome || !email || senha.length < 6 || !nascimento ||
-        !cpf || !rg || !oab || !estadoCivil || !telefone || !endereco || !ingresso || !depto || !registerPhotoDataUrl) {
-      els.registerError.textContent = 'Preencha todos os campos obrigatórios, incluindo RG (número/órgão/UF), OAB (número/UF) e foto.';
+    const camposObrigatorios = [
+      { el: els.registerName, ok: !!primeiroNome },
+      { el: els.registerSurname, ok: !!sobrenome },
+      { el: els.registerCpf, ok: !!cpf },
+      { el: els.registerRg, ok: !!rgNumero },
+      { el: els.registerRgOrgao, ok: !!rgOrgao },
+      { el: els.registerRgUf, ok: !!rgUf },
+      { el: els.registerEstadoCivil, ok: !!estadoCivil },
+      { el: els.registerEmail, ok: !!email },
+      { el: els.registerPassword, ok: senha.length >= 6 },
+      { el: els.registerTelefone, ok: !!telefone },
+      { el: els.registerEndereco, ok: !!endereco },
+      { el: els.registerBirthdate, ok: !!nascimento },
+      { el: els.registerIngresso, ok: !!ingresso },
+      { el: els.registerDepto, ok: !!depto },
+      { el: els.registerPhoto, ok: !!registerPhotoDataUrl }
+    ];
+    const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
+    if (vazios.length) {
+      piscarCampos(vazios);
+      els.registerError.textContent = 'Preencha os campos obrigatórios em destaque (com *).';
       els.registerError.style.display = 'block';
       return;
     }
