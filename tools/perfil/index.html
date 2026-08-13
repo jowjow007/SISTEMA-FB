@@ -131,15 +131,28 @@
     <div class="section-title">Dados cadastrais</div>
     <div class="field">
       <label>CPF</label>
-      <input type="text" id="cpf-input" placeholder="000.000.000-00">
+      <input type="text" inputmode="numeric" id="cpf-input" placeholder="000.000.000-00" maxlength="14">
     </div>
     <div class="field">
       <label>RG</label>
-      <input type="text" id="rg-input">
+      <div style="display:flex;gap:8px;">
+        <input type="text" inputmode="numeric" id="rg-input" placeholder="Número" style="flex:1.6;">
+        <input type="text" id="rg-orgao-input" placeholder="Órgão expedidor" style="flex:1.3;">
+        <select id="rg-uf-input" style="flex:.9;">
+          <option value="">UF</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+        </select>
+      </div>
     </div>
     <div class="field">
-      <label>OAB <span style="opacity:.7;">(opcional)</span></label>
-      <input type="text" id="oab-input" placeholder="Ex: 123456/MG">
+      <label>OAB</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" inputmode="numeric" id="oab-input" placeholder="Número" style="flex:2;">
+        <select id="oab-uf-input" style="flex:1;">
+          <option value="">UF</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+        </select>
+      </div>
     </div>
     <div class="field">
       <label>Estado civil</label>
@@ -152,7 +165,7 @@
     </div>
     <div class="field">
       <label>Telefone</label>
-      <input type="tel" id="telefone-input" placeholder="(00) 00000-0000">
+      <input type="tel" inputmode="numeric" id="telefone-input" placeholder="(00) 00000-0000" maxlength="15">
     </div>
     <div class="field">
       <label>Endereço</label>
@@ -197,7 +210,10 @@
     birthdateInput: document.getElementById('birthdate-input'),
     cpfInput: document.getElementById('cpf-input'),
     rgInput: document.getElementById('rg-input'),
+    rgOrgaoInput: document.getElementById('rg-orgao-input'),
+    rgUfInput: document.getElementById('rg-uf-input'),
     oabInput: document.getElementById('oab-input'),
+    oabUfInput: document.getElementById('oab-uf-input'),
     estadoCivilInput: document.getElementById('estado-civil-input'),
     telefoneInput: document.getElementById('telefone-input'),
     enderecoInput: document.getElementById('endereco-input'),
@@ -209,6 +225,7 @@
 
   let currentUid = null;
   let novaFotoDataUrl = null;
+  let fotoJaExistente = false;
 
   function resizeImageToDataUrl(file, maxDim, quality){
     return new Promise(function(resolve, reject){
@@ -243,6 +260,42 @@
     });
   });
 
+  // ---------- Máscaras de campo (CPF, telefone, letras/números apenas) ----------
+  function apenasDigitos(s){ return (s || '').replace(/\D+/g, ''); }
+  function apenasLetras(s){ return (s || '').replace(/[^A-Za-zÀ-ÿ\s]+/g, ''); }
+  function formatarCPF(v){
+    return apenasDigitos(v).slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  function formatarTelefone(v){
+    const d = apenasDigitos(v).slice(0, 11);
+    if (d.length > 10) {
+      return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+    }
+    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+  }
+  function ligarMascaraCPF(input){ input.addEventListener('input', function(){ input.value = formatarCPF(input.value); }); }
+  function ligarMascaraTelefone(input){ input.addEventListener('input', function(){ input.value = formatarTelefone(input.value); }); }
+  function ligarSomenteDigitos(input){ input.addEventListener('input', function(){ input.value = apenasDigitos(input.value); }); }
+  function ligarSomenteLetras(input){ input.addEventListener('input', function(){ input.value = apenasLetras(input.value).toUpperCase(); }); }
+  function parseRG(v){
+    const m = /^(\d+)\s+(.+)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1], orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
+    return { numero: apenasDigitos(v), orgao: '', uf: '' };
+  }
+  function parseOAB(v){
+    const m = /^(\d+)\s*\/\s*([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1], uf: m[2].toUpperCase() };
+    return { numero: apenasDigitos(v), uf: '' };
+  }
+  ligarMascaraCPF(els.cpfInput);
+  ligarMascaraTelefone(els.telefoneInput);
+  ligarSomenteDigitos(els.rgInput);
+  ligarSomenteLetras(els.rgOrgaoInput);
+  ligarSomenteDigitos(els.oabInput);
+
   auth.onAuthStateChanged(function(user){
     if (!user) {
       els.gate.style.display = 'block';
@@ -270,15 +323,23 @@
       if (perfilDoc.exists) {
         const p = perfilDoc.data();
         if (p.birthDate) els.birthdateInput.value = p.birthDate;
-        if (p.photoBase64) els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
+        if (p.photoBase64) {
+          els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
+          fotoJaExistente = true;
+        }
       }
       if (userDoc.exists) {
         const u = userDoc.data();
-        els.cpfInput.value = u.cpf || '';
-        els.rgInput.value = u.rg || '';
-        els.oabInput.value = u.oab || '';
+        els.cpfInput.value = formatarCPF(u.cpf || '');
+        const rgParsed = parseRG(u.rg);
+        els.rgInput.value = rgParsed.numero;
+        els.rgOrgaoInput.value = rgParsed.orgao;
+        els.rgUfInput.value = rgParsed.uf;
+        const oabParsed = parseOAB(u.oab);
+        els.oabInput.value = oabParsed.numero;
+        els.oabUfInput.value = oabParsed.uf;
         els.estadoCivilInput.value = u.estadoCivil || '';
-        els.telefoneInput.value = u.telefone || '';
+        els.telefoneInput.value = formatarTelefone(u.telefone || '');
         els.enderecoInput.value = u.endereco || '';
         els.emailAltInput.value = u.emailAlternativo || '';
       }
@@ -291,9 +352,19 @@
 
     const nome = els.nomeInput.value.trim();
     const sobrenome = els.sobrenomeInput.value.trim();
+    const cpf = els.cpfInput.value.trim();
+    const rgNumero = els.rgInput.value.trim();
+    const rgOrgao = els.rgOrgaoInput.value.trim();
+    const rgUf = els.rgUfInput.value;
+    const oabNumero = els.oabInput.value.trim();
+    const oabUf = els.oabUfInput.value;
+    const telefone = els.telefoneInput.value.trim();
+    const endereco = els.enderecoInput.value.trim();
 
-    if (!nome || !sobrenome || !els.birthdateInput.value || !els.estadoCivilInput.value) {
-      els.msgErr.textContent = 'Preencha nome, sobrenome, data de nascimento e estado civil.';
+    if (!nome || !sobrenome || !els.birthdateInput.value || !els.estadoCivilInput.value ||
+        !cpf || !rgNumero || !rgOrgao || !rgUf || !oabNumero || !oabUf || !telefone || !endereco ||
+        (!novaFotoDataUrl && !fotoJaExistente)) {
+      els.msgErr.textContent = 'Preencha todos os campos, incluindo RG (número/órgão/UF), OAB (número/UF) e foto.';
       els.msgErr.style.display = 'block';
       return;
     }
@@ -301,25 +372,28 @@
     els.salvarBtn.disabled = true;
     els.salvarBtn.textContent = 'Salvando...';
 
+    const rg = rgNumero + ' ' + rgOrgao + '/' + rgUf;
+    const oab = oabNumero + '/' + oabUf;
+
     const dados = {
       displayName: (nome + ' ' + sobrenome).trim(),
       birthDate: els.birthdateInput.value,
       // oab/estadoCivil espelhados aqui (perfis é de leitura ampla — allow read: if isSignedIn())
       // porque users/{uid} só pode ser lido pelo próprio dono ou admin (ver README-SETUP.md);
       // outras ferramentas (ex.: Documentos) precisam olhar o OAB de qualquer colega.
-      oab: els.oabInput.value.trim(),
+      oab: oab,
       estadoCivil: els.estadoCivilInput.value,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (novaFotoDataUrl) dados.photoBase64 = novaFotoDataUrl;
 
     const dadosCadastrais = {
-      cpf: els.cpfInput.value.trim(),
-      rg: els.rgInput.value.trim(),
-      oab: els.oabInput.value.trim(),
+      cpf: cpf,
+      rg: rg,
+      oab: oab,
       estadoCivil: els.estadoCivilInput.value,
-      telefone: els.telefoneInput.value.trim(),
-      endereco: els.enderecoInput.value.trim(),
+      telefone: telefone,
+      endereco: endereco,
       emailAlternativo: els.emailAltInput.value.trim()
     };
 
