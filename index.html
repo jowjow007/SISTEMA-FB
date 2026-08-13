@@ -537,7 +537,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v112</span>
+      <span class="version-tag">v113</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1725,9 +1725,23 @@
     };
     if (nomeCompleto) usersPatch.displayName = nomeCompleto;
 
+    // Espelha só os campos não sensíveis em organograma/{uid} — é o que a aba
+    // "Organograma" lê, já que gestores sem papel de admin não podem ler users/*
+    // de outra pessoa (ver README-SETUP.md). CPF/RG/OAB/telefone/endereço/estado
+    // civil/e-mail alternativo nunca entram aqui, só em users.
+    const organogramaPatch = {
+      displayName: nomeCompleto || els.editDadosUserLabel.textContent || '',
+      deptoAtual: usersPatch.deptoAtual,
+      dataIngresso: usersPatch.dataIngresso,
+      remuneracao: usersPatch.remuneracao,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentProfile.uid
+    };
+
     Promise.all([
       db.collection('users').doc(editDadosTargetUid).update(usersPatch),
-      db.collection('perfis').doc(editDadosTargetUid).set(perfilPatch, { merge: true })
+      db.collection('perfis').doc(editDadosTargetUid).set(perfilPatch, { merge: true }),
+      db.collection('organograma').doc(editDadosTargetUid).set(organogramaPatch, { merge: true })
     ]).then(fecharModalEditDados);
   });
 
