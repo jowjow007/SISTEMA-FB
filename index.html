@@ -320,6 +320,52 @@
   .modal-foot{display:flex;gap:10px;justify-content:flex-end;}
   .modal-foot .btn{width:auto;padding:9px 16px;}
 
+  /* ---------- Aviso obrigatório: foto de perfil faltando ---------- */
+  #aviso-foto-backdrop{z-index:300;}
+  #aviso-foto-backdrop .modal-box{width:min(400px,94vw);text-align:center;padding:30px 26px 24px;}
+  .aviso-selo-wrap{position:relative;width:80px;height:80px;margin:0 auto 18px;}
+  .aviso-selo-ring{
+    position:absolute;inset:0;border-radius:50%;border:2px solid var(--red-bright);
+    animation:avisoPing 2.2s cubic-bezier(.2,.7,.3,1) infinite;
+  }
+  .aviso-selo-ring.r2{animation-delay:.7s;}
+  .aviso-selo-ring.r3{animation-delay:1.4s;}
+  @keyframes avisoPing{
+    0%{transform:scale(.75);opacity:.9;}
+    80%{transform:scale(1.55);opacity:0;}
+    100%{transform:scale(1.55);opacity:0;}
+  }
+  .aviso-selo{position:absolute;inset:10px;display:flex;align-items:center;justify-content:center;animation:avisoPulseGlow 2.2s ease-in-out infinite;}
+  .aviso-selo svg{width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));}
+  @keyframes avisoPulseGlow{
+    0%,100%{filter:drop-shadow(0 0 10px rgba(201,70,60,.55)) drop-shadow(0 0 2px rgba(201,70,60,.7));}
+    50%{filter:drop-shadow(0 0 18px rgba(201,70,60,.9)) drop-shadow(0 0 4px rgba(201,70,60,.9));}
+  }
+  #aviso-foto-backdrop h3{font-size:1.25rem;text-wrap:balance;}
+  #aviso-foto-backdrop .sub{font-size:.86rem;line-height:1.55;margin-bottom:18px;color:var(--silver);}
+  #aviso-foto-backdrop .sub b{color:var(--paper);}
+  .aviso-passos{text-align:left;background:rgba(0,0,0,.14);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:20px;}
+  .aviso-passos-titulo{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin:0 0 8px;}
+  .aviso-passo{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:.8rem;color:var(--paper);}
+  .aviso-passo + .aviso-passo{border-top:1px dashed var(--line);}
+  .aviso-passo-num{
+    flex:0 0 auto;width:18px;height:18px;border-radius:50%;background:var(--panel-2);
+    border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+    font-size:.64rem;font-weight:700;color:var(--gold);
+  }
+  .aviso-passo b{color:var(--gold);}
+  #aviso-foto-backdrop .modal-foot{flex-direction:column;}
+  #aviso-foto-backdrop .modal-foot .btn{width:100%;}
+  #aviso-foto-fechar{
+    background:transparent;border:none;color:var(--muted);font-size:.76rem;text-decoration:underline;
+    cursor:pointer;padding:4px;font-family:var(--font-body);
+  }
+  #aviso-foto-fechar:hover{color:var(--paper);}
+  .aviso-rodape-nota{margin-top:14px;font-size:.66rem;color:var(--muted);}
+  @media (prefers-reduced-motion: reduce){
+    .aviso-selo-ring,.aviso-selo{animation:none;}
+  }
+
   /* ---------- CELULAR ---------- */
   .mobile-menu-btn{display:none;}
   #tabstrip-backdrop{display:none;}
@@ -537,7 +583,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v113</span>
+      <span class="version-tag">v114</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -723,6 +769,38 @@
   </div>
 </div>
 
+<!-- ================= MODAL: AVISO OBRIGATÓRIO DE FOTO DE PERFIL ================= -->
+<div class="modal-backdrop" id="aviso-foto-backdrop">
+  <div class="modal-box">
+    <div class="aviso-selo-wrap">
+      <div class="aviso-selo-ring"></div>
+      <div class="aviso-selo-ring r2"></div>
+      <div class="aviso-selo-ring r3"></div>
+      <div class="aviso-selo">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 6 L96 88 A8 8 0 0 1 89 100 L11 100 A8 8 0 0 1 4 88 Z"
+                fill="var(--red)" stroke="var(--red-bright)" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="45" y="34" width="10" height="34" rx="5" fill="#fff8f1"/>
+          <circle cx="50" cy="80" r="6" fill="#fff8f1"/>
+        </svg>
+      </div>
+    </div>
+    <h3 id="aviso-foto-titulo">Falta a sua foto!</h3>
+    <p class="sub">É <b>obrigatório</b> colocar uma foto no seu perfil do Portal Fonseca e Braga. Sem ela, este aviso vai continuar aparecendo toda vez que você entrar no sistema.</p>
+    <div class="aviso-passos">
+      <p class="aviso-passos-titulo">Como cadastrar sua foto</p>
+      <div class="aviso-passo"><span class="aviso-passo-num">1</span><span>Clique no ícone de <b>engrenagem</b>, no canto superior direito.</span></div>
+      <div class="aviso-passo"><span class="aviso-passo-num">2</span><span>Selecione <b>"Meu Perfil"</b> no menu que abrir.</span></div>
+      <div class="aviso-passo"><span class="aviso-passo-num">3</span><span>Envie sua foto e clique em <b>Salvar</b>.</span></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="aviso-foto-ir">Ir para Meu Perfil agora</button>
+      <button type="button" id="aviso-foto-fechar">Fechar por agora</button>
+    </div>
+    <p class="aviso-rodape-nota">Este aviso some sozinho assim que a foto for cadastrada.</p>
+  </div>
+</div>
+
 <div id="sidebar-tooltip"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -823,6 +901,10 @@
     dadosRgOrgao: document.getElementById('dados-rg-orgao'),
     dadosRgUf: document.getElementById('dados-rg-uf'),
     dadosOabUf: document.getElementById('dados-oab-uf'),
+    avisoFotoBackdrop: document.getElementById('aviso-foto-backdrop'),
+    avisoFotoTitulo: document.getElementById('aviso-foto-titulo'),
+    avisoFotoIr: document.getElementById('aviso-foto-ir'),
+    avisoFotoFechar: document.getElementById('aviso-foto-fechar'),
   };
 
   // ---------- Tema claro/escuro ----------
@@ -1152,7 +1234,41 @@
     renderUserInfo();
     subscribeTabsCatalog();
     if (currentProfile.role === 'admin') initAdminPanel();
+    verificarAvisoFotoObrigatoria();
   }
+
+  // ---------- Aviso obrigatório: foto de perfil faltando (só para usuários específicos) ----------
+  function normalizarNome(s){
+    return String(s || '').normalize('NFD').replace(new RegExp('[̀-ͯ]', 'g'), '').trim().toLowerCase();
+  }
+  const AVISO_FOTO_ALVOS = ['hecy braga de oliveira'];
+
+  function verificarAvisoFotoObrigatoria(){
+    const nome = normalizarNome(currentProfile.displayName);
+    if (AVISO_FOTO_ALVOS.indexOf(nome) === -1) return;
+
+    db.collection('perfis').doc(currentProfile.uid).get().then(function(doc){
+      const temFoto = doc.exists && !!doc.data().photoBase64;
+      if (temFoto) return;
+
+      const primeiroNome = (currentProfile.displayName || '').trim().split(/\s+/)[0] || '';
+      els.avisoFotoTitulo.textContent = primeiroNome ? ('Falta a sua foto, ' + primeiroNome + '!') : 'Falta a sua foto!';
+      els.avisoFotoBackdrop.classList.add('show');
+    });
+  }
+
+  els.avisoFotoFechar.addEventListener('click', function(){
+    els.avisoFotoBackdrop.classList.remove('show');
+  });
+  els.avisoFotoIr.addEventListener('click', function(){
+    els.avisoFotoBackdrop.classList.remove('show');
+    const tabPerfil = tabsCatalog.find(function(t){ return (t.label || '').toLowerCase().indexOf('perfil') !== -1; });
+    if (tabPerfil) {
+      selectTab(tabPerfil.id);
+    } else {
+      alert('Abra o menu de engrenagem no canto superior direito e clique em "Meu Perfil".');
+    }
+  });
 
   els.forcePasswordForm.addEventListener('submit', function(e){
     e.preventDefault();
