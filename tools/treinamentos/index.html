@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treinamentos — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --silver:#756f6c;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;transition:background-color .2s,color .2s}
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  #shell{display:flex;flex-direction:column;height:100%;}
+
+  nav.subtabs{
+    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    display:flex;gap:2px;overflow-x:auto;padding:0 14px;
+  }
+  nav.subtabs button{
+    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
+  }
+  nav.subtabs button:hover{color:var(--paper);}
+  nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
+
+  #panels{position:relative;flex:1 1 auto;min-height:0;}
+  .panel{position:absolute;inset:0;display:none;flex-direction:column;}
+  .panel.active{display:flex;}
+
+  .frame-toolbar{
+    flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
+    padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
+    font-size:.76rem;color:var(--muted);
+  }
+  .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+  .frame-toolbar a:hover{color:#fff;}
+  iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
+
+  .training-toolbar{
+    flex:0 0 auto;padding:14px 26px;border-bottom:1px solid var(--line-strong);
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .training-search{
+    flex:1 1 260px;max-width:420px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:9px 12px;color:var(--paper);font-size:.85rem;
+  }
+  .training-search::placeholder{color:var(--muted);}
+  .training-count{font-size:.78rem;color:var(--muted);white-space:nowrap;}
+  .training-empty{padding:60px 20px;text-align:center;color:var(--muted);font-size:.85rem;max-width:440px;margin:0 auto;line-height:1.6;}
+
+  /* ---- vídeos ---- */
+  .videos-view{flex:1 1 auto;overflow-y:auto;}
+  .video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:6px 26px 40px;}
+  .video-card{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;cursor:pointer;
+    transition:border-color .15s,transform .15s;
+  }
+  .video-card:hover{border-color:var(--red);transform:translateY(-1px);}
+  .video-thumb{position:relative;aspect-ratio:16/9;background:var(--panel-2);overflow:hidden;}
+  .video-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .video-thumb-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;}
+  .video-thumb .play-badge{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;
+    background:rgba(20,14,13,.25);
+  }
+  .video-body{padding:12px 14px 14px;}
+  .video-body .badge{
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
+    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    padding:2px 9px;margin-bottom:6px;
+  }
+  .video-body h3{font-family:var(--font-display);font-weight:600;font-size:.92rem;margin:0 0 4px;color:var(--paper);line-height:1.28;}
+  .video-body p{font-size:.76rem;color:var(--muted);margin:0;line-height:1.4;}
+
+  .video-modal{
+    position:fixed;inset:0;background:rgba(10,7,7,.85);display:none;align-items:center;justify-content:center;
+    z-index:50;padding:26px;
+  }
+  .video-modal.open{display:flex;}
+  .video-modal-inner{width:100%;max-width:920px;}
+  .video-modal-close{
+    display:block;margin:0 0 10px auto;background:var(--panel);color:var(--paper);border:1px solid var(--line-strong);
+    border-radius:8px;padding:7px 12px;font-size:.85rem;cursor:pointer;
+  }
+  .video-modal-frame{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+  .video-modal-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+
+  /* ---- documentos ---- */
+  .docs-view{flex:1 1 auto;overflow-y:auto;}
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;padding:6px 26px 40px;}
+  .doc-card{
+    display:block;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    padding:16px 16px 14px;transition:background .15s,border-color .15s,transform .15s;text-decoration:none;
+  }
+  .doc-card:hover{background:var(--panel-2);border-color:var(--red);transform:translateY(-1px);}
+  .doc-card .badge{
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
+    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    padding:2px 9px;margin-bottom:6px;
+  }
+  .doc-card h3{font-family:var(--font-display);font-weight:600;font-size:.92rem;margin:0 0 4px;color:var(--paper);line-height:1.28;}
+  .doc-card p{font-size:.76rem;color:var(--muted);margin:0 0 8px;line-height:1.4;}
+  .doc-card .open-hint{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--silver);}
+
+  @media(max-width:640px){
+    .video-grid,.doc-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <nav class="subtabs" id="subtabs-nav"></nav>
+  <div id="panels"></div>
+</div>
+
+<div class="video-modal" id="video-modal">
+  <div class="video-modal-inner">
+    <button class="video-modal-close" id="video-modal-close" type="button">✕ Fechar</button>
+    <div class="video-modal-frame"><iframe id="video-modal-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Para adicionar um vídeo: cole o link do YouTube ou Google Drive em "url".
+  // Para adicionar um documento: copie o arquivo para a pasta docs/ e referencie o nome em "arquivo".
+  // Veja ROTINA-ATUALIZACAO-TREINAMENTOS.md para o passo a passo completo.
+  var VIDEOS = [];
+  var DOCS = [];
+
+  var SUBTABS = [
+    { id:'pop',         label:'POPs',        type:'iframe', url:'../pop/index.html' },
+    { id:'videos',      label:'Vídeos',      type:'videos' },
+    { id:'documentos',  label:'Documentos',  type:'documentos' }
+  ];
+
+  var nav = document.getElementById('subtabs-nav');
+  var panelsEl = document.getElementById('panels');
+  var iframes = {};
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ---------- vídeos ---------- */
+
+  function parseYoutubeId(url){
+    var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{6,})/);
+    return m ? m[1] : null;
+  }
+  function parseDriveId(url){
+    var m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  }
+  function videoEmbedSrc(url){
+    var yt = parseYoutubeId(url);
+    if (yt) return 'https://www.youtube.com/embed/' + yt + '?autoplay=1';
+    var dr = parseDriveId(url);
+    if (dr) return 'https://drive.google.com/file/d/' + dr + '/preview';
+    return null;
+  }
+  function videoThumbSrc(url){
+    var yt = parseYoutubeId(url);
+    if (yt) return 'https://img.youtube.com/vi/' + yt + '/hqdefault.jpg';
+    return null;
+  }
+
+  function videoMatches(v, termo){
+    var alvo = [v.titulo, v.descricao, v.categoria].join(' ').toLowerCase();
+    return alvo.indexOf(termo) !== -1;
+  }
+
+  function renderVideoCard(v, idx){
+    var thumb = videoThumbSrc(v.url);
+    var thumbHtml = thumb ? '<img src="' + thumb + '" alt="">' : '<div class="video-thumb-fallback">🎬</div>';
+    return '<div class="video-card" data-video-idx="' + idx + '">' +
+      '<div class="video-thumb">' + thumbHtml + '<span class="play-badge">▶</span></div>' +
+      '<div class="video-body">' +
+        (v.categoria ? '<span class="badge">' + escapeHtml(v.categoria) + '</span>' : '') +
+        '<h3>' + escapeHtml(v.titulo) + '</h3>' +
+        (v.descricao ? '<p>' + escapeHtml(v.descricao) + '</p>' : '') +
+      '</div></div>';
+  }
+
+  function renderVideoGrid(termo){
+    var grid = document.getElementById('video-grid');
+    var count = document.getElementById('video-count');
+    if (!grid) return;
+    if (VIDEOS.length === 0) {
+      grid.innerHTML = '<div class="training-empty">Nenhum vídeo cadastrado ainda. Envie o link (YouTube ou Google Drive), título e descrição numa conversa para adicionarmos aqui.</div>';
+      if (count) count.textContent = '';
+      return;
+    }
+    var filtrados = [];
+    VIDEOS.forEach(function(v, idx){
+      if (!termo || videoMatches(v, termo)) filtrados.push({ v: v, idx: idx });
+    });
+    if (count) count.textContent = filtrados.length + (filtrados.length === 1 ? ' vídeo' : ' vídeos');
+    grid.innerHTML = filtrados.length
+      ? filtrados.map(function(x){ return renderVideoCard(x.v, x.idx); }).join('')
+      : '<div class="training-empty">Nenhum vídeo encontrado para essa busca.</div>';
+  }
+
+  function openVideoModal(v){
+    var src = videoEmbedSrc(v.url);
+    if (!src) { window.open(v.url, '_blank', 'noopener'); return; }
+    document.getElementById('video-modal-iframe').src = src;
+    document.getElementById('video-modal').classList.add('open');
+  }
+  function closeVideoModal(){
+    document.getElementById('video-modal').classList.remove('open');
+    document.getElementById('video-modal-iframe').src = '';
+  }
+  document.getElementById('video-modal-close').addEventListener('click', closeVideoModal);
+  document.getElementById('video-modal').addEventListener('click', function(e){
+    if (e.target.id === 'video-modal') closeVideoModal();
+  });
+
+  var videosBound = false;
+  function initVideosSubtab(){
+    renderVideoGrid('');
+    if (videosBound) return;
+    videosBound = true;
+    var searchEl = document.getElementById('video-search');
+    searchEl.addEventListener('input', function(){
+      renderVideoGrid(searchEl.value.trim().toLowerCase());
+    });
+    document.getElementById('video-grid').addEventListener('click', function(e){
+      var card = e.target.closest('[data-video-idx]');
+      if (!card) return;
+      openVideoModal(VIDEOS[Number(card.dataset.videoIdx)]);
+    });
+  }
+
+  /* ---------- documentos ---------- */
+
+  function docMatches(d, termo){
+    var alvo = [d.titulo, d.descricao, d.categoria].join(' ').toLowerCase();
+    return alvo.indexOf(termo) !== -1;
+  }
+
+  function renderDocCard(d){
+    return '<a class="doc-card" href="docs/' + encodeURIComponent(d.arquivo) + '" target="_blank" rel="noopener">' +
+      (d.categoria ? '<span class="badge">' + escapeHtml(d.categoria) + '</span>' : '') +
+      '<h3>' + escapeHtml(d.titulo) + '</h3>' +
+      (d.descricao ? '<p>' + escapeHtml(d.descricao) + '</p>' : '') +
+      '<span class="open-hint">Abrir documento ' +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>' +
+      '</span></a>';
+  }
+
+  function renderDocGrid(termo){
+    var grid = document.getElementById('doc-grid');
+    var count = document.getElementById('doc-count');
+    if (!grid) return;
+    if (DOCS.length === 0) {
+      grid.innerHTML = '<div class="training-empty">Nenhum documento cadastrado ainda. Envie o arquivo (PDF, manual, apostila) numa conversa para adicionarmos aqui.</div>';
+      if (count) count.textContent = '';
+      return;
+    }
+    var filtrados = termo ? DOCS.filter(function(d){ return docMatches(d, termo); }) : DOCS;
+    if (count) count.textContent = filtrados.length + (filtrados.length === 1 ? ' documento' : ' documentos');
+    grid.innerHTML = filtrados.length
+      ? filtrados.map(renderDocCard).join('')
+      : '<div class="training-empty">Nenhum documento encontrado para essa busca.</div>';
+  }
+
+  var docsBound = false;
+  function initDocsSubtab(){
+    renderDocGrid('');
+    if (docsBound) return;
+    docsBound = true;
+    var searchEl = document.getElementById('doc-search');
+    searchEl.addEventListener('input', function(){
+      renderDocGrid(searchEl.value.trim().toLowerCase());
+    });
+  }
+
+  /* ---------- montagem das sub-abas ---------- */
+
+  SUBTABS.forEach(function(t){
+    var btn = document.createElement('button');
+    btn.textContent = t.label;
+    btn.dataset.subtabId = t.id;
+    btn.addEventListener('click', function(){ selectSubtab(t.id); });
+    nav.appendChild(btn);
+
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + t.id;
+
+    if (t.type === 'videos') {
+      panel.innerHTML =
+        '<div class="videos-view">' +
+          '<div class="training-toolbar">' +
+            '<input type="text" class="training-search" id="video-search" placeholder="Buscar vídeo…">' +
+            '<span class="training-count" id="video-count"></span>' +
+          '</div>' +
+          '<div class="video-grid" id="video-grid"></div>' +
+        '</div>';
+    } else if (t.type === 'documentos') {
+      panel.innerHTML =
+        '<div class="docs-view">' +
+          '<div class="training-toolbar">' +
+            '<input type="text" class="training-search" id="doc-search" placeholder="Buscar documento…">' +
+            '<span class="training-count" id="doc-count"></span>' +
+          '</div>' +
+          '<div class="doc-grid" id="doc-grid"></div>' +
+        '</div>';
+    }
+    // painéis 'iframe' são preenchidos sob demanda na primeira visita, em selectSubtab()
+
+    panelsEl.appendChild(panel);
+  });
+
+  function selectSubtab(id){
+    Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.dataset.subtabId === id);
+    });
+    Array.prototype.forEach.call(panelsEl.querySelectorAll('.panel'), function(p){
+      p.classList.remove('active');
+    });
+    var panel = document.getElementById('panel-' + id);
+    if (!panel) return;
+    panel.classList.add('active');
+
+    var t = SUBTABS.filter(function(x){ return x.id === id; })[0];
+    if (t && t.type === 'videos') {
+      initVideosSubtab();
+    } else if (t && t.type === 'documentos') {
+      initDocsSubtab();
+    } else if (t && t.type === 'iframe' && !iframes[id]) {
+      var toolbar = document.createElement('div');
+      toolbar.className = 'frame-toolbar';
+      toolbar.innerHTML = '<span>' + escapeHtml(t.label) + '</span>' +
+        '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ↗</a>';
+      var ifr = document.createElement('iframe');
+      ifr.className = 'tool-frame';
+      ifr.src = t.url;
+      panel.appendChild(toolbar);
+      panel.appendChild(ifr);
+      iframes[id] = ifr;
+    }
+  }
+
+  selectSubtab(SUBTABS[0].id);
+})();
+</script>
+</body>
+</html>
