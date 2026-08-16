@@ -287,6 +287,12 @@
   .checkbox-row{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:.84rem;min-width:0;}
   .checkbox-row input{width:15px;height:15px;flex:0 0 auto;}
   .checkbox-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tab-cell{break-inside:avoid;}
+  .subtab-list{
+    margin:0 0 6px 27px;padding:2px 0 2px 12px;border-left:2px solid var(--line-strong);
+  }
+  .subtab-list .checkbox-row{padding:3px 0;font-size:.72rem;color:var(--muted);}
+  .subtab-list .checkbox-row input{width:12px;height:12px;}
   #nu-tabs-list, #edit-tabs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 14px;}
   #edit-tabs-backdrop .modal-box{width:min(640px,94vw);}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
@@ -1715,19 +1721,21 @@
       if (tabsCatalog.length === 0) {
         els.editTabsList.innerHTML = '<p class="empty-hint">Nenhuma aba cadastrada ainda. Crie abas em Administração &gt; Abas.</p>';
       } else {
+        // Cada aba (+ suas sub-abas, se houver) fica num único item do grid —
+        // senão o CSS grid intercala abas vizinhas no meio da lista de sub-abas.
         els.editTabsList.innerHTML = tabsCatalog.map(function(t){
           const marcado = cur.indexOf(t.id) !== -1 ? ' checked' : '';
-          let html = '<label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '><span>' + escapeHtml(t.label) + '</span></label>';
+          let html = '<div class="tab-cell"><label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '><span>' + escapeHtml(t.label) + '</span></label>';
           if (t.subtabs && t.subtabs.length) {
             // Sem restrição salva ainda = acesso a todas (não bloqueia quem já usava a ferramenta).
             const selecionadas = curSubtabs[t.id] || t.subtabs.map(function(s){ return s.id; });
-            html += '<div class="subtab-list" style="margin-left:26px;">' + t.subtabs.map(function(s){
+            html += '<div class="subtab-list">' + t.subtabs.map(function(s){
               const subMarcado = selecionadas.indexOf(s.id) !== -1 ? ' checked' : '';
-              return '<label class="checkbox-row" style="font-size:.85em;" title="' + escapeHtml(s.label) + '">' +
+              return '<label class="checkbox-row" title="' + escapeHtml(s.label) + '">' +
                 '<input type="checkbox" value="' + s.id + '" class="edit-subtab-cb" data-parent-tab="' + t.id + '"' + subMarcado + '><span>' + escapeHtml(s.label) + '</span></label>';
             }).join('') + '</div>';
           }
-          return html;
+          return html + '</div>';
         }).join('');
       }
       els.editTabsBackdrop.classList.add('show');
