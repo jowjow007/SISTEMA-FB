@@ -663,6 +663,8 @@
                 <input type="number" id="nt-ordem" value="10" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
               <div class="full"><label style="font-size:.75rem;color:var(--muted);">URL (o site que vai abrir dentro da aba)</label>
                 <input type="url" id="nt-url" placeholder="https://..." style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+              <div class="full"><label style="font-size:.75rem;color:var(--muted);">Sub-abas (opcional — só se a ferramenta tiver abas internas). Uma por linha, formato <code>id:Nome</code></label>
+                <textarea id="nt-subabas" rows="3" placeholder="geral:Visão Geral&#10;clientes:Clientes&#10;juizo:Juízo &amp; Ação" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-family:inherit;"></textarea></div>
             </div>
             <button class="btn" id="nt-criar" style="width:auto;padding:9px 18px;">Adicionar aba</button>
             <div class="msg-ok" id="nt-ok">Aba criada com sucesso.</div>
@@ -672,7 +674,7 @@
             <h3>Abas existentes</h3>
             <p class="sub" style="margin:-6px 0 12px;">Arraste pelo <b>⠿</b> para reordenar, ou digite um número direto no campo "Ordem".</p>
             <table id="tabs-table">
-              <thead><tr><th></th><th>Nome</th><th>URL</th><th>Ordem</th><th>Ações</th></tr></thead>
+              <thead><tr><th></th><th>Nome</th><th>URL</th><th>Ordem</th><th>Sub-abas</th><th>Ações</th></tr></thead>
               <tbody id="tabs-tbody"></tbody>
             </table>
           </div>
@@ -691,6 +693,20 @@
     <div class="modal-foot">
       <button class="btn secondary" id="edit-tabs-cancelar">Cancelar</button>
       <button class="btn" id="edit-tabs-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: EDITAR SUB-ABAS DE UMA ABA ================= -->
+<div class="modal-backdrop" id="edit-subabas-backdrop">
+  <div class="modal-box">
+    <h3>Sub-abas</h3>
+    <p class="sub" id="edit-subabas-label"></p>
+    <p class="sub" style="margin-top:-4px;">Uma por linha, formato <code>id:Nome</code>. O <code>id</code> precisa ser exatamente igual ao usado dentro da ferramenta. Deixe em branco para remover todas.</p>
+    <textarea id="edit-subabas-textarea" rows="8" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-family:inherit;"></textarea>
+    <div class="modal-foot">
+      <button class="btn secondary" id="edit-subabas-cancelar">Cancelar</button>
+      <button class="btn" id="edit-subabas-salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -886,6 +902,11 @@
     editTabsList: document.getElementById('edit-tabs-list'),
     editTabsCancelar: document.getElementById('edit-tabs-cancelar'),
     editTabsSalvar: document.getElementById('edit-tabs-salvar'),
+    editSubabasBackdrop: document.getElementById('edit-subabas-backdrop'),
+    editSubabasLabel: document.getElementById('edit-subabas-label'),
+    editSubabasTextarea: document.getElementById('edit-subabas-textarea'),
+    editSubabasCancelar: document.getElementById('edit-subabas-cancelar'),
+    editSubabasSalvar: document.getElementById('edit-subabas-salvar'),
     forcePasswordScreen: document.getElementById('force-password-screen'),
     forcePasswordForm: document.getElementById('force-password-form'),
     forcePasswordNew: document.getElementById('force-password-new'),
@@ -1533,11 +1554,23 @@
     if (!t) return;
     if (!iframes[tabId]) {
       const ifr = document.createElement('iframe');
-      ifr.src = t.url;
+      ifr.src = buildToolUrl(t);
       els.content.appendChild(ifr);
       iframes[tabId] = ifr;
     }
     iframes[tabId].classList.add('active');
+  }
+
+  // Se a ferramenta tem sub-abas E o admin restringiu quais este usuário vê
+  // (subtabs[tab.id] existe e é menor que o total), manda a lista permitida
+  // via query string — a ferramenta em si é quem esconde as sub-abas fora da lista.
+  // Sem restrição salva = acesso a todas (comportamento de hoje, sem quebrar nada).
+  function buildToolUrl(t){
+    if (!t.subtabs || !t.subtabs.length) return t.url;
+    const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
+    if (!permitidas || permitidas.length >= t.subtabs.length) return t.url;
+    const sep = t.url.indexOf('?') === -1 ? '?' : '&';
+    return t.url + sep + '_subtabs=' + encodeURIComponent(permitidas.join(','));
   }
 
   function escapeHtml(s){
@@ -1675,6 +1708,7 @@
     db.collection('users').doc(uid).get().then(function(doc){
       const dados = doc.data();
       const cur = dados.tabs || [];
+      const curSubtabs = dados.subtabs || {};
       editTabsTargetUid = uid;
       els.editTabsUserLabel.textContent = dados.displayName || dados.email || '';
 
@@ -1683,7 +1717,17 @@
       } else {
         els.editTabsList.innerHTML = tabsCatalog.map(function(t){
           const marcado = cur.indexOf(t.id) !== -1 ? ' checked' : '';
-          return '<label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '><span>' + escapeHtml(t.label) + '</span></label>';
+          let html = '<label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '><span>' + escapeHtml(t.label) + '</span></label>';
+          if (t.subtabs && t.subtabs.length) {
+            // Sem restrição salva ainda = acesso a todas (não bloqueia quem já usava a ferramenta).
+            const selecionadas = curSubtabs[t.id] || t.subtabs.map(function(s){ return s.id; });
+            html += '<div class="subtab-list" style="margin-left:26px;">' + t.subtabs.map(function(s){
+              const subMarcado = selecionadas.indexOf(s.id) !== -1 ? ' checked' : '';
+              return '<label class="checkbox-row" style="font-size:.85em;" title="' + escapeHtml(s.label) + '">' +
+                '<input type="checkbox" value="' + s.id + '" class="edit-subtab-cb" data-parent-tab="' + t.id + '"' + subMarcado + '><span>' + escapeHtml(s.label) + '</span></label>';
+            }).join('') + '</div>';
+          }
+          return html;
         }).join('');
       }
       els.editTabsBackdrop.classList.add('show');
@@ -1872,7 +1916,12 @@
   els.editTabsSalvar.addEventListener('click', function(){
     if (!editTabsTargetUid) return;
     const novaLista = Array.prototype.slice.call(document.querySelectorAll('.edit-tab-cb:checked')).map(function(c){ return c.value; });
-    db.collection('users').doc(editTabsTargetUid).update({ tabs: novaLista }).then(fecharModalEditTabs);
+    const novasSubtabs = {};
+    tabsCatalog.forEach(function(t){
+      if (!t.subtabs || !t.subtabs.length) return;
+      novasSubtabs[t.id] = Array.prototype.slice.call(document.querySelectorAll('.edit-subtab-cb[data-parent-tab="' + t.id + '"]:checked')).map(function(c){ return c.value; });
+    });
+    db.collection('users').doc(editTabsTargetUid).update({ tabs: novaLista, subtabs: novasSubtabs }).then(fecharModalEditTabs);
   });
 
   window.__revokeUser = function(uid){
@@ -1924,10 +1973,28 @@
     });
   };
 
+  // Converte o texto do textarea "id:Nome" (uma por linha) em [{id,label}].
+  // Linhas em branco ou sem ":" são ignoradas.
+  function parseSubabasTexto(texto){
+    return (texto || '').split('\n').map(function(linha){
+      const i = linha.indexOf(':');
+      if (i < 0) return null;
+      const id = linha.slice(0, i).trim();
+      const label = linha.slice(i + 1).trim();
+      if (!id || !label) return null;
+      return { id: id, label: label };
+    }).filter(Boolean);
+  }
+  // Converte [{id,label}] de volta em texto "id:Nome" (uma por linha), para preencher o textarea na edição.
+  function subabasParaTexto(subtabs){
+    return (subtabs || []).map(function(s){ return s.id + ':' + s.label; }).join('\n');
+  }
+
   function criarAba(){
     const label = document.getElementById('nt-label').value.trim();
     const url = document.getElementById('nt-url').value.trim();
     const ordem = parseInt(document.getElementById('nt-ordem').value, 10) || 99;
+    const subtabs = parseSubabasTexto(document.getElementById('nt-subabas').value);
     const okEl = document.getElementById('nt-ok');
     const errEl = document.getElementById('nt-err');
     okEl.style.display = 'none';
@@ -1940,10 +2007,14 @@
     }
     const id = label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') + '-' + Date.now().toString(36);
 
-    db.collection('tabs').doc(id).set({ label: label, url: url, order: ordem }).then(function(){
+    const doc = { label: label, url: url, order: ordem };
+    if (subtabs.length) doc.subtabs = subtabs;
+
+    db.collection('tabs').doc(id).set(doc).then(function(){
       okEl.style.display = 'block';
       document.getElementById('nt-label').value = '';
       document.getElementById('nt-url').value = '';
+      document.getElementById('nt-subabas').value = '';
     }).catch(function(err){
       errEl.textContent = traduzErro(err.code);
       errEl.style.display = 'block';
@@ -1954,17 +2025,47 @@
     const tbody = document.getElementById('tabs-tbody');
     if (!tbody) return;
     tbody.innerHTML = tabsCatalog.map(function(t){
+      const subCount = (t.subtabs || []).length;
+      const subResumo = subCount ? (subCount + ' sub-aba' + (subCount > 1 ? 's' : '')) : '<span style="color:var(--muted);">nenhuma</span>';
       return '<tr draggable="true" data-tab-id="' + t.id + '">' +
         '<td class="drag-handle" title="Arraste para reordenar">⠿</td>' +
         '<td>' + escapeHtml(t.label) + '</td>' +
         '<td style="word-break:break-all;">' + escapeHtml(t.url) + '</td>' +
         '<td><input type="number" class="ordem-input" value="' + t.order + '" data-tab-id="' + t.id + '"></td>' +
-        '<td class="actions-cell"><button class="btn danger small" onclick="window.__deleteTab(\'' + t.id + '\')">Excluir</button></td>' +
+        '<td>' + subResumo + '</td>' +
+        '<td class="actions-cell">' +
+          '<button class="btn secondary small" onclick="window.__editSubabas(\'' + t.id + '\')">Sub-abas</button>' +
+          '<button class="btn danger small" onclick="window.__deleteTab(\'' + t.id + '\')">Excluir</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
     ativarEdicaoOrdem(tbody);
     ativarArrastarTabs(tbody);
   }
+
+  // ---------- Modal: editar sub-abas de uma aba do catálogo ----------
+  let editSubabasTargetId = null;
+  window.__editSubabas = function(tabId){
+    const t = tabsCatalog.find(function(x){ return x.id === tabId; });
+    if (!t) return;
+    editSubabasTargetId = tabId;
+    els.editSubabasLabel.textContent = t.label;
+    els.editSubabasTextarea.value = subabasParaTexto(t.subtabs);
+    els.editSubabasBackdrop.classList.add('show');
+  };
+  function fecharModalEditSubabas(){
+    els.editSubabasBackdrop.classList.remove('show');
+    editSubabasTargetId = null;
+  }
+  els.editSubabasCancelar.addEventListener('click', fecharModalEditSubabas);
+  els.editSubabasBackdrop.addEventListener('click', function(e){
+    if (e.target === els.editSubabasBackdrop) fecharModalEditSubabas();
+  });
+  els.editSubabasSalvar.addEventListener('click', function(){
+    if (!editSubabasTargetId) return;
+    const subtabs = parseSubabasTexto(els.editSubabasTextarea.value);
+    db.collection('tabs').doc(editSubabasTargetId).update({ subtabs: subtabs }).then(fecharModalEditSubabas);
+  });
 
   function ativarEdicaoOrdem(tbody){
     Array.prototype.slice.call(tbody.querySelectorAll('.ordem-input')).forEach(function(inp){
