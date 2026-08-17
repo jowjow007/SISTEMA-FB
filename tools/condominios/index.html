@@ -317,8 +317,9 @@ var CONDOMINIOS = [
 var RELATORIOS = {
   "Mirante das Brisas": [
     { periodo:"Ago/2026", titulo:"Acompanhamento Jurídico — Jul/2025 a Ago/2026",
-      desc:"Capa, visão geral do período e resumo do mês de julho/2026, com evolução de casos, tarefas e processo judicial.",
-      pdf:"pdfs/relatorio-mirante-das-brisas-2026-08.pdf" }
+      desc:"Visão geral do período e resumo do mês de julho/2026, com evolução de casos, tarefas e processo judicial, em página única.",
+      pdf:"pdfs/relatorio-mirante-das-brisas-2026-08.pdf",
+      imagem:"pdfs/relatorio-mirante-das-brisas-2026-08.png" }
   ]
 };
 
@@ -675,16 +676,28 @@ function viewCondoRelatorios(c){
   if (!relatorios.length){
     return '<div class="empty-tab">Nenhum relatório condominial publicado ainda para '+c.nome+'.</div>';
   }
-  return '<p class="lead" style="margin-bottom:18px;font-size:.85rem;">Relatórios de acompanhamento jurídico enviados ao condomínio, prontos para consulta ou download em PDF.</p>'
+  return '<p class="lead" style="margin-bottom:18px;font-size:.85rem;">Relatórios de acompanhamento jurídico enviados ao condomínio, prontos para consulta, envio à administradora ou download.</p>'
     + '<div class="grid g3">' + relatorios.map(function(r){
         return '<div class="card" style="display:flex;flex-direction:column;">'
           + '<div class="icon-sq">📄</div>'
           + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
           + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
           + '<p>'+r.desc+'</p>'
-          + '<a href="'+r.pdf+'" download style="margin-top:auto;padding-top:14px;display:block;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:11px;font-size:.83rem;font-weight:700;text-decoration:none;">⬇ Baixar PDF</a>'
+          + relatorioButtons(r)
           + '</div>';
       }).join('') + '</div>';
+}
+
+function relatorioButtons(r){
+  var html = '<div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;">';
+  if (r.imagem){
+    html += '<a href="'+r.imagem+'" download style="flex:1;text-align:center;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">🖼 Imagem<br><span style="font-weight:400;font-size:.68rem;opacity:.85;">sem capa</span></a>';
+  }
+  if (r.pdf){
+    html += '<a href="'+r.pdf+'" download style="flex:1;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">📄 PDF<br><span style="font-weight:400;font-size:.68rem;opacity:.85;">com capa</span></a>';
+  }
+  html += '</div>';
+  return html;
 }
 
 function fieldBox(label, value){
@@ -1564,14 +1577,14 @@ function viewRelatoriosCondominiais(){
   if (!comReports.length){
     return '<div class="kicker">Carteira</div>'
       + '<h1>Relatórios Condominiais</h1>'
-      + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, prontos para consulta ou download em PDF.</p>'
+      + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, prontos para consulta, envio à administradora ou download.</p>'
       + '<hr class="rule">'
       + '<div class="empty-tab">Nenhum relatório condominial publicado ainda.</div>';
   }
 
   return '<div class="kicker">Carteira</div>'
     + '<h1>Relatórios Condominiais</h1>'
-    + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, organizados por condomínio, prontos para consulta ou download em PDF.</p>'
+    + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, organizados por condomínio, prontos para consulta, envio à administradora ou download.</p>'
     + '<hr class="rule">'
     + comReports.map(function(c){
         var relatorios = RELATORIOS[c.nome];
@@ -1582,7 +1595,7 @@ function viewRelatoriosCondominiais(){
                 + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
                 + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
                 + '<p>'+r.desc+'</p>'
-                + '<a href="'+r.pdf+'" download style="margin-top:auto;padding-top:14px;display:block;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:11px;font-size:.83rem;font-weight:700;text-decoration:none;">⬇ Baixar PDF</a>'
+                + relatorioButtons(r)
                 + '</div>';
             }).join('') + '</div>';
       }).join('');
