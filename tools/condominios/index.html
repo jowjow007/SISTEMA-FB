@@ -465,7 +465,8 @@ function bindDynamic(){
     if (gnCategoria) gnCategoria.addEventListener('change', function(){ setGerarCategoria(this.value); });
     var gnGerarTexto = document.getElementById('gn-gerar-texto');
     if (gnGerarTexto) gnGerarTexto.addEventListener('click', gerarTextoDoModelo);
-    [['torre','gn-torre'],['apto','gn-apto'],['ocorrencia','gn-ocorrencia'],['texto','gn-texto'],['multaValor','gn-multa-valor']].forEach(function(pair){
+    [['torre','gn-torre'],['apto','gn-apto'],['ocorrencia','gn-ocorrencia'],['texto','gn-texto'],['multaValor','gn-multa-valor'],
+     ['dataFato','gn-data-fato'],['horaFato','gn-hora-fato'],['oQueAconteceu','gn-o-que-aconteceu']].forEach(function(pair){
       var el = document.getElementById(pair[1]);
       if (el) el.addEventListener('input', function(){ updateDraft(pair[0], pair[1]); });
     });
@@ -1034,10 +1035,59 @@ var MIRANTE_CATEGORIAS = [
     + 'Nota: em caso de reincidência (mesma natureza), a multa sugerida é de 1/3 da taxa condominial, nos termos do Art. 136, inciso I, do Regimento Interno.' }
 ];
 
+/* Lista única de categorias de infração, válida para todos os condomínios
+   (pedido explícito do usuário, 2026-08-17). O texto/fundamento jurídico de
+   cada categoria depende da convenção e do regimento de cada condomínio —
+   por enquanto só temos material real do Mirante das Brisas (ver
+   MIRANTE_CATEGORIAS acima e o mapeamento CATEGORIA_PARA_MIRANTE logo
+   abaixo). Para os demais condomínios e categorias, o texto continua manual
+   até o usuário enviar as respectivas convenções/regimentos. */
+var CATEGORIAS_INFRACAO = [
+  'USO INADEQUADO DA INFRAESTRUTURA DO CONDOMÍNIO', 'ADEQUAÇÃO', 'ALTA VELOCIDADE',
+  'ALUGUEL POR TEMPORADA (AIRBNB)', 'ÁREAS DE LAZER', 'ATUALIZAÇÃO CADASTRAL',
+  'AUT - ARMÁRIO INTELIGENTE', 'AUT - FALHA DE COMUNICAÇÃO', 'AUT - ORDEM DE SERVIÇO',
+  'BARULHO', 'CIGARRO/FUMÍGENO', 'CIRCULAÇÃO ANIMAIS', 'CONDUTA ANTISSOCIAL',
+  'CONDUTA INADEQUADA', 'CONSERVAÇÃO DO LOTE', 'CRIANÇAS', 'DANOS',
+  'DESACATO URBANIDADE', 'DESCARTE DE RESÍDUOS/LIXO', 'ELEVADORES',
+  'ENTRADA E SAÍDA DE VEÍCULOS', 'ESPAÇOS DE FESTAS', 'ESTACIONAMENTO',
+  'EVENTO CARONA', 'FACHADA', 'FUMO', 'HALLS SOCIAIS', 'INSTALAÇÃO AR CONDICIONADO',
+  'MUDANÇAS', 'NÃO USO DE MÁSCARA', 'OBJETOS HALLS/ÁREAS COMUNS', 'OBJETOS PELA JANELA',
+  'OBRAS', 'OUTROS', 'PISCINA', 'PONTO DE GÁS/BOTIJÃO DE GÁS', 'PORTARIA',
+  'PRESTADORES DE SERVIÇOS', 'QUIOSQUES', 'SEGURANÇA E MONITORAMENTO',
+  'VAGAS DE GARAGEM', 'VAZAMENTOS / INFILTRAÇÕES', 'VISITANTES NA PISCINA'
+].map(function(label){ return { id: slugify(label), label: label }; });
+
+/* Onde uma categoria da lista única corresponde claramente a um dos modelos
+   reais já extraídos para o Mirante das Brisas, liga os dois (chave = id em
+   CATEGORIAS_INFRACAO, valor = id em MIRANTE_CATEGORIAS). O que não está
+   aqui ainda não tem modelo pronto — mostra aviso e segue manual. */
+var CATEGORIA_PARA_MIRANTE = {
+  'estacionamento': 'estacionamento',
+  'vagas-de-garagem': 'garagem',
+  'alta-velocidade': 'velocidade',
+  'circulacao-animais': 'pet-guia',
+  'piscina': 'piscina',
+  'objetos-pela-janela': 'objeto-janela',
+  'cigarro-fumigeno': 'cigarro',
+  'criancas': 'criancas',
+  'danos': 'dano',
+  'entrada-e-saida-de-veiculos': 'pedestre-portao',
+  'espacos-de-festas': 'happy-hour',
+  'uso-inadequado-da-infraestrutura-do-condominio': 'carrinho',
+  'conduta-inadequada': 'trajes'
+};
+
+function getMirCategoria(condominio, categoriaId){
+  if (condominio !== 'Mirante das Brisas') return null;
+  var mirId = CATEGORIA_PARA_MIRANTE[categoriaId];
+  if (!mirId) return null;
+  return MIRANTE_CATEGORIAS.filter(function(c){ return c.id === mirId; })[0] || null;
+}
+
 var gerarState = {
   editingId:null, minhas:[], minhasLoaded:false, submitting:false,
   condSel:null, tipoSel:'Advertência', categoriaSel:'',
-  draft:{ torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'' }
+  draft:{ torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' }
 };
 
 function loadMinhasNotificacoes(){
@@ -1061,7 +1111,7 @@ function loadMinhasNotificacoes(){
 function gv(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
 function resetGerarDraft(){
-  gerarState.draft = { torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'' };
+  gerarState.draft = { torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' };
   gerarState.categoriaSel = '';
   gerarState.tipoSel = 'Advertência';
 }
@@ -1090,7 +1140,7 @@ function setGerarTipo(v){ gerarState.tipoSel = v; render(); }
 function setGerarCategoria(v){ gerarState.categoriaSel = v; render(); }
 
 function gerarTextoDoModelo(){
-  var cat = MIRANTE_CATEGORIAS.filter(function(c){ return c.id === gerarState.categoriaSel; })[0];
+  var cat = getMirCategoria(gerarState.condSel, gerarState.categoriaSel);
   if (!cat) return;
   var torre = gerarState.draft.torre || '[TORRE]', apto = gerarState.draft.apto || '[APTO]';
   var header = MIRANTE_HEADER_TPL.replace('{TORRE}', torre).replace('{APTO}', apto);
@@ -1101,7 +1151,15 @@ function gerarTextoDoModelo(){
   var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   var dataNotif = hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
   var rodape = MIRANTE_RODAPE_TPL.replace('{DATA_NOTIF}', dataNotif);
-  gerarState.draft.texto = header + cat.corpo + '\n\n' + penalidade + rodape;
+  var corpo = cat.corpo;
+
+  if (gerarState.draft.dataFato) corpo = corpo.split('[DATA]').join(gerarState.draft.dataFato);
+  if (gerarState.draft.horaFato) corpo = corpo.split('[HORA]').join(gerarState.draft.horaFato);
+  if (gerarState.draft.oQueAconteceu){
+    corpo = corpo.replace(/\[DESCREVER:[^\]]*\]/, gerarState.draft.oQueAconteceu.trim());
+  }
+
+  gerarState.draft.texto = header + corpo + '\n\n' + penalidade + rodape;
   render();
 }
 
@@ -1168,7 +1226,7 @@ function notifCardMinha(n){
 function viewGerarNotificacao(){
   var formTitle = gerarState.editingId ? 'Corrigir e reenviar' : 'Nova notificação';
   if (!gerarState.condSel) gerarState.condSel = CONDOMINIOS[0].nome;
-  var isMirante = gerarState.condSel === 'Mirante das Brisas';
+  var catModelo = getMirCategoria(gerarState.condSel, gerarState.categoriaSel);
 
   var authBox = !fbReady
     ? '<div class="auth-gate">Este recurso depende do login do Portal, que não está configurado nesta cópia da ferramenta.</div>'
@@ -1178,21 +1236,31 @@ function viewGerarNotificacao(){
     ? '<div class="auth-gate">Faça login no Portal (abra esta ferramenta dentro do Portal Fonseca &amp; Braga, já logado) para enviar notificações para aprovação.</div>'
     : '';
 
-  var categoriaField = isMirante
-    ? '<div style="grid-column:1/-1;"><label>Categoria da infração (modelo Mirante das Brisas)</label><select id="gn-categoria">'
+  var categoriaField =
+    '<div style="grid-column:1/-1;"><label>Categoria da infração</label><select id="gn-categoria">'
       + '<option value="">— selecionar categoria —</option>'
-      + MIRANTE_CATEGORIAS.map(function(c){
+      + CATEGORIAS_INFRACAO.map(function(c){
           var sel = c.id === gerarState.categoriaSel ? ' selected' : '';
           return '<option value="'+c.id+'"'+sel+'>'+escapeHtml(c.label)+'</option>';
         }).join('')
-      + '</select></div>'
-    : '';
+      + '</select></div>';
 
   var multaValorField = gerarState.tipoSel === 'Multa'
     ? '<div><label>Valor da multa (R$)</label><input id="gn-multa-valor" type="text" placeholder="EX: 821,70" value="'+escapeHtml(gerarState.draft.multaValor)+'"></div>'
     : '';
 
-  var gerarBtn = (isMirante && gerarState.categoriaSel)
+  var semModeloAviso = (gerarState.categoriaSel && !catModelo)
+    ? '<div class="warn gold" style="grid-column:1/-1;margin-bottom:0;"><span class="ic">🕒</span><span>Ainda não temos modelo pronto para esta categoria neste condomínio — escreva o texto manualmente por enquanto. Assim que as convenções e regimentos chegarem, esta categoria passa a gerar o texto sozinha também.</span></div>'
+    : '';
+
+  var fatosFields = catModelo
+    ? '<div><label>Data do fato</label><input id="gn-data-fato" type="text" placeholder="DD/MM/AAAA" value="'+escapeHtml(gerarState.draft.dataFato)+'"></div>'
+      + '<div><label>Hora do fato</label><input id="gn-hora-fato" type="text" placeholder="HH:MM" value="'+escapeHtml(gerarState.draft.horaFato)+'"></div>'
+      + '<div style="grid-column:1/-1;"><label>O que aconteceu (em poucas palavras)</label>'
+        + '<textarea id="gn-o-que-aconteceu" rows="2" placeholder="'+escapeHtml('ex.: '+(catModelo.corpo.match(/\[DESCREVER:([^\]]*)\]/)||['',''])[1].trim())+'">'+escapeHtml(gerarState.draft.oQueAconteceu)+'</textarea></div>'
+    : '';
+
+  var gerarBtn = catModelo
     ? '<button type="button" class="btn secondary" id="gn-gerar-texto" style="margin-bottom:12px;">🪄 Gerar texto do modelo</button>'
     : '';
 
@@ -1209,10 +1277,12 @@ function viewGerarNotificacao(){
           + '<option'+(gerarState.tipoSel==='Multa'?' selected':'')+'>Multa</option>'
           + '</select></div>'
         + categoriaField
+        + semModeloAviso
         + multaValorField
         + '<div><label>Torre</label><input id="gn-torre" type="text" placeholder="TORRE" value="'+escapeHtml(gerarState.draft.torre)+'"></div>'
         + '<div><label>Apartamento</label><input id="gn-apto" type="text" placeholder="APTO" value="'+escapeHtml(gerarState.draft.apto)+'"></div>'
         + '<div style="grid-column:1/-1;"><label>Nº da ocorrência</label><input id="gn-ocorrencia" type="text" placeholder="OCORRÊNCIA #" value="'+escapeHtml(gerarState.draft.ocorrencia)+'"></div>'
+        + fatosFields
         + '<div style="grid-column:1/-1;">'
           + '<label>Texto da notificação</label>'
           + gerarBtn

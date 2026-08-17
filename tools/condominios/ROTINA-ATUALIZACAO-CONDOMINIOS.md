@@ -64,28 +64,51 @@ no console do Firebase** para isso funcionar em produção):
 
 **Modelos reais do Mirante das Brisas (2026-08-17)**: o usuário compartilhou uma
 pasta do Google Drive com ~40 notificações reais já enviadas para esse
-condomínio, organizadas em 16 subpastas por categoria de infração (estacionamento
-irregular, carrinho de compras, vaga de garagem, happy hour sem reserva, crianças
-desacompanhadas, tráfego em contramão, lavagem de janela, dano ao patrimônio,
-cigarro, alta velocidade, trajes inadequados, pedestre pelo portão de veículos,
-animal sem guia, piscina, falta de capacete, objeto na janela). O texto jurídico
-fixo de cada categoria (fundamentação, artigos citados, chamada "NOTIFICA-SE")
-foi extraído verbatim desses documentos reais e vive em `MIRANTE_CATEGORIAS`,
-com `[DATA]`, `[HORA]` e `[DESCREVER: ...]` como os únicos pontos deixados em
-aberto (a narrativa dos fatos sempre varia, mesmo dentro da mesma categoria — não
-dá para automatizar isso com segurança). O bloco "DO RECURSO" + assinaturas +
-rodapé (`MIRANTE_RODAPE_TPL`) é idêntico em todos os ~40 exemplos reais, por isso
-é compartilhado por todas as categorias. O bloco de penalidade
+condomínio, organizadas em 16 subpastas por categoria de infração. O texto
+jurídico fixo de cada categoria (fundamentação, artigos citados, chamada
+"NOTIFICA-SE") foi extraído verbatim desses documentos reais e vive em
+`MIRANTE_CATEGORIAS`, com `[DATA]`, `[HORA]` e `[DESCREVER: ...]` como os
+pontos que variam de caso a caso. O bloco "DO RECURSO" + assinaturas + rodapé
+(`MIRANTE_RODAPE_TPL`) é idêntico em todos os ~40 exemplos reais, por isso é
+compartilhado por todas as categorias. O bloco de penalidade
 (`PENALIDADE_ADVERTENCIA_TPL` / `penalidadeMultaTpl()`) segue o campo "Tipo"
-já existente no formulário. Quando o condomínio selecionado é "Mirante das
-Brisas", aparece o campo "Categoria da infração" e o botão "🪄 Gerar texto do
-modelo", que monta o texto completo (cabeçalho + corpo da categoria +
-penalidade + rodapé) dentro do campo de texto, editável antes de enviar — não
-é enviado automaticamente sem revisão humana. **Se o usuário mandar os modelos
-dos outros condomínios**, o mesmo padrão se replica: acrescentar um novo array
-tipo `MIRANTE_CATEGORIAS` para aquele condomínio e trocar a condição
-`isMirante` (hoje só compara `condSel === 'Mirante das Brisas'`) por uma busca
-no condomínio selecionado.
+já existente no formulário.
+
+**Lista única de categorias, válida para todos os condomínios (2026-08-17,
+pedido explícito do usuário)**: `CATEGORIAS_INFRACAO` tem as ~42 categorias
+que o usuário ditou (USO INADEQUADO DA INFRAESTRUTURA, ADEQUAÇÃO, ALTA
+VELOCIDADE, ... — ver o array no código para a lista completa), na mesma
+ordem, com `id` gerado por `slugify()`. O campo "Categoria da infração"
+aparece sempre, para qualquer condomínio selecionado — não só Mirante das
+Brisas. `CATEGORIA_PARA_MIRANTE` liga 13 dessas categorias aos modelos reais
+já existentes (ex.: `'alta-velocidade': 'velocidade'`, `'criancas': 'criancas'`)
+via a função `getMirCategoria(condominio, categoriaId)`, que só retorna algo
+quando `condominio === 'Mirante das Brisas'` **e** a categoria está mapeada —
+as outras ~29 categorias (e todos os outros 9 condomínios, em qualquer
+categoria) mostram o aviso "ainda não temos modelo pronto" e o texto continua
+manual. **O usuário disse que vai mandar as convenções e regimentos de todos
+os condomínios** para virarem modelos de verdade — quando isso acontecer, o
+padrão é: extrair o texto jurídico fixo de cada categoria (igual foi feito
+para o Mirante), colocar num array `{CONDOMINIO}_CATEGORIAS` e um mapeamento
+`CATEGORIA_PARA_{CONDOMINIO}`, e estender `getMirCategoria` (bom candidato a
+renomear para algo tipo `getCategoriaTemplate` nesse momento, já que deixa de
+ser exclusivo do Mirante) para checar o condomínio certo.
+
+**Campos estruturados dos fatos (sem IA)**: perguntado explicitamente, o
+usuário preferiu **não** integrar uma IA de verdade para reescrever texto
+livre em português formal (isso exigiria backend novo — ex. Cloudflare
+Workers — mais uma chave de API da Anthropic paga por uso; ver decisão em
+2026-08-17). Em vez disso, quando existe modelo real para a categoria
+(`getMirCategoria` retorna algo), aparecem os campos "Data do fato", "Hora do
+fato" e "O que aconteceu (em poucas palavras)" — o placeholder desse último
+campo é preenchido dinamicamente com o texto de exemplo que já estava dentro
+do `[DESCREVER: ...]` do modelo, para orientar o usuário sobre o nível de
+detalhe esperado. Ao clicar "🪄 Gerar texto do modelo", `gerarTextoDoModelo()`
+faz um `split/join` simples trocando `[DATA]` → data do fato, `[HORA]` → hora
+do fato, e a regex `/\[DESCREVER:[^\]]*\]/` → o texto digitado pelo usuário,
+sem nenhuma correção gramatical — é literalmente o que a pessoa escreveu,
+encaixado na frase do modelo. O resultado sempre fica editável no campo de
+texto antes de enviar.
 
 Fluxo: qualquer usuário logado monta e envia uma notificação em "Gerar
 Notificação" (`status:'pendente'`). Só quem está em `condoAprovadores` como
