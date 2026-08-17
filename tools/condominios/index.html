@@ -466,9 +466,16 @@ function bindDynamic(){
     var gnGerarTexto = document.getElementById('gn-gerar-texto');
     if (gnGerarTexto) gnGerarTexto.addEventListener('click', gerarTextoDoModelo);
     [['torre','gn-torre'],['apto','gn-apto'],['ocorrencia','gn-ocorrencia'],['texto','gn-texto'],['multaValor','gn-multa-valor'],
-     ['dataFato','gn-data-fato'],['horaFato','gn-hora-fato'],['oQueAconteceu','gn-o-que-aconteceu']].forEach(function(pair){
+     ['dataFato','gn-data-fato'],['oQueAconteceu','gn-o-que-aconteceu']].forEach(function(pair){
       var el = document.getElementById(pair[1]);
       if (el) el.addEventListener('input', function(){ updateDraft(pair[0], pair[1]); });
+    });
+    var gnHoraFato = document.getElementById('gn-hora-fato');
+    if (gnHoraFato) gnHoraFato.addEventListener('input', function(){
+      var digits = this.value.replace(/\D/g,'').slice(0,4);
+      var formatted = digits.length > 2 ? digits.slice(0,2)+'h'+digits.slice(2) : digits;
+      this.value = formatted;
+      gerarState.draft.horaFato = formatted;
     });
   }
   if(state.section === 'gerar-notificacao' && state.gerarView === 'aprovacao') bindAprovacao();
@@ -899,9 +906,7 @@ var MIRANTE_RODAPE_TPL =
   + 'JONATHAN FONSECA                          YASMIN KAROLINE RAMOS SILVA\n'
   + 'OAB/MG n.º 163.443                              OAB/MG n.º 242.310\n\n'
   + 'ANDREIA MACHADO DOS SANTOS            THAUANY OLIVEIRA\n'
-  + 'SÍNDICA                                              EQUIPE JURÍDICA\n\n'
-  + '+55 34 3225-2737 · www.FONSECAEBRAGA.com.br\n'
-  + 'Rua Senador Salgado Filho, 426, B. Tabajaras | UBERLÂNDIA/MG | CEP 38400-236';
+  + 'SÍNDICA                                              EQUIPE JURÍDICA';
 
 var PENALIDADE_ADVERTENCIA_TPL =
   'DAS PENALIDADES\n\n'
@@ -1153,7 +1158,10 @@ function gerarTextoDoModelo(){
   var rodape = MIRANTE_RODAPE_TPL.replace('{DATA_NOTIF}', dataNotif);
   var corpo = cat.corpo;
 
-  if (gerarState.draft.dataFato) corpo = corpo.split('[DATA]').join(gerarState.draft.dataFato);
+  if (gerarState.draft.dataFato){
+    var dataFatoBr = gerarState.draft.dataFato.split('-').reverse().join('/');
+    corpo = corpo.split('[DATA]').join(dataFatoBr);
+  }
   if (gerarState.draft.horaFato) corpo = corpo.split('[HORA]').join(gerarState.draft.horaFato);
   if (gerarState.draft.oQueAconteceu){
     corpo = corpo.replace(/\[DESCREVER:[^\]]*\]/, gerarState.draft.oQueAconteceu.trim());
@@ -1254,8 +1262,8 @@ function viewGerarNotificacao(){
     : '';
 
   var fatosFields = catModelo
-    ? '<div><label>Data do fato</label><input id="gn-data-fato" type="text" placeholder="DD/MM/AAAA" value="'+escapeHtml(gerarState.draft.dataFato)+'"></div>'
-      + '<div><label>Hora do fato</label><input id="gn-hora-fato" type="text" placeholder="HH:MM" value="'+escapeHtml(gerarState.draft.horaFato)+'"></div>'
+    ? '<div><label>Data do fato</label><input id="gn-data-fato" type="date" value="'+escapeHtml(gerarState.draft.dataFato)+'"></div>'
+      + '<div><label>Hora do fato</label><input id="gn-hora-fato" type="text" inputmode="numeric" placeholder="EX: 14h30" maxlength="6" value="'+escapeHtml(gerarState.draft.horaFato)+'"></div>'
       + '<div style="grid-column:1/-1;"><label>O que aconteceu (em poucas palavras)</label>'
         + '<textarea id="gn-o-que-aconteceu" rows="2" placeholder="'+escapeHtml('ex.: '+(catModelo.corpo.match(/\[DESCREVER:([^\]]*)\]/)||['',''])[1].trim())+'">'+escapeHtml(gerarState.draft.oQueAconteceu)+'</textarea></div>'
     : '';
