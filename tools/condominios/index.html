@@ -457,6 +457,18 @@ function bindDynamic(){
     Array.prototype.forEach.call(document.querySelectorAll('[data-edit-notif]'), function(el){
       el.addEventListener('click', function(){ editarNotificacao(el.getAttribute('data-edit-notif')); });
     });
+    var gnCondominio = document.getElementById('gn-condominio');
+    if (gnCondominio) gnCondominio.addEventListener('change', function(){ setGerarCondominio(this.value); });
+    var gnTipo = document.getElementById('gn-tipo');
+    if (gnTipo) gnTipo.addEventListener('change', function(){ setGerarTipo(this.value); });
+    var gnCategoria = document.getElementById('gn-categoria');
+    if (gnCategoria) gnCategoria.addEventListener('change', function(){ setGerarCategoria(this.value); });
+    var gnGerarTexto = document.getElementById('gn-gerar-texto');
+    if (gnGerarTexto) gnGerarTexto.addEventListener('click', gerarTextoDoModelo);
+    [['torre','gn-torre'],['apto','gn-apto'],['ocorrencia','gn-ocorrencia'],['texto','gn-texto'],['multaValor','gn-multa-valor']].forEach(function(pair){
+      var el = document.getElementById(pair[1]);
+      if (el) el.addEventListener('input', function(){ updateDraft(pair[0], pair[1]); });
+    });
   }
   if(state.section === 'gerar-notificacao' && state.gerarView === 'aprovacao') bindAprovacao();
 }
@@ -871,7 +883,162 @@ function specialRule(t,d){
     + '<div style="font-size:.8rem;color:var(--muted);margin-top:3px;line-height:1.4;">'+d+'</div></div>';
 }
 
-var gerarState = { editingId:null, minhas:[], minhasLoaded:false, submitting:false };
+/* ---------- modelos reais de notificação — Mirante das Brisas ---------- */
+/* Fonte: pasta de modelos do condomínio enviada pelo usuário (Google Drive), 2026-08-17.
+   Cada categoria traz o texto jurídico fixo (verbatim dos modelos reais), com
+   [DATA], [HORA] e [DESCREVER: ...] como os únicos pontos que variam de caso a caso. */
+
+var MIRANTE_RODAPE_TPL =
+  '\n\nDO RECURSO\n\n'
+  + 'Nos termos do Art. 14 do Regimento Interno, são direitos dos condôminos e moradores recorrer de punição que lhes tenha sido imposta ao Conselho Consultivo ou à Assembleia Geral Extraordinária.\n\n'
+  + 'Ademais, conforme o Art. 129 do mesmo Regimento, o(a) notificando(a) poderá interpor recurso à Assembleia Geral no prazo de 30 (trinta) dias contados do recebimento desta notificação.\n\n'
+  + 'Para esclarecimentos, a presente advertência é assinada pelo procurador do condomínio, que possui os devidos poderes outorgados. Em caso de dúvidas, a Síndica poderá ser acionada para esclarecimentos adicionais.\n\n'
+  + 'Termos em que, contamos com a sua compreensão.\n\n'
+  + 'Uberlândia/MG, {DATA_NOTIF}\n\n'
+  + 'JONATHAN FONSECA                          YASMIN KAROLINE RAMOS SILVA\n'
+  + 'OAB/MG n.º 163.443                              OAB/MG n.º 242.310\n\n'
+  + 'ANDREIA MACHADO DOS SANTOS            THAUANY OLIVEIRA\n'
+  + 'SÍNDICA                                              EQUIPE JURÍDICA\n\n'
+  + '+55 34 3225-2737 · www.FONSECAEBRAGA.com.br\n'
+  + 'Rua Senador Salgado Filho, 426, B. Tabajaras | UBERLÂNDIA/MG | CEP 38400-236';
+
+var PENALIDADE_ADVERTENCIA_TPL =
+  'DAS PENALIDADES\n\n'
+  + 'Em razão da conduta verificada, será aplicada a penalidade de ADVERTÊNCIA ESCRITA, de caráter educativo e preventivo, nos termos do Regimento Interno.\n\n'
+  + 'Nos termos do Art. 123 do Regimento Interno, todos os condôminos, moradores e ocupantes estão sujeitos às sanções em caso de transgressão das normas condominiais.\n\n'
+  + 'Nos termos do Art. 136 do Regimento Interno, o descumprimento das normas condominiais pode ensejar a aplicação de advertência escrita e, em caso de reincidência, multa no valor de 1/3 (um terço) a 5 (cinco) taxas condominiais vigentes, a critério da administração, sem prejuízo da apuração de responsabilidade civil e penal pelos danos causados.\n\n'
+  + 'Assim, esta Administração reforça a obrigatoriedade de observância integral às normas previstas no Regimento Interno, evitando prejuízos à coletividade. Solicitamos a adoção imediata das medidas necessárias para que situações semelhantes não voltem a ocorrer.';
+
+function penalidadeMultaTpl(valor){
+  return 'DAS PENALIDADES\n\n'
+    + 'Em razão da conduta verificada, será aplicada a penalidade de MULTA no valor de R$ '+(valor||'[VALOR]')+', nos termos do art. 136 do Regimento Interno.\n\n'
+    + 'Nos termos do Art. 123 do Regimento Interno, todos os condôminos, moradores e ocupantes estão sujeitos às sanções em caso de transgressão das normas condominiais.\n\n'
+    + 'Assim, esta Administração reforça a obrigatoriedade de observância integral às normas previstas no Regimento Interno, evitando prejuízos à coletividade. Solicitamos a adoção imediata das medidas necessárias para que situações semelhantes não voltem a ocorrer.';
+}
+
+var MIRANTE_HEADER_TPL = 'ADVERTÊNCIA\n\nNOTIFICAÇÃO DE INFRAÇÃO DE REGRAMENTO\n\n(Carta de Advertência)\n\nTORRE: {TORRE}   APARTAMENTO: {APTO}\n\nPrezado(a) Condômino(a),\n\n';
+
+var MIRANTE_CATEGORIAS = [
+  { id:'estacionamento', label:'Estacionamento Irregular / Obstrução de Via', valorSugerido:'821,70', corpo:
+    'Na qualidade de procurador do Condomínio Mirante das Brisas, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de conhecimento obrigatório de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Informamos os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, constatou-se que, na data de [DATA], por volta das [HORA], [DESCREVER: veículo estacionado de forma irregular — ocupando mais de uma vaga, fora das faixas demarcadas, com parte projetada sobre a via de circulação etc.], o que configura descumprimento das normas estabelecidas no CAPÍTULO XIV - DA GARAGEM E ESTACIONAMENTO e no CAPÍTULO IV - DA SEGURANÇA, Art. 18, do Regimento Interno.\n\n'
+    + 'A conduta verificada compromete a organização das vagas, dificulta o uso regular da vaga vizinha e pode prejudicar as manobras e a circulação de veículos nas áreas comuns, gerando risco de colisão, obstrução e transtornos aos demais moradores e usuários da garagem.\n\n'
+    + 'Conforme Art. 67 do Regimento Interno, aplicam-se as normas do Código de Trânsito Brasileiro no interior do condomínio, especificamente o Art. 48 e o Art. 181, inciso XVII, do CTB.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de estacionar veículo ocupando mais de uma vaga, fora das faixas demarcadas ou com qualquer parte projetada para a via/zona de circulação, devendo manter o veículo integralmente dentro do limite de sua vaga, garantindo o respeito aos demais moradores e evitando a reincidência da conduta.' },
+
+  { id:'carrinho', label:'Uso Inadequado do Carrinho de Compras', valorSugerido:'', corpo:
+    'Na qualidade de procuradores do Condomínio Mirante das Brisas, no exercício das atribuições conferidas pela Convenção Condominial e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de observância obrigatória por todos os condôminos, moradores, possuidores, ocupantes, visitantes e demais pessoas vinculadas à unidade.\n\n'
+    + 'DOS FATOS\n\nNa data de [DATA], por volta das [HORA], foi constatado que a unidade [DESCREVER: utilizou o carrinho de compras disponibilizado pelo Condomínio para finalidade diversa — transporte de criança, de objetos volumosos incompatíveis etc.].\n\n'
+    + 'A conduta caracteriza uso inadequado e desvio da finalidade do equipamento, que se destina exclusivamente ao transporte de compras e objetos. Além de comprometer sua conservação, a movimentação inadequada pode causar danos à estrutura, às rodas e aos demais componentes do carrinho, reduzindo sua vida útil e prejudicando sua utilização pelos demais moradores.\n\n'
+    + 'DO FUNDAMENTO REGIMENTAL\n\nA conduta descrita contraria o Regimento Interno, especificamente o X - DO USO DE CARRINHOS DE FEIRA OU SUPERMERCADO, bem como o disposto no Parágrafo 11° da Convenção Condominial.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de utilizar o carrinho de compras para finalidade diversa da sua destinação, zelando sempre pela segurança, integridade física dos usuários e uso correto dos equipamentos, evitando a reincidência da conduta.' },
+
+  { id:'garagem', label:'Uso Indevido de Vaga de Garagem', valorSugerido:'', corpo:
+    'Na qualidade de procuradores deste Condomínio, no exercício das atribuições conferidas pela Convenção Condominial e pelo Regimento Interno, e em estrito cumprimento às deliberações do Conselho Diretivo, servimo-nos da presente para cientificá-lo(a) acerca da ocorrência abaixo descrita. Tal conduta configura infração às normas condominiais vigentes, cujo conhecimento é obrigatório a todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Informamos os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, foi constatado[a] em [DATA], por volta das [HORA], que [DESCREVER: veículo/objeto ocupando vaga de garagem de outra unidade, sem autorização do titular], conduta que infringe o disposto no CAPÍTULO XIV - DA GARAGEM E ESTACIONAMENTO, Art. 68, inciso XVIII, do Regimento Interno.\n\n'
+    + 'Ressaltamos que a utilização de vaga de garagem alheia, sem a devida e expressa autorização do respectivo titular, gera transtornos imotivados, priva o proprietário do exercício de seu direito exclusivo e compromete a harmonia da convivência condominial.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de utilizar vagas de garagem de terceiros sem autorização prévia e expressa do respectivo titular, devendo limitar o estacionamento de seu veículo estritamente à vaga que lhe é de direito, evitando, assim, a reincidência da conduta.' },
+
+  { id:'happy-hour', label:'Uso do Espaço Happy Hour sem Reserva', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de conhecimento obrigatório de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Informamos os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, constatou-se que, na data de [DATA], por volta das [HORA], a referida unidade utilizou o espaço Happy Hour/área comum de festas sem confirmação ou aviso prévio à portaria acerca de eventual autorização/reserva, configurando descumprimento do CAPÍTULO XV – DAS ÁREAS DE FESTAS, Art. 69, inciso III, do Regimento Interno.\n\n'
+    + 'A conduta de usufruir de uma área comum reservada a outro morador, ou sem a devida anuência oficial, compromete a boa ordem, interfere no direito de uso do legítimo reservante e desorganiza os agendamentos gerenciados pela portaria e pela administradora.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de utilizar espaços de lazer ou áreas comuns reservadas a terceiros sem o devido agendamento prévio junto à administração, garantindo o respeito aos demais moradores e evitando a reincidência da conduta.' },
+
+  { id:'criancas', label:'Crianças/Menores Desacompanhados', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, que configura infração às normas condominiais vigentes.\n\n'
+    + 'Aplicam-se ao caso os seguintes dispositivos:\n\nCAPÍTULO I - DAS DISPOSIÇÕES GERAIS\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'DA OCORRÊNCIA\n\nConforme registro formal de ocorrência e monitoramento interno, no dia [DATA], por volta das [HORA], foi constatado que [DESCREVER: menor(es) vinculado(s) à unidade permanecia(m) desacompanhado(s) em área comum — parquinho, estacionamento etc.].\n\n'
+    + 'DAS REGRAS APLICÁVEIS\n\nA presente advertência encontra fundamento nas disposições do Regimento Interno, especialmente nas normas que estabelecem o dever de vigilância sobre menores em áreas de lazer (CAPÍTULO XVIII – DO PLAYGROUND E ESPAÇO KIDS, Art. 98), bem como nas proibições gerais do CAPÍTULO III - DAS PROIBIÇÕES, Art. 16, inciso XXIX.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de permitir a permanência de menores desacompanhados nas áreas comuns de lazer, zelando sempre pelo cumprimento das normas de segurança e pela proteção dos menores sob sua responsabilidade.' },
+
+  { id:'contramao', label:'Tráfego em Contramão', valorSugerido:'821,70', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes.\n\n'
+    + 'Faz-se saber os seguintes dispositivos:\n\nCAPÍTULO I - DAS DISPOSIÇÕES GERAIS\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'DOS FATOS\n\nConforme registro formal de ocorrência e vídeos/imagens anexados, constatou-se que, em [DATA], por volta das [HORA], [DESCREVER: veículo/condutor vinculado à unidade trafegou em sentido contrário ao fluxo estabelecido nas vias internas do condomínio].\n\n'
+    + 'DOS FUNDAMENTOS\n\nNos termos do art. 18 e art. 67 do Regimento Interno (Capítulos IV - Da Segurança e XIV – Da Garagem e Estacionamento), aplicam-se no interior do Condomínio as normas do Código de Trânsito Brasileiro, especialmente quanto à sinalização e ao sentido regular de circulação. A conduta encontra vedação expressa no Art. 186, inciso II, do CTB, que proíbe o tráfego na contramão.\n\n'
+    + 'Nos termos do art. 1.333 do Código Civil, a Convenção Condominial é obrigatória para os titulares de direito sobre as unidades e para quem sobre elas tenha posse ou detenção; e, nos termos do art. 1.348, incisos IV e VII, compete ao síndico cumprir e fazer cumprir a Convenção e o Regimento Interno, inclusive impondo e cobrando as multas devidas.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de circular em desacordo com o fluxo da via estabelecido no condomínio, devendo conduzir o veículo de forma segura e em conformidade com a sinalização existente, a fim de evitar prejuízos, riscos aos demais condutores e a reincidência da infração.' },
+
+  { id:'janela', label:'Lavagem Indevida de Janela', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção, Regimento Interno e legislação aplicável, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de conhecimento obrigatório de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Comunicamos que o presente procedimento está fundamentado nos seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, foi constatado que, na data de [DATA], por volta das [HORA], foi realizada a lavagem de janela/sacada/terraço na unidade, o que resultou no escorrimento de água para as demais unidades inferiores, infringindo o CAPÍTULO III - DAS PROIBIÇÕES, Art. 16, inciso X, do Regimento Interno, bem como o XIX - DAS DISPOSIÇÕES GERAIS, Parágrafo 20°, alínea "m", da Convenção Condominial.\n\n'
+    + 'A conduta de realizar a lavagem com escorrimento de água para os andares inferiores causa transtornos diretos aos demais moradores, prejudica a limpeza das unidades vizinhas e afeta a salubridade e o bom convívio no ambiente condominial.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de lavar janelas, sacadas ou terraços com o escoamento ou extravasamento de líquidos para fora de sua unidade, devendo adotar métodos de limpeza que não causem danos ou gotejamentos aos andares inferiores, evitando, assim, a reincidência da conduta.' },
+
+  { id:'dano', label:'Dano ao Patrimônio Comum (ex.: colisão com portão)', valorSugerido:'', corpo:
+    'Na qualidade de procuradores do Condomínio, no exercício das atribuições conferidas pela Convenção Condominial e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de observância obrigatória por todos os condôminos, moradores, possuidores, ocupantes, visitantes e demais pessoas vinculadas à unidade.\n\n'
+    + 'DOS FATOS\n\nConforme registro formal de ocorrência, no dia [DATA], por volta das [HORA], foi constatado que [DESCREVER: conduta que causou dano ao patrimônio comum — colisão com portão de acesso, dano a equipamento, área comum etc.].\n\n'
+    + 'A conduta demonstra falta de atenção às regras de circulação/uso das áreas comuns e ocasionou risco/efetivo dano ao patrimônio comum, cuja preservação constitui dever de todos os condôminos, moradores e usuários do Condomínio.\n\n'
+    + 'DO FUNDAMENTO REGIMENTAL\n\nA presente advertência encontra fundamento na Convenção Condominial e no Regimento Interno, especialmente nos artigos 14 e 15 (CAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES) e no CAPÍTULO X - DOS ENCARGOS COMUNS AOS CONDÔMINOS da Convenção Condominial, que impõem o dever de zelar pela preservação das dependências condominiais.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que adote o devido cuidado e atenção ao utilizar as áreas e equipamentos comuns, zelando sempre pela segurança dos usuários e pela integridade do patrimônio coletivo, evitando a reincidência da conduta. Fica ainda reservado ao Condomínio o direito de cobrança do ressarcimento pelos danos materiais causados, mediante orçamento/nota fiscal do reparo.' },
+
+  { id:'cigarro', label:'Cigarro e Outros Fumígenos', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção, Regimento Interno e legislação aplicável, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes.\n\n'
+    + 'Esclarece-se que a presente ocorrência não tem por objeto a discussão abstrata acerca do direito de uso, fruição e disposição da unidade autônoma (Art. 1.335, I, do Código Civil), tampouco busca interferir na intimidade ou privacidade dos moradores. O ponto central reside nos efeitos externos da conduta — a propagação de fumaça e odor para áreas comuns e unidades vizinhas — que ultrapassa os limites do uso regular da propriedade privada e atinge o sossego, a saúde e a salubridade dos demais possuidores (Art. 1.336, IV, e Art. 1.277 do Código Civil).\n\n'
+    + 'Conforme registro formal de ocorrência, constatou-se que, em [DATA], por volta das [HORA], [DESCREVER: propagação de fumaça/odor de cigarro proveniente da unidade para corredor, áreas comuns ou unidades vizinhas], em violação ao CAPÍTULO III - DAS PROIBIÇÕES, Art. 16, inciso XIII, do Regimento Interno.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que adote as medidas necessárias a fim de conter a propagação de fumaça e fortes odores provenientes de sua unidade para as áreas comuns e apartamentos vizinhos, respeitando as normas de salubridade e convivência, evitando a reincidência da conduta.' },
+
+  { id:'velocidade', label:'Alta Velocidade / Ultrapassagem', valorSugerido:'821,70', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes.\n\n'
+    + 'Faz-se saber os seguintes dispositivos:\n\nCAPÍTULO I - DAS DISPOSIÇÕES GERAIS\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, foi constatado que, na data de [DATA], por volta das [HORA], [DESCREVER: veículo vinculado à unidade realizou ultrapassagem e/ou trafegou em alta velocidade pelas vias internas], configurando descumprimento das normas de segurança e circulação. Nos termos do CAPÍTULO XIV - DA GARAGEM E ESTACIONAMENTO, Art. 68, inciso XIX, do Regimento Interno, a velocidade máxima permitida nas vias internas é de 15 km/h.\n\n'
+    + 'A conduta verificada encontra vedação também no CTB, especialmente no Art. 218 (velocidade superior à máxima permitida para o local).\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de trafegar acima do limite de velocidade de 15 km/h e de realizar ultrapassagens nas vias internas, devendo conduzir o veículo de forma segura, prudente e em estrita conformidade com a sinalização existente, evitando, assim, a reincidência da conduta.' },
+
+  { id:'trajes', label:'Trajes Inadequados nas Áreas Comuns', valorSugerido:'', corpo:
+    'Na qualidade de procuradores do Condomínio, no exercício das atribuições conferidas pela Convenção Condominial e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de observância obrigatória por todos os condôminos, moradores, possuidores, ocupantes, visitantes e demais pessoas vinculadas à unidade.\n\n'
+    + 'DOS FATOS\n\nConforme registro formal de ocorrência, no dia [DATA], por volta das [HORA], foi constatado que [DESCREVER: morador/ocupante vinculado à unidade transitava pelas áreas comuns em trajes inadequados — sem camisa, roupa de banho fora da piscina etc.], configurando inobservância às normas de convivência social e aos padrões de vestimenta adequados para a circulação em áreas de uso comum.\n\n'
+    + 'DO FUNDAMENTO REGIMENTAL\n\nA presente advertência encontra fundamento no CAPÍTULO II – DOS DIREITOS E DEVERES DOS CONDÔMINOS E MORADORES (Arts. 14 e 15), no CAPÍTULO III - DAS PROIBIÇÕES, Art. 16, e no II - DOS DEVERES, Parágrafo 3º, alínea "c", da Convenção Condominial.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de transitar em vestimentas inadequadas nas áreas comuns do condomínio, zelando sempre pelo respeito às normas de convivência e pelo decoro coletivo, evitando a reincidência da conduta.' },
+
+  { id:'pedestre-portao', label:'Pedestres pelo Portão de Veículos', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de conhecimento obrigatório de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Informamos os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, foi constatado que, na data de [DATA], por volta das [HORA], [DESCREVER: morador realizou entrada/saída de pedestre pelo portão de veículos], configurando descumprimento do Art. 68, inciso XVII, do Regimento Interno (CAPÍTULO XIV - DA GARAGEM E ESTACIONAMENTO).\n\n'
+    + 'O trânsito de pedestres pelos portões destinados exclusivamente a veículos expõe a riscos desnecessários à integridade física do próprio morador e de terceiros condutores, além de prejudicar a segurança do condomínio e o funcionamento adequado dos equipamentos de controle de acesso.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que observe rigorosamente as normas de segurança e utilize exclusivamente os portões de pedestres para entrada e saída, abstendo-se de transitar pelos portões veiculares, evitando assim a reincidência da conduta.' },
+
+  { id:'pet-guia', label:'Animal Doméstico sem Guia', valorSugerido:'205,43', corpo:
+    'Na qualidade de procuradores do Condomínio, no exercício das atribuições conferidas pela Convenção e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita. Tal fato configura infração às normas condominiais vigentes, as quais são de conhecimento obrigatório por parte de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Informamos os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, constatou-se que, na data de [DATA], por volta das [HORA], [DESCREVER: animal de estimação da unidade permaneceu sem guia em área comum — elevador, hall, etc. — ou, ainda que com guia, aproximou-se de outro morador], configurando descumprimento do CAPÍTULO IX - DOS ANIMAIS DOMÉSTICOS, Art. 52, inciso I, do Regimento Interno.\n\n'
+    + 'Ressaltamos que, ainda que o animal seja de pequeno porte, a circulação sem guia pelas áreas comuns não é permitida, pois pode comprometer a segurança do próprio animal e dos demais usuários do Condomínio — podendo se assustar, correr repentinamente, entrar na frente de veículos ou ocasionar situações de risco.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de transitar com o animal solto, mantendo-o estritamente na guia/coleira ou no colo ao utilizar os elevadores, halls e demais dependências comuns do residencial.\n\n'
+    + 'Nota: em caso de reincidência, a multa é de 100% da taxa condominial (1ª ocorrência: 50%, nos termos do art. 52, Parágrafo único, do Regimento Interno).' },
+
+  { id:'piscina', label:'Piscina — Trajes/Alimentos Inadequados', valorSugerido:'', corpo:
+    'Na qualidade de procurador do Condomínio, no exercício das atribuições conferidas pela Convenção, Regimento Interno e legislação aplicável, e em respeito às deliberações do Conselho Diretivo, serve a presente para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes, de conhecimento obrigatório de todos os moradores, possuidores e ocupantes.\n\n'
+    + 'Faz-se saber os seguintes dispositivos:\n\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'Conforme registro formal de ocorrência, foi constatado que, na data de [DATA], por volta das [HORA], [DESCREVER: ocupante(s) vinculado(s) à unidade utilizaram a área da piscina com trajes inadequados para banho e/ou consumiram alimentos no local], infringindo o CAPÍTULO XVI – DA PISCINA, Art. 78, inciso I, e Art. 81, do Regimento Interno.\n\n'
+    + 'A conduta compromete a higiene e a qualidade da água, sobrecarrega os sistemas de filtragem e limpeza, além de afetar o bem-estar dos demais moradores e o uso adequado e harmonioso do espaço de lazer.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que observe rigorosamente as normas de uso da área da piscina, abstendo-se de utilizar o espaço com trajes inadequados e de consumir alimentos no seu interior e nas bordas, evitando, assim, a reincidência da conduta.' },
+
+  { id:'capacete', label:'Falta de Capacete (Moto)', valorSugerido:'', corpo:
+    'Na qualidade de procuradores do Condomínio, no exercício das atribuições conferidas pela Convenção Condominial e pelo Regimento Interno, e em respeito às deliberações do Conselho Diretivo, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, a qual configura infração às normas condominiais vigentes.\n\n'
+    + 'DOS FATOS\n\nConforme registro formal de ocorrência, no dia [DATA], por volta das [HORA], foi constatado que uma motocicleta vinculada à unidade adentrou/circulou nas dependências internas do Condomínio [DESCREVER: transportando condutor e/ou passageiro sem o uso de capacete de segurança].\n\n'
+    + 'A circulação sem o devido equipamento de proteção coloca em risco direto a integridade física dos ocupantes, especialmente em caso de queda, colisão ou outro acidente durante o deslocamento pelas vias internas, além de interferir na segurança e organização da circulação interna.\n\n'
+    + 'DO FUNDAMENTO JURÍDICO E REGIMENTAL\n\nNos termos do art. 67 do Regimento Interno (Capítulo XIV – Da Garagem e Estacionamento) e do art. 18 (Capítulo IV – Da Segurança), aplicam-se as normas do Código de Trânsito Brasileiro no interior do Condomínio, inclusive por força do art. 2º, parágrafo único, do CTB. A conduta encontra vedação específica no Art. 244, inciso II, do CTB (transportar passageiro sem capacete de segurança).\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que se abstenha de permitir ou realizar a circulação em motocicletas sem o uso do capacete nas vias do condomínio, devendo conduzir o veículo de forma segura e em total conformidade com a legislação de trânsito, evitando, assim, a reincidência da conduta.' },
+
+  { id:'objeto-janela', label:'Objeto na Janela', valorSugerido:'136,95', corpo:
+    'Na qualidade de procurador do Condomínio, serve a presente notificação para cientificá-lo(a) acerca da ocorrência abaixo descrita, que configura infração às normas condominiais vigentes.\n\n'
+    + 'Aplicam-se ao caso os seguintes dispositivos:\n\nCAPÍTULO I - DAS DISPOSIÇÕES GERAIS\nCAPÍTULO II - DOS DIREITOS E DEVERES DOS CONDÔMINOS/MORADORES\nArt. 14. São DIREITOS dos condôminos e moradores.\nArt. 15. São DEVERES dos condôminos e moradores.\n\n'
+    + 'DA OCORRÊNCIA\n\nConforme registro de ocorrência, no dia [DATA], por volta das [HORA], foi constatada a presença de [DESCREVER: objeto — vaso, lixeira, calçado etc. — no parapeito/janela da unidade], situação que poderia ocasionar a queda do objeto ou de seu conteúdo sobre áreas comuns ou terceiros.\n\n'
+    + 'DAS REGRAS APLICÁVEIS\n\nA conduta encontra vedação expressa no CAPÍTULO III - DAS PROIBIÇÕES, Art. 16, inciso IV, do Regimento Interno, bem como no XIX - DAS DISPOSIÇÕES GERAIS, item "J", da Convenção Condominial.\n\n'
+    + 'Diante do exposto, NOTIFICA-SE o(a) condômino(a) para que realize a retirada imediata do(s) objeto(s) do parapeito e adote medidas para que objetos não fiquem expostos ou apoiados nas janelas, zelando sempre pela segurança coletiva e evitando a reincidência da conduta.\n\n'
+    + 'Nota: em caso de reincidência (mesma natureza), a multa sugerida é de 1/3 da taxa condominial, nos termos do Art. 136, inciso I, do Regimento Interno.' }
+];
+
+var gerarState = {
+  editingId:null, minhas:[], minhasLoaded:false, submitting:false,
+  condSel:null, tipoSel:'Advertência', categoriaSel:'',
+  draft:{ torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'' }
+};
 
 function loadMinhasNotificacoes(){
   if (!fbReady || !currentUser || !db) return;
@@ -893,29 +1060,56 @@ function loadMinhasNotificacoes(){
 
 function gv(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
+function resetGerarDraft(){
+  gerarState.draft = { torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'' };
+  gerarState.categoriaSel = '';
+  gerarState.tipoSel = 'Advertência';
+}
+
 function editarNotificacao(id){
   var doc = gerarState.minhas.filter(function(n){ return n.id === id; })[0];
   if (!doc) return;
   gerarState.editingId = id;
+  gerarState.condSel = doc.condominio;
+  gerarState.tipoSel = doc.tipoPenalidade || 'Advertência';
+  gerarState.categoriaSel = '';
+  gerarState.draft = { torre:doc.torre||'', apto:doc.apto||'', ocorrencia:doc.ocorrencia||'', texto:doc.texto||'', multaValor:'' };
   render();
   window.scrollTo(0,0);
-  setTimeout(function(){
-    var setVal = function(elId, v){ var el = document.getElementById(elId); if (el) el.value = v || ''; };
-    setVal('gn-condominio', doc.condominio);
-    setVal('gn-torre', doc.torre);
-    setVal('gn-apto', doc.apto);
-    setVal('gn-ocorrencia', doc.ocorrencia);
-    setVal('gn-tipo', doc.tipoPenalidade);
-    setVal('gn-texto', doc.texto);
-  }, 0);
 }
 
-function cancelarEdicao(){ gerarState.editingId = null; render(); }
+function cancelarEdicao(){ gerarState.editingId = null; resetGerarDraft(); render(); }
+
+function updateDraft(field, elId){
+  var el = document.getElementById(elId || ('gn-'+field));
+  if (el) gerarState.draft[field] = el.value;
+}
+
+function setGerarCondominio(v){ gerarState.condSel = v; gerarState.categoriaSel = ''; render(); }
+function setGerarTipo(v){ gerarState.tipoSel = v; render(); }
+function setGerarCategoria(v){ gerarState.categoriaSel = v; render(); }
+
+function gerarTextoDoModelo(){
+  var cat = MIRANTE_CATEGORIAS.filter(function(c){ return c.id === gerarState.categoriaSel; })[0];
+  if (!cat) return;
+  var torre = gerarState.draft.torre || '[TORRE]', apto = gerarState.draft.apto || '[APTO]';
+  var header = MIRANTE_HEADER_TPL.replace('{TORRE}', torre).replace('{APTO}', apto);
+  var penalidade = gerarState.tipoSel === 'Multa'
+    ? penalidadeMultaTpl(gerarState.draft.multaValor || cat.valorSugerido || '[VALOR]')
+    : PENALIDADE_ADVERTENCIA_TPL;
+  var hoje = new Date();
+  var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var dataNotif = hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
+  var rodape = MIRANTE_RODAPE_TPL.replace('{DATA_NOTIF}', dataNotif);
+  gerarState.draft.texto = header + cat.corpo + '\n\n' + penalidade + rodape;
+  render();
+}
 
 function enviarNotificacao(){
   if (!fbReady || !currentUser || !currentProfile){ alert('Faça login no Portal para enviar uma notificação.'); return; }
-  var condominio = gv('gn-condominio'), torre = gv('gn-torre'), apto = gv('gn-apto'),
-      ocorrencia = gv('gn-ocorrencia'), tipoPenalidade = gv('gn-tipo'), texto = gv('gn-texto');
+  updateDraft('ocorrencia');
+  var condominio = gerarState.condSel || gv('gn-condominio'), torre = gerarState.draft.torre, apto = gerarState.draft.apto,
+      ocorrencia = gerarState.draft.ocorrencia, tipoPenalidade = gerarState.tipoSel, texto = gerarState.draft.texto;
   if (!condominio || !texto){ alert('Preencha ao menos o condomínio e o texto da notificação.'); return; }
   if (gerarState.submitting) return;
   gerarState.submitting = true;
@@ -933,6 +1127,7 @@ function enviarNotificacao(){
     }).then(function(){
       gerarState.editingId = null;
       gerarState.submitting = false;
+      resetGerarDraft();
       loadMinhasNotificacoes();
     }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível reenviar: ' + e.message); });
   } else {
@@ -944,8 +1139,8 @@ function enviarNotificacao(){
       criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
       decididoPorUid: null, decididoPorNome: null, decididoEm: null
     }).then(function(){
-      ['gn-torre','gn-apto','gn-ocorrencia','gn-texto'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value=''; });
       gerarState.submitting = false;
+      resetGerarDraft();
       loadMinhasNotificacoes();
     }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível enviar: ' + e.message); });
   }
@@ -972,7 +1167,8 @@ function notifCardMinha(n){
 
 function viewGerarNotificacao(){
   var formTitle = gerarState.editingId ? 'Corrigir e reenviar' : 'Nova notificação';
-  var condominioAtual = gerarState.editingId ? (gerarState.minhas.filter(function(n){return n.id===gerarState.editingId;})[0] || {}).condominio : '';
+  if (!gerarState.condSel) gerarState.condSel = CONDOMINIOS[0].nome;
+  var isMirante = gerarState.condSel === 'Mirante das Brisas';
 
   var authBox = !fbReady
     ? '<div class="auth-gate">Este recurso depende do login do Portal, que não está configurado nesta cópia da ferramenta.</div>'
@@ -982,19 +1178,46 @@ function viewGerarNotificacao(){
     ? '<div class="auth-gate">Faça login no Portal (abra esta ferramenta dentro do Portal Fonseca &amp; Braga, já logado) para enviar notificações para aprovação.</div>'
     : '';
 
+  var categoriaField = isMirante
+    ? '<div style="grid-column:1/-1;"><label>Categoria da infração (modelo Mirante das Brisas)</label><select id="gn-categoria">'
+      + '<option value="">— selecionar categoria —</option>'
+      + MIRANTE_CATEGORIAS.map(function(c){
+          var sel = c.id === gerarState.categoriaSel ? ' selected' : '';
+          return '<option value="'+c.id+'"'+sel+'>'+escapeHtml(c.label)+'</option>';
+        }).join('')
+      + '</select></div>'
+    : '';
+
+  var multaValorField = gerarState.tipoSel === 'Multa'
+    ? '<div><label>Valor da multa (R$)</label><input id="gn-multa-valor" type="text" placeholder="EX: 821,70" value="'+escapeHtml(gerarState.draft.multaValor)+'"></div>'
+    : '';
+
+  var gerarBtn = (isMirante && gerarState.categoriaSel)
+    ? '<button type="button" class="btn secondary" id="gn-gerar-texto" style="margin-bottom:12px;">🪄 Gerar texto do modelo</button>'
+    : '';
+
   var formHtml = (fbReady && currentUser) ? (
     '<div class="box">'
       + '<h3 style="margin:0 0 14px;font-size:.95rem;">'+formTitle+'</h3>'
       + '<div class="nom-form">'
         + '<div><label>Condomínio</label><select id="gn-condominio">' + CONDOMINIOS.map(function(c){
-            var sel = c.nome === condominioAtual ? ' selected' : '';
+            var sel = c.nome === gerarState.condSel ? ' selected' : '';
             return '<option value="'+escapeHtml(c.nome)+'"'+sel+'>'+escapeHtml(c.nome)+'</option>';
           }).join('') + '</select></div>'
-        + '<div><label>Tipo</label><select id="gn-tipo"><option>Advertência</option><option>Multa</option></select></div>'
-        + '<div><label>Torre</label><input id="gn-torre" type="text" placeholder="TORRE"></div>'
-        + '<div><label>Apartamento</label><input id="gn-apto" type="text" placeholder="APTO"></div>'
-        + '<div style="grid-column:1/-1;"><label>Nº da ocorrência</label><input id="gn-ocorrencia" type="text" placeholder="OCORRÊNCIA #"></div>'
-        + '<div style="grid-column:1/-1;"><label>Texto da notificação</label><textarea id="gn-texto" rows="8" placeholder="Cole ou escreva aqui o texto completo da notificação, já no padrão do escritório."></textarea></div>'
+        + '<div><label>Tipo</label><select id="gn-tipo">'
+          + '<option'+(gerarState.tipoSel==='Advertência'?' selected':'')+'>Advertência</option>'
+          + '<option'+(gerarState.tipoSel==='Multa'?' selected':'')+'>Multa</option>'
+          + '</select></div>'
+        + categoriaField
+        + multaValorField
+        + '<div><label>Torre</label><input id="gn-torre" type="text" placeholder="TORRE" value="'+escapeHtml(gerarState.draft.torre)+'"></div>'
+        + '<div><label>Apartamento</label><input id="gn-apto" type="text" placeholder="APTO" value="'+escapeHtml(gerarState.draft.apto)+'"></div>'
+        + '<div style="grid-column:1/-1;"><label>Nº da ocorrência</label><input id="gn-ocorrencia" type="text" placeholder="OCORRÊNCIA #" value="'+escapeHtml(gerarState.draft.ocorrencia)+'"></div>'
+        + '<div style="grid-column:1/-1;">'
+          + '<label>Texto da notificação</label>'
+          + gerarBtn
+          + '<textarea id="gn-texto" rows="12" placeholder="Cole ou escreva aqui o texto completo da notificação, já no padrão do escritório.">'+escapeHtml(gerarState.draft.texto)+'</textarea>'
+        + '</div>'
       + '</div>'
       + '<div class="nc-actions">'
         + '<button type="button" class="btn" id="gn-enviar">'+(gerarState.editingId ? 'Reenviar para aprovação' : 'Enviar para aprovação')+'</button>'
@@ -1013,7 +1236,7 @@ function viewGerarNotificacao(){
   return gerarSubnav('compor')
     + '<div class="kicker">Aprovação de notificações</div>'
     + '<h1>Gerar Notificação</h1>'
-    + '<p class="lead">Monte a notificação (ainda manual — assim que você enviar os modelos do escritório, esta tela passa a montar o texto sozinha) e envie para aprovação do responsável pelo condomínio.</p>'
+    + '<p class="lead">Para o condomínio Mirante das Brisas, escolha a categoria da infração e gere o texto automaticamente a partir dos modelos reais do escritório. Para os demais condomínios, o texto ainda é manual — assim que os modelos de cada um chegarem, entram aqui também. Envie para aprovação do responsável pelo condomínio.</p>'
     + '<hr class="rule">'
     + authBox + formHtml + minhasHtml;
 }
@@ -1357,9 +1580,9 @@ function updateNomResult(){
   } else if(tipo === 'notificacao'){
     var cond=nomVal('condominio').toUpperCase(), torre=nomVal('torre'), apto=nomVal('apto'),
         oc=nomVal('ocorrencia'), tit=nomVal('titulo').toUpperCase(), cr3=nomVal('criador').toUpperCase(),
-        dt3=abrevData(nomVal('data'));
-    out = '(COND. '+(cond||'X')+' T'+(torre||'X')+', APTO '+(apto||'XXX')+') #'+(oc||'000')
-      + ' – NOTIFICAÇÃO – '+(tit||'TÍTULO DA OCORRÊNCIA')+' – '+(cr3||'CRIADOR')+' – '+(dt3||'DD.MM.AA');
+        dataRaw3=nomVal('data'), dt3 = dataRaw3 ? dataRaw3.split('-').reverse().join('.') : '';
+    out = '(COND. '+(cond||'X')+' X T'+(torre||'X')+', APTO '+(apto||'XXX')+') #'+(oc||'000')
+      + ' – '+(tit||'TÍTULO DA OCORRÊNCIA')+' - '+(cr3||'CRIADOR')+' - '+(dt3||'DD.MM.AAAA');
   }
   var resEl = document.getElementById('nom-result');
   if(resEl) resEl.textContent = out;

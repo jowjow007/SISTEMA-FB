@@ -24,10 +24,14 @@ Tudo fica em `tools/condominios/index.html`, num único arquivo. Estrutura:
   edite a função correspondente.
 - A aba Nomenclatura é um gerador funcional (JS puro, sem backend), com as
   regras dos 4 tipos de documento extraídas do POP nº 008/2023 (Judicial,
-  Administrativo, Contrato de Honorários) e um 4º tipo "Notificação
-  Condominial" inferido do padrão visto no site de referência (não havia PDF
-  correspondente para conferir a regra exata — revisar com o usuário se o
-  formato gerado não bater com o que o site original produzia).
+  Administrativo, Contrato de Honorários — data no formato DD.MM.AA, 2
+  dígitos de ano, confirmado no PDF real do POP) e um 4º tipo "Notificação
+  Condominial", corrigido em 2026-08-17 a partir de nomes de arquivo reais
+  vistos na pasta de modelos do Mirante das Brisas: padrão
+  `(COND. {NOME} X T{TORRE}, APTO {APTO}) #{OCORRÊNCIA} – {TÍTULO} - {CRIADOR} - {DD.MM.AAAA}`
+  — sem a palavra "NOTIFICAÇÃO" (a tentativa anterior, sem evidência real,
+  tinha isso errado) e com ano de 4 dígitos (diferente do padrão de 2 dígitos
+  dos outros 3 tipos).
 - A sub-área "AlmahCondos" (segundo pill do `condoSubnav`, dentro da aba
   Condomínios) é o guia de cores de ocorrências do sistema ALMAH Condo,
   reconstruído em HTML a partir de uma imagem que o usuário colou na
@@ -57,6 +61,31 @@ no console do Firebase** para isso funcionar em produção):
   `tentativa` (contador, começa em 1), `historico` (array com cada rejeição
   passada), `criadoPorUid`/`criadoPorNome`/`criadoEm`,
   `decididoPorUid`/`decididoPorNome`/`decididoEm`, `motivoRejeicao`.
+
+**Modelos reais do Mirante das Brisas (2026-08-17)**: o usuário compartilhou uma
+pasta do Google Drive com ~40 notificações reais já enviadas para esse
+condomínio, organizadas em 16 subpastas por categoria de infração (estacionamento
+irregular, carrinho de compras, vaga de garagem, happy hour sem reserva, crianças
+desacompanhadas, tráfego em contramão, lavagem de janela, dano ao patrimônio,
+cigarro, alta velocidade, trajes inadequados, pedestre pelo portão de veículos,
+animal sem guia, piscina, falta de capacete, objeto na janela). O texto jurídico
+fixo de cada categoria (fundamentação, artigos citados, chamada "NOTIFICA-SE")
+foi extraído verbatim desses documentos reais e vive em `MIRANTE_CATEGORIAS`,
+com `[DATA]`, `[HORA]` e `[DESCREVER: ...]` como os únicos pontos deixados em
+aberto (a narrativa dos fatos sempre varia, mesmo dentro da mesma categoria — não
+dá para automatizar isso com segurança). O bloco "DO RECURSO" + assinaturas +
+rodapé (`MIRANTE_RODAPE_TPL`) é idêntico em todos os ~40 exemplos reais, por isso
+é compartilhado por todas as categorias. O bloco de penalidade
+(`PENALIDADE_ADVERTENCIA_TPL` / `penalidadeMultaTpl()`) segue o campo "Tipo"
+já existente no formulário. Quando o condomínio selecionado é "Mirante das
+Brisas", aparece o campo "Categoria da infração" e o botão "🪄 Gerar texto do
+modelo", que monta o texto completo (cabeçalho + corpo da categoria +
+penalidade + rodapé) dentro do campo de texto, editável antes de enviar — não
+é enviado automaticamente sem revisão humana. **Se o usuário mandar os modelos
+dos outros condomínios**, o mesmo padrão se replica: acrescentar um novo array
+tipo `MIRANTE_CATEGORIAS` para aquele condomínio e trocar a condição
+`isMirante` (hoje só compara `condSel === 'Mirante das Brisas'`) por uma busca
+no condomínio selecionado.
 
 Fluxo: qualquer usuário logado monta e envia uma notificação em "Gerar
 Notificação" (`status:'pendente'`). Só quem está em `condoAprovadores` como
