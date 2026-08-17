@@ -290,6 +290,7 @@ var SECTIONS = [
   {id:'notificacoes', label:'Notificações'},
   {id:'gerar-notificacao', label:'Gerar Notificação'},
   {id:'nomenclatura', label:'Nomenclatura'},
+  {id:'relatorios-condominiais', label:'Relatórios Condominiais'},
   {id:'links', label:'Links Úteis'}
 ];
 
@@ -437,6 +438,7 @@ function render(){
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
   else if(state.section === 'gerar-notificacao') m.innerHTML = state.gerarView==='aprovacao' ? viewNotificacoesProntas() : viewGerarNotificacao();
   else if(state.section === 'nomenclatura') m.innerHTML = viewNomenclatura();
+  else if(state.section === 'relatorios-condominiais') m.innerHTML = viewRelatoriosCondominiais();
   else if(state.section === 'links') m.innerHTML = viewLinks();
   bindDynamic();
 }
@@ -1554,6 +1556,36 @@ function viewNotificacoesProntas(){
               : itensFiltrados.length === 0 ? '<p style="color:var(--muted);font-size:.85rem;">Nenhuma notificação aqui.</p>'
               : itensFiltrados.map(notifCardAprovador).join(''))
           )));
+}
+
+function viewRelatoriosCondominiais(){
+  var comReports = CONDOMINIOS.filter(function(c){ return (RELATORIOS[c.nome] || []).length; });
+
+  if (!comReports.length){
+    return '<div class="kicker">Carteira</div>'
+      + '<h1>Relatórios Condominiais</h1>'
+      + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, prontos para consulta ou download em PDF.</p>'
+      + '<hr class="rule">'
+      + '<div class="empty-tab">Nenhum relatório condominial publicado ainda.</div>';
+  }
+
+  return '<div class="kicker">Carteira</div>'
+    + '<h1>Relatórios Condominiais</h1>'
+    + '<p class="lead">Relatórios de acompanhamento jurídico enviados aos condomínios, organizados por condomínio, prontos para consulta ou download em PDF.</p>'
+    + '<hr class="rule">'
+    + comReports.map(function(c){
+        var relatorios = RELATORIOS[c.nome];
+        return '<h2 class="section-h"><span class="ic">🏢</span> '+c.nome+'</h2>'
+          + '<div class="grid g3" style="margin-bottom:28px;">' + relatorios.map(function(r){
+              return '<div class="card" style="display:flex;flex-direction:column;">'
+                + '<div class="icon-sq">📄</div>'
+                + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
+                + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
+                + '<p>'+r.desc+'</p>'
+                + '<a href="'+r.pdf+'" download style="margin-top:auto;padding-top:14px;display:block;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:11px;font-size:.83rem;font-weight:700;text-decoration:none;">⬇ Baixar PDF</a>'
+                + '</div>';
+            }).join('') + '</div>';
+      }).join('');
 }
 
 function viewLinks(){
