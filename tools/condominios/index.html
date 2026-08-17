@@ -313,6 +313,14 @@ var CONDOMINIOS = [
     nota:"Reabrir todas as ocorrências em nome do jurídico (encerrar as existentes primeiro)." }
 ];
 
+var RELATORIOS = {
+  "Mirante das Brisas": [
+    { periodo:"Ago/2026", titulo:"Acompanhamento Jurídico — Jul/2025 a Ago/2026",
+      desc:"Capa, visão geral do período e resumo do mês de julho/2026, com evolução de casos, tarefas e processo judicial.",
+      pdf:"pdfs/relatorio-mirante-das-brisas-2026-08.pdf" }
+  ]
+};
+
 var POPS = [
   { numero:"POP Nº 008/2023", titulo:"NOMENCLATURA DE DOCUMENTOS", tag:"ADMINISTRATIVO", data:"DEZ. DE 2022",
     pdf:"../pop/pdfs/pop-008-nomenclatura-documentos.pdf" },
@@ -624,7 +632,8 @@ function viewCondoDetail(){
     {id:'geral', label:'Informações Gerais'},
     {id:'regimento', label:'Regimento e Convenção'},
     {id:'procedimentos', label:'Procedimentos Específicos'},
-    {id:'historico', label:'Histórico de Notificações'}
+    {id:'historico', label:'Histórico de Notificações'},
+    {id:'relatorios', label:'Relatórios Condominiais'}
   ];
   var html = '<button class="back-link" data-back-condo>← Voltar para condomínios</button>'
     + '<div class="kicker">Condomínio</div>'
@@ -651,10 +660,29 @@ function viewCondoDetail(){
       + (c.nota
           ? '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;line-height:1.55;">'+c.nota+'</div></div></div>'
           : '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;color:var(--muted);">Nenhuma particularidade registrada — segue o procedimento padrão.</div></div></div>');
+  } else if(state.condoSubtab === 'relatorios'){
+    html += viewCondoRelatorios(c);
   } else {
     html += '<div class="empty-tab">Nenhuma informação registrada para esta seção ainda.</div>';
   }
   return html;
+}
+
+function viewCondoRelatorios(c){
+  var relatorios = RELATORIOS[c.nome] || [];
+  if (!relatorios.length){
+    return '<div class="empty-tab">Nenhum relatório condominial publicado ainda para '+c.nome+'.</div>';
+  }
+  return '<p class="lead" style="margin-bottom:18px;font-size:.85rem;">Relatórios de acompanhamento jurídico enviados ao condomínio, prontos para consulta ou download em PDF.</p>'
+    + '<div class="grid g3">' + relatorios.map(function(r){
+        return '<div class="card" style="display:flex;flex-direction:column;">'
+          + '<div class="icon-sq">📄</div>'
+          + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
+          + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
+          + '<p>'+r.desc+'</p>'
+          + '<a href="'+r.pdf+'" download style="margin-top:auto;padding-top:14px;display:block;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:11px;font-size:.83rem;font-weight:700;text-decoration:none;">⬇ Baixar PDF</a>'
+          + '</div>';
+      }).join('') + '</div>';
 }
 
 function fieldBox(label, value){
