@@ -476,6 +476,8 @@ function bindDynamic(){
     if (gnCategoria) gnCategoria.addEventListener('change', function(){ setGerarCategoria(this.value); });
     var gnGerarTexto = document.getElementById('gn-gerar-texto');
     if (gnGerarTexto) gnGerarTexto.addEventListener('click', gerarTextoDoModelo);
+    var gnConsultarReincidencia = document.getElementById('gn-consultar-reincidencia');
+    if (gnConsultarReincidencia) gnConsultarReincidencia.addEventListener('click', consultarReincidencia);
     [['torre','gn-torre'],['apto','gn-apto'],['ocorrencia','gn-ocorrencia'],['texto','gn-texto'],['multaValor','gn-multa-valor'],
      ['dataFato','gn-data-fato'],['oQueAconteceu','gn-o-que-aconteceu']].forEach(function(pair){
       var el = document.getElementById(pair[1]);
@@ -1135,8 +1137,68 @@ function getMirCategoria(condominio, categoriaId){
 var gerarState = {
   editingId:null, minhas:[], minhasLoaded:false, submitting:false,
   condSel:null, tipoSel:'Advertência', categoriaSel:'',
-  draft:{ torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' }
+  draft:{ torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' },
+  reincidencia:null
 };
+
+/* ---------- ocorrências por unidade (reincidência + zerar) ---------- */
+
+function unidadeResetDocId(condominioSlug, torre, apto){
+  return slugify(condominioSlug+'-T'+torre+'-'+apto);
+}
+
+function fetchUnidadeReset(condominioSlug, torre, apto){
+  return db.collection('unidadeResets').doc(unidadeResetDocId(condominioSlug, torre, apto)).get().then(function(doc){
+    return doc.exists ? doc.data() : null;
+  });
+}
+
+function fetchOcorrenciasUnidade(condominioSlug, torre, apto, apenasAprovadas){
+  var q = db.collection('notificacoesGeradas')
+    .where('condominioSlug','==',condominioSlug)
+    .where('torre','==',torre)
+    .where('apto','==',apto);
+  if (apenasAprovadas) q = q.where('status','==','aprovada');
+  return q.get().then(function(snap){
+    return snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+  });
+}
+
+function aplicarCorteReset(itens, reset){
+  if (!reset || !reset.resetAPartirDe) return itens;
+  var corte = new Date(reset.resetAPartirDe+'T00:00:00');
+  return itens.filter(function(n){
+    return !(n.criadoEm && n.criadoEm.toDate && n.criadoEm.toDate() < corte);
+  });
+}
+
+function ordenarPorData(itens){
+  itens.sort(function(a,b){
+    var ta = a.criadoEm && a.criadoEm.toMillis ? a.criadoEm.toMillis() : 0;
+    var tb = b.criadoEm && b.criadoEm.toMillis ? b.criadoEm.toMillis() : 0;
+    return tb - ta;
+  });
+  return itens;
+}
+
+function consultarReincidencia(){
+  var condominioSlug = slugify(gerarState.condSel || '');
+  var torre = gerarState.draft.torre, apto = gerarState.draft.apto;
+  if (!torre || !apto){ alert('Preencha torre e apartamento primeiro.'); return; }
+  gerarState.reincidencia = { loading:true };
+  render();
+  Promise.all([
+    fetchUnidadeReset(condominioSlug, torre, apto),
+    fetchOcorrenciasUnidade(condominioSlug, torre, apto, true)
+  ]).then(function(res){
+    var reset = res[0], itens = ordenarPorData(aplicarCorteReset(res[1], reset));
+    gerarState.reincidencia = { loading:false, total: itens.length, itens: itens, reset: reset };
+    render();
+  }).catch(function(e){
+    gerarState.reincidencia = { loading:false, error: e.message };
+    render();
+  });
+}
 
 function loadMinhasNotificacoes(){
   if (!fbReady || !currentUser || !db) return;
@@ -1162,6 +1224,7 @@ function resetGerarDraft(){
   gerarState.draft = { torre:'', apto:'', ocorrencia:'', texto:'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' };
   gerarState.categoriaSel = '';
   gerarState.tipoSel = 'Advertência';
+  gerarState.reincidencia = null;
 }
 
 function editarNotificacao(id){
@@ -1171,7 +1234,8 @@ function editarNotificacao(id){
   gerarState.condSel = doc.condominio;
   gerarState.tipoSel = doc.tipoPenalidade || 'Advertência';
   gerarState.categoriaSel = '';
-  gerarState.draft = { torre:doc.torre||'', apto:doc.apto||'', ocorrencia:doc.ocorrencia||'', texto:doc.texto||'', multaValor:'' };
+  gerarState.reincidencia = null;
+  gerarState.draft = { torre:doc.torre||'', apto:doc.apto||'', ocorrencia:doc.ocorrencia||'', texto:doc.texto||'', multaValor:'', dataFato:'', horaFato:'', oQueAconteceu:'' };
   render();
   window.scrollTo(0,0);
 }
@@ -1181,9 +1245,10 @@ function cancelarEdicao(){ gerarState.editingId = null; resetGerarDraft(); rende
 function updateDraft(field, elId){
   var el = document.getElementById(elId || ('gn-'+field));
   if (el) gerarState.draft[field] = el.value;
+  if (field === 'torre' || field === 'apto') gerarState.reincidencia = null;
 }
 
-function setGerarCondominio(v){ gerarState.condSel = v; gerarState.categoriaSel = ''; render(); }
+function setGerarCondominio(v){ gerarState.condSel = v; gerarState.categoriaSel = ''; gerarState.reincidencia = null; render(); }
 function setGerarTipo(v){ gerarState.tipoSel = v; render(); }
 function setGerarCategoria(v){ gerarState.categoriaSel = v; render(); }
 
@@ -1274,6 +1339,24 @@ function notifCardMinha(n){
     + reason + actions + '</div>';
 }
 
+function renderReincidenciaResultado(){
+  var r = gerarState.reincidencia;
+  if (!r) return '';
+  if (r.loading) return '<p style="color:var(--muted);font-size:.82rem;margin-top:8px;">Consultando…</p>';
+  if (r.error) return '<p style="color:#a3312a;font-size:.82rem;margin-top:8px;">Erro ao consultar: '+escapeHtml(r.error)+'</p>';
+  var resetNota = r.reset
+    ? ' <span style="color:var(--muted);">(contagem reiniciada em '+escapeHtml(r.reset.resetAPartirDe.split('-').reverse().join('/'))+' por '+escapeHtml(r.reset.resetPorNome)+')</span>'
+    : '';
+  if (r.total === 0){
+    return '<div class="warn gold" style="margin-top:8px;margin-bottom:0;"><span class="ic">✅</span><span>Nenhuma ocorrência aprovada anterior para esta unidade.'+resetNota+'</span></div>';
+  }
+  var lista = r.itens.map(function(n){
+    return '<li>'+formatDateTime(n.criadoEm)+' — '+escapeHtml(n.tipoPenalidade||'')+(n.ocorrencia ? ' (ocorrência #'+escapeHtml(n.ocorrencia)+')' : '')+'</li>';
+  }).join('');
+  return '<div class="warn" style="margin-top:8px;margin-bottom:0;"><span class="ic">⚠️</span><span><b>Unidade reincidente — '+r.total+' ocorrência(s) aprovada(s) anteriormente.</b>'+resetNota
+    + '<ul style="margin:6px 0 0;padding-left:18px;">'+lista+'</ul></span></div>';
+}
+
 function viewGerarNotificacao(){
   var formTitle = gerarState.editingId ? 'Corrigir e reenviar' : 'Nova notificação';
   if (!gerarState.condSel) gerarState.condSel = CONDOMINIOS[0].nome;
@@ -1315,6 +1398,11 @@ function viewGerarNotificacao(){
     ? '<button type="button" class="btn secondary" id="gn-gerar-texto" style="margin-bottom:12px;">🪄 Gerar texto do modelo</button>'
     : '';
 
+  var reincidenciaField = '<div style="grid-column:1/-1;">'
+    + '<button type="button" class="btn ghost" id="gn-consultar-reincidencia">🔍 Consultar reincidência desta unidade</button>'
+    + renderReincidenciaResultado()
+    + '</div>';
+
   var formHtml = (fbReady && currentUser) ? (
     '<div class="box">'
       + '<h3 style="margin:0 0 14px;font-size:.95rem;">'+formTitle+'</h3>'
@@ -1333,6 +1421,7 @@ function viewGerarNotificacao(){
         + '<div><label>Torre</label><input id="gn-torre" type="text" placeholder="TORRE" value="'+escapeHtml(gerarState.draft.torre)+'"></div>'
         + '<div><label>Apartamento</label><input id="gn-apto" type="text" placeholder="APTO" value="'+escapeHtml(gerarState.draft.apto)+'"></div>'
         + '<div style="grid-column:1/-1;"><label>Nº da ocorrência</label><input id="gn-ocorrencia" type="text" placeholder="OCORRÊNCIA #" value="'+escapeHtml(gerarState.draft.ocorrencia)+'"></div>'
+        + reincidenciaField
         + fatosFields
         + '<div style="grid-column:1/-1;">'
           + '<label>Texto da notificação</label>'
@@ -1366,7 +1455,8 @@ var aprovState = {
   filter:'pendente', loaded:false, itens:[],
   condoAprov:[], condoAprovLoaded:false,
   allUsers:[], allUsersLoaded:false,
-  assignMode:false, rejectingId:null
+  assignMode:false, rejectingId:null,
+  consultaAberta:false, consulta:{ condominio:'', torre:'', apto:'', resultado:null, zerarAberto:false, zerarData:'' }
 };
 
 function refreshAprovacao(){
@@ -1453,6 +1543,54 @@ function salvarAprovador(slug, condominio){
 
 function toggleAssignMode(){ aprovState.assignMode = !aprovState.assignMode; render(); }
 
+function toggleConsultaUnidade(){ aprovState.consultaAberta = !aprovState.consultaAberta; render(); }
+
+function condominiosConsultaveis(){
+  if (isAdminUser()) return CONDOMINIOS.map(function(c){ return c.nome; });
+  return meusCondosAprovador().map(function(c){ return c.condominio; });
+}
+
+function consultarUnidadeAprovador(){
+  var condominio = gv('consulta-condominio'), torre = gv('consulta-torre'), apto = gv('consulta-apto');
+  if (!condominio || !torre || !apto){ alert('Preencha condomínio, torre e apartamento.'); return; }
+  aprovState.consulta.condominio = condominio; aprovState.consulta.torre = torre; aprovState.consulta.apto = apto;
+  aprovState.consulta.resultado = { loading:true };
+  render();
+  var slug = slugify(condominio);
+  Promise.all([
+    fetchUnidadeReset(slug, torre, apto),
+    fetchOcorrenciasUnidade(slug, torre, apto, false)
+  ]).then(function(res){
+    var reset = res[0], todos = ordenarPorData(res[1]);
+    var validos = aplicarCorteReset(todos, reset);
+    var aprovadas = validos.filter(function(n){ return n.status === 'aprovada'; });
+    aprovState.consulta.resultado = { loading:false, total: todos.length, validos: validos, aprovadas: aprovadas.length, reset: reset };
+    render();
+  }).catch(function(e){
+    aprovState.consulta.resultado = { loading:false, error: e.message };
+    render();
+  });
+}
+
+function abrirZerar(){ aprovState.consulta.zerarAberto = true; aprovState.consulta.zerarData = new Date().toISOString().slice(0,10); render(); }
+function cancelarZerar(){ aprovState.consulta.zerarAberto = false; render(); }
+
+function confirmarZerar(){
+  var data = gv('consulta-zerar-data');
+  if (!data){ alert('Escolha a data.'); return; }
+  var c = aprovState.consulta;
+  var slug = slugify(c.condominio);
+  var nome = currentProfile.displayName || currentProfile.email;
+  db.collection('unidadeResets').doc(unidadeResetDocId(slug, c.torre, c.apto)).set({
+    condominioSlug: slug, condominio: c.condominio, torre: c.torre, apto: c.apto,
+    resetAPartirDe: data, resetPorUid: currentUser.uid, resetPorNome: nome,
+    resetEm: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    aprovState.consulta.zerarAberto = false;
+    consultarUnidadeAprovador();
+  }).catch(function(e){ alert('Erro ao zerar: ' + e.message); });
+}
+
 function bindAprovacao(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-aprovar]'), function(el){
     el.addEventListener('click', function(){ aprovarNotificacao(el.getAttribute('data-aprovar')); });
@@ -1476,6 +1614,16 @@ function bindAprovacao(){
       salvarAprovador(el.getAttribute('data-assign-save'), el.getAttribute('data-condominio'));
     });
   });
+  var consultaToggle = document.getElementById('consulta-toggle');
+  if (consultaToggle) consultaToggle.addEventListener('click', toggleConsultaUnidade);
+  var consultaBuscar = document.getElementById('consulta-buscar');
+  if (consultaBuscar) consultaBuscar.addEventListener('click', consultarUnidadeAprovador);
+  var zerarAbrir = document.getElementById('consulta-zerar-abrir');
+  if (zerarAbrir) zerarAbrir.addEventListener('click', abrirZerar);
+  var zerarCancelar = document.getElementById('consulta-zerar-cancelar');
+  if (zerarCancelar) zerarCancelar.addEventListener('click', cancelarZerar);
+  var zerarConfirmar = document.getElementById('consulta-zerar-confirmar');
+  if (zerarConfirmar) zerarConfirmar.addEventListener('click', confirmarZerar);
 }
 
 function notifCardAprovador(n){
@@ -1500,6 +1648,56 @@ function notifCardAprovador(n){
     + '<div class="nc-meta">Ocorrência #'+escapeHtml(n.ocorrencia)+' · '+escapeHtml(n.tipoPenalidade)+' · enviada por '+escapeHtml(n.criadoPorNome)+' em '+formatDateTime(n.criadoEm)+' '+tentativaTag+'</div>'
     + '<div class="nc-texto">'+escapeHtml(n.texto)+'</div>'
     + decidido + reason + actions + '</div>';
+}
+
+function renderConsultaResultado(){
+  var r = aprovState.consulta.resultado;
+  if (!r) return '';
+  if (r.loading) return '<p style="color:var(--muted);font-size:.82rem;margin-top:10px;">Consultando…</p>';
+  if (r.error) return '<p style="color:#a3312a;font-size:.82rem;margin-top:10px;">Erro: '+escapeHtml(r.error)+'</p>';
+  var resetNota = r.reset
+    ? '<p style="font-size:.78rem;color:var(--muted);margin:6px 0 0;">Contagem reiniciada em '+escapeHtml(r.reset.resetAPartirDe.split('-').reverse().join('/'))+' por '+escapeHtml(r.reset.resetPorNome)+'.</p>'
+    : '';
+  var lista = r.validos.map(function(n){
+    return '<li>'+formatDateTime(n.criadoEm)+' — <span class="status-badge '+n.status+'" style="margin-left:4px;">'+statusLabel(n.status)+'</span> '+escapeHtml(n.tipoPenalidade||'')+'</li>';
+  }).join('');
+  var zerarBtn = isAdminUser()
+    ? (aprovState.consulta.zerarAberto
+        ? '<div style="margin-top:10px;"><label style="display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Zerar a partir de</label>'
+          + '<input id="consulta-zerar-data" type="date" value="'+escapeHtml(aprovState.consulta.zerarData)+'">'
+          + '<div class="nc-actions"><button type="button" class="btn" id="consulta-zerar-confirmar">Confirmar zeramento</button>'
+          + '<button type="button" class="btn ghost" id="consulta-zerar-cancelar">Cancelar</button></div></div>'
+        : '<button type="button" class="btn ghost" id="consulta-zerar-abrir" style="margin-top:10px;">Zerar ocorrências desta unidade (troca de inquilino)</button>')
+    : '';
+  return '<div class="box" style="margin-top:12px;margin-bottom:0;">'
+    + '<p style="margin:0 0 6px;font-size:.85rem;"><b>'+r.aprovadas+'</b> ocorrência(s) aprovada(s) — '+r.total+' registro(s) no total (todos os status)'+(r.reset ? ' desde o último zeramento' : '')+'.</p>'
+    + resetNota
+    + (r.validos.length ? '<ul style="margin:8px 0 0;padding-left:18px;font-size:.82rem;">'+lista+'</ul>' : '')
+    + zerarBtn
+  + '</div>';
+}
+
+function viewConsultaUnidadePanel(){
+  var opcoesCondo = condominiosConsultaveis();
+  if (!opcoesCondo.length) return '';
+  var toggleLabel = aprovState.consultaAberta ? 'Fechar' : '🔎 Consultar ocorrências por unidade';
+  var body = '';
+  if (aprovState.consultaAberta){
+    var c = aprovState.consulta;
+    body = '<div class="nom-form" style="margin-bottom:0;">'
+      + '<div><label>Condomínio</label><select id="consulta-condominio">' + opcoesCondo.map(function(nome){
+          var sel = nome === c.condominio ? ' selected' : '';
+          return '<option value="'+escapeHtml(nome)+'"'+sel+'>'+escapeHtml(nome)+'</option>';
+        }).join('') + '</select></div>'
+      + '<div></div>'
+      + '<div><label>Torre</label><input id="consulta-torre" type="text" placeholder="TORRE" value="'+escapeHtml(c.torre)+'"></div>'
+      + '<div><label>Apartamento</label><input id="consulta-apto" type="text" placeholder="APTO" value="'+escapeHtml(c.apto)+'"></div>'
+      + '</div>'
+      + '<button type="button" class="btn secondary" id="consulta-buscar" style="margin-top:12px;">Consultar</button>'
+      + renderConsultaResultado();
+  }
+  return '<div class="box"><button type="button" class="btn ghost" id="consulta-toggle">'+toggleLabel+'</button>'
+    + (aprovState.consultaAberta ? '<div style="margin-top:14px;">'+body+'</div>' : '') + '</div>';
 }
 
 function viewAssignPanel(){
@@ -1555,6 +1753,7 @@ function viewNotificacoesProntas(){
     + '<p class="lead">Notificações enviadas para aprovação, filtradas pelos condomínios em que você é o(a) aprovador(a) designado(a).</p>'
     + '<hr class="rule">'
     + viewAssignPanel()
+    + viewConsultaUnidadePanel()
     + (semAcesso
         ? '<div class="auth-gate">Você ainda não é aprovador(a) de nenhum condomínio. '+(isAdminUser() ? 'Use "Atribuir aprovadores" acima para se designar ou designar um colega.' : 'Peça a um administrador do Portal para te atribuir a um condomínio.')+'</div>'
         : (meus.length === 0 ? '' : (

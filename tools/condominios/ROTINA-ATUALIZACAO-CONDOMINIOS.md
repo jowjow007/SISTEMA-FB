@@ -128,13 +128,60 @@ Notificação" de novo), não é push de verdade — mesma decisão já tomada p
 Chat Interno: push com o app fechado exigiria upgrade do Firebase para o
 plano pago Blaze. Se um dia quiserem push de verdade, é só pedir.
 
-**Índices do Firestore**: as consultas usadas (`where('criadoPorUid','==',...)`
-e `where('condominioSlug','in',[...])`, sempre sozinhas, sem `orderBy` nem
-outro `where` junto) foram desenhadas de propósito para não precisar de
-nenhum índice composto — a ordenação é feita no JavaScript depois de buscar
-os dados. Se um dia alguém adicionar um filtro combinado (ex.: status +
-condomínio na mesma query do Firestore), o Firestore vai pedir para criar um
-índice (aparece um link no erro do console do navegador).
+**Índices do Firestore**: as consultas usadas (`where('criadoPorUid','==',...)`,
+`where('condominioSlug','in',[...])`, e as de `fetchOcorrenciasUnidade()` —
+até 4 `where(...,'==',...)` encadeados: `condominioSlug`/`torre`/`apto`/
+`status` — sempre sem `orderBy` nem filtro de intervalo/`in` junto) foram
+desenhadas de propósito para não precisar de nenhum índice composto —
+Firestore só exige índice composto quando mistura `orderBy`/intervalo com
+outros filtros; múltiplos `==` sozinhos não precisam. A ordenação e o corte
+por data de reset são feitos no JavaScript depois de buscar os dados. Se um
+dia alguém adicionar um filtro combinado com `orderBy` ou intervalo (ex.:
+`criadoEm >= X` direto na query do Firestore, em vez de filtrar no cliente),
+o Firestore vai pedir para criar um índice (aparece um link no erro do
+console do navegador).
+
+## Reincidência por unidade e "zerar" (troca de inquilino)
+
+Adicionado em 2026-08-17, a pedido do usuário. Nova coleção no Firestore,
+**`unidadeResets/{docId}`** (`docId` = `slugify(condominioSlug + '-T' + torre
++ '-' + apto)`, função `unidadeResetDocId()`): guarda, por unidade, a partir
+de qual data (`resetAPartirDe`, string `AAAA-MM-DD`) as ocorrências antigas
+param de contar — quem zerou (`resetPorUid`/`resetPorNome`) e quando
+(`resetEm`). Regras: qualquer logado lê, só admin (`isAdmin()`) escreve — o
+usuário pediu que só ele pudesse zerar, mas quando perguntado se isso deveria
+ser travado numa conta específica ou em qualquer admin do Portal, escolheu
+"qualquer admin do Portal" (mais simples, reaproveita o `role:'admin'` que já
+existe em `users/{uid}`).
+
+**Nunca apaga nada.** Zerar só grava a data de corte; as notificações antigas
+continuam em `notificacoesGeradas` para histórico/auditoria. `aplicarCorteReset(itens, reset)`
+é quem aplica o corte, no cliente, comparando `criadoEm` de cada item com a
+data do reset — só entra na contagem de reincidência quem é `criadoEm >=`
+a data escolhida.
+
+**Duas telas usam isso:**
+- Em **Gerar Notificação**, o botão "🔍 Consultar reincidência desta unidade"
+  (`consultarReincidencia()`) aparece assim que Torre e Apartamento estão
+  preenchidos — mostra quantas notificações **aprovadas** (só aprovadas contam
+  como reincidência; pendente/rejeitada não) essa unidade já teve, filtradas
+  pelo reset se houver. É manual (botão), não dispara sozinho a cada tecla,
+  para não gerar uma consulta ao Firestore por keystroke.
+- Em **Notificações Prontas**, o painel "🔎 Consultar ocorrências por unidade"
+  (`viewConsultaUnidadePanel()`/`consultarUnidadeAprovador()`) deixa o
+  aprovador — ou o admin, que pode escolher qualquer condomínio, não só os
+  que aprova (`condominiosConsultaveis()`) — ver o histórico completo (todos
+  os status, não só aprovadas) de uma unidade, e é onde fica o botão "Zerar
+  ocorrências desta unidade", visível só para quem `isAdminUser()`.
+
+**Mudança de regra relacionada**: para o botão de reincidência funcionar para
+qualquer pessoa criando uma notificação nova (não só para quem já é aprovador
+daquele condomínio ou autor das notificações antigas), a regra de leitura de
+`notificacoesGeradas` deixou de ser restrita (`criadoPorUid == uid || isAdmin()
+|| isAprovadorDoCondo(...)`) e virou simplesmente `isSignedIn()` — qualquer
+colaborador logado lê qualquer notificação. A permissão de **decidir**
+(aprovar/rejeitar) continua travada como antes, só a leitura ficou mais
+aberta. Ver explicação completa no `README-SETUP.md` do repositório raiz.
 
 Para atualizar (novo condomínio, novo POP, texto revisado, etc.):
 
