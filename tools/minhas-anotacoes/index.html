@@ -571,17 +571,21 @@
     }).catch(function(e){ alert('Não foi possível salvar a data: ' + e.message); });
   };
 
-  function abrirComposerRow(rowId){
+  const composerAberto = {};
+
+  function abrirComposerRow(rowId, stateKey){
+    composerAberto[stateKey] = true;
     const row = document.getElementById(rowId);
     if (!row) return;
     row.style.display = 'flex';
     row.querySelector('input').focus();
   }
 
-  function criarTarefaFromInput(listaId, inputId){
+  function criarTarefaFromInput(listaId, inputId, stateKey){
     const input = document.getElementById(inputId);
     const texto = input.value.trim();
     if (!texto || !currentUser) return;
+    composerAberto[stateKey] = true;
     input.disabled = true;
     db.collection('pendTarefas').add({
       ownerUid: currentUser.uid,
@@ -592,19 +596,24 @@
       dataVencimento: null,
       criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function(){
-      input.value = '';
-      input.disabled = false;
-      input.focus();
+      // o onSnapshot já pode ter reconstruído a linha — pega o input de novo em vez de reusar a referência antiga.
+      const freshInput = document.getElementById(inputId);
+      if (freshInput){
+        freshInput.value = '';
+        freshInput.disabled = false;
+        freshInput.focus();
+      }
     }).catch(function(e){
       alert('Não foi possível criar a tarefa: ' + e.message);
-      input.disabled = false;
+      const freshInput = document.getElementById(inputId);
+      if (freshInput) freshInput.disabled = false;
     });
   }
 
-  window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId); };
-  window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId); };
-  window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId); };
-  window.__criarKanbanTarefa = function(listaId){ criarTarefaFromInput(listaId, 'kanban-composer-input-' + listaId); };
+  window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId, 'list:' + listaId); };
+  window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId, 'list:' + listaId); };
+  window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId, 'kanban:' + listaId); };
+  window.__criarKanbanTarefa = function(listaId){ criarTarefaFromInput(listaId, 'kanban-composer-input-' + listaId, 'kanban:' + listaId); };
 
   // ---------- Drag and drop (Kanban) ----------
   window.__dragStart = function(ev, tarefaId){
@@ -701,7 +710,7 @@
       }
       out += '</div>';
       out += '<button type="button" class="add-tarefa-btn" onclick="__abrirComposer(\'' + g.id + '\')">+ Adicionar tarefa</button>';
-      out += '<div class="add-tarefa-row" id="composer-' + g.id + '" style="display:none;">';
+      out += '<div class="add-tarefa-row" id="composer-' + g.id + '" style="display:' + (composerAberto['list:' + g.id] ? 'flex' : 'none') + ';">';
       out += '<input type="text" id="composer-input-' + g.id + '" maxlength="300" placeholder="Descreva a tarefa e pressione Enter" onkeydown="if(event.key===\'Enter\'){__criarTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
       out += '<button type="button" class="btn small" onclick="__criarTarefa(\'' + g.id + '\')">Adicionar</button>';
       out += '</div>';
@@ -784,7 +793,7 @@
     }
     out += '</div>';
     out += '<button type="button" class="kanban-add" onclick="__abrirKanbanComposer(\'' + g.id + '\')">+ Adicionar</button>';
-    out += '<div class="add-tarefa-row" id="kanban-composer-' + g.id + '" style="display:none;margin:0 10px 10px;">';
+    out += '<div class="add-tarefa-row" id="kanban-composer-' + g.id + '" style="display:' + (composerAberto['kanban:' + g.id] ? 'flex' : 'none') + ';margin:0 10px 10px;">';
     out += '<input type="text" id="kanban-composer-input-' + g.id + '" maxlength="300" placeholder="Nova tarefa" onkeydown="if(event.key===\'Enter\'){__criarKanbanTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
     out += '<button type="button" class="btn small" onclick="__criarKanbanTarefa(\'' + g.id + '\')">OK</button>';
     out += '</div>';
