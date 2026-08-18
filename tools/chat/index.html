@@ -242,6 +242,8 @@
     width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);
     font-size:.85rem;padding:8px 10px;margin-bottom:10px;
   }
+  .group-photo-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .group-photo-row .avatar{width:56px;height:56px;flex:0 0 auto;}
   .picker-list{overflow-y:auto;flex:1;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 0 12px;}
   .picker-item{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-bottom:1px solid var(--line);}
   .picker-item:hover{background:var(--panel-2);}
@@ -325,6 +327,7 @@
         <div class="thread-tags-row">
           <button class="small-link-btn" id="btn-pin"></button>
           <button class="small-link-btn" id="btn-etiquetas"></button>
+          <button class="small-link-btn" id="btn-editar-grupo" style="display:none;"></button>
           <button class="small-link-btn" id="btn-arquivar"></button>
           <button class="small-link-btn danger" id="btn-excluir-conversa"></button>
         </div>
@@ -381,6 +384,13 @@
     <h3 id="picker-title">Nova conversa</h3>
     <p class="hint" id="picker-hint">Escolha um ou mais colegas.</p>
     <input type="text" id="picker-nome-grupo" placeholder="Nome do grupo" style="display:none;">
+    <div class="group-photo-row" id="picker-foto-grupo-row" style="display:none;">
+      <div class="avatar group" id="picker-foto-grupo-preview"></div>
+      <div>
+        <input type="file" id="picker-foto-grupo-input" accept="image/*" hidden>
+        <button type="button" class="btn ghost" id="picker-foto-grupo-btn">Foto do grupo</button>
+      </div>
+    </div>
     <input type="text" id="picker-busca" placeholder="Buscar colaborador...">
     <div class="picker-list" id="picker-list"></div>
     <div class="err" id="picker-err"></div>
@@ -407,6 +417,26 @@
       <button class="btn ghost" id="tag-form-cancelar" style="display:none;">Cancelar edição</button>
       <button class="btn ghost" id="tags-fechar">Fechar</button>
       <button class="btn" id="tag-form-salvar">Criar etiqueta</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal: editar grupo -->
+<div class="modal-backdrop" id="grupo-backdrop">
+  <div class="modal">
+    <h3>Editar grupo</h3>
+    <div class="group-photo-row">
+      <div class="avatar group" id="grupo-foto-preview"></div>
+      <div>
+        <input type="file" id="grupo-foto-input" accept="image/*" hidden>
+        <button type="button" class="btn ghost" id="grupo-foto-btn">Trocar foto</button>
+      </div>
+    </div>
+    <input type="text" id="grupo-nome-input" placeholder="Nome do grupo" maxlength="80">
+    <div class="err" id="grupo-form-err"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="grupo-fechar">Cancelar</button>
+      <button class="btn" id="grupo-salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -448,6 +478,15 @@
     btnVoltar: document.getElementById('btn-voltar'),
     btnPin: document.getElementById('btn-pin'),
     btnEtiquetas: document.getElementById('btn-etiquetas'),
+    btnEditarGrupo: document.getElementById('btn-editar-grupo'),
+    grupoBackdrop: document.getElementById('grupo-backdrop'),
+    grupoFotoPreview: document.getElementById('grupo-foto-preview'),
+    grupoFotoInput: document.getElementById('grupo-foto-input'),
+    grupoFotoBtn: document.getElementById('grupo-foto-btn'),
+    grupoNomeInput: document.getElementById('grupo-nome-input'),
+    grupoFormErr: document.getElementById('grupo-form-err'),
+    grupoFechar: document.getElementById('grupo-fechar'),
+    grupoSalvar: document.getElementById('grupo-salvar'),
     btnArquivar: document.getElementById('btn-arquivar'),
     btnExcluirConversa: document.getElementById('btn-excluir-conversa'),
     btnVerArquivadas: document.getElementById('btn-ver-arquivadas'),
@@ -470,6 +509,10 @@
     pickerTitle: document.getElementById('picker-title'),
     pickerHint: document.getElementById('picker-hint'),
     pickerNomeGrupo: document.getElementById('picker-nome-grupo'),
+    pickerFotoGrupoRow: document.getElementById('picker-foto-grupo-row'),
+    pickerFotoGrupoPreview: document.getElementById('picker-foto-grupo-preview'),
+    pickerFotoGrupoInput: document.getElementById('picker-foto-grupo-input'),
+    pickerFotoGrupoBtn: document.getElementById('picker-foto-grupo-btn'),
     pickerBusca: document.getElementById('picker-busca'),
     pickerList: document.getElementById('picker-list'),
     pickerErr: document.getElementById('picker-err'),
@@ -513,6 +556,8 @@
   var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
   var replyTarget = null;     // mensagem sendo respondida
   var verArquivadas = false;  // false = lista normal, true = mostrando só as arquivadas
+  var novaFotoGrupoDataUrl = null;  // foto escolhida ao criar um grupo novo
+  var edicaoGrupoFotoDataUrl = null; // foto escolhida ao editar um grupo existente
 
   var PALETA_ETIQUETAS = ['#c9463c','#d8823c','#d8b25a','#4c9a6a','#3c9ea8','#4a7fc9','#8a5cc9','#c95c9e','#8a6a4a','#9c908b'];
   var novaTagCor = PALETA_ETIQUETAS[0];
@@ -553,12 +598,15 @@
   document.querySelector('#thread-empty .big').innerHTML = icoSvg('chat', 40);
   els.btnPin.innerHTML = icoSvg('starOutline', 13) + ' Fixar';
   els.btnEtiquetas.innerHTML = icoSvg('tag', 13) + ' Etiquetas';
+  els.btnEditarGrupo.innerHTML = icoSvg('pencil', 13) + ' Grupo';
   els.btnArquivar.innerHTML = icoSvg('archive', 13) + ' Arquivar';
   els.btnExcluirConversa.innerHTML = icoSvg('trash', 13) + ' Excluir';
   els.btnEmoji.innerHTML = icoSvg('smiley', 18);
   els.btnEnviar.innerHTML = icoSvg('send', 16);
   els.btnVoltar.innerHTML = icoSvg('chevronLeft', 20);
   if (els.docPreviewIcon) els.docPreviewIcon.innerHTML = icoSvg('document', 20);
+  els.pickerFotoGrupoPreview.innerHTML = icoSvg('group', 19);
+  els.grupoFotoPreview.innerHTML = icoSvg('group', 19);
 
   function escapeHtml(s){
     return String(s || '').replace(/[&<>"']/g, function(c){
@@ -618,7 +666,7 @@
   }
 
   function avatarConversaHtml(c){
-    if (c.tipo === 'grupo') return avatarHtml(null, null, true);
+    if (c.tipo === 'grupo') return avatarHtml(null, c.fotoGrupoBase64, true);
     var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
     return avatarHtml(nomeDe(outro), fotoDe(outro), false);
   }
@@ -788,6 +836,7 @@
       var arquivada = tagsPorConversa[id] && tagsPorConversa[id].arquivada;
       els.btnArquivar.innerHTML = arquivada ? (icoSvg('unarchive', 13) + ' Desarquivar') : (icoSvg('archive', 13) + ' Arquivar');
       els.btnArquivar.classList.toggle('on', !!arquivada);
+      els.btnEditarGrupo.style.display = c.tipo === 'grupo' ? 'inline-flex' : 'none';
     }
 
     db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
@@ -925,6 +974,27 @@
           if (dataUrl.length > 700000) dataUrl = tentativa(500, 0.5);
           if (dataUrl.length > 700000) { reject(new Error('Imagem muito grande mesmo após compressão. Tente outra foto.')); return; }
           resolve(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function comprimirFotoQuadrada(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function(){
+          var lado = Math.min(img.width, img.height);
+          var sx = (img.width - lado) / 2, sy = (img.height - lado) / 2;
+          var canvas = document.createElement('canvas');
+          canvas.width = maxDim; canvas.height = maxDim;
+          canvas.getContext('2d').drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = reader.result;
       };
@@ -1156,6 +1226,51 @@
       .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
   });
 
+  // ---------------- editar grupo ----------------
+
+  els.btnEditarGrupo.addEventListener('click', function(){
+    if (!activeId) return;
+    var c = conversas.filter(function(x){ return x.id === activeId; })[0];
+    if (!c || c.tipo !== 'grupo') return;
+    edicaoGrupoFotoDataUrl = null;
+    els.grupoNomeInput.value = c.nomeGrupo || '';
+    els.grupoFormErr.textContent = '';
+    if (c.fotoGrupoBase64){
+      els.grupoFotoPreview.style.backgroundImage = 'url(\'' + c.fotoGrupoBase64 + '\')';
+      els.grupoFotoPreview.innerHTML = '';
+    } else {
+      els.grupoFotoPreview.style.backgroundImage = '';
+      els.grupoFotoPreview.innerHTML = icoSvg('group', 19);
+    }
+    els.grupoBackdrop.classList.add('open');
+  });
+  els.grupoFechar.addEventListener('click', function(){ els.grupoBackdrop.classList.remove('open'); });
+  els.grupoFotoBtn.addEventListener('click', function(){ els.grupoFotoInput.click(); });
+  els.grupoFotoInput.addEventListener('change', function(){
+    var file = els.grupoFotoInput.files[0];
+    if (!file) return;
+    comprimirFotoQuadrada(file, 220, 0.82).then(function(dataUrl){
+      edicaoGrupoFotoDataUrl = dataUrl;
+      els.grupoFotoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
+      els.grupoFotoPreview.innerHTML = '';
+    }).catch(function(){
+      alert('Não foi possível processar a imagem.');
+    });
+  });
+  els.grupoSalvar.addEventListener('click', function(){
+    if (!activeId) return;
+    var nome = els.grupoNomeInput.value.trim();
+    if (!nome){
+      els.grupoFormErr.textContent = 'Dê um nome para o grupo.';
+      return;
+    }
+    var updates = { nomeGrupo: nome };
+    if (edicaoGrupoFotoDataUrl) updates.fotoGrupoBase64 = edicaoGrupoFotoDataUrl;
+    db.collection('conversas').doc(activeId).update(updates).then(function(){
+      els.grupoBackdrop.classList.remove('open');
+    }).catch(function(e){ els.grupoFormErr.textContent = 'Erro: ' + e.message; });
+  });
+
   // ---------------- etiquetas ----------------
 
   els.btnEtiquetas.addEventListener('click', function(){
@@ -1317,13 +1432,14 @@
     }).then(function(doc){ return doc.id; });
   }
 
-  function criarGrupo(uids, nomeGrupo){
+  function criarGrupo(uids, nomeGrupo, fotoGrupoBase64){
     var participantes = [myUid].concat(uids.filter(function(u){ return u !== myUid; }));
     var naoLidoPor = {}; participantes.forEach(function(u){ naoLidoPor[u] = 0; });
     return db.collection('conversas').add({
       participantes: participantes,
       tipo: 'grupo',
       nomeGrupo: nomeGrupo,
+      fotoGrupoBase64: fotoGrupoBase64 || null,
       criadoPor: myUid,
       criadoEm: FV.serverTimestamp(),
       ultimaMensagemEm: FV.serverTimestamp(),
@@ -1340,6 +1456,11 @@
     els.pickerBusca.value = '';
     els.pickerNomeGrupo.value = '';
     els.pickerNomeGrupo.style.display = 'none';
+    novaFotoGrupoDataUrl = null;
+    els.pickerFotoGrupoInput.value = '';
+    els.pickerFotoGrupoRow.style.display = 'none';
+    els.pickerFotoGrupoPreview.style.backgroundImage = '';
+    els.pickerFotoGrupoPreview.innerHTML = icoSvg('group', 19);
     if (mode === 'nova'){
       els.pickerTitle.textContent = 'Nova conversa';
       els.pickerHint.textContent = 'Escolha um colega (individual) ou vários (cria um grupo).';
@@ -1360,6 +1481,18 @@
   }
   els.pickerCancelar.addEventListener('click', fecharPicker);
   els.btnNovaConversa.addEventListener('click', function(){ abrirPicker('nova'); });
+  els.pickerFotoGrupoBtn.addEventListener('click', function(){ els.pickerFotoGrupoInput.click(); });
+  els.pickerFotoGrupoInput.addEventListener('change', function(){
+    var file = els.pickerFotoGrupoInput.files[0];
+    if (!file) return;
+    comprimirFotoQuadrada(file, 220, 0.82).then(function(dataUrl){
+      novaFotoGrupoDataUrl = dataUrl;
+      els.pickerFotoGrupoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
+      els.pickerFotoGrupoPreview.innerHTML = '';
+    }).catch(function(){
+      alert('Não foi possível processar a imagem.');
+    });
+  });
 
   // ---------------- notificações ----------------
   function atualizarBotaoNotif(){
@@ -1442,6 +1575,7 @@
           pickerSelected[uid] = !pickerSelected[uid];
           var qtd = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; }).length;
           els.pickerNomeGrupo.style.display = qtd > 1 ? 'block' : 'none';
+          els.pickerFotoGrupoRow.style.display = qtd > 1 ? 'flex' : 'none';
           renderPickerList();
         });
       });
@@ -1529,7 +1663,7 @@
       els.pickerErr.textContent = 'Dê um nome para o grupo.';
       return;
     }
-    criarGrupo(uids, nomeGrupo).then(function(id){
+    criarGrupo(uids, nomeGrupo, novaFotoGrupoDataUrl).then(function(id){
       fecharPicker();
       selecionarConversa(id);
     });
