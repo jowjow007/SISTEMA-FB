@@ -572,13 +572,16 @@
   };
 
   const composerAberto = {};
+  let focoAlvo = null; // id do input que deve receber foco assim que o DOM for (re)construído
 
-  function abrirComposerRow(rowId, stateKey){
+  function abrirComposerRow(rowId, stateKey, inputId){
     composerAberto[stateKey] = true;
+    focoAlvo = inputId;
     const row = document.getElementById(rowId);
     if (!row) return;
     row.style.display = 'flex';
-    row.querySelector('input').focus();
+    const input = document.getElementById(inputId);
+    if (input) input.focus();
   }
 
   function criarTarefaFromInput(listaId, inputId, stateKey){
@@ -586,7 +589,8 @@
     const texto = input.value.trim();
     if (!texto || !currentUser) return;
     composerAberto[stateKey] = true;
-    input.disabled = true;
+    focoAlvo = inputId;
+    input.value = ''; // limpa e mantém o campo pronto na hora — não espera o servidor confirmar
     db.collection('pendTarefas').add({
       ownerUid: currentUser.uid,
       grupoId: listaId,
@@ -595,24 +599,14 @@
       concluidaEm: null,
       dataVencimento: null,
       criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function(){
-      // o onSnapshot já pode ter reconstruído a linha — pega o input de novo em vez de reusar a referência antiga.
-      const freshInput = document.getElementById(inputId);
-      if (freshInput){
-        freshInput.value = '';
-        freshInput.disabled = false;
-        freshInput.focus();
-      }
     }).catch(function(e){
       alert('Não foi possível criar a tarefa: ' + e.message);
-      const freshInput = document.getElementById(inputId);
-      if (freshInput) freshInput.disabled = false;
     });
   }
 
-  window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId, 'list:' + listaId); };
+  window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId, 'list:' + listaId, 'composer-input-' + listaId); };
   window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId, 'list:' + listaId); };
-  window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId, 'kanban:' + listaId); };
+  window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId, 'kanban:' + listaId, 'kanban-composer-input-' + listaId); };
   window.__criarKanbanTarefa = function(listaId){ criarTarefaFromInput(listaId, 'kanban-composer-input-' + listaId, 'kanban:' + listaId); };
 
   // ---------- Drag and drop (Kanban) ----------
@@ -818,6 +812,17 @@
     renderSidebar();
     renderMain();
     renderKanban();
+    // o innerHTML acima recria o DOM e derruba o foco de qualquer campo — se havia
+    // um campo de "nova tarefa" em uso, devolve o foco pra ele imediatamente,
+    // sem esperar confirmação do servidor, pra dar pra digitar a próxima na hora.
+    if (focoAlvo){
+      var ativo = document.activeElement;
+      var semFocoDefinido = !ativo || ativo === document.body;
+      if (semFocoDefinido){
+        var el = document.getElementById(focoAlvo);
+        if (el) el.focus();
+      }
+    }
   }
 
   function startListening(){
