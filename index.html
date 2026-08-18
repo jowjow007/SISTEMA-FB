@@ -295,18 +295,21 @@
   .mh-tagline{font-family:var(--font-display);font-style:italic;font-size:.92rem;color:var(--silver);margin:10px 0 18px;}
   .mh-big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;}
   .mh-tile-big{
-    border-radius:16px;padding:18px 16px;height:104px;display:flex;flex-direction:column;justify-content:space-between;
+    position:relative;border-radius:16px;padding:18px 16px;height:104px;display:flex;flex-direction:column;justify-content:space-between;
     border:none;text-align:left;cursor:pointer;font-family:inherit;
   }
   .mh-tile-big svg{width:24px;height:24px;stroke:#fff;}
   .mh-tile-big .lbl{color:#fff;font-size:14px;font-weight:700;}
-  .mh-tile-big.red{background:linear-gradient(155deg,var(--red-deep),var(--red));}
-  .mh-tile-big.gold{background:linear-gradient(155deg,var(--panel-2),var(--panel));border:1px solid rgba(216,178,90,.35);}
-  .mh-tile-big.gold svg{stroke:var(--gold);}
-  .mh-tile-big.gold .lbl{color:var(--paper);}
-  .mh-tile-big.silver{background:linear-gradient(155deg,var(--panel-2),var(--panel));border:1px solid rgba(169,173,178,.35);}
-  .mh-tile-big.silver svg{stroke:var(--silver);}
-  .mh-tile-big.silver .lbl{color:var(--paper);}
+  .mh-tile-big.red{background:linear-gradient(155deg,var(--red),var(--red-bright));}
+  .mh-tile-big.normal{background:var(--panel);border:1px solid var(--line-strong);}
+  .mh-tile-big.normal svg{stroke:var(--red-bright);}
+  .mh-tile-big.normal .lbl{color:var(--paper);}
+  .mh-badge{
+    display:none;position:absolute;top:12px;right:12px;min-width:20px;height:20px;padding:0 6px;
+    border-radius:10px;background:rgba(0,0,0,.32);color:#fff;font-size:11px;font-weight:700;
+    line-height:20px;text-align:center;
+  }
+  .mh-badge.show{display:block;}
   .mh-small{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
   .mh-tile-small{
     background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:14px;
@@ -1374,6 +1377,7 @@
     els.appScreen.style.display = 'flex';
     renderUserInfo();
     subscribeTabsCatalog();
+    subscribeMobileHomeBadges();
     if (currentProfile.role === 'admin') initAdminPanel();
     verificarAvisoFotoObrigatoria();
   }
@@ -1530,10 +1534,10 @@
   }
 
   const MOBILE_HOME_BIG = [
-    { match: function(l){ return l.indexOf('chat') !== -1; }, cls: 'red' },
-    { match: function(l){ return l.indexOf('f&b-ia') !== -1 || l.indexOf('assistente') !== -1; }, cls: 'gold' },
-    { match: function(l){ return l.indexOf('painel') !== -1; }, cls: 'red' },
-    { match: function(l){ return l.indexOf('anota') !== -1; }, cls: 'silver' }
+    { match: function(l){ return l.indexOf('chat') !== -1; }, cls: 'red', badge: 'mh-chat-badge' },
+    { match: function(l){ return l.indexOf('f&b-ia') !== -1 || l.indexOf('assistente') !== -1; }, cls: 'normal' },
+    { match: function(l){ return l.indexOf('painel') !== -1; }, cls: 'normal' },
+    { match: function(l){ return l.indexOf('anota') !== -1; }, cls: 'red', badge: 'mh-notes-badge' }
   ];
   const MOBILE_HOME_SMALL = [
     function(l){ return l.indexOf('número') !== -1 || l.indexOf('numero') !== -1; },
@@ -1568,10 +1572,12 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'mh-tile-big ' + regra.cls;
-      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span class="lbl">' + escapeHtml(t.label) + '</span>';
+      const badgeHtml = regra.badge ? '<span class="mh-badge" id="' + regra.badge + '"></span>' : '';
+      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + badgeHtml + '<span class="lbl">' + escapeHtml(t.label) + '</span>';
       btn.addEventListener('click', function(){ selectTab(t.id); });
       els.mhBig.appendChild(btn);
     });
+    atualizarBadgesMobileHome();
 
     els.mhSmall.innerHTML = '';
     MOBILE_HOME_SMALL.forEach(function(regraFn){
@@ -1585,6 +1591,42 @@
       btn.addEventListener('click', function(){ selectTab(t.id); });
       els.mhSmall.appendChild(btn);
     });
+  }
+
+  // ---------- Números pequenos nos quadrados grandes (mensagens não lidas / anotações) ----------
+  let mhChatUnread = 0;
+  let mhNotesCount = 0;
+  let mhBadgesSubscribed = false;
+
+  function atualizarBadgesMobileHome(){
+    const chatBadge = document.getElementById('mh-chat-badge');
+    if (chatBadge) {
+      chatBadge.textContent = mhChatUnread;
+      chatBadge.classList.toggle('show', mhChatUnread > 0);
+    }
+    const notesBadge = document.getElementById('mh-notes-badge');
+    if (notesBadge) {
+      notesBadge.textContent = mhNotesCount;
+      notesBadge.classList.toggle('show', mhNotesCount > 0);
+    }
+  }
+
+  function subscribeMobileHomeBadges(){
+    if (mhBadgesSubscribed) return;
+    mhBadgesSubscribed = true;
+    db.collection('conversas').where('participantes', 'array-contains', currentProfile.uid)
+      .onSnapshot(function(snap){
+        mhChatUnread = snap.docs.reduce(function(soma, d){
+          const dados = d.data();
+          return soma + ((dados.naoLidoPor && dados.naoLidoPor[currentProfile.uid]) || 0);
+        }, 0);
+        atualizarBadgesMobileHome();
+      }, function(){ /* sem acesso ao chat: ignora, badge fica em 0 */ });
+    db.collection('pendTarefas').where('ownerUid', '==', currentProfile.uid)
+      .onSnapshot(function(snap){
+        mhNotesCount = snap.size;
+        atualizarBadgesMobileHome();
+      }, function(){ /* sem acesso a anotações: ignora, badge fica em 0 */ });
   }
 
   function acharTabPermitida(regraFn){
