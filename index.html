@@ -274,6 +274,11 @@
   /* ---------- Início mobile (dash com atalhos grandes) ---------- */
   #mobile-home{position:absolute;inset:0;overflow-y:auto;padding:22px 20px 26px;display:none;background:var(--ink);}
   #mobile-home.active{display:block;}
+  .mh-skyline{
+    position:absolute;left:0;right:0;bottom:0;width:100%;height:220px;
+    fill:var(--silver);stroke:var(--silver);stroke-width:2;opacity:.08;pointer-events:none;
+  }
+  .mh-content{position:relative;z-index:1;}
   .mh-greeting .sub{font-size:.72rem;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}
   .mh-greeting .main{font-family:var(--font-display);font-weight:600;font-size:1.5rem;color:var(--paper);}
   .mh-tagline{font-family:var(--font-display);font-style:italic;font-size:.92rem;color:var(--silver);margin:10px 0 18px;}
@@ -424,28 +429,23 @@
     .login-box{padding:22px 18px;}
     #login-theme-toggle{top:10px;right:10px;padding:6px 8px;}
     #login-theme-toggle .theme-switch-label span:last-child{display:none;}
-    #topbar{padding:10px 12px;gap:10px;min-height:58px;row-gap:0;flex-wrap:nowrap;}
-    #topbar .brand-logo{height:26px;}
+    #topbar{padding:10px 12px;gap:10px;min-height:64px;row-gap:0;flex-wrap:nowrap;}
+    #topbar .brand-logo{height:40px;}
     #topbar .firm-name{display:none;}
     #topbar .search-box{width:auto;min-width:0;flex:1 1 auto;}
     #topbar .user-info{display:none;}
     #topbar .logout-wrap{margin-left:4px;}
     #topbar .version-tag{display:none;}
-    .mobile-menu-btn{
-      display:flex;align-items:center;justify-content:center;flex:0 0 auto;
-      width:36px;height:36px;border-radius:8px;border:1px solid var(--line-strong);
-      background:var(--panel-2);color:var(--paper);
-    }
     #body-wrap{position:relative;}
     #tabstrip{
-      position:fixed;top:58px;left:0;height:calc(100% - 58px);width:min(78vw,300px);
+      position:fixed;top:64px;left:0;height:calc(100% - 64px);width:min(78vw,300px);
       transform:translateX(-100%);transition:transform .25s ease;z-index:60;
       box-shadow:2px 0 18px rgba(0,0,0,.5);
     }
     #tabstrip.collapsed{width:min(78vw,300px);}
     #tabstrip.mobile-open{transform:translateX(0);}
     #tabstrip-backdrop{
-      display:block;position:fixed;top:58px;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:55;
+      display:block;position:fixed;top:64px;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:55;
       opacity:0;pointer-events:none;transition:opacity .2s ease;
     }
     #tabstrip-backdrop.show{opacity:1;pointer-events:auto;}
@@ -657,13 +657,33 @@
     <div id="tabstrip-backdrop"></div>
     <div id="content">
       <div id="mobile-home">
-        <div class="mh-greeting">
-          <div class="sub" id="mh-greeting-sub"></div>
-          <div class="main" id="mh-greeting-main"></div>
+        <svg class="mh-skyline" viewBox="0 0 800 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <rect x="0" y="140" width="55" height="120"></rect>
+          <rect x="50" y="70" width="40" height="190"></rect>
+          <rect x="85" y="165" width="65" height="95"></rect>
+          <rect x="145" y="30" width="45" height="230"></rect>
+          <rect x="185" y="120" width="85" height="140"></rect>
+          <rect x="265" y="20" width="35" height="240"></rect>
+          <line x1="282.5" y1="20" x2="282.5" y2="0"></line>
+          <rect x="295" y="100" width="60" height="160"></rect>
+          <rect x="350" y="50" width="50" height="210"></rect>
+          <rect x="395" y="150" width="75" height="110"></rect>
+          <rect x="465" y="75" width="40" height="185"></rect>
+          <rect x="500" y="110" width="95" height="150"></rect>
+          <rect x="590" y="25" width="55" height="235"></rect>
+          <rect x="640" y="130" width="45" height="130"></rect>
+          <rect x="680" y="65" width="50" height="195"></rect>
+          <rect x="725" y="155" width="75" height="105"></rect>
+        </svg>
+        <div class="mh-content">
+          <div class="mh-greeting">
+            <div class="sub" id="mh-greeting-sub"></div>
+            <div class="main" id="mh-greeting-main"></div>
+          </div>
+          <div class="mh-tagline">Nosso escritório na palma da sua mão.</div>
+          <div class="mh-big" id="mh-big"></div>
+          <div class="mh-small" id="mh-small"></div>
         </div>
-        <div class="mh-tagline">Nosso escritório na palma da sua mão.</div>
-        <div class="mh-big" id="mh-big"></div>
-        <div class="mh-small" id="mh-small"></div>
       </div>
       <div id="empty-state">
         <div style="font-size:1.6rem;">🗂️</div>
@@ -746,17 +766,17 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"></path><path d="M6 10v9a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9"></path></svg>
       <span class="t">Home</span>
     </button>
-    <button type="button" class="mbn-item" id="mbn-chat">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-      <span class="t">Chat</span>
-    </button>
-    <button type="button" class="mbn-item" id="mbn-documentos">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="12" height="14" rx="1.5"></rect><path d="M5 5h9.5A1.5 1.5 0 0 1 16 6.5V17"></path></svg>
-      <span class="t">Documentos</span>
-    </button>
     <button type="button" class="mbn-item" id="mbn-perfil">
       <span class="mbn-avatar" id="mbn-avatar"></span>
       <span class="t">Perfil</span>
+    </button>
+    <button type="button" class="mbn-item" id="mbn-aniversariantes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+      <span class="t">Aniversariantes</span>
+    </button>
+    <button type="button" class="mbn-item" id="mbn-pesquisa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <span class="t">Pesquisa</span>
     </button>
     <button type="button" class="mbn-item" id="mbn-menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -949,9 +969,9 @@
     mhBig: document.getElementById('mh-big'),
     mhSmall: document.getElementById('mh-small'),
     mbnHome: document.getElementById('mbn-home'),
-    mbnChat: document.getElementById('mbn-chat'),
-    mbnDocumentos: document.getElementById('mbn-documentos'),
     mbnPerfil: document.getElementById('mbn-perfil'),
+    mbnAniversariantes: document.getElementById('mbn-aniversariantes'),
+    mbnPesquisa: document.getElementById('mbn-pesquisa'),
     mbnMenu: document.getElementById('mbn-menu'),
     mbnAvatar: document.getElementById('mbn-avatar'),
     loginMode: document.getElementById('login-mode'),
@@ -1509,10 +1529,7 @@
   ];
   const MOBILE_HOME_SMALL = [
     function(l){ return l.indexOf('número') !== -1 || l.indexOf('numero') !== -1; },
-    function(l){ return l.indexOf('contrato') !== -1; },
     function(l){ return l.indexOf('condo') !== -1; },
-    function(l){ return l.indexOf('document') !== -1; },
-    function(l){ return l.indexOf('sistema') !== -1; },
     function(l){ return l.indexOf('pop') !== -1; },
     function(l){ return l.indexOf('matriz') !== -1 || l.indexOf('demanda') !== -1; },
     function(l){ return l.indexOf('calculadora') !== -1; }
@@ -1567,17 +1584,18 @@
     return allowed.find(function(t){ return regraFn((t.label || '').toLowerCase()); });
   }
   els.mbnHome.addEventListener('click', function(){ selectTab('__home__'); });
-  els.mbnChat.addEventListener('click', function(){
-    const t = acharTabPermitida(function(l){ return l.indexOf('chat') !== -1; });
-    if (t) selectTab(t.id);
-  });
-  els.mbnDocumentos.addEventListener('click', function(){
-    const t = acharTabPermitida(function(l){ return l.indexOf('document') !== -1; });
-    if (t) selectTab(t.id);
-  });
   els.mbnPerfil.addEventListener('click', function(){
     const t = acharTabPermitida(function(l){ return l.indexOf('perfil') !== -1; });
     if (t) selectTab(t.id);
+  });
+  els.mbnAniversariantes.addEventListener('click', function(){
+    const t = acharTabPermitida(function(l){ return l.indexOf('anivers') !== -1; });
+    if (t) selectTab(t.id);
+  });
+  els.mbnPesquisa.addEventListener('click', function(){
+    els.tabstripPanel.classList.add('mobile-open');
+    els.tabstripBackdrop.classList.add('show');
+    els.globalSearch.focus();
   });
   els.mbnMenu.addEventListener('click', function(){
     els.tabstripPanel.classList.add('mobile-open');
@@ -1734,9 +1752,8 @@
 
     const tAtual = tabsCatalog.find(function(x){ return x.id === tabId; });
     els.mbnHome.classList.toggle('active', tabId === '__home__');
-    els.mbnChat.classList.toggle('active', !!tAtual && (tAtual.label || '').toLowerCase().indexOf('chat') !== -1);
-    els.mbnDocumentos.classList.toggle('active', !!tAtual && (tAtual.label || '').toLowerCase().indexOf('document') !== -1);
     els.mbnPerfil.classList.toggle('active', !!tAtual && (tAtual.label || '').toLowerCase().indexOf('perfil') !== -1);
+    els.mbnAniversariantes.classList.toggle('active', !!tAtual && (tAtual.label || '').toLowerCase().indexOf('anivers') !== -1);
 
     Object.keys(iframes).forEach(function(id){ iframes[id].classList.remove('active'); });
 
