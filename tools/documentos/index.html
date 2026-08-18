@@ -312,7 +312,7 @@
         </div>
         <div class="grid2">
           <div class="field"><label>Órgão emissor do RG</label><input id="hp-rg-orgao" placeholder="SSP/MG"></div>
-          <div class="field"><label>CPF</label><input id="hp-cpf"></div>
+          <div class="field"><label>CPF</label><input id="hp-cpf" data-mask="cpf" inputmode="numeric"></div>
         </div>
         <label style="display:block;font-size:.72rem;color:var(--muted);margin:8px 0 4px;">Profissão(ões)/registro(s) — ex.: "advogado, inscrito na OAB/MG sob nº 118.958"</label>
         <div id="hp-profissoes-list"></div>
@@ -349,7 +349,7 @@
         <div class="field"><label>Ação</label><input id="tr-acao" placeholder="RESCISÃO DO CONTRATO E DEVOLUÇÃO DO DINHEIRO"></div>
         <div class="grid3">
           <div class="field"><label>Gratuidade</label><select id="tr-gratuidade"><option value="SIM">Sim</option><option value="NÃO">Não</option></select></div>
-          <div class="field"><label>Custas já pagas (R$)</label><input id="tr-custas-pagas" value="00,00"></div>
+          <div class="field"><label>Custas já pagas (R$)</label><input id="tr-custas-pagas" value="00,00" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Segredo de justiça</label><select id="tr-segredo-justica"><option value="NÃO">Não</option><option value="SIM">Sim</option></select></div>
         </div>
       </div>
@@ -358,7 +358,7 @@
         <h2>Cliente</h2>
         <div class="grid2">
           <div class="field"><label>Nome do cliente</label><input id="tr-cliente-nome"></div>
-          <div class="field"><label>CPF</label><input id="tr-cliente-cpf"></div>
+          <div class="field"><label>CPF</label><input id="tr-cliente-cpf" data-mask="cpf" inputmode="numeric"></div>
         </div>
         <div class="field">
           <label>Modo de repasse</label>
@@ -372,7 +372,7 @@
       <div class="card" data-tipo-only="termo_repasse" id="tr-card-valor-unica">
         <h2>Valor do repasse</h2>
         <div class="grid2">
-          <div class="field"><label>Valor do repasse (R$)</label><input id="tr-valor" placeholder="10.918,92"></div>
+          <div class="field"><label>Valor do repasse (R$)</label><input id="tr-valor" placeholder="10.918,92" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Valor por extenso</label><input id="tr-valor-extenso" readonly></div>
         </div>
         <div class="field">
@@ -437,15 +437,15 @@
           </select>
         </div>
         <div class="grid2" id="tr-hon-percentual-wrap">
-          <div class="field"><label>Percentual (%)</label><input id="tr-hon-percentual" placeholder="20"></div>
-          <div class="field"><label>Valor correspondente (R$)</label><input id="tr-hon-percentual-valor" placeholder="391,43"></div>
+          <div class="field"><label>Percentual (%)</label><input id="tr-hon-percentual" placeholder="20" inputmode="decimal"></div>
+          <div class="field"><label>Valor correspondente (R$)</label><input id="tr-hon-percentual-valor" readonly placeholder="calculado automaticamente"></div>
         </div>
         <div class="grid2" id="tr-hon-reembolso-wrap" style="display:none;">
-          <div class="field"><label>Reembolso (R$)</label><input id="tr-hon-reembolso-valor"></div>
+          <div class="field"><label>Reembolso (R$)</label><input id="tr-hon-reembolso-valor" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Referente a</label><input id="tr-hon-reembolso-desc" placeholder="despesas com custas processuais"></div>
         </div>
         <div class="grid2" id="tr-hon-saldo-wrap" style="display:none;">
-          <div class="field"><label>Saldo de entrada não pago (R$)</label><input id="tr-hon-saldo-valor"></div>
+          <div class="field"><label>Saldo de entrada não pago (R$)</label><input id="tr-hon-saldo-valor" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Referente a</label><input id="tr-hon-saldo-desc" placeholder="saldo remanescente da entrada"></div>
         </div>
         <div class="field" id="tr-hon-livre-wrap" style="display:none;">
@@ -519,7 +519,7 @@
       <div class="card" data-tipo-only="recibo">
         <h2>Valor e destinação</h2>
         <div class="grid2">
-          <div class="field"><label>Valor (R$)</label><input id="rc-valor" placeholder="112,45"></div>
+          <div class="field"><label>Valor (R$)</label><input id="rc-valor" placeholder="112,45" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Valor por extenso</label><input id="rc-valor-extenso" readonly></div>
         </div>
         <div class="field">
@@ -568,6 +568,11 @@ function fmtDataExtenso(iso){
   const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const [y,m,d]=iso.split('-').map(Number);
   return d+' de '+meses[m-1]+' de '+y;
+}
+function fmtDataCurta(iso){
+  if(!iso) return '';
+  const [y,m,d]=iso.split('-');
+  return d+'/'+m+'/'+y;
 }
 
 const UNIDADE=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','catorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
@@ -637,7 +642,7 @@ function pessoaFieldsHtml(o){
         <div class="field"><label>Estado civil</label><input data-f="estadoCivil" value="${esc(o.estadoCivil)}"></div>
         <div class="field"><label>Profissão</label><input data-f="profissao" value="${esc(o.profissao)}"></div>
       </div>
-      <div class="field"><label>CPF</label><input data-f="cpf" value="${esc(o.cpf)}"></div>
+      <div class="field"><label>CPF</label><input data-f="cpf" value="${esc(o.cpf)}" data-mask="cpf" inputmode="numeric"></div>
       <div class="field"><label>Endereço completo (residente e domiciliado à...)</label><input data-f="endereco" value="${esc(o.endereco)}" placeholder="Rua..., nº..., Bairro..., Cidade/UF, CEP"></div>
     </div>
     <div class="pessoa-pj" style="${o.tipo!=='pj'?'display:none':''}">
@@ -656,7 +661,7 @@ function pessoaFieldsHtml(o){
       <div class="grid3">
         <div class="field"><label>Nacionalidade</label><input data-f="repNacionalidade" value="${esc(o.repNacionalidade)}" placeholder="brasileiro / brasileira"></div>
         <div class="field"><label>Profissão</label><input data-f="repProfissao" value="${esc(o.repProfissao)}"></div>
-        <div class="field"><label>CPF</label><input data-f="repCpf" value="${esc(o.repCpf)}"></div>
+        <div class="field"><label>CPF</label><input data-f="repCpf" value="${esc(o.repCpf)}" data-mask="cpf" inputmode="numeric"></div>
       </div>
     </div>`;
 }
@@ -909,8 +914,8 @@ function renderTrParcelas(){
       </div>
       <div class="field"><label>Descrição</label><input data-f="descricao" value="${esc(p.descricao)}" placeholder="1ª parcela da entrada"></div>
       <div class="grid2">
-        <div class="field"><label>Valor (R$)</label><input data-f="valor" value="${esc(p.valor)}" placeholder="6.369,37"></div>
-        <div class="field"><label>Vencimento</label><input data-f="data" value="${esc(p.data)}" placeholder="22/06/2026"></div>
+        <div class="field"><label>Valor (R$)</label><input data-f="valor" value="${esc(p.valor)}" placeholder="6.369,37" data-mask="money" inputmode="numeric"></div>
+        <div class="field"><label>Vencimento</label><input type="date" data-f="data" value="${esc(p.data)}"></div>
       </div>
     `;
     div.querySelectorAll('[data-f]').forEach(inp=>{
@@ -994,6 +999,12 @@ function coletarDados(){
   const trTotalParcelado = somaValoresMoeda(trParcelas.map(p=>p.valor));
   document.getElementById('tr-valor-parcelado-total').value = fmtMoedaBr(trTotalParcelado);
   document.getElementById('tr-valor-parcelado-extenso').value = valorExtenso(fmtMoedaBr(trTotalParcelado));
+  // honorários em percentual: sempre em cima da soma das parcelas (modo parcelado)
+  // ou do valor do repasse/avença (modo parcela única) — nunca digitado à mão.
+  const trBaseHonorarios = val('tr-modo')==='parcelada' ? trTotalParcelado : somaValoresMoeda([val('tr-valor')]);
+  const trPercentualNum = parseFloat(val('tr-hon-percentual').replace(',','.'));
+  document.getElementById('tr-hon-percentual-valor').value =
+    (!isNaN(trPercentualNum) && trBaseHonorarios>0) ? fmtMoedaBr(trBaseHonorarios*trPercentualNum/100) : '';
   return {
     tipo: currentTipo,
     cidadeUf: val('doc-cidade-uf'),
@@ -1210,7 +1221,7 @@ function buildTermoRepasse(d){
   } else {
     blocks.push(C(`<div class="blk" style="margin-top:1mm;">Pelo presente instrumento, eu, <strong>${esc(t.clienteNome)}</strong>, inscrito(a) no CPF sob o nº ${esc(t.clienteCpf)}, AUTORIZO, desde já e de forma irrevogável, o repasse pelos advogados ${advogadosRepasseTexto(t.advogados)}, à medida que forem recebidas, das parcelas abaixo relacionadas, provenientes ${origemPrep(origemUsada)} ${esc(origemUsada)} no processo nº ${esc(t.numeroProcesso)}, no qual atuaram como meus representantes legais, ficando desde já certo que os honorários contratuais serão sempre descontados prioritariamente de cada parcela recebida, antes do respectivo repasse, e que a presente autorização é única e vale para o repasse de todas as parcelas abaixo, independentemente de nova assinatura ou novo termo específico para cada repasse individual:</div>`));
     t.parcelas.filter(p=>p.valor.trim()!=='').forEach(p=>{
-      blocks.push(C(`<div class="blk bullet">● ${esc(p.descricao||'Parcela')}: R$ ${esc(p.valor)}${p.data?', com vencimento em '+esc(p.data):''}.</div>`));
+      blocks.push(C(`<div class="blk bullet">● ${esc(p.descricao||'Parcela')}: R$ ${esc(p.valor)}${p.data?', com vencimento em '+esc(fmtDataCurta(p.data)):''}.</div>`));
     });
   }
   const honTxt = honorariosTexto(t);
@@ -1365,6 +1376,36 @@ function setTipo(id){
   render();
 }
 setTipo(new URLSearchParams(location.search).get('tipo') || currentTipo);
+
+/* ---------- máscaras de digitação (campos marcados com data-mask) ----------
+   Aplicada em cima do valor ANTES da delegação de render abaixo, para que o
+   texto já esteja formatado (CPF com pontuação, dinheiro com vírgula/pontos)
+   quando coletarDados()/valorExtenso() lerem o campo. */
+function maskCPF(v){
+  const d = v.replace(/\D/g,'').slice(0,11);
+  if(d.length>9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9);
+  if(d.length>6) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6);
+  if(d.length>3) return d.slice(0,3)+'.'+d.slice(3);
+  return d;
+}
+function maskMoneyBr(v){
+  let d = v.replace(/\D/g,'');
+  if(!d) return '';
+  while(d.length<3) d = '0'+d;
+  const centavos = d.slice(-2);
+  let inteiro = d.slice(0,-2).replace(/^0+(?=\d)/,'') || '0';
+  inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return inteiro+','+centavos;
+}
+// useCapture=true (3º argumento): precisa rodar ANTES do listener de cada campo
+// dinâmico (outorgantes, parcelas etc.), que também escuta 'input' só que direto
+// no próprio elemento e copia inp.value para o objeto de dados naquele instante —
+// sem capturar aqui primeiro, o objeto ficaria sempre um dígito atrasado da máscara.
+document.querySelector('.form-col').addEventListener('input', e=>{
+  const mask = e.target.dataset ? e.target.dataset.mask : null;
+  if(mask==='cpf') e.target.value = maskCPF(e.target.value);
+  else if(mask==='money') e.target.value = maskMoneyBr(e.target.value);
+}, true);
 
 /* ---------- delegação: qualquer campo estático dispara novo render ---------- */
 document.querySelector('.form-col').addEventListener('input', scheduleRender);
