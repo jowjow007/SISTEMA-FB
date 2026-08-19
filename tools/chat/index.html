@@ -85,6 +85,7 @@
   .icon-btn#btn-notif.muted{background:var(--panel-3);border-color:var(--line-strong);opacity:.6;}
   .icon-btn#btn-nova-conversa{background:none;border-color:transparent;color:var(--red-bright);}
   .icon-btn#btn-nova-conversa:hover{background:#fff;border-color:#fff;}
+  .icon-btn#btn-nova-conversa img{width:22px;height:22px;object-fit:contain;display:block;}
 
   .conv-list{flex:1;overflow-y:auto;}
   .conv-empty{padding:50px 20px;text-align:center;color:var(--muted);font-size:.85rem;}
@@ -591,9 +592,65 @@
     return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (nome==='starFilled'?'0':'1.9') + '" stroke-linecap="round" stroke-linejoin="round">' + (ICO[nome] || '') + '</svg>';
   }
 
+  // Remove o fundo claro de um PNG (preenchimento a partir das bordas, então o
+  // contorno branco do próprio desenho — cercado de cor — não é afetado).
+  function processarIconeTransparente(src, maxDim, threshold, callback){
+    var img = new Image();
+    img.onload = function(){
+      var escala = Math.min(1, maxDim / Math.max(img.width, img.height));
+      var cw = Math.round(img.width * escala), ch = Math.round(img.height * escala);
+      var canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, cw, ch);
+      var imgData = ctx.getImageData(0, 0, cw, ch);
+      var data = imgData.data;
+      var visitado = new Uint8Array(cw * ch);
+      var pilha = [];
+      function ehFundo(idx){
+        var r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        return r > threshold && g > threshold && b > threshold && Math.abs(r - g) < 14 && Math.abs(g - b) < 14;
+      }
+      function tentaEmpilhar(x, y){
+        if (x < 0 || y < 0 || x >= cw || y >= ch) return;
+        var p = y * cw + x;
+        if (visitado[p]) return;
+        if (ehFundo(p * 4)) { visitado[p] = 1; pilha.push(p); }
+      }
+      for (var x = 0; x < cw; x++){ tentaEmpilhar(x, 0); tentaEmpilhar(x, ch - 1); }
+      for (var y = 0; y < ch; y++){ tentaEmpilhar(0, y); tentaEmpilhar(cw - 1, y); }
+      while (pilha.length){
+        var p = pilha.pop();
+        data[p * 4 + 3] = 0;
+        var x2 = p % cw, y2 = (p / cw) | 0;
+        tentaEmpilhar(x2 + 1, y2); tentaEmpilhar(x2 - 1, y2); tentaEmpilhar(x2, y2 + 1); tentaEmpilhar(x2, y2 - 1);
+      }
+      ctx.putImageData(imgData, 0, 0);
+      callback(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function(){ callback(null); };
+    img.src = src;
+  }
+
+  function aplicarIconeNovaConversa(){
+    var CHAVE = 'fb-chat-icone-nova-v1';
+    var cache = null;
+    try { cache = localStorage.getItem(CHAVE); } catch(e){}
+    if (cache){
+      els.btnNovaConversa.innerHTML = '<img src="' + cache + '" alt="Nova conversa">';
+      return;
+    }
+    els.btnNovaConversa.innerHTML = icoSvg('composeDouble', 20);
+    processarIconeTransparente('assets/nova-conversa.png', 200, 235, function(dataUrl){
+      if (!dataUrl) return;
+      els.btnNovaConversa.innerHTML = '<img src="' + dataUrl + '" alt="Nova conversa">';
+      try { localStorage.setItem(CHAVE, dataUrl); } catch(e){}
+    });
+  }
+
   // ícones estáticos (os que alternam de estado são atualizados nas próprias funções de toggle)
   els.btnNotif.innerHTML = icoSvg('bell');
-  els.btnNovaConversa.innerHTML = icoSvg('composeDouble', 20);
+  aplicarIconeNovaConversa();
   els.btnVerArquivadas.innerHTML = icoSvg('archive', 13) + ' Ver arquivadas';
   document.querySelector('#thread-empty .big').innerHTML = icoSvg('chat', 40);
   els.btnPin.innerHTML = icoSvg('starOutline', 13) + ' Fixar';
