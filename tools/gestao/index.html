@@ -145,6 +145,15 @@
 
   .actions-cell{display:flex;gap:6px;flex-wrap:wrap;}
 
+  .quick-add-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;margin-bottom:14px;}
+  .quick-add-row input[type="text"],.quick-add-row input[type="number"]{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:8px 11px;color:var(--paper);font-size:.84rem;
+  }
+  .quick-add-row input[type="text"]#cp-qa-item{flex:1 1 220px;min-width:160px;}
+  .quick-add-row input[type="number"]{width:64px;}
+  .quick-add-row .moeda-row{max-width:130px;}
+
   .inner-nav{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
   .inner-nav button{background:var(--panel);border:1px solid var(--line-strong);border-radius:20px;
     padding:7px 16px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;}
@@ -253,40 +262,6 @@
     <div class="modal-foot">
       <button type="button" class="btn" id="pat-cancelar">Cancelar</button>
       <button type="button" class="btn primary" id="pat-salvar">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: nova solicitação de compra -->
-<div class="modal-backdrop" id="cp-solic-backdrop">
-  <div class="modal">
-    <h3>Nova solicitação de compra</h3>
-    <div class="field">
-      <label>Item *</label>
-      <input type="text" id="cp-s-item" placeholder="O que precisa ser comprado?">
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Quantidade</label>
-        <input type="number" id="cp-s-qtd" min="1" value="1">
-      </div>
-      <div class="field">
-        <label>Valor estimado (R$)</label>
-        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-s-valor" placeholder="0,00"></div>
-      </div>
-    </div>
-    <div class="field">
-      <label>Fornecedor sugerido</label>
-      <input type="text" id="cp-s-fornecedor">
-    </div>
-    <div class="field">
-      <label>Justificativa / observações</label>
-      <textarea id="cp-s-justificativa"></textarea>
-    </div>
-    <div class="msg-err" id="cp-s-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="cp-s-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="cp-s-salvar">Enviar para aprovação</button>
     </div>
   </div>
 </div>
@@ -676,22 +651,27 @@
   function initCompras(){
     document.getElementById('cp-scroll').innerHTML =
       '<div class="mod-head">' +
-        '<div><h2>Controle de compras</h2><p>Solicitação, aprovação e lançamento das compras que chegaram ao escritório.</p></div>' +
-        '<button type="button" class="btn primary" id="cp-nova-btn">+ Nova solicitação</button>' +
+        '<div><h2>Controle de compras</h2><p>Adicione um item à lista e aprove ou reprove direto na linha. Depois de aprovada, registre a chegada na outra aba.</p></div>' +
       '</div>' +
       '<div class="inner-nav" id="cp-inner-nav">' +
-        '<button type="button" class="active" data-cp-view="aprovacao">Aprovação</button>' +
+        '<button type="button" class="active" data-cp-view="aprovacao">Lista de compras</button>' +
         '<button type="button" data-cp-view="recebidas">Compras recebidas</button>' +
       '</div>' +
       '<div class="inner-view active" id="cp-view-aprovacao">' +
-        '<div class="section-title first">Aguardando aprovação</div>' +
+        '<div class="quick-add-row">' +
+          '<input type="text" id="cp-qa-item" placeholder="O que precisa comprar?">' +
+          '<input type="number" id="cp-qa-qtd" min="1" value="1" title="Quantidade">' +
+          '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-qa-valor" placeholder="0,00 (estimado)"></div>' +
+          '<button type="button" class="btn primary" id="cp-qa-add">+ Adicionar à lista</button>' +
+        '</div>' +
+        '<div class="toolbar">' +
+          '<span class="spacer"></span>' +
+          '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir aprovações</button>' +
+          '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir reprovações</button>' +
+        '</div>' +
         '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Data</th><th></th>' +
-        '</tr></thead><tbody id="cp-tbody-pendentes"></tbody></table></div>' +
-        '<div class="section-title">Histórico de aprovação</div>' +
-        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Valor estimado</th><th>Solicitante</th><th>Status</th><th>Decisão</th>' +
-        '</tr></thead><tbody id="cp-tbody-historico"></tbody></table></div>' +
+          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Data</th><th>Status</th><th></th>' +
+        '</tr></thead><tbody id="cp-tbody-lista"></tbody></table></div>' +
       '</div>' +
       '<div class="inner-view" id="cp-view-recebidas">' +
         '<div class="section-title first">Aprovadas, aguardando chegada</div>' +
@@ -705,7 +685,6 @@
         '</tr></thead><tbody id="cp-tbody-recebidas"></tbody></table></div>' +
       '</div>';
 
-    document.getElementById('cp-nova-btn').addEventListener('click', abrirModalSolicitacao);
     Array.prototype.forEach.call(document.getElementById('cp-inner-nav').querySelectorAll('button'), function(b){
       b.addEventListener('click', function(){
         Array.prototype.forEach.call(document.getElementById('cp-inner-nav').querySelectorAll('button'), function(x){ x.classList.remove('active'); });
@@ -715,47 +694,78 @@
       });
     });
 
+    const qaValorInput = document.getElementById('cp-qa-valor');
+    ligarMascaraMoeda(qaValorInput);
+    const qaItemInput = document.getElementById('cp-qa-item');
+
+    function adicionarNaLista(){
+      const item = qaItemInput.value.trim();
+      if (!item) { qaItemInput.focus(); return; }
+      const dados = {
+        item: item,
+        quantidade: parseInt(document.getElementById('cp-qa-qtd').value, 10) || 1,
+        valorEstimado: moedaParaNumero(qaValorInput.value),
+        solicitante: meuNome,
+        solicitanteUid: meuUid,
+        status: 'pendente',
+        dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      const btn = document.getElementById('cp-qa-add');
+      btn.disabled = true;
+      db.collection('compras').add(dados).then(function(){
+        qaItemInput.value = '';
+        document.getElementById('cp-qa-qtd').value = '1';
+        qaValorInput.value = '';
+        qaItemInput.focus();
+      }).catch(function(err){
+        alert('Erro ao adicionar: ' + err.message);
+      }).finally(function(){ btn.disabled = false; });
+    }
+    document.getElementById('cp-qa-add').addEventListener('click', adicionarNaLista);
+    qaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarNaLista(); });
+
+    document.getElementById('cp-print-aprovadas').addEventListener('click', function(){
+      imprimirListaCompras(['aprovado', 'recebido'], 'Compras aprovadas');
+    });
+    document.getElementById('cp-print-reprovadas').addEventListener('click', function(){
+      imprimirListaCompras(['reprovado'], 'Compras reprovadas');
+    });
+
     db.collection('compras').orderBy('dataSolicitacao', 'desc').onSnapshot(function(snap){
       cpItens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       cpCarregado = true;
       renderCompras();
     }, function(err){
-      document.getElementById('cp-tbody-pendentes').innerHTML = '<tr><td colspan="6" class="empty-row">Erro ao carregar: ' + escapeHtml(err.message) + '</td></tr>';
+      document.getElementById('cp-tbody-lista').innerHTML = '<tr><td colspan="7" class="empty-row">Erro ao carregar: ' + escapeHtml(err.message) + '</td></tr>';
     });
   }
 
   function renderCompras(){
     if (!cpCarregado) return;
-    const pendentes = cpItens.filter(function(x){ return x.status === 'pendente'; });
-    const historico = cpItens.filter(function(x){ return x.status === 'aprovado' || x.status === 'reprovado' || x.status === 'recebido'; });
+    const lista = cpItens.slice().sort(function(a, b){
+      const aPend = a.status === 'pendente', bPend = b.status === 'pendente';
+      if (aPend !== bPend) return aPend ? -1 : 1;
+      return tsMillis(b.dataSolicitacao) - tsMillis(a.dataSolicitacao);
+    });
     const aguardandoChegada = cpItens.filter(function(x){ return x.status === 'aprovado'; });
     const recebidas = cpItens.filter(function(x){ return x.status === 'recebido'; }).sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
 
-    document.getElementById('cp-tbody-pendentes').innerHTML = pendentes.length ? pendentes.map(function(it){
+    document.getElementById('cp-tbody-lista').innerHTML = lista.length ? lista.map(function(it){
       return '<tr>' +
-        '<td>' + escapeHtml(it.item) + (it.justificativa ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.justificativa) + '</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(it.item) + '</td>' +
         '<td class="num">' + (it.quantidade || 1) + '</td>' +
         '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
         '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
         '<td>' + formatDataBR(it.dataSolicitacao) + '</td>' +
+        '<td><span class="pill ' + it.status + '" title="' + escapeHtml(it.status === 'reprovado' && it.motivoReprovacao ? it.motivoReprovacao : '') + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
         '<td class="actions-cell">' +
-          (souAdmin
+          (it.status === 'pendente' && souAdmin
             ? '<button type="button" class="btn small" data-cp-aprovar="' + it.id + '">Aprovar</button>' +
               '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
-            : '<span class="pill pendente">Aguardando aprovação</span>') +
+            : '') +
         '</td>' +
       '</tr>';
-    }).join('') : '<tr><td colspan="6" class="empty-row">Nenhuma solicitação pendente.</td></tr>';
-
-    document.getElementById('cp-tbody-historico').innerHTML = historico.length ? historico.map(function(it){
-      return '<tr>' +
-        '<td>' + escapeHtml(it.item) + '</td>' +
-        '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
-        '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
-        '<td><span class="pill ' + it.status + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
-        '<td>' + (it.status === 'reprovado' && it.motivoReprovacao ? escapeHtml(it.motivoReprovacao) : (it.aprovadoPor ? 'por ' + escapeHtml(it.aprovadoPor) : '—')) + '</td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhum registro ainda.</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty-row">Nenhuma compra na lista ainda. Use o campo acima para adicionar.</td></tr>';
 
     document.getElementById('cp-tbody-aguardando').innerHTML = aguardandoChegada.length ? aguardandoChegada.map(function(it){
       return '<tr>' +
@@ -803,46 +813,46 @@
     });
   }
 
-  const cpSolicBackdrop = document.getElementById('cp-solic-backdrop');
-  const cpSValorInput = document.getElementById('cp-s-valor');
-  ligarMascaraMoeda(cpSValorInput);
-
-  function abrirModalSolicitacao(){
-    document.getElementById('cp-s-item').value = '';
-    document.getElementById('cp-s-qtd').value = '1';
-    cpSValorInput.value = '';
-    document.getElementById('cp-s-fornecedor').value = '';
-    document.getElementById('cp-s-justificativa').value = '';
-    document.getElementById('cp-s-err').style.display = 'none';
-    cpSolicBackdrop.classList.add('show');
+  function tsMillis(ts){
+    return (ts && ts.toMillis) ? ts.toMillis() : 0;
   }
-  function fecharModalSolicitacao(){ cpSolicBackdrop.classList.remove('show'); }
-  document.getElementById('cp-s-cancelar').addEventListener('click', fecharModalSolicitacao);
-  cpSolicBackdrop.addEventListener('click', function(e){ if (e.target === cpSolicBackdrop) fecharModalSolicitacao(); });
 
-  document.getElementById('cp-s-salvar').addEventListener('click', function(){
-    const item = document.getElementById('cp-s-item').value.trim();
-    const errEl = document.getElementById('cp-s-err');
-    if (!item) { errEl.textContent = 'Informe o item a ser comprado.'; errEl.style.display = 'block'; return; }
+  function imprimirListaCompras(statusList, titulo){
+    const itens = cpItens.filter(function(x){ return statusList.indexOf(x.status) !== -1; })
+      .sort(function(a, b){ return tsMillis(b.dataAprovacao) - tsMillis(a.dataAprovacao); });
+    const linhas = itens.length ? itens.map(function(it){
+      return '<tr>' +
+        '<td>' + escapeHtml(it.item) + '</td>' +
+        '<td>' + (it.quantidade || 1) + '</td>' +
+        '<td>' + escapeHtml(formatBRL(it.valorEstimado)) + '</td>' +
+        '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
+        '<td>' + escapeHtml(it.aprovadoPor || '—') + '</td>' +
+        '<td>' + escapeHtml(formatDataBR(it.dataAprovacao)) + '</td>' +
+        '<td>' + escapeHtml(it.status === 'reprovado' ? (it.motivoReprovacao || '—') : STATUS_CP_LABEL[it.status]) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:#666;">Nenhum registro.</td></tr>';
 
-    const dados = {
-      item: item,
-      quantidade: parseInt(document.getElementById('cp-s-qtd').value, 10) || 1,
-      valorEstimado: moedaParaNumero(cpSValorInput.value),
-      fornecedorSugerido: document.getElementById('cp-s-fornecedor').value.trim(),
-      justificativa: document.getElementById('cp-s-justificativa').value.trim(),
-      solicitante: meuNome,
-      solicitanteUid: meuUid,
-      status: 'pendente',
-      dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const salvarBtn = document.getElementById('cp-s-salvar');
-    salvarBtn.disabled = true;
-    db.collection('compras').add(dados).then(function(){ fecharModalSolicitacao(); }).catch(function(err){
-      errEl.textContent = 'Erro ao enviar: ' + err.message;
-      errEl.style.display = 'block';
-    }).finally(function(){ salvarBtn.disabled = false; });
-  });
+    const w = window.open('', '_blank');
+    if (!w) { alert('Permita pop-ups para imprimir.'); return; }
+    w.document.write(
+      '<!doctype html><html><head><meta charset="utf-8"><title>' + escapeHtml(titulo) + '</title>' +
+      '<style>' +
+      'body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#222;}' +
+      'h1{font-size:16pt;margin:0 0 2px;}' +
+      '.sub{font-size:9pt;color:#666;margin:0 0 16px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:9.5pt;}' +
+      'th,td{border:1px solid #999;padding:6px 8px;text-align:left;}' +
+      'th{background:#eee;}' +
+      '</style></head><body>' +
+      '<h1>' + escapeHtml(titulo) + ' — Fonseca e Braga</h1>' +
+      '<p class="sub">Gerado em ' + escapeHtml(new Date().toLocaleString('pt-BR')) + '</p>' +
+      '<table><thead><tr><th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Decidido por</th><th>Data</th><th>' + (statusList.indexOf('reprovado') !== -1 ? 'Motivo' : 'Status') + '</th></tr></thead>' +
+      '<tbody>' + linhas + '</tbody></table>' +
+      '<script>window.onload=function(){window.print();};<' + '/script>' +
+      '</body></html>'
+    );
+    w.document.close();
+  }
 
   const cpChegBackdrop = document.getElementById('cp-cheg-backdrop');
   const cpCValorInput = document.getElementById('cp-c-valor');
