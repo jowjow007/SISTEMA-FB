@@ -659,7 +659,8 @@
       '</div>' +
       '<div class="inner-view active" id="cp-view-aprovacao">' +
         '<div class="quick-add-row">' +
-          '<input type="text" id="cp-qa-item" placeholder="O que precisa comprar?">' +
+          '<input type="text" id="cp-qa-item" list="cp-qa-item-hist" placeholder="O que precisa comprar? (repete item já comprado e preenche sozinho)" autocomplete="off">' +
+          '<datalist id="cp-qa-item-hist"></datalist>' +
           '<input type="number" id="cp-qa-qtd" min="1" value="1" title="Quantidade">' +
           '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-qa-valor" placeholder="0,00 (estimado)"></div>' +
           '<button type="button" class="btn primary" id="cp-qa-add">+ Adicionar à lista</button>' +
@@ -723,6 +724,12 @@
     }
     document.getElementById('cp-qa-add').addEventListener('click', adicionarNaLista);
     qaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarNaLista(); });
+    qaItemInput.addEventListener('input', function(){
+      const hist = historicoDoItem(qaItemInput.value);
+      if (!hist) return;
+      document.getElementById('cp-qa-qtd').value = hist.quantidade;
+      qaValorInput.value = numeroParaMoedaInput(hist.valor);
+    });
 
     document.getElementById('cp-print-aprovadas').addEventListener('click', function(){
       imprimirListaCompras(['aprovado'], 'Lista aprovada');
@@ -740,8 +747,37 @@
     });
   }
 
+  // Acha o histórico de um item já digitado antes (ignora maiúsc/minúsc) para
+  // preencher quantidade e valor sozinho — puxa o último valor efetivamente
+  // pago (compra já recebida); se nunca chegou a ser recebido, usa o último
+  // valor estimado.
+  function historicoDoItem(nomeDigitado){
+    const nomeLower = (nomeDigitado || '').trim().toLowerCase();
+    if (!nomeLower) return null;
+    const candidatos = cpItens.filter(function(x){ return (x.item || '').trim().toLowerCase() === nomeLower; });
+    if (!candidatos.length) return null;
+    candidatos.sort(function(a, b){ return tsMillis(b.dataSolicitacao) - tsMillis(a.dataSolicitacao); });
+    const maisRecente = candidatos[0];
+    const recebidos = candidatos.filter(function(x){ return x.status === 'recebido' && x.valorPago; })
+      .sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
+    return {
+      quantidade: maisRecente.quantidade || 1,
+      valor: recebidos.length ? recebidos[0].valorPago : (maisRecente.valorEstimado || 0)
+    };
+  }
+
   function renderCompras(){
     if (!cpCarregado) return;
+    const nomesUnicos = [];
+    const nomesVistos = {};
+    cpItens.forEach(function(x){
+      const nome = (x.item || '').trim();
+      const chave = nome.toLowerCase();
+      if (nome && !nomesVistos[chave]) { nomesVistos[chave] = true; nomesUnicos.push(nome); }
+    });
+    const datalist = document.getElementById('cp-qa-item-hist');
+    if (datalist) datalist.innerHTML = nomesUnicos.map(function(n){ return '<option value="' + escapeHtml(n) + '">'; }).join('');
+
     const lista = cpItens.slice().sort(function(a, b){
       const aPend = a.status === 'pendente', bPend = b.status === 'pendente';
       if (aPend !== bPend) return aPend ? -1 : 1;

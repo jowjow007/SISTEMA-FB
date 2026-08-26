@@ -260,10 +260,19 @@
   #tabstrip .tab-btn{
     display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 12px;margin-bottom:1px;
     border-radius:8px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:.86rem;
+    position:relative;
   }
   #tabstrip .tab-btn:hover{background:var(--panel-2);color:var(--paper);}
   #tabstrip .tab-btn.active{background:var(--red-deep);color:#fff;border-color:var(--red);}
   #tabstrip .tab-btn .tab-icon{width:17px;height:17px;flex:0 0 auto;opacity:.85;}
+  #tabstrip .tab-btn .tab-blink-dot{display:none;}
+  #tabstrip .tab-btn.tab-blink{animation:fb-tab-blink-bg 1.1s ease-in-out infinite;}
+  #tabstrip .tab-btn.tab-blink .tab-blink-dot{
+    display:block;position:absolute;top:6px;right:9px;width:8px;height:8px;border-radius:50%;
+    background:var(--red-bright);animation:fb-tab-blink-dot 1.1s ease-in-out infinite;
+  }
+  @keyframes fb-tab-blink-bg{0%,100%{background:transparent;}50%{background:rgba(201,70,60,.16);}}
+  @keyframes fb-tab-blink-dot{0%,100%{opacity:1;}50%{opacity:.2;}}
   #tabstrip .divider{height:1px;background:var(--line);margin:10px 4px;}
   #tabstrip .group-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 12px 4px;}
 
@@ -655,7 +664,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v120</span>
+      <span class="version-tag">v121</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1110,6 +1119,8 @@
   let iframes = {};       // id -> iframe element
   let activeTabId = null;
   let pendingCount = 0;   // usuários (não-admin) com zero abas liberadas
+  let comprasPendentesCount = 0;   // solicitações de compra aguardando aprovação (pisca a aba "Gestão" pro admin)
+  let comprasBadgeSubscribed = false;
 
   // ---------- Erros PT-BR ----------
   function traduzErro(code){
@@ -1378,8 +1389,28 @@
     renderUserInfo();
     subscribeTabsCatalog();
     subscribeMobileHomeBadges();
-    if (currentProfile.role === 'admin') initAdminPanel();
+    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
     verificarAvisoFotoObrigatoria();
+  }
+
+  // Pisca a aba "Gestão" pro admin quando há solicitação de compra aguardando aprovação
+  // (ver tools/gestao/index.html, sub-aba Controle de Compras).
+  function subscribeComprasPendentes(){
+    if (comprasBadgeSubscribed) return;
+    comprasBadgeSubscribed = true;
+    db.collection('compras').where('status', '==', 'pendente').onSnapshot(function(snap){
+      comprasPendentesCount = snap.size;
+      updateGestaoBlink();
+    });
+  }
+
+  function updateGestaoBlink(){
+    const btns = Array.prototype.slice.call(els.tabstrip.querySelectorAll('.tab-btn'));
+    btns.forEach(function(b){
+      const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
+      const ehGestao = !!t && /gest[ãa]o/i.test(t.label || '');
+      b.classList.toggle('tab-blink', ehGestao && comprasPendentesCount > 0);
+    });
   }
 
   // ---------- Aviso obrigatório: foto de perfil faltando (só para usuários específicos) ----------
@@ -1711,11 +1742,12 @@
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = t.id;
-      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span>';
+      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span><span class="tab-blink-dot"></span>';
       btn.addEventListener('click', function(){ selectTab(t.id); });
       ativarTooltipAba(btn, t.label);
       els.tabstrip.appendChild(btn);
     });
+    if (currentProfile.role === 'admin') updateGestaoBlink();
 
     if (currentProfile.role === 'admin') {
       const div = document.createElement('div');
