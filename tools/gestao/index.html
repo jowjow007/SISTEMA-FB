@@ -119,6 +119,7 @@
   .btn.danger:hover{background:var(--rej-bg);}
   .btn.small{padding:5px 10px;font-size:.74rem;}
   .btn[disabled]{opacity:.5;cursor:not-allowed;}
+  .btn.toggle-on{background:var(--red);border-color:var(--red);color:#fff;}
 
   .section-title{font-size:.9rem;font-weight:700;margin:22px 0 8px;color:var(--paper);}
   .section-title.first{margin-top:0;}
@@ -153,6 +154,16 @@
   .quick-add-row input[type="text"]#cp-qa-item{flex:1 1 220px;min-width:160px;}
   .quick-add-row input[type="number"]{width:64px;}
   .quick-add-row .moeda-row{max-width:130px;}
+
+  .lote-card{border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--panel);}
+  .lote-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;cursor:pointer;font-size:.84rem;}
+  .lote-head:hover{background:var(--panel-2);}
+  .lote-head .lh-nome{font-weight:600;}
+  .lote-head .lh-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .lote-head .lh-right{display:flex;align-items:center;gap:12px;flex:0 0 auto;}
+  .lote-head .chevron{display:inline-block;transition:transform .15s;color:var(--muted);}
+  .lote-head .chevron.open{transform:rotate(180deg);}
+  .lote-body{border-top:1px solid var(--line);padding:8px 14px 12px;}
 
   .inner-nav{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
   .inner-nav button{background:var(--panel);border:1px solid var(--line-strong);border-radius:20px;
@@ -240,8 +251,9 @@
         <input type="text" id="pat-local" placeholder="Ex: Sala 2 — recepção">
       </div>
       <div class="field">
-        <label>Responsável</label>
-        <input type="text" id="pat-responsavel">
+        <label>Com quem está (responsável)</label>
+        <select id="pat-responsavel"><option value="">— Sem responsável / estoque —</option></select>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Só aparece aqui quem já está cadastrado no Organograma.</div>
       </div>
     </div>
     <div class="field-row">
@@ -262,6 +274,23 @@
     <div class="modal-foot">
       <button type="button" class="btn" id="pat-cancelar">Cancelar</button>
       <button type="button" class="btn primary" id="pat-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: transferir responsável de um item de patrimônio -->
+<div class="modal-backdrop" id="pat-transf-backdrop">
+  <div class="modal">
+    <h3>Transferir responsável</h3>
+    <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;" id="pat-transf-item-label"></p>
+    <div class="field">
+      <label>Novo responsável</label>
+      <select id="pat-transf-select"><option value="">— Sem responsável / estoque —</option></select>
+    </div>
+    <div class="msg-err" id="pat-transf-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-transf-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pat-transf-confirmar">Confirmar transferência</button>
     </div>
   </div>
 </div>
@@ -447,7 +476,22 @@
   let patFiltroTexto = '';
   let patFiltroCategoria = '';
   let patFiltroStatus = '';
+  let patFiltroSoMeu = false;
   let patEditandoId = null;
+  let patTransferindoId = null;
+  let orgUsuarios = [];   // [{uid, nome}] — espelho de tools/organograma, usado pro seletor de responsável
+
+  function optionsResponsavel(uidSelecionado){
+    return '<option value="">— Sem responsável / estoque —</option>' +
+      orgUsuarios.map(function(u){
+        return '<option value="' + u.uid + '"' + (u.uid === uidSelecionado ? ' selected' : '') + '>' + escapeHtml(u.nome) + '</option>';
+      }).join('');
+  }
+  function nomeDoUsuario(uid){
+    if (!uid) return '';
+    const u = orgUsuarios.find(function(x){ return x.uid === uid; });
+    return u ? u.nome : '';
+  }
 
   const STATUS_PAT_LABEL = { ativo: 'Ativo', manutencao: 'Em manutenção', emprestado: 'Emprestado', baixado: 'Baixado / descartado' };
 
@@ -467,6 +511,7 @@
           Object.keys(STATUS_PAT_LABEL).map(function(k){ return '<option value="' + k + '">' + STATUS_PAT_LABEL[k] + '</option>'; }).join('') +
         '</select>' +
         '<span class="spacer"></span>' +
+        '<button type="button" class="btn small" id="pat-toggle-meus">👤 Só o que está comigo</button>' +
       '</div>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr>' +
         '<th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th><th></th>' +
@@ -477,6 +522,17 @@
     document.getElementById('pat-filtro-status').addEventListener('change', function(e){ patFiltroStatus = e.target.value; renderPatrimonio(); });
     const novoBtn = document.getElementById('pat-novo-btn');
     if (novoBtn) novoBtn.addEventListener('click', function(){ abrirModalPatrimonio(null); });
+    document.getElementById('pat-toggle-meus').addEventListener('click', function(){
+      patFiltroSoMeu = !patFiltroSoMeu;
+      this.classList.toggle('toggle-on', patFiltroSoMeu);
+      renderPatrimonio();
+    });
+
+    db.collection('organograma').onSnapshot(function(snap){
+      orgUsuarios = snap.docs.map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() }; })
+        .filter(function(u){ return u.nome; })
+        .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
+    });
 
     db.collection('patrimonio').onSnapshot(function(snap){
       patItens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
@@ -490,6 +546,7 @@
   function renderPatrimonio(){
     if (!patCarregado) return;
     const filtrados = patItens.filter(function(it){
+      if (patFiltroSoMeu && it.responsavelUid !== meuUid) return false;
       if (patFiltroCategoria && it.categoria !== patFiltroCategoria) return false;
       if (patFiltroStatus && it.status !== patFiltroStatus) return false;
       if (patFiltroTexto) {
@@ -500,9 +557,13 @@
     }).sort(function(a, b){ return (a.codigo || '').localeCompare(b.codigo || ''); });
 
     const valorTotal = patItens.filter(function(it){ return it.status !== 'baixado'; }).reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
+    const meusItens = patItens.filter(function(it){ return it.responsavelUid === meuUid; });
+    const valorComigo = meusItens.reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
     document.getElementById('pat-stats').innerHTML =
       '<div class="stat-card"><div class="n">' + patItens.length + '</div><div class="l">itens cadastrados</div></div>' +
-      '<div class="stat-card"><div class="n">' + formatBRL(valorTotal) + '</div><div class="l">valor total (ativos)</div></div>';
+      '<div class="stat-card"><div class="n">' + formatBRL(valorTotal) + '</div><div class="l">valor total (ativos)</div></div>' +
+      '<div class="stat-card"><div class="n">' + meusItens.length + '</div><div class="l">itens com você</div></div>' +
+      '<div class="stat-card"><div class="n">' + formatBRL(valorComigo) + '</div><div class="l">valor com você</div></div>';
 
     const tbody = document.getElementById('pat-tbody');
     if (!filtrados.length) {
@@ -521,6 +582,7 @@
         '<td class="actions-cell">' +
           '<button type="button" class="btn small" data-pat-etiqueta="' + it.id + '">Etiqueta</button>' +
           '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
+          (souAdmin ? '<button type="button" class="btn small" data-pat-transferir="' + it.id + '">🔄 Transferir</button>' : '') +
           (souAdmin ? '<button type="button" class="btn small danger" data-pat-excluir="' + it.id + '">Excluir</button>' : '') +
         '</td>' +
       '</tr>';
@@ -531,6 +593,9 @@
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-editar]'), function(b){
       b.addEventListener('click', function(){ abrirModalPatrimonio(patItens.find(function(x){ return x.id === b.dataset.patEditar; })); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-transferir]'), function(b){
+      b.addEventListener('click', function(){ abrirModalTransferencia(patItens.find(function(x){ return x.id === b.dataset.patTransferir; })); });
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-excluir]'), function(b){
       b.addEventListener('click', function(){
@@ -567,7 +632,7 @@
     document.getElementById('pat-marca').value = item ? (item.marcaModelo || '') : '';
     document.getElementById('pat-serie').value = item ? (item.numeroSerie || '') : '';
     document.getElementById('pat-local').value = item ? (item.local || '') : '';
-    document.getElementById('pat-responsavel').value = item ? (item.responsavel || '') : '';
+    document.getElementById('pat-responsavel').innerHTML = optionsResponsavel(item ? item.responsavelUid : '');
     document.getElementById('pat-data-aquisicao').value = item ? (item.dataAquisicao || '') : '';
     patValorInput.value = item ? numeroParaMoedaInput(item.valor) : '';
     document.getElementById('pat-obs').value = item ? (item.observacoes || '') : '';
@@ -583,6 +648,7 @@
     const errEl = document.getElementById('pat-err');
     if (!nome) { errEl.textContent = 'Informe o nome/descrição do item.'; errEl.style.display = 'block'; return; }
 
+    const responsavelUid = document.getElementById('pat-responsavel').value;
     const dados = {
       nome: nome,
       categoria: document.getElementById('pat-categoria').value,
@@ -590,7 +656,8 @@
       marcaModelo: document.getElementById('pat-marca').value.trim(),
       numeroSerie: document.getElementById('pat-serie').value.trim(),
       local: document.getElementById('pat-local').value.trim(),
-      responsavel: document.getElementById('pat-responsavel').value.trim(),
+      responsavelUid: responsavelUid || null,
+      responsavel: nomeDoUsuario(responsavelUid),
       dataAquisicao: document.getElementById('pat-data-aquisicao').value || null,
       valor: moedaParaNumero(patValorInput.value),
       observacoes: document.getElementById('pat-obs').value.trim(),
@@ -616,6 +683,35 @@
       errEl.textContent = 'Erro ao salvar: ' + err.message;
       errEl.style.display = 'block';
     }).finally(function(){ salvarBtn.disabled = false; });
+  });
+
+  const patTransfBackdrop = document.getElementById('pat-transf-backdrop');
+
+  function abrirModalTransferencia(item){
+    if (!item) return;
+    patTransferindoId = item.id;
+    document.getElementById('pat-transf-item-label').textContent = item.nome + ' (' + item.codigo + ') — hoje com: ' + (item.responsavel || 'sem responsável / estoque');
+    document.getElementById('pat-transf-select').innerHTML = optionsResponsavel(item.responsavelUid);
+    document.getElementById('pat-transf-err').style.display = 'none';
+    patTransfBackdrop.classList.add('show');
+  }
+  function fecharModalTransferencia(){ patTransfBackdrop.classList.remove('show'); patTransferindoId = null; }
+  document.getElementById('pat-transf-cancelar').addEventListener('click', fecharModalTransferencia);
+  patTransfBackdrop.addEventListener('click', function(e){ if (e.target === patTransfBackdrop) fecharModalTransferencia(); });
+
+  document.getElementById('pat-transf-confirmar').addEventListener('click', function(){
+    if (!patTransferindoId) return;
+    const responsavelUid = document.getElementById('pat-transf-select').value;
+    const btn = document.getElementById('pat-transf-confirmar');
+    btn.disabled = true;
+    db.collection('patrimonio').doc(patTransferindoId).update({
+      responsavelUid: responsavelUid || null,
+      responsavel: nomeDoUsuario(responsavelUid),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){ fecharModalTransferencia(); }).catch(function(err){
+      document.getElementById('pat-transf-err').textContent = 'Erro ao transferir: ' + err.message;
+      document.getElementById('pat-transf-err').style.display = 'block';
+    }).finally(function(){ btn.disabled = false; });
   });
 
   function imprimirEtiqueta(it){
@@ -645,34 +741,49 @@
   let cpItens = [];
   let cpCarregado = false;
   let cpChegandoId = null;
+  let cpRascunho = [];   // itens ainda não enviados (só nesta sessão do navegador)
+  let lotesAbertos = {};   // loteId -> bool, sobrevive aos re-renders do onSnapshot
 
   const STATUS_CP_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado', recebido: 'Recebido' };
 
   function initCompras(){
     document.getElementById('cp-scroll').innerHTML =
       '<div class="mod-head">' +
-        '<div><h2>Controle de compras</h2><p>Adicione um item à lista e aprove ou reprove direto na linha. Depois de aprovada, registre a chegada na outra aba.</p></div>' +
+        '<div><h2>Controle de compras</h2><p>Monte sua lista, envie tudo de uma vez para aprovação e depois registre a chegada na outra aba.</p></div>' +
       '</div>' +
       '<div class="inner-nav" id="cp-inner-nav">' +
         '<button type="button" class="active" data-cp-view="aprovacao">Lista de compras</button>' +
         '<button type="button" data-cp-view="recebidas">Compras recebidas</button>' +
       '</div>' +
       '<div class="inner-view active" id="cp-view-aprovacao">' +
+        '<div class="section-title first">Sua lista (ainda não enviada)</div>' +
         '<div class="quick-add-row">' +
           '<input type="text" id="cp-qa-item" list="cp-qa-item-hist" placeholder="O que precisa comprar? (repete item já comprado e preenche sozinho)" autocomplete="off">' +
           '<datalist id="cp-qa-item-hist"></datalist>' +
           '<input type="number" id="cp-qa-qtd" min="1" value="1" title="Quantidade">' +
           '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-qa-valor" placeholder="0,00 (estimado)"></div>' +
-          '<button type="button" class="btn primary" id="cp-qa-add">+ Adicionar à lista</button>' +
+          '<button type="button" class="btn primary" id="cp-qa-add">+ Adicionar</button>' +
         '</div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th></th>' +
+        '</tr></thead><tbody id="cp-rascunho-tbody"></tbody></table></div>' +
+        '<div class="toolbar">' +
+          '<span class="spacer"></span>' +
+          '<button type="button" class="btn primary" id="cp-enviar-lote" disabled>📤 Enviar para aprovação</button>' +
+        '</div>' +
+
+        '<div class="section-title">Aguardando aprovação</div>' +
         '<div class="toolbar">' +
           '<span class="spacer"></span>' +
           '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir lista aprovada</button>' +
           '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir lista rejeitada</button>' +
         '</div>' +
+        '<div id="cp-lotes-pendentes"></div>' +
+
+        '<div class="section-title">Histórico de decisões</div>' +
         '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Data</th><th>Status</th><th></th>' +
-        '</tr></thead><tbody id="cp-tbody-lista"></tbody></table></div>' +
+          '<th>Item</th><th>Valor estimado</th><th>Solicitante</th><th>Status</th><th>Decisão</th>' +
+        '</tr></thead><tbody id="cp-tbody-historico"></tbody></table></div>' +
       '</div>' +
       '<div class="inner-view" id="cp-view-recebidas">' +
         '<div class="section-title first">Aprovadas, aguardando chegada</div>' +
@@ -702,25 +813,16 @@
     function adicionarNaLista(){
       const item = qaItemInput.value.trim();
       if (!item) { qaItemInput.focus(); return; }
-      const dados = {
+      cpRascunho.push({
         item: item,
         quantidade: parseInt(document.getElementById('cp-qa-qtd').value, 10) || 1,
-        valorEstimado: moedaParaNumero(qaValorInput.value),
-        solicitante: meuNome,
-        solicitanteUid: meuUid,
-        status: 'pendente',
-        dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      const btn = document.getElementById('cp-qa-add');
-      btn.disabled = true;
-      db.collection('compras').add(dados).then(function(){
-        qaItemInput.value = '';
-        document.getElementById('cp-qa-qtd').value = '1';
-        qaValorInput.value = '';
-        qaItemInput.focus();
-      }).catch(function(err){
-        alert('Erro ao adicionar: ' + err.message);
-      }).finally(function(){ btn.disabled = false; });
+        valorEstimado: moedaParaNumero(qaValorInput.value)
+      });
+      qaItemInput.value = '';
+      document.getElementById('cp-qa-qtd').value = '1';
+      qaValorInput.value = '';
+      qaItemInput.focus();
+      renderRascunho();
     }
     document.getElementById('cp-qa-add').addEventListener('click', adicionarNaLista);
     qaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarNaLista(); });
@@ -730,6 +832,9 @@
       document.getElementById('cp-qa-qtd').value = hist.quantidade;
       qaValorInput.value = numeroParaMoedaInput(hist.valor);
     });
+
+    document.getElementById('cp-enviar-lote').addEventListener('click', enviarRascunhoParaAprovacao);
+    renderRascunho();
 
     document.getElementById('cp-print-aprovadas').addEventListener('click', function(){
       imprimirListaCompras(['aprovado'], 'Lista aprovada');
@@ -766,6 +871,129 @@
     };
   }
 
+  function renderRascunho(){
+    const tbody = document.getElementById('cp-rascunho-tbody');
+    const enviarBtn = document.getElementById('cp-enviar-lote');
+    if (!tbody) return;
+    tbody.innerHTML = cpRascunho.length ? cpRascunho.map(function(r, idx){
+      return '<tr>' +
+        '<td>' + escapeHtml(r.item) + '</td>' +
+        '<td class="num">' + r.quantidade + '</td>' +
+        '<td class="num">' + formatBRL(r.valorEstimado) + '</td>' +
+        '<td class="actions-cell"><button type="button" class="btn small danger" data-rascunho-remover="' + idx + '">Remover</button></td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="4" class="empty-row">Nenhum item ainda. Use o campo acima pra ir montando a lista.</td></tr>';
+
+    enviarBtn.disabled = cpRascunho.length === 0;
+    enviarBtn.textContent = cpRascunho.length
+      ? ('📤 Enviar ' + cpRascunho.length + ' ite' + (cpRascunho.length > 1 ? 'ns' : 'm') + ' para aprovação')
+      : '📤 Enviar para aprovação';
+
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-rascunho-remover]'), function(b){
+      b.addEventListener('click', function(){
+        cpRascunho.splice(Number(b.dataset.rascunhoRemover), 1);
+        renderRascunho();
+      });
+    });
+  }
+
+  function enviarRascunhoParaAprovacao(){
+    if (!cpRascunho.length) return;
+    const loteId = meuUid + '_' + Date.now().toString(36);
+    const batch = db.batch();
+    cpRascunho.forEach(function(r){
+      const ref = db.collection('compras').doc();
+      batch.set(ref, {
+        item: r.item,
+        quantidade: r.quantidade,
+        valorEstimado: r.valorEstimado,
+        solicitante: meuNome,
+        solicitanteUid: meuUid,
+        loteId: loteId,
+        status: 'pendente',
+        dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    const btn = document.getElementById('cp-enviar-lote');
+    btn.disabled = true;
+    batch.commit().then(function(){
+      cpRascunho = [];
+      renderRascunho();
+    }).catch(function(err){
+      alert('Erro ao enviar a lista: ' + err.message);
+      btn.disabled = false;
+    });
+  }
+
+  // Agrupa as solicitações pendentes por loteId (uma "lista" enviada de uma vez
+  // via enviarRascunhoParaAprovacao) — itens antigos sem loteId (de antes dessa
+  // funcionalidade existir) viram um lote sozinho, usando o próprio id do item.
+  function renderLotesPendentes(pendentes){
+    const container = document.getElementById('cp-lotes-pendentes');
+    if (!container) return;
+    if (!pendentes.length) {
+      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma solicitação pendente.</div>';
+      return;
+    }
+    const grupos = {};
+    pendentes.forEach(function(it){
+      const chave = it.loteId || it.id;
+      if (!grupos[chave]) grupos[chave] = [];
+      grupos[chave].push(it);
+    });
+    const lotes = Object.keys(grupos).map(function(chave){
+      const itens = grupos[chave].slice().sort(function(a, b){ return (a.item || '').localeCompare(b.item || ''); });
+      return {
+        loteId: chave,
+        itens: itens,
+        solicitante: itens[0].solicitante,
+        dataEnvio: itens[0].dataSolicitacao,
+        totalEstimado: itens.reduce(function(acc, x){ return acc + (Number(x.valorEstimado) || 0); }, 0)
+      };
+    }).sort(function(a, b){ return tsMillis(b.dataEnvio) - tsMillis(a.dataEnvio); });
+
+    container.innerHTML = lotes.map(function(g){
+      const aberto = !!lotesAbertos[g.loteId];
+      return '<div class="lote-card">' +
+        '<div class="lote-head" data-lote-toggle="' + g.loteId + '">' +
+          '<div>' +
+            '<div class="lh-nome">' + escapeHtml(g.solicitante || '—') + ' — ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + '</div>' +
+            '<div class="lh-meta">Enviado em ' + formatDataBR(g.dataEnvio) + '</div>' +
+          '</div>' +
+          '<div class="lh-right">' +
+            '<span>' + formatBRL(g.totalEstimado) + '</span>' +
+            '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
+          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor estimado</th><th></th></tr></thead><tbody>' +
+            g.itens.map(function(it){
+              return '<tr>' +
+                '<td>' + escapeHtml(it.item) + '</td>' +
+                '<td class="num">' + (it.quantidade || 1) + '</td>' +
+                '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
+                '<td class="actions-cell">' +
+                  (souAdmin
+                    ? '<button type="button" class="btn small" data-cp-aprovar="' + it.id + '">Aprovar</button>' +
+                      '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
+                    : '<span class="pill pendente">Pendente</span>') +
+                '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(container.querySelectorAll('[data-lote-toggle]'), function(el){
+      el.addEventListener('click', function(){
+        const chave = el.dataset.loteToggle;
+        lotesAbertos[chave] = !lotesAbertos[chave];
+        renderCompras();
+      });
+    });
+  }
+
   function renderCompras(){
     if (!cpCarregado) return;
     const nomesUnicos = [];
@@ -778,33 +1006,23 @@
     const datalist = document.getElementById('cp-qa-item-hist');
     if (datalist) datalist.innerHTML = nomesUnicos.map(function(n){ return '<option value="' + escapeHtml(n) + '">'; }).join('');
 
-    const lista = cpItens.slice().sort(function(a, b){
-      const aPend = a.status === 'pendente', bPend = b.status === 'pendente';
-      if (aPend !== bPend) return aPend ? -1 : 1;
-      return tsMillis(b.dataSolicitacao) - tsMillis(a.dataSolicitacao);
-    });
+    const pendentes = cpItens.filter(function(x){ return x.status === 'pendente'; });
+    const historico = cpItens.filter(function(x){ return x.status === 'aprovado' || x.status === 'reprovado' || x.status === 'recebido'; })
+      .sort(function(a, b){ return tsMillis(b.dataAprovacao) - tsMillis(a.dataAprovacao); });
     const aguardandoChegada = cpItens.filter(function(x){ return x.status === 'aprovado'; });
     const recebidas = cpItens.filter(function(x){ return x.status === 'recebido'; }).sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
 
-    document.getElementById('cp-tbody-lista').innerHTML = lista.length ? lista.map(function(it){
+    renderLotesPendentes(pendentes);
+
+    document.getElementById('cp-tbody-historico').innerHTML = historico.length ? historico.map(function(it){
       return '<tr>' +
         '<td>' + escapeHtml(it.item) + '</td>' +
-        '<td class="num">' + (it.quantidade || 1) + '</td>' +
         '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
         '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
-        '<td>' + formatDataBR(it.dataSolicitacao) + '</td>' +
-        '<td><span class="pill ' + it.status + '" title="' + escapeHtml(it.status === 'reprovado' && it.motivoReprovacao ? it.motivoReprovacao : '') + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
-        '<td class="actions-cell">' +
-          (it.status === 'pendente' && souAdmin
-            ? '<button type="button" class="btn small" data-cp-aprovar="' + it.id + '">Aprovar</button>' +
-              '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
-            : '') +
-          (it.status === 'aprovado' && souAdmin
-            ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">✓ Comprado</button>'
-            : '') +
-        '</td>' +
+        '<td><span class="pill ' + it.status + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
+        '<td>' + (it.status === 'reprovado' && it.motivoReprovacao ? escapeHtml(it.motivoReprovacao) : (it.aprovadoPor ? 'por ' + escapeHtml(it.aprovadoPor) : '—')) + '</td>' +
       '</tr>';
-    }).join('') : '<tr><td colspan="7" class="empty-row">Nenhuma compra na lista ainda. Use o campo acima para adicionar.</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhum registro ainda.</td></tr>';
 
     document.getElementById('cp-tbody-aguardando').innerHTML = aguardandoChegada.length ? aguardandoChegada.map(function(it){
       return '<tr>' +
