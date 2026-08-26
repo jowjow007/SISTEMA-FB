@@ -208,6 +208,28 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
+    match /patrimonio/{itemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.nome is string && request.resource.data.nome.size() > 0
+                    && request.resource.data.codigo is string
+                    && request.resource.data.criadoPorUid == request.auth.uid;
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+    match /contadores/{contadorId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    match /compras/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.item is string && request.resource.data.item.size() > 0
+                    && request.resource.data.status == 'pendente'
+                    && request.resource.data.solicitanteUid == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }
 ```
@@ -235,6 +257,8 @@ service cloud.firestore {
 > As regras de `condoAprovadores` e `notificacoesGeradas` (usadas pela ferramenta **Condomínios**, aba "Notificações Prontas") implementam a aprovação de notificações extrajudiciais por condomínio. `condoAprovadores/{slug}` (`slug` = nome do condomínio simplificado, ex. `mirante-das-brisas`) guarda **um aprovador por condomínio** (`aprovadorUid`/`aprovadorNome`/`aprovadorEmail`) — só admin atribui (pela própria ferramenta, botão "⚙ Atribuir aprovadores"), qualquer logado lê (necessário para a tela descobrir quem é aprovador de quê). `notificacoesGeradas/{docId}` guarda cada notificação enviada pela aba "Gerar Notificação": `criadoPorUid` só pode criar com `status:'pendente'` e `tentativa:1`. `allow update` cobre exatamente dois casos: (1) o próprio criador reenviando uma notificação que **estava** `rejeitada`, sempre incrementando `tentativa` em exatamente 1 (é esse número que gera o "já rejeitada Nx antes" na tela); (2) o aprovador designado (ou admin) decidindo uma notificação `pendente`, travando que ele não altere `texto`/`criadoPorUid`/`condominioSlug` e exigindo `motivoRejeicao` preenchido sempre que a decisão for `rejeitada`. Ninguém mais pode escrever nesses documentos — nem o próprio criador altera uma notificação já aprovada. `allow read` é `isSignedIn()` simples (qualquer colaborador logado lê qualquer notificação) — mais aberto do que a leitura sempre foi para `update`/`decide`, de propósito: a partir de 2026-08-17 qualquer pessoa criando uma notificação nova precisa poder consultar o histórico de qualquer unidade (ver `unidadeResets` abaixo) para saber se ela é reincidente, mesmo sem ser aprovadora daquele condomínio nem autora das notificações antigas — só a permissão de **decidir** (aprovar/rejeitar) continua travada por `isAprovadorDoCondo`.
 
 > `unidadeResets/{docId}` (`docId` = condomínio+torre+apto simplificados) guarda, por unidade, a partir de qual data as ocorrências antigas deixam de contar para fins de reincidência (`resetAPartirDe`, `resetPorUid`/`resetPorNome`, `resetEm`) — usado quando a unidade troca de inquilino. Qualquer logado lê (necessário tanto para o aprovador consultar quanto para quem está lançando uma notificação nova ver se a unidade é reincidente); **só admin do Portal escreve** (`allow write: if isAdmin()`), pedido explícito do usuário ("quem pode zerar tem que ser somente eu administrador geral" — na prática, qualquer conta com `role:'admin'`, não uma pessoa específica por e-mail). Zerar nunca apaga as notificações antigas — elas continuam existindo em `notificacoesGeradas` para histórico/auditoria; o reset só faz a contagem de reincidência (calculada no cliente, em `aplicarCorteReset()`) ignorar tudo com `criadoEm` anterior à data escolhida.
+
+> As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: qualquer logado lê, cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) que gera o código de etiqueta (`PAT-0001`, `PAT-0002`, ...) via transação — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso. `compras/{docId}`: qualquer logado lê e cria sua própria solicitação (sempre como `status:'pendente'`, com `solicitanteUid` = o próprio uid); só admin atualiza — é o que cobre tanto aprovar/reprovar (grava `aprovadoPor`/`dataAprovacao`/`motivoReprovacao`) quanto lançar a chegada de uma compra já aprovada (grava `valorPago`/`fornecedor`/`notaFiscal`/`dataChegada`/`status:'recebido'`) — e só admin apaga.
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 

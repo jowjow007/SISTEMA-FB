@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestão — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --gold:#d8b25a;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+
+    --pend-bg:rgba(216,178,90,0.16); --pend-text:#f0cf8a;
+    --appr-bg:rgba(76,175,109,0.16); --appr-text:#8fe3ab;
+    --rej-bg:rgba(184,54,46,0.16);   --rej-text:#ffb4ae;
+    --recv-bg:rgba(150,175,201,0.16); --recv-text:#bcd3e6;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --silver:#756f6c;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+
+    --pend-bg:rgba(216,178,90,0.20); --pend-text:#7a5b12;
+    --appr-bg:rgba(76,175,109,0.20); --appr-text:#1f6b3a;
+    --rej-bg:rgba(184,54,46,0.14);   --rej-text:#8a241d;
+    --recv-bg:rgba(120,150,180,0.20); --recv-text:#2c4f6b;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;transition:background-color .2s,color .2s}
+  button{font-family:inherit;}
+  a{color:inherit;}
+
+  #shell{display:flex;flex-direction:column;height:100%;}
+
+  nav.subtabs{
+    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    display:flex;gap:2px;overflow-x:auto;padding:0 14px;
+  }
+  nav.subtabs button{
+    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
+  }
+  nav.subtabs button:hover{color:var(--paper);}
+  nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
+
+  #panels{position:relative;flex:1 1 auto;min-height:0;}
+  .panel{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
+  .panel.active{display:flex;}
+
+  .frame-toolbar{
+    flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
+    padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
+    font-size:.76rem;color:var(--muted);
+  }
+  .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+  .frame-toolbar a:hover{color:#fff;}
+  iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
+
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+
+  /* ---- módulo genérico ---- */
+  .mod-scroll{flex:1 1 auto;overflow-y:auto;padding:18px 24px 40px;}
+  .mod-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .mod-head h2{font-family:var(--font-display);font-weight:600;font-size:1.15rem;margin:0 0 3px;}
+  .mod-head p{margin:0;font-size:.8rem;color:var(--muted);}
+
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:10px 16px;min-width:140px;}
+  .stat-card .n{font-size:1.2rem;font-weight:700;font-family:var(--font-display);}
+  .stat-card .l{font-size:.72rem;color:var(--muted);margin-top:2px;}
+
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .toolbar input[type="text"],.toolbar select{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:8px 11px;color:var(--paper);font-size:.82rem;
+  }
+  .toolbar input[type="text"]{flex:1 1 220px;max-width:320px;}
+  .toolbar .spacer{flex:1 1 auto;}
+
+  .btn{background:var(--panel-2);color:var(--paper);border:1px solid var(--line-strong);border-radius:8px;
+    padding:9px 16px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;}
+  .btn:hover{border-color:var(--silver);}
+  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.primary:hover{background:var(--red-bright);}
+  .btn.danger{background:transparent;border-color:var(--rej-text);color:var(--rej-text);}
+  .btn.danger:hover{background:var(--rej-bg);}
+  .btn.small{padding:5px 10px;font-size:.74rem;}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+
+  .section-title{font-size:.9rem;font-weight:700;margin:22px 0 8px;color:var(--paper);}
+  .section-title.first{margin-top:0;}
+
+  table.data-table{width:100%;border-collapse:collapse;font-size:.82rem;background:var(--panel);border-radius:10px;overflow:hidden;}
+  table.data-table th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+    padding:9px 12px;border-bottom:1px solid var(--line-strong);background:var(--panel-2);}
+  table.data-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  table.data-table tr:last-child td{border-bottom:none;}
+  table.data-table td.num{font-variant-numeric:tabular-nums;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;}
+  .table-wrap table.data-table{border-radius:0;}
+  .empty-row{padding:30px 12px;text-align:center;color:var(--muted);font-size:.82rem;}
+
+  .pill{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.02em;border-radius:20px;padding:3px 10px;white-space:nowrap;}
+  .pill.pendente{background:var(--pend-bg);color:var(--pend-text);}
+  .pill.aprovado{background:var(--appr-bg);color:var(--appr-text);}
+  .pill.reprovado{background:var(--rej-bg);color:var(--rej-text);}
+  .pill.recebido{background:var(--recv-bg);color:var(--recv-text);}
+  .pill.ativo{background:var(--appr-bg);color:var(--appr-text);}
+  .pill.manutencao{background:var(--pend-bg);color:var(--pend-text);}
+  .pill.baixado{background:var(--rej-bg);color:var(--rej-text);}
+  .pill.emprestado{background:var(--recv-bg);color:var(--recv-text);}
+
+  .actions-cell{display:flex;gap:6px;flex-wrap:wrap;}
+
+  .inner-nav{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .inner-nav button{background:var(--panel);border:1px solid var(--line-strong);border-radius:20px;
+    padding:7px 16px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;}
+  .inner-nav button.active{background:var(--red);border-color:var(--red);color:#fff;}
+  .inner-view{display:none;}
+  .inner-view.active{display:block;}
+
+  /* ---- modal ---- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(10,7,7,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+  .modal-backdrop.show{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:22px 24px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;}
+  .modal h3{font-family:var(--font-display);font-weight:600;margin:0 0 14px;font-size:1.05rem;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:.76rem;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .field input,.field select,.field textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:9px 11px;color:var(--paper);font-size:.85rem;font-family:inherit;
+  }
+  .field textarea{resize:vertical;min-height:60px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;min-width:0;}
+  .moeda-row{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:0 11px;}
+  .moeda-row span{color:var(--muted);font-size:.85rem;}
+  .moeda-row input{border:none;background:transparent;padding:9px 0;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .msg-err{color:var(--rej-text);font-size:.8rem;margin-top:6px;display:none;}
+  .msg-ok{color:var(--appr-text);font-size:.8rem;margin-top:6px;display:none;}
+
+  @media(max-width:720px){
+    .field-row{flex-direction:column;}
+    .mod-scroll{padding:14px 14px 34px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <nav class="subtabs" id="subtabs-nav"></nav>
+  <div id="panels"></div>
+</div>
+
+<!-- Modal: novo/editar item de patrimônio -->
+<div class="modal-backdrop" id="pat-modal-backdrop">
+  <div class="modal">
+    <h3 id="pat-modal-titulo">Novo item</h3>
+    <div class="field">
+      <label>Nome / descrição *</label>
+      <input type="text" id="pat-nome" placeholder="Ex: Notebook Dell Latitude">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Categoria</label>
+        <select id="pat-categoria">
+          <option value="Informática">Informática</option>
+          <option value="Mobiliário">Mobiliário</option>
+          <option value="Eletrônico/Eletrodoméstico">Eletrônico/Eletrodoméstico</option>
+          <option value="Veículo">Veículo</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="pat-status">
+          <option value="ativo">Ativo</option>
+          <option value="manutencao">Em manutenção</option>
+          <option value="emprestado">Emprestado</option>
+          <option value="baixado">Baixado / descartado</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Marca / modelo</label>
+        <input type="text" id="pat-marca" placeholder="Ex: Dell Latitude 5420">
+      </div>
+      <div class="field">
+        <label>Número de série</label>
+        <input type="text" id="pat-serie">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Local / setor</label>
+        <input type="text" id="pat-local" placeholder="Ex: Sala 2 — recepção">
+      </div>
+      <div class="field">
+        <label>Responsável</label>
+        <input type="text" id="pat-responsavel">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Data de aquisição</label>
+        <input type="date" id="pat-data-aquisicao">
+      </div>
+      <div class="field">
+        <label>Valor (R$)</label>
+        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="pat-valor" placeholder="0,00"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Observações</label>
+      <textarea id="pat-obs"></textarea>
+    </div>
+    <div class="msg-err" id="pat-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pat-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nova solicitação de compra -->
+<div class="modal-backdrop" id="cp-solic-backdrop">
+  <div class="modal">
+    <h3>Nova solicitação de compra</h3>
+    <div class="field">
+      <label>Item *</label>
+      <input type="text" id="cp-s-item" placeholder="O que precisa ser comprado?">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Quantidade</label>
+        <input type="number" id="cp-s-qtd" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Valor estimado (R$)</label>
+        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-s-valor" placeholder="0,00"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Fornecedor sugerido</label>
+      <input type="text" id="cp-s-fornecedor">
+    </div>
+    <div class="field">
+      <label>Justificativa / observações</label>
+      <textarea id="cp-s-justificativa"></textarea>
+    </div>
+    <div class="msg-err" id="cp-s-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="cp-s-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="cp-s-salvar">Enviar para aprovação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: registrar chegada -->
+<div class="modal-backdrop" id="cp-cheg-backdrop">
+  <div class="modal">
+    <h3>Registrar chegada da compra</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;" id="cp-cheg-item-label"></p>
+    <div class="field-row">
+      <div class="field">
+        <label>Valor pago (R$)</label>
+        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-c-valor" placeholder="0,00"></div>
+      </div>
+      <div class="field">
+        <label>Data de chegada</label>
+        <input type="date" id="cp-c-data">
+      </div>
+    </div>
+    <div class="field">
+      <label>Fornecedor</label>
+      <input type="text" id="cp-c-fornecedor">
+    </div>
+    <div class="field">
+      <label>Nota fiscal</label>
+      <input type="text" id="cp-c-nf">
+    </div>
+    <div class="field">
+      <label>Observações</label>
+      <textarea id="cp-c-obs"></textarea>
+    </div>
+    <div class="msg-err" id="cp-c-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="cp-c-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="cp-c-salvar">Confirmar chegada</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.body.innerHTML = '<div id="gate" style="display:block;">Configuração pendente: firebase-config.js não foi preenchido.</div>';
+    return;
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let souAdmin = false;
+  let meuNome = '';
+  let meuUid = null;
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function formatarMoedaInput(v){
+    const d = String(v || '').replace(/\D/g, '');
+    if (!d) return '';
+    return (parseInt(d, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function ligarMascaraMoeda(input){
+    input.addEventListener('input', function(){ input.value = formatarMoedaInput(input.value); });
+  }
+  function moedaParaNumero(v){
+    const d = String(v || '').replace(/\D/g, '');
+    return d ? parseInt(d, 10) / 100 : 0;
+  }
+  function numeroParaMoedaInput(n){
+    if (!n) return '';
+    return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function formatBRL(n){
+    return Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+  function formatDataBR(isoOuTimestamp){
+    if (!isoOuTimestamp) return '—';
+    let d;
+    if (typeof isoOuTimestamp === 'string') {
+      const partes = isoOuTimestamp.split('-');
+      d = partes.length === 3 ? new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2])) : new Date(isoOuTimestamp);
+    } else if (isoOuTimestamp.toDate) {
+      d = isoOuTimestamp.toDate();
+    } else {
+      d = new Date(isoOuTimestamp);
+    }
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('pt-BR');
+  }
+  function hojeISO(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // ============================================================
+  // Sub-abas
+  // ============================================================
+  const SUBTABS = [
+    { id: 'colaboradores', label: 'Colaboradores', type: 'iframe', url: '../organograma/index.html' },
+    { id: 'patrimonio', label: 'Patrimônio', type: 'patrimonio' },
+    { id: 'compras', label: 'Controle de Compras', type: 'compras' }
+  ];
+
+  // O Portal (index.html raiz) pode restringir quais sub-abas este usuário
+  // enxerga, passando ?_subtabs=colaboradores,patrimonio na URL do iframe.
+  // Sem esse parâmetro, mostra tudo.
+  function subtabsPermitidas(){
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('_subtabs');
+    if (!raw) return SUBTABS;
+    const permitidas = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    const filtradas = SUBTABS.filter(function(t){ return permitidas.indexOf(t.id) !== -1; });
+    return filtradas.length ? filtradas : SUBTABS;
+  }
+
+  const ATIVAS = subtabsPermitidas();
+  const nav = document.getElementById('subtabs-nav');
+  const panelsEl = document.getElementById('panels');
+  const iframes = {};
+  const initedModulo = {};
+
+  ATIVAS.forEach(function(t){
+    const btn = document.createElement('button');
+    btn.textContent = t.label;
+    btn.dataset.subtabId = t.id;
+    btn.addEventListener('click', function(){ selectSubtab(t.id); });
+    nav.appendChild(btn);
+
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.id = 'panel-' + t.id;
+    if (t.type === 'patrimonio') panel.innerHTML = '<div class="mod-scroll" id="pat-scroll"></div>';
+    if (t.type === 'compras') panel.innerHTML = '<div class="mod-scroll" id="cp-scroll"></div>';
+    panelsEl.appendChild(panel);
+  });
+
+  function selectSubtab(id){
+    Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.dataset.subtabId === id);
+    });
+    Array.prototype.forEach.call(panelsEl.querySelectorAll('.panel'), function(p){
+      p.classList.remove('active');
+    });
+    const panel = document.getElementById('panel-' + id);
+    if (!panel) return;
+    panel.classList.add('active');
+
+    const t = ATIVAS.filter(function(x){ return x.id === id; })[0];
+    if (t && t.type === 'iframe' && !iframes[id]) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'frame-toolbar';
+      toolbar.innerHTML = '<span>' + escapeHtml(t.label) + '</span>' +
+        '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ↗</a>';
+      const ifr = document.createElement('iframe');
+      ifr.className = 'tool-frame';
+      ifr.src = t.url;
+      panel.insertBefore(ifr, panel.firstChild);
+      panel.insertBefore(toolbar, ifr);
+      iframes[id] = ifr;
+    } else if (t && t.type === 'patrimonio' && !initedModulo.patrimonio) {
+      initedModulo.patrimonio = true;
+      initPatrimonio();
+    } else if (t && t.type === 'compras' && !initedModulo.compras) {
+      initedModulo.compras = true;
+      initCompras();
+    }
+  }
+
+  // ============================================================
+  // Módulo: Patrimônio
+  // ============================================================
+  let patItens = [];
+  let patCarregado = false;
+  let patFiltroTexto = '';
+  let patFiltroCategoria = '';
+  let patFiltroStatus = '';
+  let patEditandoId = null;
+
+  const STATUS_PAT_LABEL = { ativo: 'Ativo', manutencao: 'Em manutenção', emprestado: 'Emprestado', baixado: 'Baixado / descartado' };
+
+  function initPatrimonio(){
+    document.getElementById('pat-scroll').innerHTML =
+      '<div class="mod-head">' +
+        '<div><h2>Patrimônio do escritório</h2><p>Inventário dos itens etiquetados fisicamente. Cada item recebe um código único para a etiqueta.</p></div>' +
+        '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
+      '</div>' +
+      '<div class="stat-row" id="pat-stats"></div>' +
+      '<div class="toolbar">' +
+        '<input type="text" id="pat-busca" placeholder="Buscar por nome, local, responsável…">' +
+        '<select id="pat-filtro-categoria"><option value="">Todas as categorias</option>' +
+          ['Informática','Mobiliário','Eletrônico/Eletrodoméstico','Veículo','Outros'].map(function(c){ return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join('') +
+        '</select>' +
+        '<select id="pat-filtro-status"><option value="">Todos os status</option>' +
+          Object.keys(STATUS_PAT_LABEL).map(function(k){ return '<option value="' + k + '">' + STATUS_PAT_LABEL[k] + '</option>'; }).join('') +
+        '</select>' +
+        '<span class="spacer"></span>' +
+      '</div>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+        '<th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th><th></th>' +
+      '</tr></thead><tbody id="pat-tbody"></tbody></table></div>';
+
+    document.getElementById('pat-busca').addEventListener('input', function(e){ patFiltroTexto = e.target.value.trim().toLowerCase(); renderPatrimonio(); });
+    document.getElementById('pat-filtro-categoria').addEventListener('change', function(e){ patFiltroCategoria = e.target.value; renderPatrimonio(); });
+    document.getElementById('pat-filtro-status').addEventListener('change', function(e){ patFiltroStatus = e.target.value; renderPatrimonio(); });
+    const novoBtn = document.getElementById('pat-novo-btn');
+    if (novoBtn) novoBtn.addEventListener('click', function(){ abrirModalPatrimonio(null); });
+
+    db.collection('patrimonio').onSnapshot(function(snap){
+      patItens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      patCarregado = true;
+      renderPatrimonio();
+    }, function(err){
+      document.getElementById('pat-tbody').innerHTML = '<tr><td colspan="8" class="empty-row">Erro ao carregar patrimônio: ' + escapeHtml(err.message) + '</td></tr>';
+    });
+  }
+
+  function renderPatrimonio(){
+    if (!patCarregado) return;
+    const filtrados = patItens.filter(function(it){
+      if (patFiltroCategoria && it.categoria !== patFiltroCategoria) return false;
+      if (patFiltroStatus && it.status !== patFiltroStatus) return false;
+      if (patFiltroTexto) {
+        const alvo = [it.nome, it.local, it.responsavel, it.marcaModelo, it.codigo].join(' ').toLowerCase();
+        if (alvo.indexOf(patFiltroTexto) === -1) return false;
+      }
+      return true;
+    }).sort(function(a, b){ return (a.codigo || '').localeCompare(b.codigo || ''); });
+
+    const valorTotal = patItens.filter(function(it){ return it.status !== 'baixado'; }).reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
+    document.getElementById('pat-stats').innerHTML =
+      '<div class="stat-card"><div class="n">' + patItens.length + '</div><div class="l">itens cadastrados</div></div>' +
+      '<div class="stat-card"><div class="n">' + formatBRL(valorTotal) + '</div><div class="l">valor total (ativos)</div></div>';
+
+    const tbody = document.getElementById('pat-tbody');
+    if (!filtrados.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-row">' + (patItens.length ? 'Nenhum item encontrado para esse filtro.' : 'Nenhum item cadastrado ainda.') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtrados.map(function(it){
+      return '<tr>' +
+        '<td style="font-variant-numeric:tabular-nums;color:var(--muted);">' + escapeHtml(it.codigo || '—') + '</td>' +
+        '<td>' + escapeHtml(it.nome) + (it.marcaModelo ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(it.categoria || '—') + '</td>' +
+        '<td>' + escapeHtml(it.local || '—') + '</td>' +
+        '<td>' + escapeHtml(it.responsavel || '—') + '</td>' +
+        '<td class="num">' + formatBRL(it.valor) + '</td>' +
+        '<td><span class="pill ' + (it.status || 'ativo') + '">' + (STATUS_PAT_LABEL[it.status] || 'Ativo') + '</span></td>' +
+        '<td class="actions-cell">' +
+          '<button type="button" class="btn small" data-pat-etiqueta="' + it.id + '">Etiqueta</button>' +
+          '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
+          (souAdmin ? '<button type="button" class="btn small danger" data-pat-excluir="' + it.id + '">Excluir</button>' : '') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-etiqueta]'), function(b){
+      b.addEventListener('click', function(){ imprimirEtiqueta(patItens.find(function(x){ return x.id === b.dataset.patEtiqueta; })); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-editar]'), function(b){
+      b.addEventListener('click', function(){ abrirModalPatrimonio(patItens.find(function(x){ return x.id === b.dataset.patEditar; })); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-excluir]'), function(b){
+      b.addEventListener('click', function(){
+        const it = patItens.find(function(x){ return x.id === b.dataset.patExcluir; });
+        if (!it) return;
+        if (!confirm('Excluir o item "' + it.nome + '" (' + it.codigo + ') do patrimônio? Essa ação não pode ser desfeita.')) return;
+        db.collection('patrimonio').doc(it.id).delete();
+      });
+    });
+  }
+
+  function proximoCodigoPatrimonio(){
+    const ref = db.collection('contadores').doc('patrimonio');
+    return db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        const atual = (doc.exists && doc.data().seq) || 0;
+        const novo = atual + 1;
+        tx.set(ref, { seq: novo }, { merge: true });
+        return novo;
+      });
+    }).then(function(novo){ return 'PAT-' + String(novo).padStart(4, '0'); });
+  }
+
+  const patBackdrop = document.getElementById('pat-modal-backdrop');
+  const patValorInput = document.getElementById('pat-valor');
+  ligarMascaraMoeda(patValorInput);
+
+  function abrirModalPatrimonio(item){
+    patEditandoId = item ? item.id : null;
+    document.getElementById('pat-modal-titulo').textContent = item ? ('Editar item — ' + item.codigo) : 'Novo item';
+    document.getElementById('pat-nome').value = item ? (item.nome || '') : '';
+    document.getElementById('pat-categoria').value = item ? (item.categoria || 'Informática') : 'Informática';
+    document.getElementById('pat-status').value = item ? (item.status || 'ativo') : 'ativo';
+    document.getElementById('pat-marca').value = item ? (item.marcaModelo || '') : '';
+    document.getElementById('pat-serie').value = item ? (item.numeroSerie || '') : '';
+    document.getElementById('pat-local').value = item ? (item.local || '') : '';
+    document.getElementById('pat-responsavel').value = item ? (item.responsavel || '') : '';
+    document.getElementById('pat-data-aquisicao').value = item ? (item.dataAquisicao || '') : '';
+    patValorInput.value = item ? numeroParaMoedaInput(item.valor) : '';
+    document.getElementById('pat-obs').value = item ? (item.observacoes || '') : '';
+    document.getElementById('pat-err').style.display = 'none';
+    patBackdrop.classList.add('show');
+  }
+  function fecharModalPatrimonio(){ patBackdrop.classList.remove('show'); patEditandoId = null; }
+  document.getElementById('pat-cancelar').addEventListener('click', fecharModalPatrimonio);
+  patBackdrop.addEventListener('click', function(e){ if (e.target === patBackdrop) fecharModalPatrimonio(); });
+
+  document.getElementById('pat-salvar').addEventListener('click', function(){
+    const nome = document.getElementById('pat-nome').value.trim();
+    const errEl = document.getElementById('pat-err');
+    if (!nome) { errEl.textContent = 'Informe o nome/descrição do item.'; errEl.style.display = 'block'; return; }
+
+    const dados = {
+      nome: nome,
+      categoria: document.getElementById('pat-categoria').value,
+      status: document.getElementById('pat-status').value,
+      marcaModelo: document.getElementById('pat-marca').value.trim(),
+      numeroSerie: document.getElementById('pat-serie').value.trim(),
+      local: document.getElementById('pat-local').value.trim(),
+      responsavel: document.getElementById('pat-responsavel').value.trim(),
+      dataAquisicao: document.getElementById('pat-data-aquisicao').value || null,
+      valor: moedaParaNumero(patValorInput.value),
+      observacoes: document.getElementById('pat-obs').value.trim(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const salvarBtn = document.getElementById('pat-salvar');
+    salvarBtn.disabled = true;
+
+    let p;
+    if (patEditandoId) {
+      p = db.collection('patrimonio').doc(patEditandoId).update(dados);
+    } else {
+      dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+      dados.criadoPor = meuNome;
+      dados.criadoPorUid = meuUid;
+      p = proximoCodigoPatrimonio().then(function(codigo){
+        dados.codigo = codigo;
+        return db.collection('patrimonio').add(dados);
+      });
+    }
+    p.then(function(){ fecharModalPatrimonio(); }).catch(function(err){
+      errEl.textContent = 'Erro ao salvar: ' + err.message;
+      errEl.style.display = 'block';
+    }).finally(function(){ salvarBtn.disabled = false; });
+  });
+
+  function imprimirEtiqueta(it){
+    if (!it) return;
+    const w = window.open('', '_blank', 'width=420,height=300');
+    if (!w) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
+    w.document.write(
+      '<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta — ' + escapeHtml(it.codigo) + '</title>' +
+      '<style>' +
+      '@page{size:70mm 35mm;margin:0;}' +
+      'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;display:flex;align-items:center;justify-content:center;height:100vh;}' +
+      '.etiqueta{width:66mm;height:31mm;border:1px solid #000;border-radius:3mm;padding:3mm 4mm;box-sizing:border-box;text-align:center;}' +
+      '.etiqueta .fb{font-size:8pt;letter-spacing:.06em;text-transform:uppercase;color:#444;}' +
+      '.etiqueta .cod{font-size:20pt;font-weight:800;letter-spacing:.03em;margin:2mm 0;}' +
+      '.etiqueta .nome{font-size:9pt;color:#222;line-height:1.2;overflow:hidden;max-height:11mm;}' +
+      '</style></head><body>' +
+      '<div class="etiqueta"><div class="fb">Fonseca e Braga</div><div class="cod">' + escapeHtml(it.codigo) + '</div><div class="nome">' + escapeHtml(it.nome) + '</div></div>' +
+      '<script>window.onload=function(){window.print();};<' + '/script>' +
+      '</body></html>'
+    );
+    w.document.close();
+  }
+
+  // ============================================================
+  // Módulo: Controle de Compras
+  // ============================================================
+  let cpItens = [];
+  let cpCarregado = false;
+  let cpChegandoId = null;
+
+  const STATUS_CP_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado', recebido: 'Recebido' };
+
+  function initCompras(){
+    document.getElementById('cp-scroll').innerHTML =
+      '<div class="mod-head">' +
+        '<div><h2>Controle de compras</h2><p>Solicitação, aprovação e lançamento das compras que chegaram ao escritório.</p></div>' +
+        '<button type="button" class="btn primary" id="cp-nova-btn">+ Nova solicitação</button>' +
+      '</div>' +
+      '<div class="inner-nav" id="cp-inner-nav">' +
+        '<button type="button" class="active" data-cp-view="aprovacao">Aprovação</button>' +
+        '<button type="button" data-cp-view="recebidas">Compras recebidas</button>' +
+      '</div>' +
+      '<div class="inner-view active" id="cp-view-aprovacao">' +
+        '<div class="section-title first">Aguardando aprovação</div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Data</th><th></th>' +
+        '</tr></thead><tbody id="cp-tbody-pendentes"></tbody></table></div>' +
+        '<div class="section-title">Histórico de aprovação</div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Item</th><th>Valor estimado</th><th>Solicitante</th><th>Status</th><th>Decisão</th>' +
+        '</tr></thead><tbody id="cp-tbody-historico"></tbody></table></div>' +
+      '</div>' +
+      '<div class="inner-view" id="cp-view-recebidas">' +
+        '<div class="section-title first">Aprovadas, aguardando chegada</div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Aprovado por</th><th></th>' +
+        '</tr></thead><tbody id="cp-tbody-aguardando"></tbody></table></div>' +
+        '<div class="stat-row" id="cp-stats-recebidas"></div>' +
+        '<div class="section-title">Compras recebidas</div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Item</th><th>Valor pago</th><th>Fornecedor</th><th>Nota fiscal</th><th>Chegou em</th>' +
+        '</tr></thead><tbody id="cp-tbody-recebidas"></tbody></table></div>' +
+      '</div>';
+
+    document.getElementById('cp-nova-btn').addEventListener('click', abrirModalSolicitacao);
+    Array.prototype.forEach.call(document.getElementById('cp-inner-nav').querySelectorAll('button'), function(b){
+      b.addEventListener('click', function(){
+        Array.prototype.forEach.call(document.getElementById('cp-inner-nav').querySelectorAll('button'), function(x){ x.classList.remove('active'); });
+        b.classList.add('active');
+        document.getElementById('cp-view-aprovacao').classList.toggle('active', b.dataset.cpView === 'aprovacao');
+        document.getElementById('cp-view-recebidas').classList.toggle('active', b.dataset.cpView === 'recebidas');
+      });
+    });
+
+    db.collection('compras').orderBy('dataSolicitacao', 'desc').onSnapshot(function(snap){
+      cpItens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      cpCarregado = true;
+      renderCompras();
+    }, function(err){
+      document.getElementById('cp-tbody-pendentes').innerHTML = '<tr><td colspan="6" class="empty-row">Erro ao carregar: ' + escapeHtml(err.message) + '</td></tr>';
+    });
+  }
+
+  function renderCompras(){
+    if (!cpCarregado) return;
+    const pendentes = cpItens.filter(function(x){ return x.status === 'pendente'; });
+    const historico = cpItens.filter(function(x){ return x.status === 'aprovado' || x.status === 'reprovado' || x.status === 'recebido'; });
+    const aguardandoChegada = cpItens.filter(function(x){ return x.status === 'aprovado'; });
+    const recebidas = cpItens.filter(function(x){ return x.status === 'recebido'; }).sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
+
+    document.getElementById('cp-tbody-pendentes').innerHTML = pendentes.length ? pendentes.map(function(it){
+      return '<tr>' +
+        '<td>' + escapeHtml(it.item) + (it.justificativa ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.justificativa) + '</span>' : '') + '</td>' +
+        '<td class="num">' + (it.quantidade || 1) + '</td>' +
+        '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
+        '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
+        '<td>' + formatDataBR(it.dataSolicitacao) + '</td>' +
+        '<td class="actions-cell">' +
+          (souAdmin
+            ? '<button type="button" class="btn small" data-cp-aprovar="' + it.id + '">Aprovar</button>' +
+              '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
+            : '<span class="pill pendente">Aguardando aprovação</span>') +
+        '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="6" class="empty-row">Nenhuma solicitação pendente.</td></tr>';
+
+    document.getElementById('cp-tbody-historico').innerHTML = historico.length ? historico.map(function(it){
+      return '<tr>' +
+        '<td>' + escapeHtml(it.item) + '</td>' +
+        '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
+        '<td>' + escapeHtml(it.solicitante || '—') + '</td>' +
+        '<td><span class="pill ' + it.status + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
+        '<td>' + (it.status === 'reprovado' && it.motivoReprovacao ? escapeHtml(it.motivoReprovacao) : (it.aprovadoPor ? 'por ' + escapeHtml(it.aprovadoPor) : '—')) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhum registro ainda.</td></tr>';
+
+    document.getElementById('cp-tbody-aguardando').innerHTML = aguardandoChegada.length ? aguardandoChegada.map(function(it){
+      return '<tr>' +
+        '<td>' + escapeHtml(it.item) + '</td>' +
+        '<td class="num">' + (it.quantidade || 1) + '</td>' +
+        '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
+        '<td>' + escapeHtml(it.aprovadoPor || '—') + '</td>' +
+        '<td class="actions-cell">' + (souAdmin ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">Registrar chegada</button>' : '<span class="pill aprovado">Aprovado</span>') + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhuma compra aprovada aguardando chegada.</td></tr>';
+
+    const totalGasto = recebidas.reduce(function(acc, it){ return acc + (Number(it.valorPago) || 0); }, 0);
+    document.getElementById('cp-stats-recebidas').innerHTML =
+      '<div class="stat-card"><div class="n">' + recebidas.length + '</div><div class="l">compras recebidas</div></div>' +
+      '<div class="stat-card"><div class="n">' + formatBRL(totalGasto) + '</div><div class="l">total gasto</div></div>';
+
+    document.getElementById('cp-tbody-recebidas').innerHTML = recebidas.length ? recebidas.map(function(it){
+      return '<tr>' +
+        '<td>' + escapeHtml(it.item) + '</td>' +
+        '<td class="num">' + formatBRL(it.valorPago) + '</td>' +
+        '<td>' + escapeHtml(it.fornecedor || '—') + '</td>' +
+        '<td>' + escapeHtml(it.notaFiscal || '—') + '</td>' +
+        '<td>' + formatDataBR(it.dataChegada) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhuma compra recebida ainda.</td></tr>';
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cp-aprovar]'), function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Aprovar esta solicitação de compra?')) return;
+        db.collection('compras').doc(b.dataset.cpAprovar).update({
+          status: 'aprovado', aprovadoPor: meuNome, dataAprovacao: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cp-reprovar]'), function(b){
+      b.addEventListener('click', function(){
+        const motivo = prompt('Motivo da reprovação (opcional):') || '';
+        db.collection('compras').doc(b.dataset.cpReprovar).update({
+          status: 'reprovado', aprovadoPor: meuNome, dataAprovacao: firebase.firestore.FieldValue.serverTimestamp(), motivoReprovacao: motivo.trim()
+        });
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cp-chegou]'), function(b){
+      b.addEventListener('click', function(){ abrirModalChegada(cpItens.find(function(x){ return x.id === b.dataset.cpChegou; })); });
+    });
+  }
+
+  const cpSolicBackdrop = document.getElementById('cp-solic-backdrop');
+  const cpSValorInput = document.getElementById('cp-s-valor');
+  ligarMascaraMoeda(cpSValorInput);
+
+  function abrirModalSolicitacao(){
+    document.getElementById('cp-s-item').value = '';
+    document.getElementById('cp-s-qtd').value = '1';
+    cpSValorInput.value = '';
+    document.getElementById('cp-s-fornecedor').value = '';
+    document.getElementById('cp-s-justificativa').value = '';
+    document.getElementById('cp-s-err').style.display = 'none';
+    cpSolicBackdrop.classList.add('show');
+  }
+  function fecharModalSolicitacao(){ cpSolicBackdrop.classList.remove('show'); }
+  document.getElementById('cp-s-cancelar').addEventListener('click', fecharModalSolicitacao);
+  cpSolicBackdrop.addEventListener('click', function(e){ if (e.target === cpSolicBackdrop) fecharModalSolicitacao(); });
+
+  document.getElementById('cp-s-salvar').addEventListener('click', function(){
+    const item = document.getElementById('cp-s-item').value.trim();
+    const errEl = document.getElementById('cp-s-err');
+    if (!item) { errEl.textContent = 'Informe o item a ser comprado.'; errEl.style.display = 'block'; return; }
+
+    const dados = {
+      item: item,
+      quantidade: parseInt(document.getElementById('cp-s-qtd').value, 10) || 1,
+      valorEstimado: moedaParaNumero(cpSValorInput.value),
+      fornecedorSugerido: document.getElementById('cp-s-fornecedor').value.trim(),
+      justificativa: document.getElementById('cp-s-justificativa').value.trim(),
+      solicitante: meuNome,
+      solicitanteUid: meuUid,
+      status: 'pendente',
+      dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const salvarBtn = document.getElementById('cp-s-salvar');
+    salvarBtn.disabled = true;
+    db.collection('compras').add(dados).then(function(){ fecharModalSolicitacao(); }).catch(function(err){
+      errEl.textContent = 'Erro ao enviar: ' + err.message;
+      errEl.style.display = 'block';
+    }).finally(function(){ salvarBtn.disabled = false; });
+  });
+
+  const cpChegBackdrop = document.getElementById('cp-cheg-backdrop');
+  const cpCValorInput = document.getElementById('cp-c-valor');
+  ligarMascaraMoeda(cpCValorInput);
+
+  function abrirModalChegada(it){
+    if (!it) return;
+    cpChegandoId = it.id;
+    document.getElementById('cp-cheg-item-label').textContent = it.item + ' — qtd ' + (it.quantidade || 1) + ' (estimado ' + formatBRL(it.valorEstimado) + ')';
+    cpCValorInput.value = numeroParaMoedaInput(it.valorEstimado);
+    document.getElementById('cp-c-data').value = hojeISO();
+    document.getElementById('cp-c-fornecedor').value = it.fornecedorSugerido || '';
+    document.getElementById('cp-c-nf').value = '';
+    document.getElementById('cp-c-obs').value = '';
+    document.getElementById('cp-c-err').style.display = 'none';
+    cpChegBackdrop.classList.add('show');
+  }
+  function fecharModalChegada(){ cpChegBackdrop.classList.remove('show'); cpChegandoId = null; }
+  document.getElementById('cp-c-cancelar').addEventListener('click', fecharModalChegada);
+  cpChegBackdrop.addEventListener('click', function(e){ if (e.target === cpChegBackdrop) fecharModalChegada(); });
+
+  document.getElementById('cp-c-salvar').addEventListener('click', function(){
+    if (!cpChegandoId) return;
+    const dados = {
+      status: 'recebido',
+      valorPago: moedaParaNumero(cpCValorInput.value),
+      dataChegada: document.getElementById('cp-c-data').value || hojeISO(),
+      fornecedor: document.getElementById('cp-c-fornecedor').value.trim(),
+      notaFiscal: document.getElementById('cp-c-nf').value.trim(),
+      observacoesRecebimento: document.getElementById('cp-c-obs').value.trim(),
+      recebidoPor: meuNome
+    };
+    const salvarBtn = document.getElementById('cp-c-salvar');
+    salvarBtn.disabled = true;
+    db.collection('compras').doc(cpChegandoId).update(dados).then(function(){ fecharModalChegada(); }).catch(function(err){
+      document.getElementById('cp-c-err').textContent = 'Erro ao confirmar: ' + err.message;
+      document.getElementById('cp-c-err').style.display = 'block';
+    }).finally(function(){ salvarBtn.disabled = false; });
+  });
+
+  // ============================================================
+  // Auth
+  // ============================================================
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      document.getElementById('shell').innerHTML = '<div id="gate" style="display:block;">Faça login no Portal Fonseca e Braga para acessar a Gestão.</div>';
+      return;
+    }
+    meuUid = user.uid;
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      souAdmin = !!doc.exists && doc.data().role === 'admin';
+      meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
+      selectSubtab(ATIVAS[0].id);
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
