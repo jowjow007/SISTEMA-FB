@@ -225,10 +225,21 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && request.resource.data.item is string && request.resource.data.item.size() > 0
-                    && request.resource.data.status == 'pendente'
+                    && request.resource.data.status in ['rascunho', 'pendente']
                     && request.resource.data.solicitanteUid == request.auth.uid;
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isAdmin() || (
+                      isSignedIn()
+                      && resource.data.solicitanteUid == request.auth.uid
+                      && resource.data.status == 'rascunho'
+                      && request.resource.data.status == 'pendente'
+                      && request.resource.data.item == resource.data.item
+                      && request.resource.data.solicitanteUid == resource.data.solicitanteUid
+                    );
+      allow delete: if isAdmin() || (
+                      isSignedIn()
+                      && resource.data.solicitanteUid == request.auth.uid
+                      && resource.data.status == 'rascunho'
+                    );
     }
   }
 }
@@ -258,7 +269,9 @@ service cloud.firestore {
 
 > `unidadeResets/{docId}` (`docId` = condomínio+torre+apto simplificados) guarda, por unidade, a partir de qual data as ocorrências antigas deixam de contar para fins de reincidência (`resetAPartirDe`, `resetPorUid`/`resetPorNome`, `resetEm`) — usado quando a unidade troca de inquilino. Qualquer logado lê (necessário tanto para o aprovador consultar quanto para quem está lançando uma notificação nova ver se a unidade é reincidente); **só admin do Portal escreve** (`allow write: if isAdmin()`), pedido explícito do usuário ("quem pode zerar tem que ser somente eu administrador geral" — na prática, qualquer conta com `role:'admin'`, não uma pessoa específica por e-mail). Zerar nunca apaga as notificações antigas — elas continuam existindo em `notificacoesGeradas` para histórico/auditoria; o reset só faz a contagem de reincidência (calculada no cliente, em `aplicarCorteReset()`) ignorar tudo com `criadoEm` anterior à data escolhida.
 
-> As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: qualquer logado lê, cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) que gera o código de etiqueta (`PAT-0001`, `PAT-0002`, ...) via transação — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso. `compras/{docId}`: qualquer logado lê e cria sua própria solicitação (sempre como `status:'pendente'`, com `solicitanteUid` = o próprio uid); só admin atualiza — é o que cobre tanto aprovar/reprovar (grava `aprovadoPor`/`dataAprovacao`/`motivoReprovacao`) quanto lançar a chegada de uma compra já aprovada (grava `valorPago`/`fornecedor`/`notaFiscal`/`dataChegada`/`status:'recebido'`) — e só admin apaga.
+> As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: qualquer logado lê, cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) que gera o código de etiqueta (`PAT-0001`, `PAT-0002`, ...) via transação — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso.
+>
+> `compras/{docId}` tem um ciclo de vida em 2 fases: **rascunho** (a pessoa vai montando a lista aos poucos, salvo item a item) e **enviada** (`pendente` → `aprovado`/`reprovado` → `recebido`). `allow create` permite `status` só como `'rascunho'` ou `'pendente'`, sempre com `solicitanteUid` = o próprio uid. A pessoa dona da lista pode **apagar** os próprios itens só enquanto estiverem em `'rascunho'` (botão "Remover" na ferramenta, antes de enviar) — depois de enviada, `resource.data.status` deixa de ser `'rascunho'` e essa cláusula para de valer, travando a edição. O envio em si ("📤 Enviar para aprovação") é a única coisa que um não-admin pode **atualizar**: a regra permite a transição exata `rascunho`→`pendente` no próprio item (`solicitanteUid` e `item` continuam iguais), mais nada. Daí em diante, só admin atualiza — cobre aprovar/reprovar (grava `aprovadoPor`/`dataAprovacao`/`motivoReprovacao`), lançar a chegada de uma compra aprovada (`valorPago`/`fornecedor`/`notaFiscal`/`dataChegada`/`status:'recebido'`) e apagar uma lista inteira já gerada (botão "🗑 Excluir lista", admin only).
 
 ## 4. Criar o primeiro administrador (bootstrap manual)
 

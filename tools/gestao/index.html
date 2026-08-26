@@ -151,9 +151,9 @@
     background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
     padding:8px 11px;color:var(--paper);font-size:.84rem;
   }
-  .quick-add-row input[type="text"]#cp-qa-item{flex:1 1 220px;min-width:160px;}
-  .quick-add-row input[type="number"]{width:64px;}
-  .quick-add-row .moeda-row{max-width:130px;}
+  .quick-add-row input[type="text"].item-input{flex:1 1 220px;min-width:160px;}
+  .quick-add-row input[type="number"]{width:64px;flex:0 0 auto;}
+  .quick-add-row .moeda-row{flex:0 0 130px;}
 
   .lote-card{border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--panel);}
   .lote-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;cursor:pointer;font-size:.84rem;}
@@ -188,7 +188,7 @@
   .field-row .field{flex:1;min-width:0;}
   .moeda-row{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:0 11px;min-width:0;}
   .moeda-row span{color:var(--muted);font-size:.85rem;flex:0 0 auto;}
-  .moeda-row input{border:none;background:transparent;padding:9px 0;width:100%;min-width:0;}
+  .moeda-row input{border:none;background:transparent;padding:9px 0;flex:1 1 0%;min-width:0;}
   .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
   .msg-err{color:var(--rej-text);font-size:.8rem;margin-top:6px;display:none;}
   .msg-ok{color:var(--appr-text);font-size:.8rem;margin-top:6px;display:none;}
@@ -741,7 +741,6 @@
   let cpItens = [];
   let cpCarregado = false;
   let cpChegandoId = null;
-  let cpRascunho = [];   // itens ainda não enviados (só nesta sessão do navegador)
   let lotesAbertos = {};   // loteId -> bool, sobrevive aos re-renders do onSnapshot
 
   const STATUS_CP_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado', recebido: 'Recebido' };
@@ -756,25 +755,22 @@
         '<button type="button" data-cp-view="recebidas">Compras recebidas</button>' +
       '</div>' +
       '<div class="inner-view active" id="cp-view-aprovacao">' +
-        '<div class="section-title first">Sua lista (ainda não enviada)</div>' +
+        '<div class="section-title first">Iniciar uma nova lista</div>' +
         '<div class="field" style="max-width:420px;">' +
-          '<input type="text" id="cp-qa-nome-lista" placeholder="Nome da lista (ex: Lista de agosto de 2026)">' +
-          '<div class="msg-err" id="cp-qa-nome-err">Dê um nome pra lista antes de enviar.</div>' +
+          '<input type="text" id="cp-nova-nome" placeholder="Nome da lista (ex: Lista de agosto de 2026)">' +
         '</div>' +
         '<div class="quick-add-row">' +
-          '<input type="text" id="cp-qa-item" list="cp-qa-item-hist" placeholder="O que precisa comprar? (repete item já comprado e preenche sozinho)" autocomplete="off">' +
+          '<input type="text" class="item-input" id="cp-nova-item" list="cp-qa-item-hist" placeholder="Primeiro item da lista…" autocomplete="off">' +
           '<datalist id="cp-qa-item-hist"></datalist>' +
-          '<input type="number" id="cp-qa-qtd" min="1" value="1" title="Quantidade">' +
-          '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-qa-valor" placeholder="0,00 (estimado)"></div>' +
-          '<button type="button" class="btn primary" id="cp-qa-add">+ Adicionar</button>' +
+          '<input type="number" id="cp-nova-qtd" min="1" value="1" title="Quantidade">' +
+          '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-nova-valor" placeholder="0,00 (estimado)"></div>' +
+          '<button type="button" class="btn primary" id="cp-nova-criar">+ Criar lista</button>' +
         '</div>' +
-        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th></th>' +
-        '</tr></thead><tbody id="cp-rascunho-tbody"></tbody></table></div>' +
-        '<div class="toolbar">' +
-          '<span class="spacer"></span>' +
-          '<button type="button" class="btn primary" id="cp-enviar-lote" disabled>📤 Enviar para aprovação</button>' +
-        '</div>' +
+        '<div class="msg-err" id="cp-nova-err">Preencha o nome da lista e o primeiro item.</div>' +
+
+        '<div class="section-title">Suas listas em andamento</div>' +
+        '<p style="font-size:.78rem;color:var(--muted);margin:-6px 0 12px;">Fica salvo automaticamente a cada item — pode fechar e voltar depois. Só some daqui quando você enviar para aprovação (e aí não dá mais pra editar).</p>' +
+        '<div id="cp-rascunhos-usuario"></div>' +
 
         '<div class="section-title">Listas de compras</div>' +
         '<div class="toolbar">' +
@@ -805,38 +801,59 @@
       });
     });
 
-    const qaValorInput = document.getElementById('cp-qa-valor');
-    ligarMascaraMoeda(qaValorInput);
-    const qaItemInput = document.getElementById('cp-qa-item');
+    const novaValorInput = document.getElementById('cp-nova-valor');
+    ligarMascaraMoeda(novaValorInput);
+    const novaItemInput = document.getElementById('cp-nova-item');
+    const novaNomeInput = document.getElementById('cp-nova-nome');
 
-    function adicionarNaLista(){
-      const item = qaItemInput.value.trim();
-      if (!item) { qaItemInput.focus(); return; }
-      cpRascunho.push({
+    function criarNovaLista(){
+      const nome = novaNomeInput.value.trim();
+      const item = novaItemInput.value.trim();
+      const errEl = document.getElementById('cp-nova-err');
+      if (!nome || !item) {
+        errEl.textContent = 'Preencha o nome da lista e o primeiro item.';
+        errEl.style.display = 'block';
+        (nome ? novaItemInput : novaNomeInput).focus();
+        return;
+      }
+      errEl.style.display = 'none';
+
+      const loteId = meuUid + '_' + Date.now().toString(36);
+      const btn = document.getElementById('cp-nova-criar');
+      btn.disabled = true;
+      db.collection('compras').add({
         item: item,
-        quantidade: parseInt(document.getElementById('cp-qa-qtd').value, 10) || 1,
-        valorEstimado: moedaParaNumero(qaValorInput.value)
-      });
-      qaItemInput.value = '';
-      document.getElementById('cp-qa-qtd').value = '1';
-      qaValorInput.value = '';
-      qaItemInput.focus();
-      renderRascunho();
+        quantidade: parseInt(document.getElementById('cp-nova-qtd').value, 10) || 1,
+        valorEstimado: moedaParaNumero(novaValorInput.value),
+        solicitante: meuNome,
+        solicitanteUid: meuUid,
+        loteId: loteId,
+        loteNome: nome,
+        status: 'rascunho',
+        dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){
+        novaNomeInput.value = '';
+        novaItemInput.value = '';
+        document.getElementById('cp-nova-qtd').value = '1';
+        novaValorInput.value = '';
+        novaItemInput.focus();
+        lotesAbertos[loteId] = true;
+      }).catch(function(err){
+        errEl.textContent = 'Erro ao criar a lista: ' + err.message;
+        errEl.style.display = 'block';
+      }).finally(function(){ btn.disabled = false; });
     }
-    document.getElementById('cp-qa-add').addEventListener('click', adicionarNaLista);
-    qaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarNaLista(); });
-    qaItemInput.addEventListener('input', function(){
-      const hist = historicoDoItem(qaItemInput.value);
+    document.getElementById('cp-nova-criar').addEventListener('click', criarNovaLista);
+    novaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') criarNovaLista(); });
+    novaItemInput.addEventListener('input', function(){
+      const hist = historicoDoItem(novaItemInput.value);
       if (!hist) return;
-      document.getElementById('cp-qa-qtd').value = hist.quantidade;
-      qaValorInput.value = numeroParaMoedaInput(hist.valor);
+      document.getElementById('cp-nova-qtd').value = hist.quantidade;
+      novaValorInput.value = numeroParaMoedaInput(hist.valor);
     });
-
-    document.getElementById('cp-enviar-lote').addEventListener('click', enviarRascunhoParaAprovacao);
-    document.getElementById('cp-qa-nome-lista').addEventListener('input', function(){
-      document.getElementById('cp-qa-nome-err').style.display = 'none';
+    novaNomeInput.addEventListener('input', function(){
+      document.getElementById('cp-nova-err').style.display = 'none';
     });
-    renderRascunho();
 
     document.getElementById('cp-print-aprovadas').addEventListener('click', function(){
       imprimirListaCompras(['aprovado'], 'Lista aprovada');
@@ -850,7 +867,7 @@
       cpCarregado = true;
       renderCompras();
     }, function(err){
-      document.getElementById('cp-tbody-lista').innerHTML = '<tr><td colspan="7" class="empty-row">Erro ao carregar: ' + escapeHtml(err.message) + '</td></tr>';
+      document.getElementById('cp-rascunhos-usuario').innerHTML = '<div class="empty-row">Erro ao carregar: ' + escapeHtml(err.message) + '</div>';
     });
   }
 
@@ -873,83 +890,155 @@
     };
   }
 
-  function renderRascunho(){
-    const tbody = document.getElementById('cp-rascunho-tbody');
-    const enviarBtn = document.getElementById('cp-enviar-lote');
-    if (!tbody) return;
-    tbody.innerHTML = cpRascunho.length ? cpRascunho.map(function(r, idx){
-      return '<tr>' +
-        '<td>' + escapeHtml(r.item) + '</td>' +
-        '<td class="num">' + r.quantidade + '</td>' +
-        '<td class="num">' + formatBRL(r.valorEstimado) + '</td>' +
-        '<td class="actions-cell"><button type="button" class="btn small danger" data-rascunho-remover="' + idx + '">Remover</button></td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="4" class="empty-row">Nenhum item ainda. Use o campo acima pra ir montando a lista.</td></tr>';
+  // Rascunhos são salvos no Firestore item a item (status:'rascunho') assim
+  // que a lista é criada — sobrevive a queda de internet/computador desligar.
+  // Só o próprio autor vê e edita os rascunhos dele; ao enviar, todos os itens
+  // daquele loteId viram 'pendente' de uma vez e a lista some desta seção.
+  function renderRascunhosUsuario(){
+    const container = document.getElementById('cp-rascunhos-usuario');
+    if (!container) return;
+    const meus = cpItens.filter(function(x){ return x.status === 'rascunho' && x.solicitanteUid === meuUid; });
+    if (!meus.length) {
+      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma lista em andamento. Crie uma acima.</div>';
+      return;
+    }
+    const grupos = {};
+    meus.forEach(function(it){
+      const chave = it.loteId || it.id;
+      if (!grupos[chave]) grupos[chave] = [];
+      grupos[chave].push(it);
+    });
+    const listas = Object.keys(grupos).map(function(chave){
+      const itens = grupos[chave];
+      return {
+        loteId: chave,
+        nome: itens[0].loteNome || 'Lista sem nome',
+        itens: itens,
+        totalEstimado: itens.reduce(function(acc, x){ return acc + (Number(x.valorEstimado) || 0); }, 0)
+      };
+    }).sort(function(a, b){ return tsMillis(b.itens[0].dataSolicitacao) - tsMillis(a.itens[0].dataSolicitacao); });
 
-    enviarBtn.disabled = cpRascunho.length === 0;
-    enviarBtn.textContent = cpRascunho.length
-      ? ('📤 Enviar ' + cpRascunho.length + ' ite' + (cpRascunho.length > 1 ? 'ns' : 'm') + ' para aprovação')
-      : '📤 Enviar para aprovação';
+    container.innerHTML = listas.map(function(g){
+      const aberto = lotesAbertos[g.loteId] !== false;   // rascunho recém-criado já abre sozinho
+      return '<div class="lote-card">' +
+        '<div class="lote-head" data-lote-toggle="' + g.loteId + '">' +
+          '<div>' +
+            '<div class="lh-nome">' + escapeHtml(g.nome) + '</div>' +
+            '<div class="lh-meta">' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + '</div>' +
+          '</div>' +
+          '<div class="lh-right">' +
+            '<span>' + formatBRL(g.totalEstimado) + '</span>' +
+            '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
+          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor estimado</th><th></th></tr></thead><tbody>' +
+            g.itens.map(function(it){
+              return '<tr>' +
+                '<td>' + escapeHtml(it.item) + '</td>' +
+                '<td class="num">' + (it.quantidade || 1) + '</td>' +
+                '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
+                '<td class="actions-cell"><button type="button" class="btn small danger" data-rascunho-item-remover="' + it.id + '">Remover</button></td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table>' +
+          '<div class="quick-add-row" style="margin-top:8px;">' +
+            '<input type="text" class="item-input rascunho-add-item" list="cp-qa-item-hist" data-lote="' + g.loteId + '" placeholder="Adicionar outro item…">' +
+            '<input type="number" class="rascunho-add-qtd" data-lote="' + g.loteId + '" min="1" value="1">' +
+            '<div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" class="rascunho-add-valor" data-lote="' + g.loteId + '" placeholder="0,00"></div>' +
+            '<button type="button" class="btn small" data-rascunho-add-btn="' + g.loteId + '">+ Adicionar</button>' +
+          '</div>' +
+          '<div class="toolbar" style="margin-top:8px;">' +
+            '<span class="spacer"></span>' +
+            '<button type="button" class="btn primary small" data-rascunho-enviar="' + g.loteId + '">📤 Enviar ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' para aprovação</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
 
-    Array.prototype.forEach.call(tbody.querySelectorAll('[data-rascunho-remover]'), function(b){
+    Array.prototype.forEach.call(container.querySelectorAll('[data-lote-toggle]'), function(el){
+      el.addEventListener('click', function(){
+        const chave = el.dataset.loteToggle;
+        const estaAberto = lotesAbertos[chave] !== false;   // mesma regra do render acima: aberto por padrão
+        lotesAbertos[chave] = !estaAberto;
+        renderCompras();
+      });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-item-remover]'), function(b){
       b.addEventListener('click', function(){
-        cpRascunho.splice(Number(b.dataset.rascunhoRemover), 1);
-        renderRascunho();
+        db.collection('compras').doc(b.dataset.rascunhoItemRemover).delete();
       });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('.rascunho-add-valor'), function(input){
+      ligarMascaraMoeda(input);
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('.rascunho-add-item'), function(input){
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarItemAoRascunho(input.dataset.lote); });
+      input.addEventListener('input', function(){
+        const hist = historicoDoItem(input.value);
+        if (!hist) return;
+        const loteId = input.dataset.lote;
+        container.querySelector('.rascunho-add-qtd[data-lote="' + loteId + '"]').value = hist.quantidade;
+        container.querySelector('.rascunho-add-valor[data-lote="' + loteId + '"]').value = numeroParaMoedaInput(hist.valor);
+      });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-add-btn]'), function(b){
+      b.addEventListener('click', function(){ adicionarItemAoRascunho(b.dataset.rascunhoAddBtn); });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-enviar]'), function(b){
+      b.addEventListener('click', function(){ enviarListaParaAprovacao(b.dataset.rascunhoEnviar); });
     });
   }
 
-  function enviarRascunhoParaAprovacao(){
-    if (!cpRascunho.length) return;
-    const nomeListaInput = document.getElementById('cp-qa-nome-lista');
-    const nomeLista = nomeListaInput.value.trim();
-    const nomeErrEl = document.getElementById('cp-qa-nome-err');
-    if (!nomeLista) { nomeErrEl.style.display = 'block'; nomeListaInput.focus(); return; }
-    nomeErrEl.style.display = 'none';
+  function adicionarItemAoRascunho(loteId){
+    const container = document.getElementById('cp-rascunhos-usuario');
+    const itemInput = container.querySelector('.rascunho-add-item[data-lote="' + loteId + '"]');
+    const qtdInput = container.querySelector('.rascunho-add-qtd[data-lote="' + loteId + '"]');
+    const valorInput = container.querySelector('.rascunho-add-valor[data-lote="' + loteId + '"]');
+    const item = itemInput.value.trim();
+    if (!item) { itemInput.focus(); return; }
+    const lista = cpItens.find(function(x){ return x.loteId === loteId; });
+    db.collection('compras').add({
+      item: item,
+      quantidade: parseInt(qtdInput.value, 10) || 1,
+      valorEstimado: moedaParaNumero(valorInput.value),
+      solicitante: meuNome,
+      solicitanteUid: meuUid,
+      loteId: loteId,
+      loteNome: lista ? lista.loteNome : '',
+      status: 'rascunho',
+      dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(err){ alert('Erro ao adicionar item: ' + err.message); });
+  }
 
-    const loteId = meuUid + '_' + Date.now().toString(36);
+  function enviarListaParaAprovacao(loteId){
+    const itens = cpItens.filter(function(x){ return x.loteId === loteId && x.status === 'rascunho'; });
+    if (!itens.length) return;
+    if (!confirm('Enviar esta lista (' + itens.length + ' ite' + (itens.length > 1 ? 'ns' : 'm') + ') para aprovação? Depois de enviada, não é mais possível editar.')) return;
     const batch = db.batch();
-    cpRascunho.forEach(function(r){
-      const ref = db.collection('compras').doc();
-      batch.set(ref, {
-        item: r.item,
-        quantidade: r.quantidade,
-        valorEstimado: r.valorEstimado,
-        solicitante: meuNome,
-        solicitanteUid: meuUid,
-        loteId: loteId,
-        loteNome: nomeLista,
-        status: 'pendente',
-        dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    const agora = firebase.firestore.FieldValue.serverTimestamp();
+    itens.forEach(function(it){
+      batch.update(db.collection('compras').doc(it.id), { status: 'pendente', dataEnvio: agora });
     });
-    const btn = document.getElementById('cp-enviar-lote');
-    btn.disabled = true;
-    batch.commit().then(function(){
-      cpRascunho = [];
-      nomeListaInput.value = '';
-      renderRascunho();
-    }).catch(function(err){
-      alert('Erro ao enviar a lista: ' + err.message);
-      btn.disabled = false;
-    });
+    batch.commit().catch(function(err){ alert('Erro ao enviar a lista: ' + err.message); });
   }
 
-  // Agrupa TODAS as solicitações (pendentes, aprovadas, reprovadas, recebidas)
-  // por loteId (uma "lista" nomeada e enviada de uma vez via
-  // enviarRascunhoParaAprovacao) — a consulta passa a ser só por lista: clica
-  // no nome da lista e vê os itens de dentro. Itens antigos sem loteId/loteNome
-  // (de antes dessa funcionalidade existir) viram uma lista avulsa sozinha,
-  // usando o próprio id do item como chave.
+  // Agrupa as solicitações JÁ ENVIADAS (pendentes, aprovadas, reprovadas,
+  // recebidas — nunca rascunho, esses ficam só em "Suas listas em andamento")
+  // por loteId — a consulta passa a ser só por lista: clica no nome da lista
+  // e vê os itens de dentro. Itens antigos sem loteId/loteNome (de antes dessa
+  // funcionalidade existir) viram uma lista avulsa sozinha, usando o próprio
+  // id do item como chave.
   function renderListasDeCompras(){
     const container = document.getElementById('cp-listas-compras');
     if (!container) return;
-    if (!cpItens.length) {
+    const enviados = cpItens.filter(function(x){ return x.status !== 'rascunho'; });
+    if (!enviados.length) {
       container.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma lista enviada ainda.</div>';
       return;
     }
     const grupos = {};
-    cpItens.forEach(function(it){
+    enviados.forEach(function(it){
       const chave = it.loteId || it.id;
       if (!grupos[chave]) grupos[chave] = [];
       grupos[chave].push(it);
@@ -965,7 +1054,7 @@
         nome: itens[0].loteNome || ('Solicitação avulsa — ' + itens[0].item),
         itens: itens,
         solicitante: itens[0].solicitante,
-        dataEnvio: itens[0].dataSolicitacao,
+        dataEnvio: itens[0].dataEnvio || itens[0].dataSolicitacao,
         totalEstimado: itens.reduce(function(acc, x){ return acc + (Number(x.valorEstimado) || 0); }, 0),
         pendentes: pendentes, aprovados: aprovados, reprovados: reprovados, recebidos: recebidos
       };
@@ -987,6 +1076,7 @@
           '</div>' +
           '<div class="lh-right">' +
             '<span>' + formatBRL(g.totalEstimado) + '</span>' +
+            (souAdmin ? '<button type="button" class="btn small danger" data-lista-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">🗑 Excluir lista</button>' : '') +
             '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
           '</div>' +
         '</div>' +
@@ -1014,6 +1104,12 @@
       '</div>';
     }).join('');
 
+    Array.prototype.forEach.call(container.querySelectorAll('[data-lista-excluir]'), function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        excluirListaCompleta(b.dataset.listaExcluir, b.dataset.listaNome, Number(b.dataset.listaQtd));
+      });
+    });
     Array.prototype.forEach.call(container.querySelectorAll('[data-lote-toggle]'), function(el){
       el.addEventListener('click', function(){
         const chave = el.dataset.loteToggle;
@@ -1021,6 +1117,14 @@
         renderCompras();
       });
     });
+  }
+
+  function excluirListaCompleta(loteId, nomeLista, qtdItens){
+    if (!confirm('Excluir a lista "' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ')? Essa ação não pode ser desfeita.')) return;
+    const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
+    const batch = db.batch();
+    itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
+    batch.commit().catch(function(err){ alert('Erro ao excluir a lista: ' + err.message); });
   }
 
   function renderCompras(){
@@ -1038,6 +1142,7 @@
     const aguardandoChegada = cpItens.filter(function(x){ return x.status === 'aprovado'; });
     const recebidas = cpItens.filter(function(x){ return x.status === 'recebido'; }).sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
 
+    renderRascunhosUsuario();
     renderListasDeCompras();
 
     document.getElementById('cp-tbody-aguardando').innerHTML = aguardandoChegada.length ? aguardandoChegada.map(function(it){
