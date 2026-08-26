@@ -666,8 +666,8 @@
         '</div>' +
         '<div class="toolbar">' +
           '<span class="spacer"></span>' +
-          '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir aprovações</button>' +
-          '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir reprovações</button>' +
+          '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir lista aprovada</button>' +
+          '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir lista rejeitada</button>' +
         '</div>' +
         '<div class="table-wrap"><table class="data-table"><thead><tr>' +
           '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Solicitante</th><th>Data</th><th>Status</th><th></th>' +
@@ -725,10 +725,10 @@
     qaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarNaLista(); });
 
     document.getElementById('cp-print-aprovadas').addEventListener('click', function(){
-      imprimirListaCompras(['aprovado', 'recebido'], 'Compras aprovadas');
+      imprimirListaCompras(['aprovado'], 'Lista aprovada');
     });
     document.getElementById('cp-print-reprovadas').addEventListener('click', function(){
-      imprimirListaCompras(['reprovado'], 'Compras reprovadas');
+      imprimirListaCompras(['reprovado'], 'Lista rejeitada');
     });
 
     db.collection('compras').orderBy('dataSolicitacao', 'desc').onSnapshot(function(snap){
@@ -762,6 +762,9 @@
           (it.status === 'pendente' && souAdmin
             ? '<button type="button" class="btn small" data-cp-aprovar="' + it.id + '">Aprovar</button>' +
               '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
+            : '') +
+          (it.status === 'aprovado' && souAdmin
+            ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">✓ Comprado</button>'
             : '') +
         '</td>' +
       '</tr>';
