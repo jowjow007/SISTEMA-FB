@@ -664,7 +664,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v131</span>
+      <span class="version-tag">v132</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1125,6 +1125,8 @@
   let pendingCount = 0;   // usuários (não-admin) com zero abas liberadas
   let comprasPendentesCount = 0;   // solicitações de compra aguardando aprovação (pisca a aba "Gestão" pro admin)
   let comprasBadgeSubscribed = false;
+  let anotacoesPendentesCount = 0;   // tarefa enviada por outra pessoa, aguardando eu concluir (pisca a aba "Minhas Anotações")
+  let anotacoesBadgeSubscribed = false;
 
   // ---------- Erros PT-BR ----------
   function traduzErro(code){
@@ -1406,6 +1408,7 @@
     subscribeTabsCatalog();
     subscribeMobileHomeBadges();
     if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
+    subscribeAnotacoesPendentes();
     verificarAvisoFotoObrigatoria();
   }
 
@@ -1426,6 +1429,33 @@
       const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
       const ehGestao = !!t && /gest[ãa]o/i.test(t.label || '');
       b.classList.toggle('tab-blink', ehGestao && comprasPendentesCount > 0);
+    });
+  }
+
+  // Pisca a aba "Minhas Anotações" pra QUALQUER usuário (não só admin) enquanto
+  // houver tarefa enviada por outra pessoa ainda não concluída por ela — para
+  // de piscar assim que ela marcar como feita (ver tools/minhas-anotacoes).
+  function subscribeAnotacoesPendentes(){
+    if (anotacoesBadgeSubscribed) return;
+    anotacoesBadgeSubscribed = true;
+    db.collection('tarefasEnviadas').where('destinatarioUid', '==', currentProfile.uid).onSnapshot(function(snap){
+      anotacoesPendentesCount = snap.docs.filter(function(d){
+        const s = d.data().status;
+        return s === 'pendente' || s === 'reprovada';
+      }).length;
+      updateAnotacoesBlink();
+    }, function(){
+      anotacoesPendentesCount = 0;
+      updateAnotacoesBlink();
+    });
+  }
+
+  function updateAnotacoesBlink(){
+    const btns = Array.prototype.slice.call(els.tabstrip.querySelectorAll('.tab-btn'));
+    btns.forEach(function(b){
+      const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
+      const ehAnotacoes = !!t && /anota/i.test(t.label || '');
+      b.classList.toggle('tab-blink', ehAnotacoes && anotacoesPendentesCount > 0);
     });
   }
 
@@ -1764,6 +1794,7 @@
       els.tabstrip.appendChild(btn);
     });
     if (currentProfile.role === 'admin') updateGestaoBlink();
+    updateAnotacoesBlink();
 
     if (currentProfile.role === 'admin') {
       const div = document.createElement('div');

@@ -118,6 +118,18 @@
   }
   .nova-lista-btn:hover{color:var(--paper);border-color:var(--silver);}
 
+  /* Lista/coluna virtual "Recebidas" — tarefas enviadas por outra pessoa, cor diferente das listas normais */
+  .lista-btn.recebidas{border-color:rgba(224,120,32,.5);background:rgba(224,120,32,.10);}
+  .lista-btn.recebidas:hover{background:rgba(224,120,32,.18);}
+  .lista-btn.recebidas.active{background:#a3520f;border-color:#e0781f;color:#fff;}
+  .lista-btn.recebidas.active .lista-count{color:#fff;background:rgba(255,255,255,.18);}
+  .lista-btn.recebidas .lista-count{background:rgba(224,120,32,.25);color:#f0a557;}
+  .lista-btn.recebidas.pisca{animation:recebidasNavPisca 1.1s ease-in-out infinite;}
+  @keyframes recebidasNavPisca{
+    0%,100%{box-shadow:0 0 0 0 rgba(224,120,32,.6);}
+    50%{box-shadow:0 0 0 6px rgba(224,120,32,0);}
+  }
+
   #mainPane{flex:1 1 auto;overflow-y:auto;padding:26px 28px 60px;}
   #semSelecao{color:var(--muted);text-align:center;padding:120px 20px;font-size:.9rem;}
 
@@ -215,6 +227,17 @@
   }
   .kanban-col-new button:hover{color:var(--paper);border-color:var(--silver);}
   .kanban-empty{color:var(--muted);padding:16px;font-size:.85rem;text-align:center;}
+
+  /* Coluna virtual "Recebidas" no Kanban — mesma cor diferenciada da lista */
+  .kanban-col.recebidas{border-color:rgba(224,120,32,.55);background:rgba(224,120,32,.07);}
+  .kanban-col.recebidas .kanban-col-head{border-bottom-color:rgba(224,120,32,.3);}
+  .kanban-col.recebidas .count{background:rgba(224,120,32,.25);color:#f0a557;}
+  .kanban-col.recebidas.pisca{animation:recebidasKanbanPisca 1.1s ease-in-out infinite;}
+  @keyframes recebidasKanbanPisca{
+    0%,100%{box-shadow:0 0 0 0 rgba(224,120,32,.55);}
+    50%{box-shadow:0 0 0 6px rgba(224,120,32,0);}
+  }
+  .recebida-kanban-card{border-color:rgba(224,120,32,.35);}
 
   /* ---------- Banner de tarefas recebidas de outra pessoa ---------- */
   #recebidasBanner{
@@ -398,6 +421,20 @@
   </div>
 </div>
 
+<!-- Modal: concluir tarefa recebida (justificativa obrigatória) -->
+<div class="modal-backdrop" id="concluirEnvioBackdrop">
+  <div class="modal">
+    <h3>Concluir tarefa</h3>
+    <p>Escreva o que foi feito — a justificativa fica visível para quem enviou, junto com o pedido de aprovação.</p>
+    <textarea id="concluirEnvioTexto" maxlength="500" placeholder="O que foi feito..." style="width:100%;min-height:90px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.86rem;padding:9px 10px;"></textarea>
+    <div class="modal-err" id="concluirEnvioErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="concluirEnvioCancelar">Cancelar</button>
+      <button class="btn" id="concluirEnvioConfirmar">Concluir</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: devolver (reprovar) tarefa enviada -->
 <div class="modal-backdrop" id="reprovarBackdrop">
   <div class="modal">
@@ -512,7 +549,14 @@
     reprovarErr: document.getElementById('reprovarErr'),
     reprovarCancelar: document.getElementById('reprovarCancelar'),
     reprovarConfirmar: document.getElementById('reprovarConfirmar'),
+    concluirEnvioBackdrop: document.getElementById('concluirEnvioBackdrop'),
+    concluirEnvioTexto: document.getElementById('concluirEnvioTexto'),
+    concluirEnvioErr: document.getElementById('concluirEnvioErr'),
+    concluirEnvioCancelar: document.getElementById('concluirEnvioCancelar'),
+    concluirEnvioConfirmar: document.getElementById('concluirEnvioConfirmar'),
   };
+
+  const LISTA_RECEBIDAS_ID = '__recebidas__'; // lista virtual (não vem do Firestore) com o que outra pessoa te enviou
 
   let currentUser = null;
   let listas = [];
@@ -523,6 +567,7 @@
   let currentView = 'lista';
   let draggedTarefaId = null;
   let reprovarAlvoId = null;
+  let concluirEnvioAlvoId = null;
   let unsubListas = null;
   let unsubTarefas = null;
   let unsubRecebidas = null;
@@ -731,12 +776,47 @@
     });
   });
 
-  window.__concluirEnvio = function(id){
-    tocarSomConcluida();
-    db.collection('tarefasEnviadas').doc(id).update({
+  window.__abrirConcluirEnvio = function(id){
+    concluirEnvioAlvoId = id;
+    els.concluirEnvioTexto.value = '';
+    els.concluirEnvioErr.textContent = '';
+    els.concluirEnvioBackdrop.classList.add('open');
+    els.concluirEnvioTexto.focus();
+  };
+
+  els.concluirEnvioCancelar.addEventListener('click', function(){
+    els.concluirEnvioBackdrop.classList.remove('open');
+    concluirEnvioAlvoId = null;
+  });
+
+  els.concluirEnvioConfirmar.addEventListener('click', function(){
+    const justificativa = els.concluirEnvioTexto.value.trim();
+    if (!justificativa){
+      els.concluirEnvioErr.textContent = 'Explique o que foi feito antes de concluir — é obrigatório.';
+      return;
+    }
+    if (!concluirEnvioAlvoId) return;
+    els.concluirEnvioConfirmar.disabled = true;
+    db.collection('tarefasEnviadas').doc(concluirEnvioAlvoId).update({
       status: 'aguardando_aprovacao',
-      concluidaEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(function(e){ alert('Não foi possível marcar como feita: ' + e.message); });
+      concluidaEm: firebase.firestore.FieldValue.serverTimestamp(),
+      justificativaConclusao: justificativa
+    }).then(function(){
+      tocarSomConcluida();
+      els.concluirEnvioBackdrop.classList.remove('open');
+      concluirEnvioAlvoId = null;
+    }).catch(function(e){
+      els.concluirEnvioErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.concluirEnvioConfirmar.disabled = false;
+    });
+  });
+
+  window.__excluirEnvio = function(id){
+    if (!confirm('Excluir esta tarefa enviada? Ela some definitivamente, inclusive do painel de quem recebeu.')) return;
+    db.collection('tarefasEnviadas').doc(id).delete().catch(function(e){
+      alert('Não foi possível excluir: ' + e.message);
+    });
   };
 
   window.__aprovarEnvio = function(id){
@@ -910,13 +990,28 @@
     return out;
   }
 
+  function recebidasListaBtnHtml(){
+    const pendentesCount = recebidas.filter(function(r){ return r.status === 'pendente' || r.status === 'reprovada'; }).length;
+    const ativo = selectedListaId === LISTA_RECEBIDAS_ID;
+    let out = '<button type="button" class="lista-btn recebidas' + (ativo ? ' active' : '') + (pendentesCount ? ' pisca' : '') +
+      '" onclick="__selecionarLista(\'' + LISTA_RECEBIDAS_ID + '\')">';
+    out += '<span class="lista-emoji">📨</span>';
+    out += '<span class="lista-nome">Recebidas</span>';
+    out += '<span class="lista-count">' + pendentesCount + '</span>';
+    out += '</button>';
+    return out;
+  }
+
   function renderSidebar(){
-    if (!listas.length){
+    const pecas = [];
+    if (recebidas.length) pecas.push(recebidasListaBtnHtml());
+    pecas.push.apply(pecas, listas.map(listaBtnHtml));
+    if (!pecas.length){
       els.listasNav.innerHTML = '';
       els.listasEmpty.style.display = 'block';
     } else {
       els.listasEmpty.style.display = 'none';
-      els.listasNav.innerHTML = listas.map(listaBtnHtml).join('');
+      els.listasNav.innerHTML = pecas.join('');
     }
   }
 
@@ -996,7 +1091,48 @@
     return out;
   }
 
+  function recebidasDetalheHtml(){
+    const pendentes = recebidas.filter(function(r){ return r.status === 'pendente' || r.status === 'reprovada'; })
+      .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+    const aguardando = recebidas.filter(function(r){ return r.status === 'aguardando_aprovacao'; })
+      .sort(function(a,b){ return (b.concluidaEm && b.concluidaEm.seconds || 0) - (a.concluidaEm && a.concluidaEm.seconds || 0); });
+    const aprovadas = recebidas.filter(function(r){ return r.status === 'aprovada'; })
+      .sort(function(a,b){ return (b.aprovadoEm && b.aprovadoEm.seconds || 0) - (a.aprovadoEm && a.aprovadoEm.seconds || 0); });
+
+    const secoes = [
+      { key: 'pendentes', titulo: 'Pendentes', itens: pendentes, vazio: 'Nenhuma tarefa pendente. 🎉' },
+      { key: 'aguardando', titulo: 'Aguardando aprovação', itens: aguardando, vazio: 'Nada aguardando aprovação.' },
+      { key: 'aprovadas', titulo: 'Concluídas', itens: aprovadas, vazio: 'Nenhuma ainda.' }
+    ];
+
+    let out = '<div class="lista-header"><span class="emoji">📨</span><span class="nome">Recebidas</span></div>';
+    out += '<p style="font-size:.78rem;color:var(--muted);margin:-10px 0 16px;max-width:640px;">Tarefas que outra pessoa te enviou. Marque como concluída quando terminar — ela só sai definitivamente daqui depois que quem enviou aprovar.</p>';
+
+    secoes.forEach(function(sec){
+      const key = LISTA_RECEBIDAS_ID + ':' + sec.key;
+      const colapsado = !!collapsed[key];
+      out += '<div class="sec">';
+      out += '<div class="sec-head' + (colapsado ? ' collapsed' : '') + '" onclick="__toggleSecao(\'' + LISTA_RECEBIDAS_ID + '\',\'' + sec.key + '\')">';
+      out += '<span class="chevron">▾</span><span class="sec-title">' + sec.titulo + ' (' + sec.itens.length + ')</span>';
+      out += '</div>';
+      if (!colapsado){
+        out += '<div class="sec-list">';
+        out += sec.itens.length ? sec.itens.map(recebidaCardHtml).join('') : '<div class="sec-empty">' + sec.vazio + '</div>';
+        out += '</div>';
+      }
+      out += '</div>';
+    });
+
+    return out;
+  }
+
   function renderMain(){
+    if (selectedListaId === LISTA_RECEBIDAS_ID){
+      els.semSelecao.style.display = 'none';
+      els.listaDetalhe.style.display = 'block';
+      els.listaDetalhe.innerHTML = recebidasDetalheHtml();
+      return;
+    }
     const g = listas.find(function(x){ return x.id === selectedListaId; });
     if (!g){
       els.semSelecao.style.display = 'block';
@@ -1061,19 +1197,58 @@
     return out;
   }
 
+  function kanbanCardRecebidaHtml(r){
+    const precisaAgir = r.status === 'pendente' || r.status === 'reprovada';
+    let out = '<div class="kanban-card recebida-kanban-card">';
+    out += '<div class="kanban-card-top">';
+    out += '<span class="recebida-icone" style="font-size:1.05rem;">' + (r.status === 'reprovada' ? '↩️' : precisaAgir ? '📬' : '⏳') + '</span>';
+    out += '<div class="kanban-card-texto">' + escapeHtml(r.texto) + '</div>';
+    out += '</div>';
+    out += '<div class="kanban-card-foot" style="flex-direction:column;align-items:flex-start;gap:6px;">';
+    out += '<span style="font-size:.72rem;color:var(--muted);">De ' + escapeHtml(r.remetenteNome || '') +
+      (r.dataVencimento ? ' · prazo ' + formatarDataBR(r.dataVencimento) : '') + '</span>';
+    if (r.status === 'reprovada' && r.motivoReprovacao){
+      out += '<span style="font-size:.72rem;color:var(--muted);"><b>Devolvida:</b> ' + escapeHtml(r.motivoReprovacao) + '</span>';
+    }
+    if (precisaAgir){
+      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluí</button>';
+    } else {
+      out += '<span style="font-size:.72rem;color:var(--muted);">Aguardando ' + escapeHtml(r.remetenteNome || 'aprovação') + ' confirmar.</span>';
+    }
+    out += '</div>';
+    out += '</div>';
+    return out;
+  }
+
+  function kanbanColRecebidasHtml(){
+    const ativos = recebidas.filter(function(r){ return r.status !== 'aprovada'; })
+      .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+    const piscando = ativos.some(function(r){ return r.status === 'pendente' || r.status === 'reprovada'; });
+    let out = '<div class="kanban-col recebidas' + (piscando ? ' pisca' : '') + '">';
+    out += '<div class="kanban-col-head"><span class="emoji">📨</span><span class="nome">Recebidas</span><span class="count">' + ativos.length + '</span></div>';
+    out += '<div class="kanban-col-body">';
+    out += ativos.length ? ativos.map(kanbanCardRecebidaHtml).join('') : '<div class="kanban-empty">Nada pendente por aqui.</div>';
+    out += '</div>';
+    out += '</div>';
+    return out;
+  }
+
   function renderKanban(){
+    const temRecebidas = recebidas.some(function(r){ return r.status !== 'aprovada'; });
+    const colRecebidas = temRecebidas ? kanbanColRecebidasHtml() : '';
     if (!listas.length){
-      els.kanbanCols.innerHTML = '<div class="kanban-empty" style="padding:20px;">Nenhuma lista ainda — crie uma para começar seu quadro kanban.</div>';
+      els.kanbanCols.innerHTML = colRecebidas || '<div class="kanban-empty" style="padding:20px;">Nenhuma lista ainda — crie uma para começar seu quadro kanban.</div>';
       return;
     }
-    els.kanbanCols.innerHTML = listas.map(kanbanColHtml).join('');
+    els.kanbanCols.innerHTML = colRecebidas + listas.map(kanbanColHtml).join('');
   }
 
   // ---------- Render: banner de tarefas recebidas ----------
   function recebidaCardHtml(r){
     const precisaAgir = r.status === 'pendente' || r.status === 'reprovada';
+    const icone = r.status === 'reprovada' ? '↩️' : r.status === 'aprovada' ? '✅' : precisaAgir ? '📬' : '⏳';
     let out = '<div class="recebida-card' + (precisaAgir ? '' : ' espera') + '">';
-    out += '<span class="recebida-icone">' + (r.status === 'reprovada' ? '↩️' : precisaAgir ? '📬' : '⏳') + '</span>';
+    out += '<span class="recebida-icone">' + icone + '</span>';
     out += '<div class="recebida-corpo">';
     out += '<div class="recebida-meta">Enviado por <b>' + escapeHtml(r.remetenteNome || '') + '</b>' +
       (r.dataVencimento ? ' · prazo ' + formatarDataBR(r.dataVencimento) : '') + '</div>';
@@ -1082,11 +1257,16 @@
       out += '<div class="recebida-motivo"><b>Devolvida — o que faltou:</b> ' + escapeHtml(r.motivoReprovacao) + '</div>';
     }
     if (r.status === 'aguardando_aprovacao'){
-      out += '<div class="recebida-motivo">Você já marcou como feita — aguardando ' + escapeHtml(r.remetenteNome || 'aprovação') + ' confirmar.</div>';
+      out += '<div class="recebida-motivo">Você já marcou como feita — aguardando ' + escapeHtml(r.remetenteNome || 'aprovação') + ' confirmar.' +
+        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + escapeHtml(r.justificativaConclusao) : '') + '</div>';
+    }
+    if (r.status === 'aprovada'){
+      out += '<div class="recebida-motivo">Aprovada' + (r.aprovadoPor ? ' por ' + escapeHtml(r.aprovadoPor) : '') + '.' +
+        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + escapeHtml(r.justificativaConclusao) : '') + '</div>';
     }
     out += '</div>';
     if (precisaAgir){
-      out += '<button type="button" class="btn small" onclick="__concluirEnvio(\'' + r.id + '\')">✓ Concluí</button>';
+      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluí</button>';
     }
     out += '</div>';
     return out;
@@ -1114,11 +1294,19 @@
   }
 
   function enviadaCardHtml(e){
+    const podeExcluir = currentUser.role === 'admin' || e.remetenteUid === currentUser.uid;
     let out = '<div class="enviada-card status-' + e.status + '">';
     out += '<div class="enviada-top"><span class="enviada-dest">Para <b>' + escapeHtml(e.destinatarioNome || '') + '</b></span>';
-    out += '<span class="enviada-badge">' + enviadaStatusLabel(e.status) + '</span></div>';
+    out += '<span class="enviada-badge">' + enviadaStatusLabel(e.status) + '</span>';
+    if (podeExcluir){
+      out += '<button type="button" class="icon-btn danger" onclick="__excluirEnvio(\'' + e.id + '\')" title="Excluir envio">✕</button>';
+    }
+    out += '</div>';
     out += '<div class="enviada-texto">' + escapeHtml(e.texto) + '</div>';
     if (e.dataVencimento) out += '<div class="enviada-meta">Prazo: ' + formatarDataBR(e.dataVencimento) + '</div>';
+    if ((e.status === 'aguardando_aprovacao' || e.status === 'aprovada') && e.justificativaConclusao){
+      out += '<div class="enviada-meta"><b>Justificativa de quem concluiu:</b> ' + escapeHtml(e.justificativaConclusao) + '</div>';
+    }
     if (e.status === 'reprovada' && e.motivoReprovacao){
       out += '<div class="enviada-meta">Motivo da devolução: ' + escapeHtml(e.motivoReprovacao) + '</div>';
     }
@@ -1148,11 +1336,16 @@
     els.enviadasBoard.innerHTML = '<div class="enviadas-grid">' + ordenadas.map(enviadaCardHtml).join('') + '</div>';
   }
 
+  function listaSelecaoValida(id){
+    if (id === LISTA_RECEBIDAS_ID) return recebidas.length > 0;
+    return listas.some(function(g){ return g.id === id; });
+  }
+
   function render(){
-    if (selectedListaId && !listas.some(function(g){ return g.id === selectedListaId; })){
-      selectedListaId = listas.length ? listas[0].id : null;
-    } else if (!selectedListaId && listas.length){
-      selectedListaId = listas[0].id;
+    if (selectedListaId && !listaSelecaoValida(selectedListaId)){
+      selectedListaId = recebidas.length ? LISTA_RECEBIDAS_ID : (listas.length ? listas[0].id : null);
+    } else if (!selectedListaId && (recebidas.length || listas.length)){
+      selectedListaId = recebidas.length ? LISTA_RECEBIDAS_ID : listas[0].id;
     }
     renderSidebar();
     renderMain();
@@ -1199,7 +1392,7 @@
       unsubRecebidas = db.collection('tarefasEnviadas').where('destinatarioUid', '==', currentUser.uid)
         .onSnapshot(function(snap){
           recebidas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-          renderRecebidasBanner();
+          render(); // recebidas também aparece como lista/coluna virtual em Lista e Kanban, não só no banner
         }, function(){ /* sem tarefas enviadas pra mim, ou sem permissão — ignora */ });
     }
 
