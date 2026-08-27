@@ -254,8 +254,12 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
+    function podeVerTudoPatrimonio() {
+      return isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patrimonioVerTudo != false;
+    }
     match /patrimonio/{itemId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (podeVerTudoPatrimonio() || resource.data.responsavelUid == request.auth.uid);
       allow create: if isSignedIn()
                     && request.resource.data.nome is string && request.resource.data.nome.size() > 0
                     && request.resource.data.codigo is string
@@ -319,7 +323,7 @@ service cloud.firestore {
 
 > `condoUnidades/{slug}` (usada pela ferramenta **Condomínios**, aba "Clientes" e na calculadora de Pauta de Assembleia) guarda o número de unidades de cada condomínio (`unidades`, `atualizadoPorUid`/`atualizadoPorNome`/`atualizadoEm`). Aparece no card de cada condomínio na grade de clientes (botão "editar", só visível para quem `isAdminUser()`) e é usado pela calculadora de assembleia para dividir o valor de cada item de pauta pelo número de unidades. Qualquer logado lê; só admin escreve — mesmo padrão de `condoAprovadores`/`unidadeResets`.
 
-> As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: qualquer logado lê, cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) que gera o código de etiqueta (`PAT-0001`, `PAT-0002`, ...) via transação — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso.
+> As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item qualquer logado; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). **A leitura tem uma restrição condicional, `podeVerTudoPatrimonio()`**: por padrão todo mundo lê o inventário inteiro (`patrimonioVerTudo` ausente ou `true` no próprio `users/{uid}`, ou ser admin); um admin pode restringir uma pessoa específica a só ler os itens em que ela mesma é `responsavelUid` — desmarcando essa pessoa no modal "⚙ Quem vê tudo" da ferramenta (botão que grava `patrimonioVerTudo:false` no `users/{uid}` dela; a escrita nesse campo já é coberta pela regra de `users` sem precisar mudar nada lá, porque o ramo `isAdmin()` de `allow update` de `users` não trava campos). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) que gera o código de etiqueta (`PAT-0001`, `PAT-0002`, ...) via transação — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso.
 >
 > `compras/{docId}` tem um ciclo de vida em 2 fases: **rascunho** (a pessoa vai montando a lista aos poucos, salvo item a item) e **enviada** (`pendente` → `aprovado`/`reprovado` → `recebido`). `allow create` permite `status` só como `'rascunho'` ou `'pendente'`, sempre com `solicitanteUid` = o próprio uid. A pessoa dona da lista pode **apagar** os próprios itens só enquanto estiverem em `'rascunho'` (botão "Remover" na ferramenta, antes de enviar) — depois de enviada, `resource.data.status` deixa de ser `'rascunho'` e essa cláusula para de valer, travando a edição. O envio em si ("📤 Enviar para aprovação") é a única coisa que um não-admin pode **atualizar**: a regra permite a transição exata `rascunho`→`pendente` no próprio item (`solicitanteUid` e `item` continuam iguais), mais nada. Daí em diante, só admin atualiza — cobre aprovar/reprovar (grava `aprovadoPor`/`dataAprovacao`/`motivoReprovacao`), lançar a chegada de uma compra aprovada (`valorPago`/`fornecedor`/`notaFiscal`/`dataChegada`/`status:'recebido'`) e apagar uma lista inteira já gerada (botão "🗑 Excluir lista", admin only).
 

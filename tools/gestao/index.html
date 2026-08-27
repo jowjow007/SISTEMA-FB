@@ -295,6 +295,20 @@
   </div>
 </div>
 
+<!-- Modal: quem enxerga o patrimônio inteiro x só o próprio -->
+<div class="modal-backdrop" id="pat-permissoes-backdrop">
+  <div class="modal">
+    <h3>Quem vê o patrimônio completo</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;">Desmarque alguém pra essa pessoa só enxergar os itens que estão com ela. Admin sempre vê tudo, por isso não aparece na lista.</p>
+    <div id="pat-permissoes-lista" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
+    <div class="msg-err" id="pat-permissoes-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-permissoes-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pat-permissoes-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: registrar chegada -->
 <div class="modal-backdrop" id="cp-cheg-backdrop">
   <div class="modal">
@@ -350,6 +364,7 @@
   let souAdmin = false;
   let meuNome = '';
   let meuUid = null;
+  let meuPatrimonioVerTudo = true;   // false só se um admin restringiu essa pessoa a ver só o próprio patrimônio
 
   function escapeHtml(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -498,8 +513,15 @@
   function initPatrimonio(){
     document.getElementById('pat-scroll').innerHTML =
       '<div class="mod-head">' +
-        '<div><h2>Patrimônio do escritório</h2><p>Inventário dos itens etiquetados fisicamente. Cada item recebe um código único para a etiqueta.</p></div>' +
-        '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
+        '<div><h2>Patrimônio do escritório</h2><p>' +
+          (meuPatrimonioVerTudo
+            ? 'Inventário dos itens etiquetados fisicamente. Cada item recebe um código único para a etiqueta.'
+            : 'Você só enxerga aqui os itens que estão com você — um admin restringiu sua visão ao seu próprio patrimônio.') +
+        '</p></div>' +
+        '<div class="actions-cell">' +
+          (souAdmin ? '<button type="button" class="btn small" id="pat-permissoes-btn">⚙ Quem vê tudo</button>' : '') +
+          '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
+        '</div>' +
       '</div>' +
       '<div class="stat-row" id="pat-stats"></div>' +
       '<div class="toolbar">' +
@@ -511,7 +533,7 @@
           Object.keys(STATUS_PAT_LABEL).map(function(k){ return '<option value="' + k + '">' + STATUS_PAT_LABEL[k] + '</option>'; }).join('') +
         '</select>' +
         '<span class="spacer"></span>' +
-        '<button type="button" class="btn small" id="pat-toggle-meus">👤 Só o que está comigo</button>' +
+        (meuPatrimonioVerTudo ? '<button type="button" class="btn small" id="pat-toggle-meus">👤 Só o que está comigo</button>' : '') +
       '</div>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr>' +
         '<th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th><th></th>' +
@@ -522,11 +544,14 @@
     document.getElementById('pat-filtro-status').addEventListener('change', function(e){ patFiltroStatus = e.target.value; renderPatrimonio(); });
     const novoBtn = document.getElementById('pat-novo-btn');
     if (novoBtn) novoBtn.addEventListener('click', function(){ abrirModalPatrimonio(null); });
-    document.getElementById('pat-toggle-meus').addEventListener('click', function(){
+    const toggleMeusBtn = document.getElementById('pat-toggle-meus');
+    if (toggleMeusBtn) toggleMeusBtn.addEventListener('click', function(){
       patFiltroSoMeu = !patFiltroSoMeu;
       this.classList.toggle('toggle-on', patFiltroSoMeu);
       renderPatrimonio();
     });
+    const permissoesBtn = document.getElementById('pat-permissoes-btn');
+    if (permissoesBtn) permissoesBtn.addEventListener('click', abrirModalPermissoesPatrimonio);
 
     db.collection('organograma').onSnapshot(function(snap){
       orgUsuarios = snap.docs.map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() }; })
@@ -559,11 +584,13 @@
     const valorTotal = patItens.filter(function(it){ return it.status !== 'baixado'; }).reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
     const meusItens = patItens.filter(function(it){ return it.responsavelUid === meuUid; });
     const valorComigo = meusItens.reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
-    document.getElementById('pat-stats').innerHTML =
-      '<div class="stat-card"><div class="n">' + patItens.length + '</div><div class="l">itens cadastrados</div></div>' +
-      '<div class="stat-card"><div class="n">' + formatBRL(valorTotal) + '</div><div class="l">valor total (ativos)</div></div>' +
-      '<div class="stat-card"><div class="n">' + meusItens.length + '</div><div class="l">itens com você</div></div>' +
-      '<div class="stat-card"><div class="n">' + formatBRL(valorComigo) + '</div><div class="l">valor com você</div></div>';
+    document.getElementById('pat-stats').innerHTML = meuPatrimonioVerTudo
+      ? ('<div class="stat-card"><div class="n">' + patItens.length + '</div><div class="l">itens cadastrados</div></div>' +
+         '<div class="stat-card"><div class="n">' + formatBRL(valorTotal) + '</div><div class="l">valor total (ativos)</div></div>' +
+         '<div class="stat-card"><div class="n">' + meusItens.length + '</div><div class="l">itens com você</div></div>' +
+         '<div class="stat-card"><div class="n">' + formatBRL(valorComigo) + '</div><div class="l">valor com você</div></div>')
+      : ('<div class="stat-card"><div class="n">' + meusItens.length + '</div><div class="l">itens com você</div></div>' +
+         '<div class="stat-card"><div class="n">' + formatBRL(valorComigo) + '</div><div class="l">valor com você</div></div>');
 
     const tbody = document.getElementById('pat-tbody');
     if (!filtrados.length) {
@@ -711,6 +738,51 @@
     }).then(function(){ fecharModalTransferencia(); }).catch(function(err){
       document.getElementById('pat-transf-err').textContent = 'Erro ao transferir: ' + err.message;
       document.getElementById('pat-transf-err').style.display = 'block';
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  const patPermissoesBackdrop = document.getElementById('pat-permissoes-backdrop');
+
+  function abrirModalPermissoesPatrimonio(){
+    document.getElementById('pat-permissoes-lista').innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
+    document.getElementById('pat-permissoes-err').style.display = 'none';
+    patPermissoesBackdrop.classList.add('show');
+    db.collection('users').get().then(function(snap){
+      const usuarios = snap.docs
+        .map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
+        .filter(function(u){ return u.role !== 'admin'; })
+        .sort(function(a, b){ return (a.displayName || '').localeCompare(b.displayName || ''); });
+      document.getElementById('pat-permissoes-lista').innerHTML = usuarios.length
+        ? usuarios.map(function(u){
+            const marcado = u.patrimonioVerTudo !== false;
+            return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.85rem;">' +
+              '<input type="checkbox" class="pat-perm-cb" data-uid="' + u.uid + '"' + (marcado ? ' checked' : '') + '>' +
+              '<span>' + escapeHtml(u.displayName || u.email || u.uid) + '</span>' +
+            '</label>';
+          }).join('')
+        : '<p style="color:var(--muted);font-size:.85rem;">Nenhum outro colaborador cadastrado.</p>';
+    }).catch(function(err){
+      document.getElementById('pat-permissoes-err').textContent = 'Erro ao carregar colaboradores: ' + err.message;
+      document.getElementById('pat-permissoes-err').style.display = 'block';
+    });
+  }
+  function fecharModalPermissoesPatrimonio(){ patPermissoesBackdrop.classList.remove('show'); }
+  document.getElementById('pat-permissoes-cancelar').addEventListener('click', fecharModalPermissoesPatrimonio);
+  patPermissoesBackdrop.addEventListener('click', function(e){ if (e.target === patPermissoesBackdrop) fecharModalPermissoesPatrimonio(); });
+
+  document.getElementById('pat-permissoes-salvar').addEventListener('click', function(){
+    const checkboxes = document.querySelectorAll('.pat-perm-cb');
+    const batch = db.batch();
+    Array.prototype.forEach.call(checkboxes, function(cb){
+      batch.update(db.collection('users').doc(cb.dataset.uid), { patrimonioVerTudo: cb.checked });
+    });
+    const btn = document.getElementById('pat-permissoes-salvar');
+    btn.disabled = true;
+    batch.commit().then(function(){
+      fecharModalPermissoesPatrimonio();
+    }).catch(function(err){
+      document.getElementById('pat-permissoes-err').textContent = 'Erro ao salvar: ' + err.message;
+      document.getElementById('pat-permissoes-err').style.display = 'block';
     }).finally(function(){ btn.disabled = false; });
   });
 
@@ -1329,6 +1401,7 @@
     db.collection('users').doc(user.uid).get().then(function(doc){
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
+      meuPatrimonioVerTudo = !doc.exists || doc.data().patrimonioVerTudo !== false;
       selectSubtab(ATIVAS[0].id);
     });
   });
