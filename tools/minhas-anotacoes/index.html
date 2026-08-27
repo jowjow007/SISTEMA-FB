@@ -439,6 +439,32 @@
     return !t.concluida && !!t.dataVencimento && t.dataVencimento < hojeStr();
   }
 
+  // ---------- Som de tarefa concluída ----------
+  let audioCtx = null;
+  function tocarSomConcluida(){
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+      const agora = audioCtx.currentTime;
+      // duas notas agudas em sequência rápida (tipo "ding" de confirmação)
+      [[1046, agora, 0.09], [1568, agora + 0.08, 0.16]].forEach(function(nota){
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(nota[0], nota[1]);
+        gain.gain.setValueAtTime(0.0001, nota[1]);
+        gain.gain.linearRampToValueAtTime(0.25, nota[1] + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, nota[1] + nota[2]);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(nota[1]);
+        osc.stop(nota[1] + nota[2] + 0.02);
+      });
+    } catch(e) { /* som é só um extra, nunca deve travar a ação */ }
+  }
+
   // ---------- Alternância de visualização ----------
   function setView(v){
     currentView = v === 'kanban' ? 'kanban' : 'lista';
@@ -545,6 +571,7 @@
 
   // ---------- Ações de tarefa ----------
   window.__toggleTarefa = function(tarefaId, concluidaAtual){
+    if (!concluidaAtual) tocarSomConcluida();
     db.collection('pendTarefas').doc(tarefaId).update({
       concluida: !concluidaAtual,
       concluidaEm: concluidaAtual ? null : firebase.firestore.FieldValue.serverTimestamp()
