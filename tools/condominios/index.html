@@ -413,16 +413,18 @@ function formatDateTime(ts){
 }
 
 /* ---------- state / router ---------- */
-var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', gerarView:'compor' };
+var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', gerarView:'compor', condoView:'grid' };
 
 function go(section){
-  state.section = section; state.condoIdx = null; state.gerarView = 'compor';
+  state.section = section; state.condoIdx = null; state.gerarView = 'compor'; state.condoView = 'grid';
   render(); window.scrollTo(0,0);
   if (section === 'gerar-notificacao') loadMinhasNotificacoes();
+  if (section === 'condominios') carregarUnidades();
 }
 function openCondo(i){ state.condoIdx = i; state.condoSubtab='geral'; render(); window.scrollTo(0,0); }
 function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
 function setCondoSubtab(t){ state.condoSubtab = t; render(); }
+function setCondoView(v){ state.condoView = v; state.condoIdx = null; render(); window.scrollTo(0,0); carregarUnidades(); }
 function setGerarView(v){
   state.gerarView = v;
   render(); window.scrollTo(0,0);
@@ -448,7 +450,9 @@ function render(){
   if(state.section === 'inicio') m.innerHTML = viewInicio();
   else if(state.section === 'comece') m.innerHTML = viewComece();
   else if(state.section === 'pops') m.innerHTML = viewPops();
-  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail() : viewCondoGrid();
+  else if(state.section === 'condominios') m.innerHTML = state.condoIdx!==null ? viewCondoDetail()
+    : state.condoView==='calc' ? viewCalculadoras()
+    : viewCondoGrid();
   else if(state.section === 'astrea') m.innerHTML = viewAstrea();
   else if(state.section === 'brcondos') m.innerHTML = viewBrcondos();
   else if(state.section === 'almahcondos') m.innerHTML = viewAlmahCondos();
@@ -475,7 +479,20 @@ function bindDynamic(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-gerarview]'), function(el){
     el.addEventListener('click', function(){ setGerarView(el.getAttribute('data-gerarview')); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-condoview]'), function(el){
+    el.addEventListener('click', function(){ setCondoView(el.getAttribute('data-condoview')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-editar-unidades]'), function(el){
+    el.addEventListener('click', function(){ abrirEdicaoUnidades(el.getAttribute('data-editar-unidades')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-salvar-unidades]'), function(el){
+    el.addEventListener('click', function(){ salvarUnidades(el.getAttribute('data-salvar-unidades'), el.getAttribute('data-condominio')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cancelar-unidades]'), function(el){
+    el.addEventListener('click', cancelarEdicaoUnidades);
+  });
   if(state.section === 'nomenclatura') bindNomenclatura();
+  if(state.section === 'condominios' && state.condoView === 'calc') bindCalculadoras();
   if(state.section === 'gerar-notificacao' && state.gerarView === 'compor'){
     var gnEnviar = document.getElementById('gn-enviar');
     if (gnEnviar) gnEnviar.addEventListener('click', enviarNotificacao);
@@ -631,16 +648,41 @@ function gerarSubnav(active){
     + '</div>';
 }
 
+function condoSubnav(active){
+  return '<div class="condo-subnav">'
+    + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Clientes</button>'
+    + '<button type="button" class="'+(active==='calc'?'active':'')+'" data-condoview="calc">Calculadoras</button>'
+    + '</div>';
+}
+
+function unidadesBlocoCard(slug, nome){
+  var registro = unidadesState.porSlug[slug];
+  if (unidadesState.editando === slug){
+    return '<div style="display:flex;gap:6px;align-items:center;margin:0 0 8px;">'
+      + '<input id="unid-input-'+slug+'" type="number" min="1" placeholder="Nº de unidades" value="'+(registro ? registro.unidades : '')+'" style="flex:1 1 90px;padding:7px 9px;border:1px solid var(--card-line);border-radius:6px;font-size:.8rem;background:var(--card);color:var(--text);">'
+      + '<button type="button" class="btn secondary" data-salvar-unidades="'+slug+'" data-condominio="'+escapeHtml(nome)+'" style="padding:6px 10px;font-size:.76rem;">Salvar</button>'
+      + '<button type="button" class="btn ghost" data-cancelar-unidades style="padding:6px 10px;font-size:.76rem;">✕</button>'
+      + '</div>';
+  }
+  var texto = registro ? '<b>'+registro.unidades+'</b> unidades' : '<span style="color:var(--muted);">unidades não definidas</span>';
+  return '<p class="sind" style="display:flex;align-items:center;gap:6px;">🏠 '+texto
+    + (isAdminUser() ? '<button type="button" class="btn ghost" data-editar-unidades="'+slug+'" style="padding:2px 8px;font-size:.68rem;margin-left:auto;">editar</button>' : '')
+    + '</p>';
+}
+
 function viewCondoGrid(){
-  return '<div class="kicker">Carteira</div>'
+  return condoSubnav('grid')
+    + '<div class="kicker">Carteira</div>'
     + '<h1>Clientes atendidos</h1>'
-    + '<p class="lead">Consulte síndicos, regras especiais e particularidades de cada condomínio.</p>'
+    + '<p class="lead">Consulte síndicos, regras especiais, número de unidades e particularidades de cada condomínio.</p>'
     + '<hr class="rule">'
     + '<div class="grid g3">' + CONDOMINIOS.map(function(c,i){
+        var slug = slugify(c.nome);
         return '<div class="condo-card">'
           + '<div class="top-row"><div class="icon-sq" style="margin-bottom:0;">🏢</div><span class="badge ativo">ATIVO</span></div>'
           + '<h3>'+c.nome+'</h3>'
           + '<p class="sind">Síndico(a): <b>'+c.sindico+'</b></p>'
+          + unidadesBlocoCard(slug, c.nome)
           + (c.nota ? '<p class="note">⚠ '+truncate(c.nota,90)+'</p>' : '')
           + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>→</span></button>'
           + '</div>';
@@ -1151,6 +1193,285 @@ function getMirCategoria(condominio, categoriaId){
   var mirId = CATEGORIA_PARA_MIRANTE[categoriaId];
   if (!mirId) return null;
   return MIRANTE_CATEGORIAS.filter(function(c){ return c.id === mirId; })[0] || null;
+}
+
+/* ---------- número de unidades por condomínio ---------- */
+
+var unidadesState = { loaded:false, porSlug:{}, editando:null };
+
+function carregarUnidades(){
+  if (!fbReady || !db || unidadesState.loaded) return;
+  db.collection('condoUnidades').get().then(function(snap){
+    var mapa = {};
+    snap.docs.forEach(function(d){ mapa[d.id] = d.data(); });
+    unidadesState.porSlug = mapa;
+    unidadesState.loaded = true;
+    render();
+  }).catch(function(e){ console.error('Falha ao carregar número de unidades', e); });
+}
+
+function abrirEdicaoUnidades(slug){ unidadesState.editando = slug; render(); }
+function cancelarEdicaoUnidades(){ unidadesState.editando = null; render(); }
+
+function salvarUnidades(slug, condominioNome){
+  var el = document.getElementById('unid-input-'+slug);
+  var n = el ? parseInt(el.value, 10) : NaN;
+  if (!n || n <= 0){ alert('Informe um número de unidades válido.'); return; }
+  var nome = currentProfile.displayName || currentProfile.email;
+  db.collection('condoUnidades').doc(slug).set({
+    condominio: condominioNome, unidades: n,
+    atualizadoPorUid: currentUser.uid, atualizadoPorNome: nome,
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    unidadesState.porSlug[slug] = { condominio: condominioNome, unidades: n };
+    unidadesState.editando = null;
+    render();
+  }).catch(function(e){ alert('Erro ao salvar: ' + e.message); });
+}
+
+/* ---------- calculadoras (pauta de assembleia + datas) ---------- */
+
+var calcState = {
+  tab:'assembleia',
+  assembleia:{ condominio:'', unidadesOverride:'', itens:[], nextId:1 },
+  datas:{ dias:'', direcao:'somar', resultado:null }
+};
+
+function parseBRL(s){
+  if (!s) return 0;
+  s = String(s).trim().replace(/[R$\s]/g,'');
+  if (s.indexOf(',') > -1) s = s.replace(/\./g,'').replace(',', '.');
+  return parseFloat(s) || 0;
+}
+
+function fmtBRL(n){ return 'R$ ' + (n||0).toFixed(2).replace('.',','); }
+
+function calcSubnav(active){
+  return '<div class="condo-subnav" style="margin-bottom:20px;">'
+    + '<button type="button" class="'+(active==='assembleia'?'active':'')+'" data-calctab="assembleia">💰 Pauta de Assembleia</button>'
+    + '<button type="button" class="'+(active==='datas'?'active':'')+'" data-calctab="datas">📅 Calculadora de Datas</button>'
+    + '</div>';
+}
+
+function viewCalculadoras(){
+  return condoSubnav('calc')
+    + '<div class="kicker">Calculadoras</div>'
+    + '<h1>Calculadoras de Condomínio</h1>'
+    + '<p class="lead">Ferramentas de apoio para assembleias e prazos.</p>'
+    + '<hr class="rule">'
+    + calcSubnav(calcState.tab)
+    + (calcState.tab === 'datas' ? viewCalcDatas() : viewCalcAssembleia());
+}
+
+function unidadesEfetivasAssembleia(){
+  var a = calcState.assembleia;
+  var slug = a.condominio ? slugify(a.condominio) : '';
+  var registro = slug ? unidadesState.porSlug[slug] : null;
+  return (registro ? registro.unidades : 0) || (parseInt(a.unidadesOverride,10) || 0);
+}
+
+function viewCalcAssembleia(){
+  var a = calcState.assembleia;
+  var slug = a.condominio ? slugify(a.condominio) : '';
+  var registro = slug ? unidadesState.porSlug[slug] : null;
+  var unidadesEfetivas = unidadesEfetivasAssembleia();
+
+  var condominioField = '<div><label>Condomínio</label><select id="calc-condominio"><option value="">— selecionar —</option>'
+    + CONDOMINIOS.map(function(c){
+        var sel = c.nome === a.condominio ? ' selected' : '';
+        return '<option value="'+escapeHtml(c.nome)+'"'+sel+'>'+escapeHtml(c.nome)+'</option>';
+      }).join('') + '</select></div>';
+
+  var unidadesInfo = '';
+  if (a.condominio){
+    unidadesInfo = registro
+      ? '<div class="field-box"><div class="label">Nº de unidades cadastrado</div><div class="value">'+registro.unidades+'</div></div>'
+      : '<div style="grid-column:1/-1;"><div class="warn gold" style="margin-bottom:10px;"><span class="ic">🕒</span><span>Este condomínio ainda não tem número de unidades cadastrado na aba Clientes. Informe manualmente abaixo (só vale para este cálculo) ou cadastre lá para os próximos cálculos já virem prontos.</span></div>'
+        + '<div style="max-width:260px;"><label>Unidades (manual, só para este cálculo)</label><input id="calc-unidades-manual" type="number" min="1" value="'+escapeHtml(a.unidadesOverride)+'"></div></div>';
+  }
+
+  var itensHtml = a.itens.map(function(item){
+    var valorNum = parseBRL(item.valor);
+    return '<div class="assign-row" style="gap:8px;">'
+      + '<input type="checkbox" id="item-inc-'+item.id+'" data-item-check="'+item.id+'" '+(item.incluido?'checked':'')+' style="flex:0 0 auto;width:18px;height:18px;">'
+      + '<input type="text" id="item-desc-'+item.id+'" data-item-desc="'+item.id+'" placeholder="Descrição do item da pauta" value="'+escapeHtml(item.desc)+'" style="flex:2 1 200px;padding:8px 10px;border:1px solid var(--card-line);border-radius:6px;font-size:.82rem;background:var(--card);color:var(--text);">'
+      + '<input type="text" id="item-valor-'+item.id+'" data-item-valor="'+item.id+'" placeholder="Valor total R$" value="'+escapeHtml(item.valor)+'" style="flex:1 1 120px;padding:8px 10px;border:1px solid var(--card-line);border-radius:6px;font-size:.82rem;background:var(--card);color:var(--text);">'
+      + '<span id="item-calc-'+item.id+'" style="flex:1 1 140px;font-size:.8rem;color:var(--gold);">'+(unidadesEfetivas ? fmtBRL(valorNum/unidadesEfetivas)+' / unidade' : '—')+'</span>'
+      + '<button type="button" class="btn ghost" data-remove-item="'+item.id+'" style="padding:6px 10px;">✕</button>'
+      + '</div>';
+  }).join('');
+
+  var totalMarcado = a.itens.filter(function(i){ return i.incluido; }).reduce(function(s,i){ return s + parseBRL(i.valor); }, 0);
+
+  return '<div class="box">'
+    + '<div class="nom-form" style="margin-bottom:14px;">' + condominioField + unidadesInfo + '</div>'
+    + (a.condominio ? (
+        '<button type="button" class="btn secondary" id="calc-add-item" style="margin-bottom:14px;">+ Adicionar item de pauta</button>'
+        + '<div id="calc-itens-lista">' + (itensHtml || '<p style="color:var(--muted);font-size:.85rem;">Nenhum item adicionado ainda.</p>') + '</div>'
+        + '<div class="box" style="margin-top:16px;margin-bottom:0;background:var(--paper);">'
+          + '<p style="margin:0;font-size:.9rem;">Total marcado: <b id="calc-total-marcado">'+fmtBRL(totalMarcado)+'</b></p>'
+          + '<p style="margin:6px 0 0;font-size:1.05rem;color:var(--red);"><b>Valor individual por unidade: <span id="calc-total-unidade">'+(unidadesEfetivas ? fmtBRL(totalMarcado/unidadesEfetivas) : '—')+'</span></b></p>'
+          + (unidadesEfetivas ? '' : '<p id="calc-total-aviso" style="margin:6px 0 0;font-size:.78rem;color:var(--muted);">Informe o número de unidades para calcular.</p>')
+        + '</div>'
+      ) : '')
+    + '</div>';
+}
+
+function addItemPauta(){
+  var a = calcState.assembleia;
+  a.itens.push({ id:a.nextId++, desc:'', valor:'', incluido:true });
+  render();
+}
+
+function removerItemPauta(id){
+  calcState.assembleia.itens = calcState.assembleia.itens.filter(function(i){ return i.id !== parseInt(id,10); });
+  render();
+}
+
+function recalcularAssembleia(){
+  var a = calcState.assembleia;
+  var manualEl = document.getElementById('calc-unidades-manual');
+  if (manualEl) a.unidadesOverride = manualEl.value;
+  var unidadesEfetivas = unidadesEfetivasAssembleia();
+
+  var total = 0;
+  a.itens.forEach(function(item){
+    var descEl = document.getElementById('item-desc-'+item.id);
+    var valorEl = document.getElementById('item-valor-'+item.id);
+    var checkEl = document.getElementById('item-inc-'+item.id);
+    if (descEl) item.desc = descEl.value;
+    if (valorEl) item.valor = valorEl.value;
+    if (checkEl) item.incluido = checkEl.checked;
+    var valorNum = parseBRL(item.valor);
+    var calcEl = document.getElementById('item-calc-'+item.id);
+    if (calcEl) calcEl.textContent = unidadesEfetivas ? (fmtBRL(valorNum/unidadesEfetivas)+' / unidade') : '—';
+    if (item.incluido) total += valorNum;
+  });
+
+  var totalEl = document.getElementById('calc-total-marcado');
+  var totalUnidEl = document.getElementById('calc-total-unidade');
+  if (totalEl) totalEl.textContent = fmtBRL(total);
+  if (totalUnidEl) totalUnidEl.textContent = unidadesEfetivas ? fmtBRL(total/unidadesEfetivas) : '—';
+}
+
+/* ---- calculadora de datas ---- */
+
+var DIAS_SEMANA = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+var MESES_EXTENSO = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function calcularPascoa(ano){
+  var a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,
+      f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,
+      i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+      mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return new Date(ano, mes-1, dia);
+}
+function addDiasData(data, n){ var d = new Date(data.getTime()); d.setDate(d.getDate()+n); return d; }
+function mesmoDia(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function formatarDataExtenso(d){ return d.getDate()+' de '+MESES_EXTENSO[d.getMonth()]+' de '+d.getFullYear(); }
+function formatarDataCurta(d){ return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); }
+
+var FERIADOS_FIXOS = [
+  {m:0,d:1,nome:'Confraternização Universal',tipo:'nacional'},
+  {m:3,d:21,nome:'Tiradentes',tipo:'nacional'},
+  {m:4,d:1,nome:'Dia do Trabalho',tipo:'nacional'},
+  {m:7,d:31,nome:'Emancipação Político-Administrativa de Uberlândia',tipo:'municipal'},
+  {m:8,d:7,nome:'Independência do Brasil',tipo:'nacional'},
+  {m:9,d:12,nome:'Nossa Senhora Aparecida',tipo:'nacional'},
+  {m:10,d:2,nome:'Finados',tipo:'nacional'},
+  {m:10,d:15,nome:'Proclamação da República',tipo:'nacional'},
+  {m:10,d:20,nome:'Dia Nacional de Zumbi e da Consciência Negra',tipo:'nacional'},
+  {m:11,d:25,nome:'Natal',tipo:'nacional'}
+];
+
+function verificarFeriado(data){
+  for (var i=0;i<FERIADOS_FIXOS.length;i++){
+    var f = FERIADOS_FIXOS[i];
+    if (data.getMonth()===f.m && data.getDate()===f.d) return f;
+  }
+  var pascoa = calcularPascoa(data.getFullYear());
+  if (mesmoDia(data, addDiasData(pascoa,-2))) return {nome:'Sexta-feira Santa', tipo:'nacional'};
+  if (mesmoDia(data, addDiasData(pascoa,-48)) || mesmoDia(data, addDiasData(pascoa,-47))) return {nome:'Carnaval', tipo:'facultativo'};
+  if (mesmoDia(data, addDiasData(pascoa,60))) return {nome:'Corpus Christi', tipo:'facultativo'};
+  return null;
+}
+
+function viewCalcDatas(){
+  var hoje = new Date();
+  var d = calcState.datas;
+  var resultadoHtml = '';
+  if (d.resultado){
+    var r = d.resultado;
+    var badge = r.feriado
+      ? (r.feriado.tipo==='nacional' ? '<span class="badge atencao">FERIADO NACIONAL — '+escapeHtml(r.feriado.nome)+'</span>'
+        : r.feriado.tipo==='municipal' ? '<span class="badge atencao">FERIADO MUNICIPAL (UBERLÂNDIA/MG) — '+escapeHtml(r.feriado.nome)+'</span>'
+        : '<span class="badge tag">PONTO FACULTATIVO — '+escapeHtml(r.feriado.nome)+'</span>')
+      : (r.fimDeSemana ? '<span class="badge tag">FIM DE SEMANA</span>' : '<span class="badge ativo">DIA ÚTIL</span>');
+    resultadoHtml = '<div class="box" style="margin-top:16px;background:var(--paper);margin-bottom:0;">'
+      + '<p style="margin:0 0 6px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">Resultado</p>'
+      + '<p style="margin:0 0 4px;font-size:1.3rem;font-family:var(--font-display);">'+r.dataExtenso+'</p>'
+      + '<p style="margin:0 0 10px;font-size:.85rem;color:var(--muted);">'+r.dataCurta+' — '+r.diaSemana+'</p>'
+      + badge
+      + '<p style="margin:14px 0 0;font-size:.72rem;color:var(--muted);">Feriados móveis calculados automaticamente (Páscoa, Carnaval, Corpus Christi). Pontos facultativos e feriados municipais decretados ano a ano podem variar — confirme no calendário oficial da Prefeitura de Uberlândia/MG para prazos críticos.</p>'
+      + '</div>';
+  }
+  return '<div class="box" style="margin-bottom:0;">'
+    + '<p style="margin:0 0 14px;font-size:.9rem;">Hoje: <b>'+formatarDataExtenso(hoje)+'</b> ('+DIAS_SEMANA[hoje.getDay()]+')</p>'
+    + '<div class="nom-form">'
+      + '<div><label>Quantidade de dias</label><input id="calc-dias-qtd" type="number" min="0" value="'+escapeHtml(String(d.dias))+'"></div>'
+      + '<div><label>Direção</label><select id="calc-dias-direcao">'
+        + '<option value="somar"'+(d.direcao==='somar'?' selected':'')+'>Somar (data futura)</option>'
+        + '<option value="subtrair"'+(d.direcao==='subtrair'?' selected':'')+'>Subtrair (data passada)</option>'
+        + '</select></div>'
+    + '</div>'
+    + '<button type="button" class="btn" id="calc-dias-calcular" style="margin-top:12px;">Calcular</button>'
+    + resultadoHtml
+  + '</div>';
+}
+
+function calcularData(){
+  var qtdEl = document.getElementById('calc-dias-qtd');
+  var dirEl = document.getElementById('calc-dias-direcao');
+  var qtd = parseInt(qtdEl ? qtdEl.value : '0', 10) || 0;
+  var dir = dirEl ? dirEl.value : 'somar';
+  calcState.datas.dias = qtd; calcState.datas.direcao = dir;
+  var delta = dir === 'subtrair' ? -qtd : qtd;
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var alvo = addDiasData(hoje, delta);
+  var feriado = verificarFeriado(alvo);
+  var diaSemanaNum = alvo.getDay();
+  calcState.datas.resultado = {
+    dataExtenso: formatarDataExtenso(alvo), dataCurta: formatarDataCurta(alvo),
+    diaSemana: DIAS_SEMANA[diaSemanaNum], feriado: feriado,
+    fimDeSemana: (diaSemanaNum===0 || diaSemanaNum===6)
+  };
+  render();
+}
+
+function bindCalculadoras(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-calctab]'), function(el){
+    el.addEventListener('click', function(){ calcState.tab = el.getAttribute('data-calctab'); render(); });
+  });
+  if (calcState.tab === 'assembleia'){
+    var condSel = document.getElementById('calc-condominio');
+    if (condSel) condSel.addEventListener('change', function(){ calcState.assembleia.condominio = this.value; render(); });
+    var manualEl = document.getElementById('calc-unidades-manual');
+    if (manualEl) manualEl.addEventListener('input', recalcularAssembleia);
+    var addBtn = document.getElementById('calc-add-item');
+    if (addBtn) addBtn.addEventListener('click', addItemPauta);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-remove-item]'), function(el){
+      el.addEventListener('click', function(){ removerItemPauta(el.getAttribute('data-remove-item')); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-item-check]'), function(el){
+      el.addEventListener('change', recalcularAssembleia);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-item-desc],[data-item-valor]'), function(el){
+      el.addEventListener('input', recalcularAssembleia);
+    });
+  } else {
+    var calcBtn = document.getElementById('calc-dias-calcular');
+    if (calcBtn) calcBtn.addEventListener('click', calcularData);
+  }
 }
 
 var gerarState = {

@@ -183,6 +183,63 @@ colaborador logado lê qualquer notificação. A permissão de **decidir**
 (aprovar/rejeitar) continua travada como antes, só a leitura ficou mais
 aberta. Ver explicação completa no `README-SETUP.md` do repositório raiz.
 
+## Número de unidades + calculadoras
+
+Adicionado em 2026-08-27, a pedido do usuário. A aba "Clientes" (nome atual
+do que era "Condomínios" — outra sessão renomeou o label em `SECTIONS`, o
+`id` interno continua `condominios`) ganhou de volta um menu de duas abas no
+topo — `condoSubnav('grid'|'calc')` — depois de ter ficado só com a grade
+por um tempo: **Clientes** (a grade de sempre) e **Calculadoras** (nova).
+
+**Número de unidades**: nova coleção `condoUnidades/{slug}` (`unidades`,
+`atualizadoPorUid`/`atualizadoPorNome`/`atualizadoEm`). Aparece em cada card
+da grade de Clientes (`unidadesBlocoCard()`) — "🏠 N unidades" ou "unidades
+não definidas" — com um botão "editar" visível só para quem `isAdminUser()`;
+clicar abre um campo numérico inline (`unidadesState.editando`) que salva
+direto no Firestore. Carregado uma vez por sessão (`carregarUnidades()`,
+guarda por `unidadesState.loaded`), disparado ao entrar na aba Clientes ou
+Calculadoras (`go('condominios')` e `setCondoView()`).
+
+**Calculadora de Pauta de Assembleia** (`viewCalcAssembleia()`,
+`calcState.assembleia`): escolhe o condomínio (busca o número de unidades
+cadastrado automaticamente; se não houver, mostra aviso e libera um campo
+manual "só para este cálculo", que não grava em lugar nenhum), adiciona
+quantos itens de pauta quiser (descrição + valor + checkbox "incluir"),
+e cada item mostra ao lado o valor individual por unidade (valor ÷
+unidades). O total geral e o valor por unidade somam só os itens **marcados**
+— desmarcar um item tira ele da chamada de capital sem precisar apagar a
+linha. Para não perder o foco do campo a cada tecla digitada, digitar em
+descrição/valor ou marcar/desmarcar chama `recalcularAssembleia()`, que lê os
+valores direto do DOM e atualiza só os spans de resultado (sem `render()`
+completo); só ações estruturais (condomínio, adicionar/remover item) chamam
+`render()`. Valores aceitam vírgula decimal brasileira (`parseBRL()`, ex.
+"1.500,00").
+
+**Calculadora de Datas** (`viewCalcDatas()`, `calcState.datas`): soma ou
+subtrai uma quantidade de dias a partir de hoje e mostra a data resultante,
+o dia da semana e se é feriado. `calcularPascoa()` usa o algoritmo de
+Meeus/Jones/Butcher (verificado manualmente contra 2026: Páscoa 05/04,
+Carnaval 16-17/02, Sexta-feira Santa 03/04, Corpus Christi 04/06 — todos
+batem com o calendário real). `FERIADOS_FIXOS` cobre os feriados nacionais
+de data fixa (inclui 20/11, Consciência Negra, federal desde a Lei
+14.759/2023) mais **31/08 — Emancipação Político-Administrativa de
+Uberlândia** como único feriado municipal cadastrado (é o único que eu
+tinha certeza suficiente para incluir sem risco de errar um prazo real;
+pontos facultativos e outros decretos municipais/estaduais variam ano a ano
+e **não** estão aqui — por isso o resultado sempre mostra o aviso para
+confirmar no calendário oficial da Prefeitura de Uberlândia/MG antes de usar
+para prazo crítico). Carnaval e Corpus Christi são rotulados "ponto
+facultativo", não feriado nacional obrigatório, porque tecnicamente não são
+— só a Sexta-feira Santa entre os móveis é feriado nacional de verdade.
+
+**Ambiente de teste — nota**: durante esta sessão, `msedge.exe` chamado via
+a ferramenta Bash parou de gerar saída (`--screenshot`/`--dump-dom` sem
+erro, mas sem arquivo) no meio dos testes, sem relação com o código; chamar
+o mesmo comando via PowerShell (`& $edge --headless ...`) continuou
+funcionando normalmente. Se isso acontecer de novo num futuro debug deste
+arquivo, tentar a ferramenta PowerShell antes de assumir que é bug no
+próprio HTML/JS.
+
 Para atualizar (novo condomínio, novo POP, texto revisado, etc.):
 
 1. Edite `tools/condominios/index.html` na seção correspondente.

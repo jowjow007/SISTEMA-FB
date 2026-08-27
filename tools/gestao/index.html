@@ -1118,6 +1118,9 @@
                   (it.status === 'aprovado' && souAdmin
                     ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">✓ Comprado</button>'
                     : '') +
+                  (souAdmin
+                    ? '<button type="button" class="btn small danger" data-cp-excluir-item="' + it.id + '" data-item-nome="' + escapeHtml(it.item) + '">🗑 Excluir</button>'
+                    : '') +
                 '</td>' +
               '</tr>';
             }).join('') +
@@ -1126,6 +1129,12 @@
       '</div>';
     }).join('');
 
+    Array.prototype.forEach.call(container.querySelectorAll('[data-cp-excluir-item]'), function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Excluir o item "' + b.dataset.itemNome + '" dessa lista? Essa ação não pode ser desfeita.')) return;
+        db.collection('compras').doc(b.dataset.cpExcluirItem).delete();
+      });
+    });
     Array.prototype.forEach.call(container.querySelectorAll('[data-lista-excluir]'), function(b){
       b.addEventListener('click', function(e){
         e.stopPropagation();
