@@ -742,6 +742,7 @@
   let cpCarregado = false;
   let cpChegandoId = null;
   let lotesAbertos = {};   // loteId -> bool, sobrevive aos re-renders do onSnapshot
+  let cpUltimoLoteFocado = null;   // loteId cujo campo "adicionar item" deve reganhar foco no próximo render (digitar + Enter em sequência)
 
   const STATUS_CP_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', reprovado: 'Reprovado', recebido: 'Recebido' };
 
@@ -836,8 +837,10 @@
         novaItemInput.value = '';
         document.getElementById('cp-nova-qtd').value = '1';
         novaValorInput.value = '';
-        novaItemInput.focus();
         lotesAbertos[loteId] = true;
+        // a lista já nasce aberta e o próximo item se digita direto no campo
+        // "adicionar outro item" dela mesma, pra poder ir em Enter, Enter, Enter...
+        cpUltimoLoteFocado = loteId;
       }).catch(function(err){
         errEl.textContent = 'Erro ao criar a lista: ' + err.message;
         errEl.style.display = 'block';
@@ -988,6 +991,17 @@
     Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-enviar]'), function(b){
       b.addEventListener('click', function(){ enviarListaParaAprovacao(b.dataset.rascunhoEnviar); });
     });
+
+    // Reganha o foco no campo "adicionar item" de quem acabou de adicionar um
+    // item (Enter ou clique) — o container inteiro é reconstruído a cada
+    // onSnapshot, então sem isso o foco se perderia a cada item digitado.
+    // Consome uma vez só, pra uma atualização de outra pessoa não roubar o
+    // foco de volta depois que o usuário já seguiu em frente.
+    if (cpUltimoLoteFocado) {
+      const campoFoco = container.querySelector('.rascunho-add-item[data-lote="' + cpUltimoLoteFocado + '"]');
+      if (campoFoco) campoFoco.focus();
+      cpUltimoLoteFocado = null;
+    }
   }
 
   function adicionarItemAoRascunho(loteId){
@@ -998,6 +1012,7 @@
     const item = itemInput.value.trim();
     if (!item) { itemInput.focus(); return; }
     const lista = cpItens.find(function(x){ return x.loteId === loteId; });
+    cpUltimoLoteFocado = loteId;
     db.collection('compras').add({
       item: item,
       quantidade: parseInt(qtdInput.value, 10) || 1,
@@ -1008,6 +1023,13 @@
       loteNome: lista ? lista.loteNome : '',
       status: 'rascunho',
       dataSolicitacao: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      // limpeza otimista — não espera o próximo onSnapshot pra dar a sensação
+      // de "já pode digitar o próximo e apertar Enter de novo"
+      itemInput.value = '';
+      qtdInput.value = '1';
+      valorInput.value = '';
+      itemInput.focus();
     }).catch(function(err){ alert('Erro ao adicionar item: ' + err.message); });
   }
 
