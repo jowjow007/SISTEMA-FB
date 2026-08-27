@@ -931,6 +931,7 @@
           '</div>' +
           '<div class="lh-right">' +
             '<span>' + formatBRL(g.totalEstimado) + '</span>' +
+            '<button type="button" class="btn small danger" data-rascunho-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">🗑 Excluir lista</button>' +
             '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
           '</div>' +
         '</div>' +
@@ -959,6 +960,12 @@
       '</div>';
     }).join('');
 
+    Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-excluir]'), function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        excluirRascunhoCompleto(b.dataset.rascunhoExcluir, b.dataset.listaNome, Number(b.dataset.listaQtd));
+      });
+    });
     Array.prototype.forEach.call(container.querySelectorAll('[data-lote-toggle]'), function(el){
       el.addEventListener('click', function(){
         const chave = el.dataset.loteToggle;
@@ -1002,6 +1009,14 @@
       if (campoFoco) campoFoco.focus();
       cpUltimoLoteFocado = null;
     }
+  }
+
+  function excluirRascunhoCompleto(loteId, nomeLista, qtdItens){
+    if (!confirm('Excluir a lista "' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ')? Essa ação não pode ser desfeita.')) return;
+    const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
+    const batch = db.batch();
+    itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
+    batch.commit().catch(function(err){ alert('Erro ao excluir a lista: ' + err.message); });
   }
 
   function adicionarItemAoRascunho(loteId){
