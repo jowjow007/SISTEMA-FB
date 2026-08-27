@@ -710,16 +710,19 @@
 
   function garantirListaEnviar(){
     if (!podeEnviarTarefa()) return;
-    const ref = db.collection('pendGrupos').doc(idListaEnviar());
-    ref.get().then(function(doc){
-      if (doc.exists) return;
-      ref.set({
-        ownerUid: currentUser.uid,
-        nome: 'Enviar Tarefa',
-        emoji: '📨',
-        fixa: true,
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    // Cria direto com set({merge:true}) em vez de "ler pra ver se existe": a regra
+    // do Firestore nega leitura de um documento que ainda não existe (resource vem
+    // nulo), então o get() falhava sempre no primeiro login e a lista nunca nascia.
+    // set com merge cai em "create" (doc novo) ou "update" (já existe) conforme o
+    // caso, e as duas ações já são permitidas pro dono da lista.
+    db.collection('pendGrupos').doc(idListaEnviar()).set({
+      ownerUid: currentUser.uid,
+      nome: 'Enviar Tarefa',
+      emoji: '📨',
+      fixa: true,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).catch(function(e){
+      console.error('Não foi possível preparar a lista "Enviar Tarefa":', e);
     });
   }
 
