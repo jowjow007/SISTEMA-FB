@@ -313,7 +313,7 @@ service cloud.firestore {
 
 > As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Minhas Anotações**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
 
-> A regra de `tarefasEnviadas` (usada pela ferramenta **Minhas Anotações** → botão "📨 Enviar tarefa") é o que permite **admin e gestor** atribuírem uma tarefa a qualquer outro usuário, com um fluxo de aprovação em duas etapas. Só quem tem papel `admin` ou `gestor` cria um envio (`isAdmin() || isGestor()`), sempre com `remetenteUid` = o próprio uid e `status: 'pendente'`. Cada documento só pode ser lido pelo remetente ou pelo destinatário (mais ninguém, nem outros admins). O `allow update` cobre exatamente duas transições: (1) o **destinatário** marca como feita — `pendente` ou `reprovada` → `aguardando_aprovacao` — sem poder alterar remetente/destinatário/texto, e **obrigado a preencher `justificativaConclusao`** (a ferramenta abre um modal pedindo "o que foi feito" e não deixa confirmar em branco); (2) o **remetente** decide — `aguardando_aprovacao` → `aprovada` ou `reprovada`, exigindo `motivoReprovacao` preenchido quando reprova (a tarefa some da "aguardando aprovação" dele e volta pendente, com o motivo, para o destinatário refazer — a justificativa da tentativa anterior fica visível pros dois, pra dar contexto). Ninguém mais pode escrever nesses documentos. Isso é intencionalmente separado de `pendTarefas`: uma tarefa enviada nunca vira uma tarefa "dona" de outra pessoa (o destinatário não pode editar texto, mover de lista, nem apagar por conta própria) — só o remetente ou um admin pode apagar o envio (`allow delete`), e a ferramenta mostra o botão "Excluir" na aba "Enviadas" exatamente pra essas duas pessoas.
+> A regra de `tarefasEnviadas` (usada pela ferramenta **Minhas Anotações**, ver seção 11 mais abaixo) é o que permite **admin e gestor** atribuírem uma tarefa a qualquer outro usuário, com um fluxo de aprovação em duas etapas. Só quem tem papel `admin` ou `gestor` cria um envio (`isAdmin() || isGestor()`), sempre com `remetenteUid` = o próprio uid e `status: 'pendente'`. Cada documento só pode ser lido pelo remetente ou pelo destinatário (mais ninguém, nem outros admins). O `allow update` cobre exatamente duas transições: (1) o **destinatário** marca como feita — `pendente` ou `reprovada` → `aguardando_aprovacao` — sem poder alterar remetente/destinatário/texto, e **obrigado a preencher `justificativaConclusao`** (a ferramenta abre um modal pedindo "o que foi feito" e não deixa confirmar em branco); (2) o **remetente** decide — `aguardando_aprovacao` → `aprovada` ou `reprovada`, exigindo `motivoReprovacao` preenchido quando reprova (a tarefa some da "aguardando aprovação" dele e volta pendente, com o motivo, para o destinatário refazer — a justificativa da tentativa anterior fica visível pros dois, pra dar contexto). Ninguém mais pode escrever nesses documentos. Isso é intencionalmente separado de `pendTarefas`: uma tarefa enviada nunca vira uma tarefa "dona" de outra pessoa (o destinatário não pode editar texto, mover de lista, nem apagar por conta própria) — só o remetente ou um admin pode apagar o envio (`allow delete`), e a ferramenta mostra o botão "Excluir" na aba "Enviadas" exatamente pra essas duas pessoas.
 >
 > Na tela, o que foi enviado para alguém não aparece só no banner de aviso: vira também uma **lista virtual "📨 Recebidas"**, em cor laranja (diferente de todas as listas normais), fixada no topo da barra lateral em modo Lista e como primeira coluna em modo Kanban — não existe de verdade em `pendGrupos`, é montada na hora a partir de `tarefasEnviadas`, então não pode ser excluída nem recebe tarefas soltas dentro dela. Enquanto houver algo `pendente` ou `reprovada` nela, tanto essa lista/coluna quanto a própria aba "Minhas Anotações" no menu do Portal **piscam** (ver `updateAnotacoesBlink()` no `index.html` do Portal, que reaproveita o mesmo mecanismo `.tab-blink` já usado pela aba "Gestão"); o piscar para assim que o destinatário conclui, sem esperar a aprovação do remetente.
 
@@ -794,28 +794,49 @@ só pedir.
 ## 11. Ferramenta "Minhas Anotações" — enviar tarefa para outra pessoa
 
 Além da lista pessoal (seção descrita junto com a criação da ferramenta,
-mais acima), quem tem papel `admin` ou `gestor` (ver seção 7) enxerga um
-botão extra **"📨 Enviar tarefa"** no topo de `tools/minhas-anotacoes/`. Ao
-enviar, a tarefa aparece para a pessoa destinatária num **banner vermelho
-pulsante fixo no topo da tela dela** ("📬 Enviado por Fulano") — impossível
-de não ver, some só quando ela marca como feita ou quando é aprovada — em
-vez de entrar como uma tarefa comum dentro de uma das listas dela.
+mais acima), quem tem papel `admin` ou `gestor` (ver seção 7) ganha uma
+**lista pré-criada e fixa chamada "📨 Enviar Tarefa"** (cor azul, diferente
+das listas normais) em `tools/minhas-anotacoes/` — criada sozinha no
+primeiro login de quem pode enviar (`garantirListaEnviar()`, doc
+`pendGrupos/enviarTarefa_{uid}`, campo `fixa: true`), sem botão nem modal
+separado pra abrir. Ela funciona **exatamente como qualquer outra lista**:
+digita o texto e aperta Enter (ou clica "+ Adicionar tarefa") pra cadastrar,
+com o mesmo comportamento de manter o foco pra digitar a próxima em
+sequência. A diferença aparece em cada tarefa cadastrada **dentro dela**:
+no lugar do select "Mover para…", tem um select **"📨 Enviar para…"** com
+todo mundo do `organograma` (menos você) — ao escolher alguém, envia na
+hora (cria o documento em `tarefasEnviadas` e apaga a tarefa da lista
+"Enviar Tarefa", já que ela cumpriu o papel de rascunho). Se a tarefa tinha
+uma data de vencimento preenchida, essa data vai junto no envio. Por ser
+`fixa`, essa lista não tem o "✕" de excluir (nem na barra lateral nem na
+coluna do Kanban) — só as tarefas dentro dela podem ser apagadas
+normalmente, como em qualquer lista.
 
-Fluxo (documento em `tarefasEnviadas`, ver regra na seção 3):
+Depois de enviada, a tarefa aparece para a pessoa destinatária num **banner
+vermelho pulsante fixo no topo da tela dela** ("📬 Enviado por Fulano") —
+impossível de não ver, some só quando ela marca como feita ou quando é
+aprovada — em vez de entrar como uma tarefa comum dentro de uma das listas
+dela (ver a lista virtual "📨 Recebidas" na nota da regra de
+`tarefasEnviadas`, na seção 3).
 
-1. **Admin/gestor** clica "📨 Enviar tarefa", escolhe o colega (lista vem de
-   `organograma`, ver nota da regra desse mesmo nome) e escreve o texto
-   (+ data opcional). Nasce com `status: 'pendente'`.
-2. **Destinatário** vê o banner, faz o que foi pedido e clica "✓ Concluí" —
-   vira `status: 'aguardando_aprovacao'`. Ele não pode editar o texto nem
-   apagar o envio, só marcar como feito.
+Fluxo completo (documento em `tarefasEnviadas`, ver regra na seção 3):
+
+1. **Admin/gestor** cadastra o texto na lista "📨 Enviar Tarefa" (igual a
+   qualquer lista) e, na própria tarefa, escolhe o destinatário no select
+   "📨 Enviar para…". Nasce com `status: 'pendente'`.
+2. **Destinatário** vê o banner (ou a lista/coluna "📨 Recebidas"), faz o que
+   foi pedido e clica "✓ Concluí" — um modal exige uma justificativa antes
+   de confirmar, aí vira `status: 'aguardando_aprovacao'`. Ele não pode
+   editar o texto nem apagar o envio, só marcar como feito.
 3. Quem enviou acompanha tudo isso numa aba própria dentro da mesma
    ferramenta — **"📨 Enviadas"** (só aparece pra quem é admin/gestor) — com
    o que está pendente, o que está aguardando aprovação e o que já foi
-   decidido. Ali ele **aprova** (`status: 'aprovada'`, fecha o ciclo) ou
-   **reprova** com um motivo obrigatório (`status: 'reprovada'`) — nesse
-   caso a tarefa volta a aparecer no banner vermelho do destinatário, agora
-   mostrando o motivo da recusa, para ele refazer e reenviar.
+   decidido, incluindo a justificativa de quem concluiu. Ali ele **aprova**
+   (`status: 'aprovada'`, fecha o ciclo) ou **reprova** com um motivo
+   obrigatório (`status: 'reprovada'`) — nesse caso a tarefa volta a
+   aparecer no banner vermelho do destinatário, agora mostrando o motivo da
+   recusa, para ele refazer e reenviar. Admin (ou o próprio remetente) pode
+   excluir um envio a qualquer momento por ali, pelo "✕" no card.
 
 Quem manda só vê o que ela mesma enviou (nunca o que outro admin/gestor
 mandou para alguém) — a regra de `tarefasEnviadas` restringe a leitura a

@@ -130,6 +130,13 @@
     50%{box-shadow:0 0 0 6px rgba(224,120,32,0);}
   }
 
+  /* Lista fixa "Enviar Tarefa" — cor diferente (azul), não excluível */
+  .lista-btn.fixa{border-color:rgba(70,140,190,.5);background:rgba(70,140,190,.10);}
+  .lista-btn.fixa:hover{background:rgba(70,140,190,.18);}
+  .lista-btn.fixa.active{background:#215a80;border-color:#4a92c4;color:#fff;}
+  .lista-btn.fixa.active .lista-count{color:#fff;background:rgba(255,255,255,.18);}
+  .lista-btn.fixa .lista-count{background:rgba(70,140,190,.25);color:#7ec1ec;}
+
   #mainPane{flex:1 1 auto;overflow-y:auto;padding:26px 28px 60px;}
   #semSelecao{color:var(--muted);text-align:center;padding:120px 20px;font-size:.9rem;}
 
@@ -239,6 +246,11 @@
   }
   .recebida-kanban-card{border-color:rgba(224,120,32,.35);}
 
+  /* Coluna fixa "Enviar Tarefa" no Kanban */
+  .kanban-col.fixa{border-color:rgba(70,140,190,.5);background:rgba(70,140,190,.06);}
+  .kanban-col.fixa .kanban-col-head{border-bottom-color:rgba(70,140,190,.28);}
+  .kanban-col.fixa .count{background:rgba(70,140,190,.25);color:#7ec1ec;}
+
   /* ---------- Banner de tarefas recebidas de outra pessoa ---------- */
   #recebidasBanner{
     display:none;flex-direction:column;gap:10px;padding:14px 18px;background:rgba(184,54,46,.10);
@@ -339,7 +351,6 @@
 <div id="app" style="display:none;">
   <div id="topbar">
     <span class="topbar-title">Minhas Anotações</span>
-    <button type="button" class="btn small" id="enviarTarefaBtn" style="display:none;">📨 Enviar tarefa</button>
     <div class="view-toggle">
       <button type="button" class="view-btn" id="viewBtnLista">☰ Lista</button>
       <button type="button" class="view-btn" id="viewBtnKanban">▦ Kanban</button>
@@ -392,31 +403,6 @@
     <div class="modal-foot">
       <button class="btn ghost" id="listaCancelar">Cancelar</button>
       <button class="btn" id="listaConfirmar">Criar lista</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: enviar tarefa para outra pessoa -->
-<div class="modal-backdrop" id="enviarBackdrop">
-  <div class="modal">
-    <h3>Enviar tarefa</h3>
-    <p>Ela aparece com destaque para a pessoa escolhida e só sai de lá quando você aprovar.</p>
-
-    <label for="enviarDestinatario">Para quem</label>
-    <select id="enviarDestinatario" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-family:inherit;font-size:.88rem;">
-      <option value="">Carregando…</option>
-    </select>
-
-    <label for="enviarTexto">O que precisa ser feito</label>
-    <textarea id="enviarTexto" maxlength="300" placeholder="Descreva a tarefa..." style="width:100%;min-height:80px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.86rem;padding:9px 10px;"></textarea>
-
-    <label for="enviarData">Prazo (opcional)</label>
-    <input type="date" id="enviarData" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);color-scheme:dark;">
-
-    <div class="modal-err" id="enviarErr"></div>
-    <div class="modal-foot">
-      <button class="btn ghost" id="enviarCancelar">Cancelar</button>
-      <button class="btn" id="enviarConfirmar">Enviar</button>
     </div>
   </div>
 </div>
@@ -523,7 +509,6 @@
     novaListaKanbanBtn: document.getElementById('novaListaKanbanBtn'),
     enviadasBoard: document.getElementById('enviadasBoard'),
     recebidasBanner: document.getElementById('recebidasBanner'),
-    enviarTarefaBtn: document.getElementById('enviarTarefaBtn'),
     listasNav: document.getElementById('listasNav'),
     listasEmpty: document.getElementById('listasEmpty'),
     novaListaBtn: document.getElementById('novaListaBtn'),
@@ -537,13 +522,6 @@
     emojiPreview: document.getElementById('emojiPreview'),
     emojiFiltro: document.getElementById('emojiFiltro'),
     emojiCatalogo: document.getElementById('emojiCatalogo'),
-    enviarBackdrop: document.getElementById('enviarBackdrop'),
-    enviarDestinatario: document.getElementById('enviarDestinatario'),
-    enviarTexto: document.getElementById('enviarTexto'),
-    enviarData: document.getElementById('enviarData'),
-    enviarErr: document.getElementById('enviarErr'),
-    enviarCancelar: document.getElementById('enviarCancelar'),
-    enviarConfirmar: document.getElementById('enviarConfirmar'),
     reprovarBackdrop: document.getElementById('reprovarBackdrop'),
     reprovarTexto: document.getElementById('reprovarTexto'),
     reprovarErr: document.getElementById('reprovarErr'),
@@ -719,62 +697,82 @@
     });
   });
 
-  // ---------- Enviar tarefa para outra pessoa (admin/gestor) ----------
-  function abrirModalEnviar(){
-    els.enviarErr.textContent = '';
-    els.enviarTexto.value = '';
-    els.enviarData.value = '';
-    els.enviarDestinatario.innerHTML = '<option value="">Carregando…</option>';
-    els.enviarBackdrop.classList.add('open');
+  // ---------- Lista fixa "Enviar Tarefa" (admin/gestor) ----------
+  // Em vez de um modal separado, quem pode enviar tarefa (admin/gestor) ganha uma
+  // lista pré-criada e não excluível chamada "Enviar Tarefa": cadastra ali igual a
+  // qualquer outra lista (composer com Enter, foco mantido) e, em cada tarefa
+  // cadastrada, escolhe pra quem mandar num select — ao escolher, já envia na hora.
+  let colegas = []; // diretório (organograma) usado no select "Enviar para..."
+
+  function idListaEnviar(){
+    return 'enviarTarefa_' + currentUser.uid;
+  }
+
+  function garantirListaEnviar(){
+    if (!podeEnviarTarefa()) return;
+    const ref = db.collection('pendGrupos').doc(idListaEnviar());
+    ref.get().then(function(doc){
+      if (doc.exists) return;
+      ref.set({
+        ownerUid: currentUser.uid,
+        nome: 'Enviar Tarefa',
+        emoji: '📨',
+        fixa: true,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+  }
+
+  function carregarColegas(){
+    if (!podeEnviarTarefa()) return;
     db.collection('organograma').get().then(function(snap){
-      const opts = snap.docs
+      colegas = snap.docs
         .filter(function(d){ return d.id !== currentUser.uid; })
         .map(function(d){ return { uid: d.id, nome: d.data().displayName || '(sem nome)' }; })
         .sort(function(a,b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
-      els.enviarDestinatario.innerHTML = '<option value="">Selecione…</option>' +
-        opts.map(function(o){ return '<option value="' + o.uid + '">' + escapeHtml(o.nome) + '</option>'; }).join('');
-    }).catch(function(e){
-      els.enviarDestinatario.innerHTML = '<option value="">Erro ao carregar colegas</option>';
-      els.enviarErr.textContent = 'Erro: ' + e.message;
-    });
-    els.enviarTexto.focus();
+      render();
+    }).catch(function(){ colegas = []; });
   }
 
-  if (els.enviarTarefaBtn) els.enviarTarefaBtn.addEventListener('click', abrirModalEnviar);
-  els.enviarCancelar.addEventListener('click', function(){ els.enviarBackdrop.classList.remove('open'); });
+  function enviarParaSelectHtml(t){
+    if (!colegas.length){
+      return '<span style="font-size:.7rem;color:var(--muted);">Sem colegas cadastrados</span>';
+    }
+    let out = '<select class="tarefa-move" onchange="__enviarTarefaLista(\'' + t.id + '\', this.value); this.selectedIndex=0;">';
+    out += '<option value="">📨 Enviar para…</option>';
+    colegas.forEach(function(c){
+      out += '<option value="' + c.uid + '">' + escapeHtml(c.nome) + '</option>';
+    });
+    out += '</select>';
+    return out;
+  }
 
-  els.enviarConfirmar.addEventListener('click', function(){
-    const destinatarioUid = els.enviarDestinatario.value;
-    const opt = els.enviarDestinatario.options[els.enviarDestinatario.selectedIndex];
-    const destinatarioNome = opt ? opt.textContent : '';
-    const texto = els.enviarTexto.value.trim();
-    const dataVencimento = els.enviarData.value || null;
-    els.enviarErr.textContent = '';
-    if (!destinatarioUid){ els.enviarErr.textContent = 'Escolha quem vai receber a tarefa.'; return; }
-    if (!texto){ els.enviarErr.textContent = 'Escreva o que precisa ser feito.'; return; }
-    if (!currentUser) return;
-    els.enviarConfirmar.disabled = true;
+  window.__enviarTarefaLista = function(tarefaId, destinatarioUid){
+    if (!destinatarioUid) return;
+    const t = tarefas.find(function(x){ return x.id === tarefaId; });
+    if (!t) return;
+    const colega = colegas.find(function(c){ return c.uid === destinatarioUid; });
+    const destinatarioNome = colega ? colega.nome : '';
     db.collection('tarefasEnviadas').add({
       remetenteUid: currentUser.uid,
       remetenteNome: currentUser.displayName,
       destinatarioUid: destinatarioUid,
       destinatarioNome: destinatarioNome,
-      texto: texto,
-      dataVencimento: dataVencimento,
+      texto: t.texto,
+      dataVencimento: t.dataVencimento || null,
       status: 'pendente',
       criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
       concluidaEm: null,
       aprovadoEm: null,
       aprovadoPor: null,
-      motivoReprovacao: null
+      motivoReprovacao: null,
+      justificativaConclusao: null
     }).then(function(){
-      els.enviarBackdrop.classList.remove('open');
+      return db.collection('pendTarefas').doc(tarefaId).delete();
     }).catch(function(e){
-      els.enviarErr.textContent = 'Erro: ' + e.message;
-    }).finally(function(){
-      els.enviarConfirmar.disabled = false;
+      alert('Não foi possível enviar: ' + e.message);
     });
-  });
+  };
 
   window.__abrirConcluirEnvio = function(id){
     concluirEnvioAlvoId = id;
@@ -980,12 +978,14 @@
     const abertasCount = tarefasLista.filter(function(t){ return !t.concluida; }).length;
     const temAtraso = tarefasLista.some(isAtrasada);
     const ativo = g.id === selectedListaId;
-    let out = '<button type="button" class="lista-btn' + (ativo ? ' active' : '') + '" onclick="__selecionarLista(\'' + g.id + '\')">';
+    let out = '<button type="button" class="lista-btn' + (g.fixa ? ' fixa' : '') + (ativo ? ' active' : '') + '" onclick="__selecionarLista(\'' + g.id + '\')">';
     out += '<span class="lista-emoji">' + g.emoji + '</span>';
     out += '<span class="lista-nome">' + escapeHtml(g.nome) + '</span>';
     if (temAtraso) out += '<span class="lista-alerta" title="Tem tarefa atrasada"></span>';
     out += '<span class="lista-count">' + abertasCount + '</span>';
-    out += '<span class="icon-btn danger lista-del" onclick="event.stopPropagation(); __excluirLista(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir lista">✕</span>';
+    if (!g.fixa){
+      out += '<span class="icon-btn danger lista-del" onclick="event.stopPropagation(); __excluirLista(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir lista">✕</span>';
+    }
     out += '</button>';
     return out;
   }
@@ -1005,7 +1005,10 @@
   function renderSidebar(){
     const pecas = [];
     if (recebidas.length) pecas.push(recebidasListaBtnHtml());
-    pecas.push.apply(pecas, listas.map(listaBtnHtml));
+    const fixas = listas.filter(function(g){ return g.fixa; });
+    const normais = listas.filter(function(g){ return !g.fixa; });
+    pecas.push.apply(pecas, fixas.map(listaBtnHtml));
+    pecas.push.apply(pecas, normais.map(listaBtnHtml));
     if (!pecas.length){
       els.listasNav.innerHTML = '';
       els.listasEmpty.style.display = 'block';
@@ -1016,14 +1019,16 @@
   }
 
   // ---------- Render: painel principal (Lista) ----------
-  function tarefaRowHtml(t, done, outrasListas){
+  function tarefaRowHtml(t, done, outrasListas, listaAtual){
     const atrasada = !done && isAtrasada(t);
     let out = '<div class="tarefa-row' + (atrasada ? ' atrasada' : '') + '">';
     out += '<button type="button" class="tarefa-check' + (done ? ' done' : '') + '" onclick="__toggleTarefa(\'' + t.id + '\',' + done + ')" title="' + (done ? 'Reabrir tarefa' : 'Marcar como concluída') + '">' + (done ? '✓' : '') + '</button>';
     out += '<div class="tarefa-texto' + (done ? ' done' : '') + '">' + escapeHtml(t.texto) + '</div>';
     if (atrasada) out += '<span class="tarefa-atraso-tag">⚠️ Atrasada</span>';
     out += '<input type="date" class="tarefa-data" value="' + (t.dataVencimento || '') + '" onchange="__definirData(\'' + t.id + '\', this.value)" title="Data de conclusão">';
-    if (outrasListas.length){
+    if (listaAtual && listaAtual.fixa){
+      out += enviarParaSelectHtml(t);
+    } else if (outrasListas.length){
       out += '<select class="tarefa-move" onchange="__moverTarefa(\'' + t.id + '\', this.value); this.selectedIndex=0;">';
       out += '<option value="">Mover para…</option>';
       outrasListas.forEach(function(g){
@@ -1061,7 +1066,7 @@
       if (!abertas.length){
         out += '<div class="sec-empty">Nenhuma tarefa aberta.</div>';
       } else {
-        out += abertas.map(function(t){ return tarefaRowHtml(t, false, outrasListas); }).join('');
+        out += abertas.map(function(t){ return tarefaRowHtml(t, false, outrasListas, g); }).join('');
       }
       out += '</div>';
       out += '<button type="button" class="add-tarefa-btn" onclick="__abrirComposer(\'' + g.id + '\')">+ Adicionar tarefa</button>';
@@ -1082,7 +1087,7 @@
       if (!concluidas.length){
         out += '<div class="sec-empty">Nenhuma tarefa concluída ainda.</div>';
       } else {
-        out += concluidas.map(function(t){ return tarefaRowHtml(t, true, outrasListas); }).join('');
+        out += concluidas.map(function(t){ return tarefaRowHtml(t, true, outrasListas, g); }).join('');
       }
       out += '</div>';
     }
@@ -1145,7 +1150,7 @@
   }
 
   // ---------- Render: quadro Kanban ----------
-  function kanbanCardHtml(t, outrasListas){
+  function kanbanCardHtml(t, outrasListas, listaAtual){
     const atrasada = isAtrasada(t);
     let out = '<div class="kanban-card' + (atrasada ? ' atrasada' : '') + '" draggable="true" ondragstart="__dragStart(event,\'' + t.id + '\')">';
     out += '<div class="kanban-card-top">';
@@ -1156,7 +1161,9 @@
     out += '<div class="kanban-card-foot">';
     if (atrasada) out += '<span class="tarefa-atraso-tag">⚠️ Atrasada</span>';
     out += '<input type="date" class="tarefa-data" value="' + (t.dataVencimento || '') + '" onchange="__definirData(\'' + t.id + '\', this.value)" title="Data de conclusão">';
-    if (outrasListas.length){
+    if (listaAtual && listaAtual.fixa){
+      out += enviarParaSelectHtml(t);
+    } else if (outrasListas.length){
       out += '<select class="tarefa-move" onchange="__moverTarefa(\'' + t.id + '\', this.value); this.selectedIndex=0;">';
       out += '<option value="">Mover para…</option>';
       outrasListas.forEach(function(g){
@@ -1174,18 +1181,20 @@
       .sort(function(a,b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
     const outrasListas = listas.filter(function(x){ return x.id !== g.id; });
 
-    let out = '<div class="kanban-col">';
+    let out = '<div class="kanban-col' + (g.fixa ? ' fixa' : '') + '">';
     out += '<div class="kanban-col-head">';
     out += '<span class="emoji">' + g.emoji + '</span>';
     out += '<span class="nome">' + escapeHtml(g.nome) + '</span>';
     out += '<span class="count">' + abertas.length + '</span>';
-    out += '<button type="button" class="icon-btn danger" onclick="__excluirLista(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir lista">✕</button>';
+    if (!g.fixa){
+      out += '<button type="button" class="icon-btn danger" onclick="__excluirLista(\'' + g.id + '\',\'' + escapeHtml(g.nome).replace(/'/g,"\\'") + '\')" title="Excluir lista">✕</button>';
+    }
     out += '</div>';
     out += '<div class="kanban-col-body" ondragover="event.preventDefault(); this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="__dropCard(event,\'' + g.id + '\')">';
     if (!abertas.length){
       out += '<div class="kanban-empty">Sem tarefas aqui.<br>Arraste um cartão ou adicione uma nova.</div>';
     } else {
-      out += abertas.map(function(t){ return kanbanCardHtml(t, outrasListas); }).join('');
+      out += abertas.map(function(t){ return kanbanCardHtml(t, outrasListas, g); }).join('');
     }
     out += '</div>';
     out += '<button type="button" class="kanban-add" onclick="__abrirKanbanComposer(\'' + g.id + '\')">+ Adicionar</button>';
@@ -1240,7 +1249,9 @@
       els.kanbanCols.innerHTML = colRecebidas || '<div class="kanban-empty" style="padding:20px;">Nenhuma lista ainda — crie uma para começar seu quadro kanban.</div>';
       return;
     }
-    els.kanbanCols.innerHTML = colRecebidas + listas.map(kanbanColHtml).join('');
+    const fixas = listas.filter(function(g){ return g.fixa; });
+    const normais = listas.filter(function(g){ return !g.fixa; });
+    els.kanbanCols.innerHTML = colRecebidas + fixas.map(kanbanColHtml).join('') + normais.map(kanbanColHtml).join('');
   }
 
   // ---------- Render: banner de tarefas recebidas ----------
@@ -1326,7 +1337,7 @@
   function renderEnviadas(){
     if (!podeEnviarTarefa()) return;
     if (!enviadas.length){
-      els.enviadasBoard.innerHTML = '<div class="kanban-empty" style="padding:30px;">Você ainda não enviou nenhuma tarefa. Use "📨 Enviar tarefa" no topo.</div>';
+      els.enviadasBoard.innerHTML = '<div class="kanban-empty" style="padding:30px;">Você ainda não enviou nenhuma tarefa. Cadastre na lista 📨 "Enviar Tarefa" e escolha o destinatário em cada item.</div>';
       return;
     }
     const ordem = { aguardando_aprovacao: 0, pendente: 1, reprovada: 2, aprovada: 3 };
@@ -1428,8 +1439,9 @@
       els.gate.style.display = 'none';
       els.app.style.display = 'block';
       if (podeEnviarTarefa()){
-        els.enviarTarefaBtn.style.display = 'inline-flex';
         els.viewBtnEnviadas.style.display = 'inline-block';
+        garantirListaEnviar();
+        carregarColegas();
       }
       let savedView = null;
       try { savedView = localStorage.getItem(VIEW_CACHE_KEY); } catch(e){ /* indisponível */ }
