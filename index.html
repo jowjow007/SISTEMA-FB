@@ -664,7 +664,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v127</span>
+      <span class="version-tag">v128</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -727,6 +727,8 @@
               <div><label style="font-size:.75rem;color:var(--muted);">Papel</label>
                 <select id="nu-papel" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
                   <option value="membro">Membro</option>
+                  <option value="cliente">Cliente</option>
+                  <option value="gestor">Gestor</option>
                   <option value="admin">Administrador</option>
                 </select></div>
               <div><label style="font-size:.75rem;color:var(--muted);">E-mail</label>
@@ -852,6 +854,8 @@
       <div><label style="font-size:.75rem;color:var(--muted);">Cargo</label>
         <select id="dados-papel" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
           <option value="membro">Membro</option>
+          <option value="cliente">Cliente</option>
+          <option value="gestor">Gestor</option>
           <option value="admin">Administrador</option>
         </select>
         <p id="dados-papel-hint" style="font-size:.68rem;color:var(--muted);margin:4px 0 0;display:none;">Você não pode alterar o próprio cargo por aqui.</p></div>
@@ -1342,6 +1346,17 @@
           birthDate: nascimento,
           photoBase64: registerPhotoDataUrl || null,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        // Mesmo espelho em organograma/{uid} que a criação pelo admin já faz —
+        // sem isso, quem se autocadastra só apareceria no diretório usado por
+        // "Minhas Anotações" (enviar tarefa) depois que um admin abrisse
+        // "Dados" para essa pessoa (ver README-SETUP.md).
+        db.collection('organograma').doc(uid).set({
+          displayName: nome,
+          deptoAtual: '',
+          dataIngresso: '',
+          remuneracao: '',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         })
       ]);
     }).catch(function(err){
@@ -1483,7 +1498,7 @@
   });
 
   function renderUserInfo(){
-    const papel = currentProfile.role === 'admin' ? 'Administrador' : 'Membro';
+    const papel = roleLabel(currentProfile.role);
     els.userInfoBox.innerHTML = '<b>' + (currentProfile.displayName || currentProfile.email) + '</b>' +
       '<span class="role-badge">' + papel + '</span>';
     const inicial = (currentProfile.displayName || currentProfile.email || '?').trim().charAt(0).toUpperCase();
@@ -1886,6 +1901,10 @@
     });
   }
 
+  function roleLabel(role){
+    return { admin: 'Administrador', gestor: 'Gestor', cliente: 'Cliente', membro: 'Membro' }[role] || 'Membro';
+  }
+
   // ================= ADMIN PANEL =================
   let adminInited = false;
   function initAdminPanel(){
@@ -1939,14 +1958,28 @@
     secondaryAuth.createUserWithEmailAndPassword(email, senha).then(function(cred){
       const uid = cred.user.uid;
       return secondaryAuth.signOut().then(function(){
-        return db.collection('users').doc(uid).set({
-          email: email,
-          displayName: nome,
-          role: papel,
-          tabs: tabs,
-          mustChangePassword: true,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        return Promise.all([
+          db.collection('users').doc(uid).set({
+            email: email,
+            displayName: nome,
+            role: papel,
+            tabs: tabs,
+            mustChangePassword: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }),
+          // Espelha o nome em organograma/{uid} desde já — é o diretório que
+          // ferramentas como "Minhas Anotações" (enviar tarefa para outra
+          // pessoa) e "Organograma" usam para listar colegas sem precisar
+          // ler users/* de outra pessoa (ver README-SETUP.md).
+          db.collection('organograma').doc(uid).set({
+            displayName: nome,
+            deptoAtual: '',
+            dataIngresso: '',
+            remuneracao: '',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: currentProfile.uid
+          })
+        ]);
       });
     }).then(function(){
       okEl.style.display = 'block';
@@ -1984,7 +2017,7 @@
       return '<tr class="' + (pendente ? 'row-pending' : '') + '">' +
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
-        '<td>' + (u.role === 'admin' ? 'Administrador' : 'Membro') + '</td>' +
+        '<td>' + roleLabel(u.role) + '</td>' +
         '<td>' + chips + '</td>' +
         '<td class="actions-cell">' +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
@@ -2162,7 +2195,9 @@
     if (novoPapel !== editDadosPapelOriginal) {
       const msg = novoPapel === 'admin'
         ? 'Tornar esta pessoa administradora? Ela passará a ter acesso total ao painel de Administração.'
-        : 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.';
+        : editDadosPapelOriginal === 'admin'
+          ? 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.'
+          : 'Alterar o cargo desta pessoa para "' + roleLabel(novoPapel) + '"?';
       if (!confirm(msg)) return;
     }
 

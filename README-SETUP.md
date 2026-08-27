@@ -49,6 +49,10 @@ service cloud.firestore {
       return isSignedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+    function isGestor() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'gestor';
+    }
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId
@@ -149,6 +153,38 @@ service cloud.firestore {
                     && resource.data.ownerUid == request.auth.uid
                     && request.resource.data.ownerUid == request.auth.uid;
     }
+    match /tarefasEnviadas/{envioId} {
+      allow read: if isSignedIn() &&
+                    (resource.data.remetenteUid == request.auth.uid || resource.data.destinatarioUid == request.auth.uid);
+      allow create: if isSignedIn() && (isAdmin() || isGestor())
+                    && request.resource.data.remetenteUid == request.auth.uid
+                    && request.resource.data.destinatarioUid is string
+                    && request.resource.data.destinatarioUid != request.auth.uid
+                    && request.resource.data.texto is string
+                    && request.resource.data.texto.size() > 0
+                    && request.resource.data.texto.size() <= 300
+                    && request.resource.data.status == 'pendente';
+      allow update: if isSignedIn() && (
+                      (
+                        request.auth.uid == resource.data.destinatarioUid
+                        && resource.data.status in ['pendente', 'reprovada']
+                        && request.resource.data.status == 'aguardando_aprovacao'
+                        && request.resource.data.remetenteUid == resource.data.remetenteUid
+                        && request.resource.data.destinatarioUid == resource.data.destinatarioUid
+                        && request.resource.data.texto == resource.data.texto
+                      ) || (
+                        request.auth.uid == resource.data.remetenteUid
+                        && resource.data.status == 'aguardando_aprovacao'
+                        && request.resource.data.status in ['aprovada', 'reprovada']
+                        && request.resource.data.remetenteUid == resource.data.remetenteUid
+                        && request.resource.data.destinatarioUid == resource.data.destinatarioUid
+                        && request.resource.data.texto == resource.data.texto
+                        && (request.resource.data.status == 'aprovada'
+                            || (request.resource.data.motivoReprovacao is string && request.resource.data.motivoReprovacao.size() > 0))
+                      )
+                    );
+      allow delete: if isSignedIn() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
+    }
     match /contratosGerados/{docId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -162,6 +198,12 @@ service cloud.firestore {
     match /organograma/{uid} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() > 0
+                    && request.resource.data.deptoAtual == ''
+                    && request.resource.data.dataIngresso == ''
+                    && request.resource.data.remuneracao == '';
     }
     function isAprovadorDoCondo(slug) {
       return isSignedIn() &&
@@ -265,9 +307,11 @@ service cloud.firestore {
 
 > As regras de `pendGrupos` e `pendTarefas` (usadas pela ferramenta **Minhas Anotações**) são 100% pessoais: `ownerUid` trava tudo, então cada pessoa só lê, cria, edita e apaga os próprios grupos e tarefas — inclusive admin não enxerga a lista de pendências de ninguém. Cada tarefa carrega o `grupoId` do grupo em que está; "mover para outro grupo" é só um `update` trocando esse campo. Apagar um grupo também remove (no próprio app, via lote/batch) todas as tarefas dele.
 
+> A regra de `tarefasEnviadas` (usada pela ferramenta **Minhas Anotações** → botão "📨 Enviar tarefa") é o que permite **admin e gestor** atribuírem uma tarefa a qualquer outro usuário, com um fluxo de aprovação em duas etapas. Só quem tem papel `admin` ou `gestor` cria um envio (`isAdmin() || isGestor()`), sempre com `remetenteUid` = o próprio uid e `status: 'pendente'`. Cada documento só pode ser lido pelo remetente ou pelo destinatário (mais ninguém, nem outros admins). O `allow update` cobre exatamente duas transições: (1) o **destinatário** marca como feita — `pendente` ou `reprovada` → `aguardando_aprovacao` — sem poder alterar remetente/destinatário/texto; (2) o **remetente** decide — `aguardando_aprovacao` → `aprovada` ou `reprovada`, exigindo `motivoReprovacao` preenchido quando reprova (a tarefa some da "aguardando aprovação" dele e volta pendente, com o motivo, para o destinatário refazer). Ninguém mais pode escrever nesses documentos. Isso é intencionalmente separado de `pendTarefas`: uma tarefa enviada nunca vira uma tarefa "dona" de outra pessoa (o destinatário não pode editar texto, mover de lista, nem apagar por conta própria) — só o remetente ou um admin pode apagar o envio (`allow delete`).
+
 > A regra de `contratosGerados` (usada pela ferramenta **Contratos e Propostas**, histórico "últimos documentos gerados") é compartilhada entre toda a equipe: qualquer usuário logado lê a lista inteira (para reaproveitar contratos gerados por colegas), mas só cria registros com o próprio `criadoPorUid`. Os registros nunca são editados depois de criados (`allow update: if false`) — cada geração de PDF cria um novo documento, não atualiza um existente. Apagar é permitido para quem criou o registro ou para admin (ex.: remover um teste/engano da lista). O campo `dados` guarda o objeto inteiro do formulário (nome, CPF, valores, cláusulas preenchidas etc.) para permitir recarregar o formulário com um clique — não guarda o PDF em si, só os dados usados para gerá-lo.
 
-> A regra de `organograma` (usada pela ferramenta **Organograma**) existe porque `users/{uid}` só pode ser lido pelo próprio dono do cadastro ou por um admin (regra `allow read` de `users` acima) — então um gestor sem papel de admin nunca conseguiria montar a lista de todo mundo direto de `users`. `organograma/{uid}` é um espelho **só com os campos não sensíveis** (`displayName`, `deptoAtual`, `dataIngresso`, `remuneracao`) que qualquer usuário logado pode ler — CPF, RG, telefone e endereço nunca são copiados para cá, continuam só em `users`. Só admin escreve (`allow write: if isAdmin()`), e a ferramenta grava nos dois lugares ao mesmo tempo (`users` e `organograma`) sempre que os 3 campos editáveis são alterados, seja pelo modal "Dados cadastrais" em Administração > Usuários, seja pelo próprio bloco do Organograma — para os dois nunca ficarem dessincronizados.
+> A regra de `organograma` (usada pela ferramenta **Organograma** e como diretório de colegas em **Minhas Anotações** → "Enviar tarefa") existe porque `users/{uid}` só pode ser lido pelo próprio dono do cadastro ou por um admin (regra `allow read` de `users` acima) — então um gestor sem papel de admin nunca conseguiria montar a lista de todo mundo direto de `users`. `organograma/{uid}` é um espelho **só com os campos não sensíveis** (`displayName`, `deptoAtual`, `dataIngresso`, `remuneracao`) que qualquer usuário logado pode ler — CPF, RG, telefone e endereço nunca são copiados para cá, continuam só em `users`. Admin sempre escreve (`allow write: if isAdmin()`) e a ferramenta grava nos dois lugares ao mesmo tempo (`users` e `organograma`) sempre que os 3 campos editáveis são alterados (modal "Dados cadastrais", bloco do Organograma) **ou** quando um admin cria um usuário novo pela aba Administração. A cláusula extra `allow create` permite que a própria pessoa crie seu espelho (só com `displayName`, e só com os outros 3 campos vazios) no momento em que ela mesma se cadastra pela tela **"Cadastre-se"** — sem essa cláusula, quem se autocadastra só apareceria no diretório depois que um admin abrisse "Dados" para ela.
 
 > As regras de `condoAprovadores` e `notificacoesGeradas` (usadas pela ferramenta **Condomínios**, aba "Notificações Prontas") implementam a aprovação de notificações extrajudiciais por condomínio. `condoAprovadores/{slug}` (`slug` = nome do condomínio simplificado, ex. `mirante-das-brisas`) guarda **um aprovador por condomínio** (`aprovadorUid`/`aprovadorNome`/`aprovadorEmail`) — só admin atribui (pela própria ferramenta, botão "⚙ Atribuir aprovadores"), qualquer logado lê (necessário para a tela descobrir quem é aprovador de quê). `notificacoesGeradas/{docId}` guarda cada notificação enviada pela aba "Gerar Notificação": `criadoPorUid` só pode criar com `status:'pendente'` e `tentativa:1`. `allow update` cobre exatamente dois casos: (1) o próprio criador reenviando uma notificação que **estava** `rejeitada`, sempre incrementando `tentativa` em exatamente 1 (é esse número que gera o "já rejeitada Nx antes" na tela); (2) o aprovador designado (ou admin) decidindo uma notificação `pendente`, travando que ele não altere `texto`/`criadoPorUid`/`condominioSlug` e exigindo `motivoRejeicao` preenchido sempre que a decisão for `rejeitada`. Ninguém mais pode escrever nesses documentos — nem o próprio criador altera uma notificação já aprovada. `allow read` é `isSignedIn()` simples (qualquer colaborador logado lê qualquer notificação) — mais aberto do que a leitura sempre foi para `update`/`decide`, de propósito: a partir de 2026-08-17 qualquer pessoa criando uma notificação nova precisa poder consultar o histórico de qualquer unidade (ver `unidadeResets` abaixo) para saber se ela é reincidente, mesmo sem ser aprovadora daquele condomínio nem autora das notificações antigas — só a permissão de **decidir** (aprovar/rejeitar) continua travada por `isAprovadorDoCondo`.
 
@@ -378,6 +422,15 @@ Tudo pela aba **Administração** do próprio portal (só admins veem essa aba):
   escolhe a própria senha na hora).
 - **Abas**: adicionar, listar e excluir as ferramentas disponíveis no
   sistema.
+- **Papéis (cargos)**: cada conta tem um `role` — `Membro` (padrão),
+  `Cliente`, `Gestor` ou `Administrador`. Só `Administrador` vê a aba
+  Administração. `Gestor` é o único outro papel com poder especial hoje:
+  pode enviar tarefa para qualquer colega pela ferramenta **Minhas
+  Anotações** (ver seção 9), do mesmo jeito que admin. `Cliente` e `Membro`
+  não têm diferença de permissão no sistema por enquanto — `Cliente` existe
+  como identificação (para o dia em que alguma ferramenta precisar tratar
+  cliente diferente de colaborador). Trocar o papel de alguém é feito em
+  Administração > Usuários > botão **"Dados"** > campo "Cargo".
 
 ## 8. Aba "E-mail" (Gmail dentro do Portal)
 
@@ -725,6 +778,39 @@ recusa se o admin tentar se auto-excluir por esse caminho. Apaga, nessa
 ordem: o login (Firebase Authentication) e os documentos `users/{uid}`,
 `perfis/{uid}` e `organograma/{uid}` da pessoa alvo. Dados pessoais sem
 relação com o cadastro em si (tags de conversa no Chat Interno, anotações
-pessoais em "Minhas Anotações") não são apagados por este Worker — ficam
-órfãos mas inofensivos, sem ninguém mais conseguindo lê-los; se um dia
-quiserem uma limpeza completa disso também, é só pedir.
+pessoais e tarefas recebidas/enviadas em "Minhas Anotações") não são
+apagados por este Worker — ficam órfãos mas inofensivos, sem ninguém mais
+conseguindo lê-los; se um dia quiserem uma limpeza completa disso também, é
+só pedir.
+
+## 11. Ferramenta "Minhas Anotações" — enviar tarefa para outra pessoa
+
+Além da lista pessoal (seção descrita junto com a criação da ferramenta,
+mais acima), quem tem papel `admin` ou `gestor` (ver seção 7) enxerga um
+botão extra **"📨 Enviar tarefa"** no topo de `tools/minhas-anotacoes/`. Ao
+enviar, a tarefa aparece para a pessoa destinatária num **banner vermelho
+pulsante fixo no topo da tela dela** ("📬 Enviado por Fulano") — impossível
+de não ver, some só quando ela marca como feita ou quando é aprovada — em
+vez de entrar como uma tarefa comum dentro de uma das listas dela.
+
+Fluxo (documento em `tarefasEnviadas`, ver regra na seção 3):
+
+1. **Admin/gestor** clica "📨 Enviar tarefa", escolhe o colega (lista vem de
+   `organograma`, ver nota da regra desse mesmo nome) e escreve o texto
+   (+ data opcional). Nasce com `status: 'pendente'`.
+2. **Destinatário** vê o banner, faz o que foi pedido e clica "✓ Concluí" —
+   vira `status: 'aguardando_aprovacao'`. Ele não pode editar o texto nem
+   apagar o envio, só marcar como feito.
+3. Quem enviou acompanha tudo isso numa aba própria dentro da mesma
+   ferramenta — **"📨 Enviadas"** (só aparece pra quem é admin/gestor) — com
+   o que está pendente, o que está aguardando aprovação e o que já foi
+   decidido. Ali ele **aprova** (`status: 'aprovada'`, fecha o ciclo) ou
+   **reprova** com um motivo obrigatório (`status: 'reprovada'`) — nesse
+   caso a tarefa volta a aparecer no banner vermelho do destinatário, agora
+   mostrando o motivo da recusa, para ele refazer e reenviar.
+
+Quem manda só vê o que ela mesma enviou (nunca o que outro admin/gestor
+mandou para alguém) — a regra de `tarefasEnviadas` restringe a leitura a
+`remetenteUid`/`destinatarioUid`. Não existe hierarquia entre admin e
+gestor aqui: os dois têm exatamente o mesmo poder de enviar/aprovar/reprovar
+para qualquer colega, inclusive um para o outro.
