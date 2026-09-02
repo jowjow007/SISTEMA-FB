@@ -430,6 +430,18 @@ Tudo pela aba **Administração** do próprio portal (só admins veem essa aba):
   escolhe a própria senha na hora).
 - **Abas**: adicionar, listar e excluir as ferramentas disponíveis no
   sistema.
+- **Sistemas** (botão na tabela de Usuários): controla um catálogo fixo de
+  8 sistemas externos que o escritório usa (Google Drive, Google Agenda,
+  Sistema Google/Workspace, Digisac, ZapSign, ASTREA, Token e
+  Authenticator) — marque quais já estão liberados para cada pessoa. Isso
+  é só um **painel informativo**: não bloqueia nem libera acesso de
+  verdade a esses sistemas (cada um continua sendo gerenciado direto na
+  própria plataforma), serve pra equipe acompanhar o que já foi
+  providenciado. Cada colaborador vê o próprio status clicando no ícone de
+  escudo ao lado da engrenagem, no topo do Portal. Guardado em
+  `users/{uid}.sistemasExternos` (array de ids), sem regra nova no
+  Firestore — usa a mesma permissão de escrita que já existe pra
+  `users` (só admin edita; a própria pessoa só lê).
 - **Papéis (cargos)**: cada conta tem um `role` — `Membro` (padrão),
   `Cliente`, `Gestor` ou `Administrador`. Só `Administrador` vê a aba
   Administração. `Gestor` é o único outro papel com poder especial hoje:
