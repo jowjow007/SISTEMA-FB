@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trilha de Integração — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --gold:#d8b25a;
+    --green:#4c9a68;
+    --green-bright:#63c088;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --node-locked-bg:#241c1b;
+    --node-locked-ink:#6b615d;
+    --lesson-callout-bg:rgba(216,178,90,.10);
+    --lesson-callout-ink:#e6c980;
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --silver:#756f6c;
+    --green:#2f7a4c;
+    --green-bright:#2f7a4c;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+    --node-locked-bg:#e7e0d8;
+    --node-locked-ink:#a99f97;
+    --lesson-callout-bg:rgba(184,54,46,.06);
+    --lesson-callout-ink:#8a2b25;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);transition:background-color .2s,color .2s;}
+  button{font-family:inherit;}
+
+  #gate{padding:80px 24px;text-align:center;color:var(--muted);font-size:.9rem;line-height:1.6;max-width:460px;margin:0 auto;}
+
+  /* ---------- cabeçalho / progresso ---------- */
+  header.game-head{
+    position:sticky;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 22px 14px;
+  }
+  .game-head-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .game-head h1{
+    font-family:var(--font-display);font-weight:600;font-size:1.25rem;margin:0;color:var(--paper);
+    display:flex;align-items:center;gap:9px;
+  }
+  .game-head .sub{font-size:.78rem;color:var(--muted);margin:3px 0 0;}
+  .head-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{
+    padding:8px 15px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--paper);font-size:.8rem;cursor:pointer;font-weight:600;transition:border-color .15s,color .15s,background .15s;
+  }
+  .btn:hover{border-color:var(--gold);color:var(--gold);}
+  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.primary:hover{background:var(--red-bright);border-color:var(--red-bright);color:#fff;}
+  .btn.green{background:var(--green);border-color:var(--green);color:#fff;}
+  .btn.green:hover{background:var(--green-bright);border-color:var(--green-bright);color:#fff;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .xp-wrap{margin-top:13px;}
+  .xp-bar-line{display:flex;align-items:center;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:5px;}
+  .xp-bar-line b{color:var(--gold);font-weight:700;}
+  .xp-track{height:9px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-strong);overflow:hidden;}
+  .xp-fill{height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--gold));transition:width .5s ease;}
+
+  /* ---------- trilha ---------- */
+  main{max-width:720px;margin:0 auto;padding:34px 20px 80px;}
+  .trilha{position:relative;display:flex;flex-direction:column;gap:0;}
+  .fase-row{position:relative;display:flex;padding:16px 0;min-height:96px;}
+  .fase-row.lado-dir{justify-content:flex-end;}
+  .fase-row.lado-esq{justify-content:flex-start;}
+  .fase-row::before{
+    content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);
+    background:var(--line-strong);
+  }
+  .fase-row:first-child::before{top:50%;}
+  .fase-row:last-child::before{bottom:50%;}
+  .fase-row.feita::before{background:var(--green);}
+
+  .node{
+    position:relative;z-index:2;width:min(300px,86%);background:linear-gradient(160deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line-strong);border-radius:16px;padding:15px 16px 14px;text-align:left;cursor:pointer;
+    transition:transform .14s,border-color .14s,box-shadow .14s;
+  }
+  .node:hover{transform:translateY(-2px);border-color:var(--red);}
+  .node .node-emoji{font-size:1.5rem;line-height:1;margin-bottom:7px;display:block;}
+  .node .node-num{font-size:.64rem;font-weight:700;letter-spacing:.09em;color:var(--muted);text-transform:uppercase;}
+  .node h3{font-family:var(--font-display);font-weight:600;font-size:1rem;margin:2px 0 5px;color:var(--paper);line-height:1.25;}
+  .node p{font-size:.76rem;color:var(--muted);margin:0;line-height:1.4;}
+  .node .node-badge{
+    display:inline-flex;align-items:center;gap:5px;margin-top:9px;font-size:.68rem;font-weight:700;
+    padding:3px 9px;border-radius:20px;
+  }
+  .node.st-feita .node-badge{background:rgba(76,154,104,.18);border:1px solid rgba(76,154,104,.45);color:var(--green-bright);}
+  .node.st-atual{border-color:var(--gold);box-shadow:0 0 0 3px rgba(216,178,90,.16);}
+  .node.st-atual .node-badge{background:rgba(216,178,90,.16);border:1px solid rgba(216,178,90,.45);color:var(--gold);}
+  .node.st-locked{cursor:not-allowed;background:var(--node-locked-bg);border-style:dashed;}
+  .node.st-locked:hover{transform:none;border-color:var(--line-strong);}
+  .node.st-locked .node-emoji,.node.st-locked h3,.node.st-locked p,.node.st-locked .node-num{color:var(--node-locked-ink);filter:grayscale(1);opacity:.75;}
+  .node.st-locked .node-badge{background:transparent;border:1px solid var(--line-strong);color:var(--node-locked-ink);}
+
+  .node-dot{
+    position:absolute;top:50%;width:15px;height:15px;border-radius:50%;background:var(--panel-2);
+    border:3px solid var(--line-strong);transform:translateY(-50%);z-index:3;
+  }
+  .fase-row.lado-dir .node-dot{left:calc(50% - 7px);}
+  .fase-row.lado-esq .node-dot{left:calc(50% - 7px);}
+  .fase-row.feita .node-dot{background:var(--green);border-color:var(--green);}
+  .fase-row.atual .node-dot{background:var(--gold);border-color:var(--gold);}
+
+  .final-callout{
+    margin-top:30px;text-align:center;padding:22px;border:1px dashed var(--line-strong);border-radius:16px;
+    background:var(--panel);
+  }
+  .final-callout.pronto{border-color:var(--gold);background:var(--lesson-callout-bg);}
+  .final-callout h3{font-family:var(--font-display);margin:0 0 6px;color:var(--paper);}
+  .final-callout p{font-size:.8rem;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
+  /* ---------- overlay de fase ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,7,7,.9);z-index:40;display:none;
+    padding:26px 18px;overflow-y:auto;
+  }
+  .overlay.open{display:block;}
+  .overlay-box{
+    max-width:640px;margin:0 auto;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:18px;padding:26px 26px 22px;
+  }
+  .overlay-box .ov-close{
+    float:right;background:transparent;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;
+  }
+  .ov-kicker{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red-bright);}
+  .overlay-box h2{font-family:var(--font-display);font-weight:600;font-size:1.4rem;margin:4px 0 2px;color:var(--paper);}
+  .ov-emoji{font-size:2rem;}
+
+  /* lição */
+  .licao{margin-top:16px;line-height:1.62;font-size:.9rem;color:var(--paper);}
+  .licao h4{font-family:var(--font-display);font-size:1rem;color:var(--gold);margin:20px 0 6px;}
+  .licao p{margin:0 0 11px;}
+  .licao ul{margin:0 0 12px;padding-left:20px;}
+  .licao li{margin:4px 0;}
+  .licao .callout{
+    background:var(--lesson-callout-bg);border-left:3px solid var(--gold);border-radius:8px;
+    padding:11px 14px;margin:0 0 13px;font-size:.85rem;color:var(--lesson-callout-ink);
+  }
+  .licao .callout b{color:inherit;}
+
+  /* quiz */
+  .quiz-q{margin:0 0 20px;}
+  .quiz-q .q-txt{font-weight:600;font-size:.92rem;margin-bottom:10px;line-height:1.5;}
+  .quiz-q .q-txt .q-n{color:var(--muted);font-weight:700;margin-right:6px;}
+  .opt{
+    display:block;width:100%;text-align:left;padding:11px 13px;border-radius:10px;margin-bottom:8px;
+    border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.86rem;cursor:pointer;
+    transition:border-color .12s,background .12s;
+  }
+  .opt:hover{border-color:var(--gold);}
+  .opt.sel{border-color:var(--gold);background:rgba(216,178,90,.12);}
+  .opt.ok{border-color:var(--green);background:rgba(76,154,104,.16);}
+  .opt.bad{border-color:var(--red-bright);background:rgba(184,54,46,.14);}
+  .opt:disabled{cursor:default;}
+  .q-explica{
+    font-size:.8rem;color:var(--muted);margin-top:4px;padding:9px 12px;border-radius:8px;
+    background:var(--panel-2);border:1px solid var(--line);line-height:1.5;
+  }
+  .q-explica.hidden{display:none;}
+
+  .ov-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;}
+  .ov-foot .hint{font-size:.76rem;color:var(--muted);}
+
+  .resultado{text-align:center;padding:12px 0 4px;}
+  .resultado .big{font-size:2.6rem;margin-bottom:6px;}
+  .resultado h3{font-family:var(--font-display);margin:0 0 4px;color:var(--paper);}
+  .resultado p{font-size:.85rem;color:var(--muted);margin:0 0 16px;line-height:1.5;}
+  .score-pill{display:inline-block;font-weight:700;padding:4px 14px;border-radius:20px;font-size:.85rem;margin-bottom:14px;}
+  .score-pill.pass{background:rgba(76,154,104,.18);color:var(--green-bright);border:1px solid rgba(76,154,104,.45);}
+  .score-pill.fail{background:rgba(184,54,46,.16);color:var(--red-bright);border:1px solid rgba(184,54,46,.4);}
+
+  /* ---------- painel do gestor ---------- */
+  .admin-panel{
+    max-width:900px;margin:0 auto 40px;padding:20px;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:16px;display:none;
+  }
+  .admin-panel.open{display:block;}
+  .admin-panel h2{font-family:var(--font-display);margin:0 0 14px;color:var(--gold);font-size:1.1rem;}
+  table.prog{width:100%;border-collapse:collapse;font-size:.82rem;}
+  table.prog th,table.prog td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.prog th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
+  table.prog .mini-track{height:7px;border-radius:5px;background:var(--panel-2);overflow:hidden;min-width:90px;}
+  table.prog .mini-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));}
+  table.prog .st-ok{color:var(--green-bright);font-weight:700;}
+  .admin-empty{color:var(--muted);font-size:.85rem;padding:10px 0;}
+
+  @media(max-width:560px){
+    .node{width:100%;}
+    .fase-row.lado-dir,.fase-row.lado-esq{justify-content:center;}
+    .fase-row::before,.node-dot{display:none;}
+    .fase-row{padding:9px 0;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">Faça login no Portal Fonseca e Braga para começar a Trilha de Integração.</div>
+
+<div id="app" style="display:none;">
+  <header class="game-head">
+    <div class="game-head-top">
+      <div>
+        <h1>🎓 Trilha de Integração</h1>
+        <p class="sub">Passe pelas fases para conhecer o escritório e o Portal. Ao concluir, você recebe o certificado de integração.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn" id="btn-admin" style="display:none;">📊 Painel do gestor</button>
+        <button class="btn" id="btn-cert" style="display:none;">🏅 Ver certificado</button>
+      </div>
+    </div>
+    <div class="xp-wrap">
+      <div class="xp-bar-line"><span id="xp-label">Fase 1 de X</span><span><b id="xp-pts">0</b> pontos</span></div>
+      <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+    </div>
+  </header>
+
+  <div class="admin-panel" id="admin-panel">
+    <h2>Progresso dos colaboradores</h2>
+    <div id="admin-body"><div class="admin-empty">Carregando…</div></div>
+  </div>
+
+  <main>
+    <div class="trilha" id="trilha"></div>
+    <div class="final-callout" id="final-callout"></div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box" id="overlay-box"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONTEÚDO DA TRILHA  —  RASCUNHO, PRONTO PARA EDIÇÃO
+     ------------------------------------------------------------
+     Cada fase tem:
+       id       : identificador curto e estável (NÃO renomear depois
+                  que gente já tiver progresso salvo com ele)
+       emoji    : ícone da fase
+       titulo   : nome da fase
+       resumo   : uma linha que aparece no card da trilha
+       licao    : blocos de conteúdo. Tipos aceitos:
+                    {h:'Subtítulo'}
+                    {p:'Parágrafo em texto simples.'}
+                    {ul:['item um','item dois']}
+                    {callout:'Caixa de destaque (dica / atenção).'}
+       quiz     : lista de perguntas. Cada uma:
+                    {q:'Pergunta?', opcoes:['A','B','C'], correta:1,
+                     explica:'Por que a resposta certa é essa.'}
+                  ('correta' é o índice na lista 'opcoes', começando em 0)
+     Regra para passar de fase: acertar pelo menos 70% do quiz.
+     Onde estiver [entre colchetes] é um dado do escritório que
+     precisa ser confirmado e preenchido.
+     ============================================================ */
+
+  var CONTEUDO = [
+    {
+      id:'boas-vindas',
+      emoji:'👋',
+      titulo:'Boas-vindas ao escritório',
+      resumo:'Quem somos, o que fazemos e como esta trilha funciona.',
+      licao:[
+        {p:'Seja bem-vindo(a) à Fonseca e Braga Advocacia. Esta trilha existe para que, ao terminá-la, você já conheça o essencial sobre o escritório e sobre o Portal interno — e possa começar a colaborar com segurança.'},
+        {h:'Como a trilha funciona'},
+        {ul:[
+          'São várias fases em sequência. Cada fase tem uma leitura curta e um quiz.',
+          'Você precisa acertar pelo menos 70% do quiz para liberar a próxima fase.',
+          'Pode refazer um quiz quantas vezes precisar — o objetivo é aprender, não decorar.',
+          'Seu progresso fica salvo na sua conta: dá para parar e voltar depois, de qualquer computador.'
+        ]},
+        {h:'O escritório em uma frase'},
+        {p:'A Fonseca e Braga atua em [áreas principais: cível, condominial, trabalhista, família, consumidor — confirmar] com foco em [diferencial do escritório — confirmar]. A sede fica em [endereço — confirmar] e o horário de funcionamento é [horário — confirmar].'},
+        {callout:'Dúvida em qualquer fase? Fale com o seu gestor ou com o responsável pela sua área. Ninguém precisa aprender tudo sozinho.'}
+      ],
+      quiz:[
+        {q:'O que você precisa fazer para liberar a próxima fase?', opcoes:['Assistir a um vídeo até o fim','Acertar pelo menos 70% do quiz da fase','Pedir liberação ao gestor','Esperar 24 horas'], correta:1, explica:'Cada fase libera a seguinte quando você acerta 70% ou mais do quiz. Pode refazer à vontade.'},
+        {q:'Seu progresso na trilha…', opcoes:['Fica só neste computador','É salvo na sua conta e acompanha você em qualquer máquina','Some quando você fecha a aba','Só o gestor consegue ver'], correta:1, explica:'O progresso é gravado na sua conta do Portal, então você pode continuar de onde parou em qualquer lugar.'}
+      ]
+    },
+
+    {
+      id:'valores-postura',
+      emoji:'⚖️',
+      titulo:'Valores e postura profissional',
+      resumo:'Como nos comportamos com clientes, colegas e informação.',
+      licao:[
+        {h:'Nossos valores'},
+        {ul:[
+          'Sigilo: tudo que envolve cliente é confidencial — dentro e fora do escritório.',
+          'Prazo é compromisso: um prazo perdido pode custar o direito do cliente.',
+          'Comunicação clara: o cliente precisa entender o que está acontecendo no caso dele.',
+          'Respeito entre colegas: pergunte, ajude, revise o trabalho do outro sem constrangimento.'
+        ]},
+        {h:'Postura no dia a dia'},
+        {ul:[
+          'Não comente casos, nomes ou valores de clientes em lugar público (elevador, redes sociais, grupos externos).',
+          'E-mails e mensagens em nome do escritório têm tom profissional e revisados antes de enviar.',
+          'Documentos de cliente não saem do escritório nem vão para dispositivos pessoais sem autorização.',
+          'Dúvida sobre ética ou conflito de interesse: leve ao gestor antes de agir.'
+        ]},
+        {callout:'O Código de Ética da OAB proíbe prometer resultado ao cliente. A gente explica caminhos e riscos — nunca garante ganho de causa.'}
+      ],
+      quiz:[
+        {q:'Um amigo pergunta num churrasco sobre um caso conhecido que o escritório conduz. O que você faz?', opcoes:['Conta os detalhes, já saiu na imprensa mesmo','Não comento — informação de cliente é sigilosa','Conto só o valor da causa','Peço para ele não espalhar e conto'], correta:1, explica:'Sigilo profissional vale em qualquer lugar. Mesmo informação "que já saiu na imprensa" não deve ser confirmada ou comentada por você.'},
+        {q:'O cliente pede uma garantia de que vai ganhar a ação. Resposta correta:', opcoes:['Garantir para não perder o cliente','Explicar os caminhos possíveis e os riscos, sem prometer resultado','Dizer que ganha com certeza se pagar mais','Encaminhar direto para o sócio'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB. Nós gerenciamos expectativa com honestidade.'},
+        {q:'Sobre documentos de clientes:', opcoes:['Podem ir para o meu e-mail pessoal se for mais prático','Ficam nos sistemas do escritório; não vão para dispositivos pessoais sem autorização','Posso levar para casa para adiantar','Podem ser enviados por qualquer app'], correta:1, explica:'Documentos de cliente ficam nos sistemas oficiais do escritório. Tirar cópia para dispositivo pessoal só com autorização.'}
+      ]
+    },
+
+    {
+      id:'setores',
+      emoji:'🏛️',
+      titulo:'Setores e organograma',
+      resumo:'Como o escritório se divide e quem procurar em cada área.',
+      licao:[
+        {p:'O escritório se organiza por departamentos. Você encontra o quadro completo — com foto, cargo e departamento de cada colega — na aba Organograma do Portal.'},
+        {h:'Departamentos (confirmar a lista real na aba Organograma)'},
+        {ul:[
+          'Cível — ações de cobrança, contratos, indenizações, revisões.',
+          'Condominial — assessoria a condomínios, notificações, relatórios mensais.',
+          'Trabalhista — reclamações e defesas.',
+          'Família — divórcios, guarda, alimentos, inventários.',
+          'Consumidor — Procon e ações contra práticas abusivas.',
+          'Administrativo / Financeiro — apoio, compras, patrimônio, contas.'
+        ]},
+        {h:'Como usar o Organograma'},
+        {ul:[
+          'Abra a aba Organograma para ver em qual departamento cada pessoa está.',
+          'Precisa falar com uma área e não sabe com quem? Comece pelo gestor daquele departamento.',
+          'Seu próprio cadastro (departamento, data de ingresso) também aparece lá.'
+        ]},
+        {callout:'Ainda não sabe em que departamento você está? Confirme com quem te integrou — isso define quais abas do Portal você recebe.'}
+      ],
+      quiz:[
+        {q:'Onde você vê o departamento de cada colega?', opcoes:['Na aba Organograma','No grupo de WhatsApp','Só perguntando na recepção','Na aba Notícias'], correta:0, explica:'A aba Organograma mostra o quadro de colaboradores por departamento, com foto e cargo.'},
+        {q:'Você precisa resolver algo com o setor Condominial e não conhece ninguém lá. Melhor caminho:', opcoes:['Mandar e-mail para todos do escritório','Procurar o gestor do departamento Condominial','Esperar alguém falar com você','Abrir um chamado externo'], correta:1, explica:'O gestor do departamento é o ponto de entrada quando você não sabe exatamente com quem falar.'}
+      ]
+    },
+
+    {
+      id:'portal-abas',
+      emoji:'🧭',
+      titulo:'O Portal por dentro',
+      resumo:'As abas e ferramentas que você vai usar todo dia.',
+      licao:[
+        {p:'O Portal Fonseca e Braga (portal.fonsecaebraga.com.br) reúne as ferramentas internas do escritório em abas. Você só enxerga as abas que o administrador liberou para o seu perfil.'},
+        {h:'Ferramentas que costumam estar disponíveis'},
+        {ul:[
+          'Treinamentos — onde esta trilha, o Manual, os POPs, vídeos e documentos ficam.',
+          'POPs — Procedimentos Operacionais Padrão: o passo a passo de cada tarefa recorrente.',
+          'Organograma — quadro de colaboradores por departamento.',
+          'Chat — comunicação interna entre colegas.',
+          'Minhas Anotações — suas tarefas e lembretes pessoais.',
+          'Condomínios — base de assessoria condominial (POPs, clientes, SLA, notificações).',
+          'Gestão — Colaboradores, Patrimônio e Controle de Compras.',
+          'Documentos / Contratos — geração de documentos padronizados.',
+          'Aniversariantes, Notícias, Números do Escritório, Sugestões.'
+        ]},
+        {h:'Regras de ouro do Portal'},
+        {ul:[
+          'Se falta uma aba que você deveria ter, peça ao administrador — acesso é liberado por pessoa.',
+          'O tema (claro/escuro) fica no menu do canto; a sua escolha vale em todas as ferramentas.',
+          'O ícone ao lado da engrenagem mostra quais sistemas externos já foram liberados para você.'
+        ]},
+        {callout:'Antes de perguntar "como faço X?", procure um POP de X. O POP é a resposta oficial e atualizada.'}
+      ],
+      quiz:[
+        {q:'Você acha que deveria ter acesso a uma aba, mas ela não aparece. O que fazer?', opcoes:['Criar outra conta','Pedir ao administrador para liberar a aba no seu perfil','Usar a conta de um colega','Desistir da tarefa'], correta:1, explica:'As abas são liberadas por pessoa pelo administrador. É só pedir a liberação.'},
+        {q:'Qual a primeira coisa a consultar quando não sabe como executar uma tarefa recorrente?', opcoes:['O POP correspondente','O Google','Um colega qualquer','A aba Notícias'], correta:0, explica:'O POP (Procedimento Operacional Padrão) é a instrução oficial e mantida atualizada para cada tarefa.'},
+        {q:'A sua escolha de tema claro/escuro no Portal…', opcoes:['Vale só na aba aberta','Vale em todas as ferramentas do Portal','Precisa ser refeita toda vez','Só o admin muda'], correta:1, explica:'O tema é sincronizado: escolheu uma vez, vale em todo o Portal e nas ferramentas embutidas.'}
+      ]
+    },
+
+    {
+      id:'sistemas-externos',
+      emoji:'🔐',
+      titulo:'Sistemas externos do escritório',
+      resumo:'ASTREA, Google, Digisac, ZapSign, token e 2FA dos tribunais.',
+      licao:[
+        {p:'Além do Portal, o escritório usa sistemas de terceiros. O ícone ao lado da engrenagem, no Portal, mostra quais já foram liberados para você. Se algum que você precisa está como não liberado, peça ao administrador.'},
+        {h:'Os sistemas'},
+        {ul:[
+          'ASTREA — controle jurídico: cadastro de pessoas, clientes, processos e casos. É o sistema central do trabalho jurídico.',
+          'Google Drive — documentos e pastas dos clientes.',
+          'Google Agenda — compromissos e prazos do escritório.',
+          'Sistema Google (Workspace) — e-mail, Docs, Sheets.',
+          'Digisac — atendimento aos clientes por WhatsApp.',
+          'ZapSign — assinatura digital de documentos.',
+          'Token — token instalado no computador para acessar os sistemas dos tribunais.',
+          'Authenticator — autenticação em dois fatores (2FA) nos sistemas dos tribunais.'
+        ]},
+        {callout:'Nunca compartilhe sua senha, seu token ou seus códigos do Authenticator com ninguém — nem com colegas. Cada acesso é pessoal e rastreável.'}
+      ],
+      quiz:[
+        {q:'Qual sistema é o controle jurídico central (pessoas, clientes, processos e casos)?', opcoes:['Digisac','ASTREA','ZapSign','Google Agenda'], correta:1, explica:'O ASTREA concentra o cadastro de pessoas, clientes, processos e casos do escritório.'},
+        {q:'Para atender clientes por WhatsApp, o escritório usa:', opcoes:['O WhatsApp pessoal do colaborador','Digisac','ZapSign','Google Chat'], correta:1, explica:'O Digisac é a plataforma oficial de comunicação com clientes via WhatsApp — não se usa o número pessoal.'},
+        {q:'Um colega pede seu código do Authenticator para "adiantar um peticionamento". Você:', opcoes:['Passa, é da equipe','Não passa — acessos são pessoais e rastreáveis','Passa só uma vez','Passa se o gestor autorizar por mensagem'], correta:1, explica:'Códigos de 2FA, token e senhas são individuais e intransferíveis. Cada um usa o próprio acesso.'},
+        {q:'Você vê que precisa do ZapSign mas ele aparece como não liberado no Portal. O certo é:', opcoes:['Usar a conta de outra pessoa','Pedir a liberação ao administrador','Assinar os documentos à mão e digitalizar','Instalar outro app de assinatura'], correta:1, explica:'O painel de sistemas externos é informativo. A liberação de fato é feita pelo administrador, a pedido.'}
+      ]
+    },
+
+    {
+      id:'clientes-comunicacao',
+      emoji:'💬',
+      titulo:'Atendimento e comunicação com o cliente',
+      resumo:'Como e quando falar com o cliente, e por qual canal.',
+      licao:[
+        {h:'Canais'},
+        {ul:[
+          'WhatsApp do cliente: sempre pelo Digisac, nunca pelo número pessoal.',
+          'E-mail: para envio de documentos e confirmações formais.',
+          'Ligação / reunião: para decisões importantes e notícias sensíveis (ex.: decisão desfavorável).'
+        ]},
+        {h:'Boas práticas'},
+        {ul:[
+          'Responda ou dê um retorno em até [prazo interno — confirmar, ex.: 1 dia útil], mesmo que seja "estou verificando".',
+          'Traduza o juridiquês: o cliente precisa entender o próximo passo e o prazo.',
+          'Registre no ASTREA/caso o que foi combinado com o cliente.',
+          'Notícia ruim não se dá por mensagem seca — combine uma ligação e contextualize.'
+        ]},
+        {callout:'Cliente ansioso é normal, especialmente perto de audiência ou decisão. Um retorno curto e honesto vale mais que silêncio.'}
+      ],
+      quiz:[
+        {q:'Qual o canal certo para falar com o cliente no WhatsApp?', opcoes:['Meu número pessoal','O Digisac','Um grupo com outros clientes','SMS'], correta:1, explica:'Toda conversa de WhatsApp com cliente passa pelo Digisac — fica registrada e não expõe o número pessoal do colaborador.'},
+        {q:'Saiu uma decisão desfavorável no caso. Como comunicar ao cliente?', opcoes:['Mensagem curta avisando que perdeu','Combinar uma ligação e explicar o cenário e os próximos passos','Esperar o cliente perguntar','Só registrar no sistema'], correta:1, explica:'Notícia sensível pede contato por voz, com contexto e próximos passos — não uma mensagem seca.'},
+        {q:'Você ainda não tem a resposta que o cliente pediu. O melhor é:', opcoes:['Não responder até ter tudo','Dar um retorno dizendo que está verificando e quando responderá','Responder qualquer coisa','Encaminhar para outro colega sem avisar'], correta:1, explica:'Um retorno rápido de "estou verificando, te respondo até X" evita a sensação de abandono.'}
+      ]
+    },
+
+    {
+      id:'condominial',
+      emoji:'🏢',
+      titulo:'Rotina condominial e prazos (SLA)',
+      resumo:'Se você vai atuar com condomínios: prazos e ferramentas.',
+      licao:[
+        {p:'Se o seu trabalho envolve a assessoria condominial, a aba Condomínios do Portal é a sua base: POPs específicos, lista de clientes (condomínios), guia do ASTREA, gerador de notificações e relatórios mensais.'},
+        {h:'Prazos que não se perde'},
+        {ul:[
+          'Notificação de Infração de Regimento Interno: [3 dias úteis — confirmar na aba Condomínios].',
+          'Notificação Extrajudicial: [7 dias úteis — confirmar].',
+          'Análise Contratual / Parecer Técnico: [7 dias úteis — confirmar].',
+          'Relatório Mensal Geral: [7 dias corridos — confirmar].'
+        ]},
+        {p:'A ferramenta traz a tabela de SLA detalhada por tipo de tarefa e por volume. Sempre confira nela — este resumo pode estar desatualizado.'},
+        {h:'Notificações'},
+        {ul:[
+          'A notificação é gerada na ferramenta e passa por aprovação antes de sair.',
+          'Só o autor da notificação pode corrigir e reenviar se ela for rejeitada.',
+          'A lista de notificações enviadas fica visível para toda a equipe da aba.'
+        ]},
+        {callout:'Não decore os prazos daqui. A fonte oficial é a tabela de SLA dentro da aba Condomínios, que é mantida atualizada.'}
+      ],
+      quiz:[
+        {q:'Qual a fonte oficial dos prazos (SLA) da área condominial?', opcoes:['Este resumo da trilha','A tabela de SLA dentro da aba Condomínios','O grupo de WhatsApp','A memória do colega mais antigo'], correta:1, explica:'O resumo da trilha é só orientação. A tabela na aba Condomínios é a versão mantida e atualizada.'},
+        {q:'Uma notificação que você gerou foi rejeitada na aprovação. Quem pode corrigir e reenviar?', opcoes:['Qualquer pessoa da equipe','Somente você, que é o autor','Só o administrador','Ninguém — tem que gerar outra do zero'], correta:1, explica:'Apenas o autor original consegue corrigir e reenviar uma notificação rejeitada.'},
+        {q:'Onde ficam a lista de condomínios clientes e o gerador de notificações?', opcoes:['Na aba Condomínios','Na aba Organograma','Na aba Contratos','No ASTREA apenas'], correta:0, explica:'A aba Condomínios concentra POPs, clientes, guia do ASTREA, notificações e relatórios da área.'}
+      ]
+    },
+
+    {
+      id:'seguranca-lgpd',
+      emoji:'🛡️',
+      titulo:'Segurança da informação e LGPD',
+      resumo:'Dados de cliente, senhas, backup e vazamento.',
+      licao:[
+        {h:'LGPD em uma frase'},
+        {p:'A Lei Geral de Proteção de Dados (Lei 13.709/2018) trata dados pessoais como algo que a gente guarda em confiança. Todo dado de cliente — nome, CPF, processo, valores — é dado protegido.'},
+        {h:'O que você faz'},
+        {ul:[
+          'Usa senha forte e única nos sistemas do escritório; ativa 2FA onde houver.',
+          'Não guarda documento de cliente em pen drive, e-mail pessoal ou nuvem particular.',
+          'Bloqueia a tela ao sair da mesa.',
+          'Confere o destinatário antes de enviar e-mail com anexo de cliente.',
+          'Só compartilha dados de cliente com quem precisa deles para o trabalho.'
+        ]},
+        {h:'Backup'},
+        {p:'O escritório segue a regra 3-2-1 para os arquivos: 3 cópias, em 2 tipos de mídia, sendo 1 fora do local. Você não precisa operar isso, mas precisa salvar o trabalho nos locais oficiais — o que fica só na sua máquina não entra no backup.'},
+        {callout:'Suspeita de vazamento (e-mail errado, notebook perdido, acesso estranho)? Avise o gestor imediatamente. A LGPD dá prazo curto para comunicar incidentes — a rapidez importa.'}
+      ],
+      quiz:[
+        {q:'Onde NÃO pode ficar um documento de cliente?', opcoes:['Nos sistemas oficiais do escritório','No seu pen drive pessoal','Na pasta do cliente no Drive do escritório','No ASTREA'], correta:1, explica:'Mídia e contas pessoais estão fora do controle do escritório e do backup. Documentos de cliente ficam só nos sistemas oficiais.'},
+        {q:'Você percebe que enviou um anexo com dados de um cliente para o e-mail errado. O que fazer primeiro?', opcoes:['Nada, foi engano','Avisar o gestor imediatamente','Apagar o e-mail da sua caixa e seguir','Esperar para ver se dá problema'], correta:1, explica:'Isso é um possível incidente de dados. A LGPD exige comunicação rápida — avisar o gestor na hora é o passo certo.'},
+        {q:'A regra 3-2-1 de backup significa:', opcoes:['3 senhas, 2 usuários, 1 admin','3 cópias, em 2 tipos de mídia, 1 delas fora do local','3 dias, 2 responsáveis, 1 relatório','Nada específico'], correta:1, explica:'3 cópias / 2 mídias / 1 off-site. É o padrão que protege contra perda, roubo e ransomware.'},
+        {q:'O trabalho que fica salvo só no disco do seu computador…', opcoes:['Está protegido pelo backup do escritório','NÃO entra no backup — precisa ir para os locais oficiais','É copiado automaticamente para o Drive','É mais seguro assim'], correta:1, explica:'O backup cobre os sistemas oficiais. Arquivo local solto não é copiado — salve nos locais corretos.'}
+      ]
+    },
+
+    {
+      id:'prazos-processos',
+      emoji:'📅',
+      titulo:'Prazos processuais e publicações',
+      resumo:'Como o escritório acompanha intimações e não perde prazo.',
+      licao:[
+        {p:'O maior risco do trabalho jurídico é perder um prazo. O escritório acompanha as publicações oficiais e distribui os prazos para os responsáveis.'},
+        {h:'Como funciona'},
+        {ul:[
+          'As publicações do Diário de Justiça Eletrônico Nacional (DJEN) são monitoradas [diariamente — confirmar a rotina].',
+          'Cada intimação vira um prazo com data fatal, calculado em dias úteis (regra do CPC).',
+          'Prazos têm régua de lembrete (por exemplo D-7, D-3, D-1) antes do vencimento.',
+          'Se um prazo cai para você, confirme o recebimento e registre no controle.'
+        ]},
+        {h:'Sua responsabilidade'},
+        {ul:[
+          'Nunca deixe um prazo "para depois" sem registrar.',
+          'Ficou em dúvida sobre a contagem (feriado forense, recesso, prazo em dobro)? Pergunte antes, não no último dia.',
+          'Vai se ausentar? Combine cobertura dos seus prazos com antecedência.'
+        ]},
+        {callout:'Recesso forense (20/12 a 20/01) e feriados do tribunal suspendem prazos. Na dúvida, confirme a data fatal com quem controla a agenda.'}
+      ],
+      quiz:[
+        {q:'Como os prazos processuais são contados, em regra, no CPC atual?', opcoes:['Em dias corridos','Em dias úteis','Em semanas','Depende do juiz'], correta:1, explica:'Desde o CPC de 2015, o prazo processual conta-se em dias úteis (art. 219).'},
+        {q:'Um prazo foi atribuído a você. Primeira atitude:', opcoes:['Deixar para a semana que vem','Confirmar o recebimento e registrar no controle com a data fatal','Assumir que alguém vai lembrar','Resolver só se sobrar tempo'], correta:1, explica:'Prazo recebido é prazo confirmado e registrado na hora, com data fatal clara.'},
+        {q:'Você vai tirar férias e tem prazos no período. O certo é:', opcoes:['Não avisar, você volta a tempo','Combinar a cobertura dos prazos com antecedência','Levar o notebook e trabalhar de férias','Adiar as férias sempre'], correta:1, explica:'Ausências se planejam: a cobertura dos prazos precisa estar combinada antes de você sair.'}
+      ]
+    },
+
+    {
+      id:'prova-final',
+      emoji:'🏅',
+      titulo:'Prova de Integração',
+      resumo:'Revisão geral. Passe aqui e receba o certificado.',
+      licao:[
+        {p:'Esta é a última fase. As perguntas misturam tudo que você viu na trilha. Ao acertar 70% ou mais, sua integração é concluída e o certificado fica disponível no topo da tela.'},
+        {p:'Se não passar de primeira, sem problema: revise as fases anteriores e volte aqui. O objetivo é você começar seguro(a).'},
+        {callout:'Depois de concluir, seu gestor consegue ver que você finalizou a trilha no Painel do gestor.'}
+      ],
+      quiz:[
+        {q:'Informação de cliente pode ser comentada fora do escritório se já saiu na imprensa?', opcoes:['Pode','Não pode — o sigilo vale sempre','Só o valor da causa','Depende do cliente'], correta:1, explica:'Sigilo profissional não tem exceção "de bar". Não se confirma nem se comenta.'},
+        {q:'WhatsApp com cliente é sempre por:', opcoes:['Número pessoal','Digisac','Grupo geral','Telegram'], correta:1, explica:'Digisac: registrado, oficial, sem expor número pessoal.'},
+        {q:'Qual é o sistema jurídico central do escritório?', opcoes:['ZapSign','ASTREA','Google Agenda','Portal'], correta:1, explica:'O ASTREA concentra pessoas, clientes, processos e casos.'},
+        {q:'Prazo processual, em regra, conta-se em:', opcoes:['Dias corridos','Dias úteis','Meses','Horas'], correta:1, explica:'Dias úteis, conforme o CPC.'},
+        {q:'Documento de cliente pode ser salvo no seu e-mail pessoal?', opcoes:['Sim, se for prático','Não — só nos sistemas oficiais do escritório','Sim, com cópia para o gestor','Só PDFs'], correta:1, explica:'Contas e mídias pessoais estão fora do controle e do backup do escritório.'},
+        {q:'Você deveria ter uma aba no Portal que não aparece. O que faz?', opcoes:['Cria outra conta','Pede ao administrador para liberar','Usa a conta de um colega','Desiste'], correta:1, explica:'Acesso é concedido por pessoa pelo administrador.'},
+        {q:'Qual a fonte oficial de "como fazer" uma tarefa recorrente?', opcoes:['O POP correspondente','Um colega','O Google','A aba Notícias'], correta:0, explica:'O POP é o procedimento oficial e atualizado.'},
+        {q:'Suspeita de vazamento de dados. Você:', opcoes:['Espera para ver','Avisa o gestor imediatamente','Apaga o rastro','Resolve sozinho'], correta:1, explica:'Incidente de dados exige comunicação rápida — a LGPD dá prazo curto.'},
+        {q:'Um colega pede seu código do Authenticator. Você:', opcoes:['Passa, é da equipe','Não passa — acesso é pessoal e rastreável','Passa uma vez só','Passa se ele pedir por escrito'], correta:1, explica:'Token, senha e 2FA são individuais e intransferíveis.'},
+        {q:'O cliente quer garantia de vitória. Você:', opcoes:['Garante','Explica caminhos e riscos sem prometer resultado','Garante se ele pagar mais','Ignora a pergunta'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB.'}
+      ]
+    }
+  ];
+
+  var PASS_RATIO = 0.7;
+
+  /* ============================================================
+     MOTOR DO JOGO
+     ============================================================ */
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+
+  var els = {
+    gate: document.getElementById('gate'),
+    app: document.getElementById('app'),
+    trilha: document.getElementById('trilha'),
+    finalCallout: document.getElementById('final-callout'),
+    overlay: document.getElementById('overlay'),
+    overlayBox: document.getElementById('overlay-box'),
+    xpLabel: document.getElementById('xp-label'),
+    xpPts: document.getElementById('xp-pts'),
+    xpFill: document.getElementById('xp-fill'),
+    btnAdmin: document.getElementById('btn-admin'),
+    btnCert: document.getElementById('btn-cert'),
+    adminPanel: document.getElementById('admin-panel'),
+    adminBody: document.getElementById('admin-body')
+  };
+
+  var meuUid = null;
+  var meuNome = '';
+  var souAdmin = false;
+  var souGestor = false;
+  var progRef = null;
+  var prog = { concluidas:{}, pontosTotais:0, concluidoEm:null, nome:'' };
+  var faseAberta = null;
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  var totalFases = CONTEUDO.length;
+  var pontosPossiveis = CONTEUDO.reduce(function(acc,f){ return acc + f.quiz.length; }, 0);
+
+  function faseConcluida(id){ return !!prog.concluidas[id]; }
+
+  function indiceFaseAtual(){
+    for (var i = 0; i < CONTEUDO.length; i++){
+      if (!faseConcluida(CONTEUDO[i].id)) return i;
+    }
+    return CONTEUDO.length; // tudo concluído
+  }
+
+  function faseDesbloqueada(idx){
+    if (idx === 0) return true;
+    return faseConcluida(CONTEUDO[idx - 1].id);
+  }
+
+  /* ---------- render da trilha ---------- */
+
+  function render(){
+    var atual = indiceFaseAtual();
+    var concluiuTudo = atual >= CONTEUDO.length;
+
+    // barra de progresso
+    var feitas = Object.keys(prog.concluidas).length;
+    var pct = Math.round((feitas / totalFases) * 100);
+    els.xpFill.style.width = pct + '%';
+    els.xpPts.textContent = prog.pontosTotais + ' / ' + pontosPossiveis;
+    els.xpLabel.textContent = concluiuTudo
+      ? 'Trilha concluída — ' + feitas + ' de ' + totalFases + ' fases'
+      : 'Fase ' + (atual + 1) + ' de ' + totalFases;
+
+    els.btnCert.style.display = concluiuTudo ? 'inline-block' : 'none';
+
+    // nós
+    els.trilha.innerHTML = CONTEUDO.map(function(f, idx){
+      var feita = faseConcluida(f.id);
+      var desbloqueada = faseDesbloqueada(idx);
+      var ehAtual = !feita && desbloqueada;
+      var st = feita ? 'st-feita' : (ehAtual ? 'st-atual' : (desbloqueada ? '' : 'st-locked'));
+      var lado = idx % 2 === 0 ? 'lado-dir' : 'lado-esq';
+      var rowCls = 'fase-row ' + lado + (feita ? ' feita' : '') + (ehAtual ? ' atual' : '');
+
+      var badge;
+      if (feita){
+        var c = prog.concluidas[f.id];
+        badge = '<span class="node-badge">✓ Concluída — ' + c.pontos + '/' + c.total + '</span>';
+      } else if (ehAtual){
+        badge = '<span class="node-badge">▶ Começar agora</span>';
+      } else if (desbloqueada){
+        badge = '<span class="node-badge">Disponível</span>';
+      } else {
+        badge = '<span class="node-badge">🔒 Bloqueada</span>';
+      }
+
+      return '<div class="' + rowCls + '">' +
+        '<span class="node-dot"></span>' +
+        '<button class="node ' + st + '" data-fase="' + f.id + '"' + (desbloqueada ? '' : ' disabled') + '>' +
+          '<span class="node-emoji">' + f.emoji + '</span>' +
+          '<span class="node-num">Fase ' + (idx + 1) + '</span>' +
+          '<h3>' + escapeHtml(f.titulo) + '</h3>' +
+          '<p>' + escapeHtml(f.resumo) + '</p>' +
+          badge +
+        '</button>' +
+      '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(els.trilha.querySelectorAll('.node:not([disabled])'), function(btn){
+      btn.addEventListener('click', function(){ abrirFase(btn.dataset.fase); });
+    });
+
+    // rodapé
+    if (concluiuTudo){
+      els.finalCallout.className = 'final-callout pronto';
+      els.finalCallout.innerHTML =
+        '<h3>🎉 Integração concluída!</h3>' +
+        '<p>Você passou por todas as fases. Seu certificado está disponível no botão "Ver certificado", no topo. ' +
+        'Seu gestor consegue ver a conclusão no Painel do gestor.</p>' +
+        '<button class="btn green" id="fc-cert">🏅 Ver meu certificado</button>';
+      var b = document.getElementById('fc-cert');
+      if (b) b.addEventListener('click', abrirCertificado);
+    } else {
+      els.finalCallout.className = 'final-callout';
+      els.finalCallout.innerHTML =
+        '<h3>Faltam ' + (totalFases - feitas) + ' fase(s)</h3>' +
+        '<p>Complete todas as fases para concluir sua integração e liberar o certificado.</p>';
+    }
+  }
+
+  /* ---------- overlay: lição + quiz ---------- */
+
+  function licaoHtml(blocos){
+    return blocos.map(function(b){
+      if (b.h) return '<h4>' + escapeHtml(b.h) + '</h4>';
+      if (b.p) return '<p>' + escapeHtml(b.p) + '</p>';
+      if (b.callout) return '<div class="callout">' + escapeHtml(b.callout) + '</div>';
+      if (b.ul) return '<ul>' + b.ul.map(function(i){ return '<li>' + escapeHtml(i) + '</li>'; }).join('') + '</ul>';
+      return '';
+    }).join('');
+  }
+
+  function abrirFase(id){
+    var idx = CONTEUDO.findIndex(function(f){ return f.id === id; });
+    if (idx < 0 || !faseDesbloqueada(idx)) return;
+    faseAberta = { fase: CONTEUDO[idx], idx: idx };
+    telaLicao();
+    els.overlay.classList.add('open');
+    els.overlay.scrollTop = 0;
+  }
+
+  function fecharOverlay(){
+    els.overlay.classList.remove('open');
+    els.overlayBox.innerHTML = '';
+    faseAberta = null;
+  }
+
+  function telaLicao(){
+    var f = faseAberta.fase;
+    els.overlayBox.innerHTML =
+      '<button class="ov-close" id="ov-x">✕</button>' +
+      '<div class="ov-kicker">Fase ' + (faseAberta.idx + 1) + ' de ' + totalFases + '</div>' +
+      '<h2><span class="ov-emoji">' + f.emoji + '</span> ' + escapeHtml(f.titulo) + '</h2>' +
+      '<div class="licao">' + licaoHtml(f.licao) + '</div>' +
+      '<div class="ov-foot">' +
+        '<span class="hint">' + f.quiz.length + ' pergunta(s) • precisa de ' + Math.ceil(f.quiz.length * PASS_RATIO) + ' acerto(s)</span>' +
+        '<button class="btn primary" id="ov-ir-quiz">Ir para o quiz →</button>' +
+      '</div>';
+    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
+    document.getElementById('ov-ir-quiz').addEventListener('click', function(){ telaQuiz(); });
+    els.overlay.scrollTop = 0;
+  }
+
+  function telaQuiz(){
+    var f = faseAberta.fase;
+    var respostas = new Array(f.quiz.length).fill(null);
+    var corrigido = false;
+
+    function pintar(){
+      var qs = els.overlayBox.querySelectorAll('.quiz-q');
+      Array.prototype.forEach.call(qs, function(qEl, qi){
+        var opts = qEl.querySelectorAll('.opt');
+        Array.prototype.forEach.call(opts, function(oEl, oi){
+          oEl.classList.remove('sel','ok','bad');
+          oEl.disabled = corrigido;
+          if (!corrigido){
+            if (respostas[qi] === oi) oEl.classList.add('sel');
+          } else {
+            if (oi === f.quiz[qi].correta) oEl.classList.add('ok');
+            else if (respostas[qi] === oi) oEl.classList.add('bad');
+          }
+        });
+        var ex = qEl.querySelector('.q-explica');
+        if (ex) ex.classList.toggle('hidden', !corrigido);
+      });
+      var btn = document.getElementById('ov-corrigir');
+      if (btn && !corrigido){
+        btn.disabled = respostas.indexOf(null) !== -1;
+      }
+    }
+
+    els.overlayBox.innerHTML =
+      '<button class="ov-close" id="ov-x">✕</button>' +
+      '<div class="ov-kicker">Quiz — ' + escapeHtml(f.titulo) + '</div>' +
+      '<h2><span class="ov-emoji">📝</span> Responda para avançar</h2>' +
+      '<div class="licao" style="margin-top:14px;">' +
+        f.quiz.map(function(q, qi){
+          return '<div class="quiz-q" data-qi="' + qi + '">' +
+            '<div class="q-txt"><span class="q-n">' + (qi + 1) + '.</span>' + escapeHtml(q.q) + '</div>' +
+            q.opcoes.map(function(op, oi){
+              return '<button class="opt" data-qi="' + qi + '" data-oi="' + oi + '">' + escapeHtml(op) + '</button>';
+            }).join('') +
+            '<div class="q-explica hidden">' + escapeHtml(q.explica || '') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="ov-foot" id="ov-foot">' +
+        '<button class="btn" id="ov-voltar-licao">← Rever a lição</button>' +
+        '<button class="btn primary" id="ov-corrigir" disabled>Corrigir</button>' +
+      '</div>';
+
+    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
+    document.getElementById('ov-voltar-licao').addEventListener('click', telaLicao);
+
+    Array.prototype.forEach.call(els.overlayBox.querySelectorAll('.opt'), function(oEl){
+      oEl.addEventListener('click', function(){
+        if (corrigido) return;
+        respostas[Number(oEl.dataset.qi)] = Number(oEl.dataset.oi);
+        pintar();
+      });
+    });
+
+    document.getElementById('ov-corrigir').addEventListener('click', function(){
+      corrigido = true;
+      pintar();
+      var acertos = 0;
+      f.quiz.forEach(function(q, qi){ if (respostas[qi] === q.correta) acertos++; });
+      // mostra as correções e as explicações na própria tela do quiz,
+      // com um passo extra antes do resultado
+      document.getElementById('ov-foot').innerHTML =
+        '<span class="hint">' + acertos + ' de ' + f.quiz.length + ' certos — revise abaixo o que errou</span>' +
+        '<button class="btn primary" id="ov-ver-result">Ver resultado →</button>';
+      document.getElementById('ov-ver-result').addEventListener('click', function(){
+        telaResultado(acertos, respostas);
+      });
+      els.overlay.scrollTop = 0;
+    });
+
+    els.overlay.scrollTop = 0;
+  }
+
+  function telaResultado(acertos, respostas){
+    var f = faseAberta.fase;
+    var total = f.quiz.length;
+    var minimo = Math.ceil(total * PASS_RATIO);
+    var passou = acertos >= minimo;
+    var jaFeita = faseConcluida(f.id);
+
+    var extra = '';
+    if (passou && !jaFeita){
+      extra = '<button class="btn green" id="ov-continuar">Concluir fase e continuar →</button>';
+    } else if (passou && jaFeita){
+      extra = '<button class="btn" id="ov-continuar">Voltar à trilha</button>';
+    } else {
+      extra = '<button class="btn primary" id="ov-refazer">Refazer o quiz</button>' +
+              '<button class="btn" id="ov-rever">Rever a lição</button>';
+    }
+
+    els.overlayBox.innerHTML =
+      '<button class="ov-close" id="ov-x">✕</button>' +
+      '<div class="resultado">' +
+        '<div class="big">' + (passou ? '🎯' : '💪') + '</div>' +
+        '<h3>' + (passou ? 'Fase liberada!' : 'Quase lá') + '</h3>' +
+        '<div class="score-pill ' + (passou ? 'pass' : 'fail') + '">' + acertos + ' de ' + total + ' certos</div>' +
+        '<p>' + (passou
+          ? (jaFeita ? 'Você já tinha concluído esta fase — revisão feita.' : 'Você atingiu o mínimo de ' + minimo + ' acertos. A próxima fase está desbloqueada.')
+          : 'O mínimo é ' + minimo + ' acertos. Revise os pontos marcados e tente de novo — dá para refazer quantas vezes quiser.') + '</p>' +
+        '<div class="ov-foot" style="justify-content:center;">' + extra + '</div>' +
+      '</div>';
+
+    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
+    var cont = document.getElementById('ov-continuar');
+    if (cont) cont.addEventListener('click', function(){
+      if (passou && !jaFeita) salvarConclusao(f.id, acertos, total);
+      fecharOverlay();
+    });
+    var ref = document.getElementById('ov-refazer');
+    if (ref) ref.addEventListener('click', telaQuiz);
+    var rev = document.getElementById('ov-rever');
+    if (rev) rev.addEventListener('click', telaLicao);
+
+    els.overlay.scrollTop = 0;
+  }
+
+  /* ---------- persistência ---------- */
+
+  function recalcularPontos(c){
+    return Object.keys(c).reduce(function(acc, id){ return acc + (c[id].pontos || 0); }, 0);
+  }
+
+  function salvarConclusao(faseId, pontos, total){
+    prog.concluidas[faseId] = { pontos: pontos, total: total, em: Date.now() };
+    prog.pontosTotais = recalcularPontos(prog.concluidas);
+    prog.nome = meuNome;
+    var tudo = Object.keys(prog.concluidas).length >= totalFases;
+    if (tudo && !prog.concluidoEm) prog.concluidoEm = Date.now();
+
+    render();
+
+    if (!progRef) return;
+    var payload = {
+      concluidas: prog.concluidas,
+      pontosTotais: prog.pontosTotais,
+      nome: meuNome,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (tudo) payload.concluidoEm = prog.concluidoEm;
+    progRef.set(payload, { merge: true }).catch(function(err){
+      console.warn('Falha ao salvar progresso da trilha:', err && err.message);
+    });
+  }
+
+  function carregarProgresso(){
+    if (!progRef) { render(); return; }
+    progRef.get().then(function(doc){
+      if (doc.exists){
+        var d = doc.data();
+        prog.concluidas = d.concluidas || {};
+        prog.pontosTotais = d.pontosTotais || recalcularPontos(prog.concluidas);
+        prog.concluidoEm = d.concluidoEm || null;
+        prog.nome = d.nome || '';
+      }
+    }).catch(function(err){
+      console.warn('Falha ao carregar progresso:', err && err.message);
+    }).finally(render);
+  }
+
+  /* ---------- certificado ---------- */
+
+  function abrirCertificado(){
+    var feitas = Object.keys(prog.concluidas).length;
+    if (feitas < totalFases){
+      alert('Conclua todas as fases para gerar o certificado.');
+      return;
+    }
+    var nome = meuNome || prog.nome || 'Colaborador(a)';
+    var dataStr = new Date(prog.concluidoEm || Date.now()).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+    var w = window.open('', '_blank');
+    if (!w){ alert('Permita pop-ups para abrir o certificado.'); return; }
+    w.document.write(
+      '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Certificado de Integração — ' + escapeHtml(nome) + '</title>' +
+      '<style>' +
+      '*{box-sizing:border-box;margin:0;padding:0;}' +
+      'body{font-family:"Segoe UI",system-ui,sans-serif;background:#1a1210;padding:40px;display:flex;justify-content:center;}' +
+      '.cert{width:900px;max-width:100%;background:#faf6f0;color:#241c1b;border:2px solid #b8362e;border-radius:8px;padding:56px 60px;text-align:center;position:relative;}' +
+      '.cert::after{content:"";position:absolute;inset:14px;border:1px solid #d8b25a;border-radius:4px;pointer-events:none;}' +
+      '.kick{letter-spacing:.32em;font-size:.8rem;color:#b8362e;font-weight:700;text-transform:uppercase;}' +
+      'h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:2.5rem;margin:18px 0 6px;}' +
+      '.sub{color:#7d716b;font-size:.95rem;margin-bottom:34px;}' +
+      '.nome{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:2rem;color:#5c1a16;border-bottom:2px solid #d8b25a;display:inline-block;padding:0 30px 8px;margin-bottom:26px;}' +
+      '.corpo{font-size:1rem;line-height:1.7;max-width:620px;margin:0 auto 36px;}' +
+      '.pts{font-weight:700;color:#b8362e;}' +
+      '.rodape{display:flex;justify-content:space-between;font-size:.85rem;color:#7d716b;margin-top:40px;}' +
+      '.selo{font-size:2.4rem;}' +
+      '@media print{body{background:#fff;padding:0;}.cert{border-radius:0;}.no-print{display:none;}}' +
+      '.no-print{margin-top:24px;}' +
+      'button{padding:10px 22px;border-radius:22px;border:1px solid #b8362e;background:#b8362e;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;}' +
+      '</style></head><body>' +
+      '<div class="cert">' +
+        '<div class="kick">Fonseca e Braga Advocacia</div>' +
+        '<h1>Certificado de Integração</h1>' +
+        '<div class="sub">Trilha de Integração do Portal Interno</div>' +
+        '<div>Certificamos que</div>' +
+        '<div class="nome">' + escapeHtml(nome) + '</div>' +
+        '<div class="corpo">concluiu todas as ' + totalFases + ' fases da Trilha de Integração, ' +
+          'demonstrando conhecimento sobre a estrutura do escritório, o Portal interno, os sistemas ' +
+          'utilizados, as rotinas de atendimento, os prazos e a segurança da informação, ' +
+          'com <span class="pts">' + prog.pontosTotais + ' de ' + pontosPossiveis + ' pontos</span>.</div>' +
+        '<div class="selo">⚖️</div>' +
+        '<div class="rodape"><span>Emitido em ' + escapeHtml(dataStr) + '</span><span>Portal Fonseca e Braga</span></div>' +
+      '</div>' +
+      '<div class="no-print" style="text-align:center;"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>' +
+      '</body></html>'
+    );
+    w.document.close();
+  }
+  els.btnCert.addEventListener('click', abrirCertificado);
+
+  /* ---------- painel do gestor ---------- */
+
+  var adminCarregado = false;
+  els.btnAdmin.addEventListener('click', function(){
+    var abrir = !els.adminPanel.classList.contains('open');
+    els.adminPanel.classList.toggle('open', abrir);
+    if (abrir && !adminCarregado) carregarPainelGestor();
+  });
+
+  function carregarPainelGestor(){
+    adminCarregado = true;
+    Promise.all([
+      db.collection('treinamentoProgresso').get(),
+      db.collection('organograma').get().catch(function(){ return { docs: [] }; })
+    ]).then(function(res){
+      var progs = res[0].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); });
+      var nomes = {};
+      res[1].docs.forEach(function(d){ nomes[d.id] = (d.data() && d.data().displayName) || ''; });
+
+      if (progs.length === 0){
+        els.adminBody.innerHTML = '<div class="admin-empty">Ninguém começou a trilha ainda.</div>';
+        return;
+      }
+
+      progs.sort(function(a, b){
+        var fa = a.concluidas ? Object.keys(a.concluidas).length : 0;
+        var fb = b.concluidas ? Object.keys(b.concluidas).length : 0;
+        return fb - fa;
+      });
+
+      els.adminBody.innerHTML =
+        '<table class="prog"><thead><tr>' +
+          '<th>Colaborador</th><th>Fases</th><th>Progresso</th><th>Pontos</th><th>Status</th>' +
+        '</tr></thead><tbody>' +
+        progs.map(function(p){
+          var feitas = p.concluidas ? Object.keys(p.concluidas).length : 0;
+          var pct = Math.round((feitas / totalFases) * 100);
+          var nome = nomes[p.uid] || p.nome || '(sem nome)';
+          var concluido = feitas >= totalFases;
+          return '<tr>' +
+            '<td>' + escapeHtml(nome) + '</td>' +
+            '<td>' + feitas + ' / ' + totalFases + '</td>' +
+            '<td><div class="mini-track"><div class="mini-fill" style="width:' + pct + '%"></div></div></td>' +
+            '<td>' + (p.pontosTotais || 0) + ' / ' + pontosPossiveis + '</td>' +
+            '<td>' + (concluido ? '<span class="st-ok">✓ Concluída</span>' : 'Em andamento') + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    }).catch(function(err){
+      els.adminBody.innerHTML = '<div class="admin-empty">Não foi possível carregar (' + escapeHtml(err && err.message) + ').</div>';
+    });
+  }
+
+  els.overlay.addEventListener('click', function(e){
+    if (e.target === els.overlay) fecharOverlay();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && els.overlay.classList.contains('open')) fecharOverlay();
+  });
+
+  /* ---------- auth ---------- */
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.app.style.display = 'none';
+      return;
+    }
+    meuUid = user.uid;
+    meuNome = user.displayName || '';
+    els.gate.style.display = 'none';
+    els.app.style.display = 'block';
+    progRef = db.collection('treinamentoProgresso').doc(meuUid);
+
+    db.collection('users').doc(meuUid).get().then(function(doc){
+      var d = doc.exists ? doc.data() : {};
+      souAdmin = d.role === 'admin';
+      souGestor = d.role === 'gestor';
+      if (!meuNome) meuNome = d.displayName || '';
+      els.btnAdmin.style.display = (souAdmin || souGestor) ? 'inline-block' : 'none';
+    }).catch(function(){}).finally(function(){
+      // nome também pode vir do perfil/organograma
+      if (!meuNome){
+        db.collection('organograma').doc(meuUid).get().then(function(o){
+          if (o.exists && o.data().displayName) meuNome = o.data().displayName;
+        }).catch(function(){});
+      }
+      carregarProgresso();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
