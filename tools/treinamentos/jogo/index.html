@@ -28,7 +28,13 @@
 
   #app{display:none;position:relative;height:100%;background:#0f1418;}
   #app.on{display:block;}
-  #cv{display:block;width:100%;height:100%;image-rendering:pixelated;}
+  #cv{display:block;width:100%;height:100%;}
+  #vinheta{position:absolute;inset:0;z-index:10;pointer-events:none;
+    box-shadow:inset 0 0 min(20vw,240px) min(6vw,80px) rgba(8,6,10,.55);}
+  #vinheta::after{content:"";position:absolute;inset:0;mix-blend-mode:overlay;opacity:.06;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.5) 0 1px,transparent 1px 3px);}
+  #erro3d{display:none;position:absolute;inset:0;z-index:81;align-items:center;justify-content:center;padding:36px;text-align:center;background:linear-gradient(180deg,#3a4a55,#cfe6d6);}
+  #erro3d.on{display:flex;}
 
   #hud{position:absolute;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;pointer-events:none;font-family:var(--font-jogo);}
   #hud .box{background:rgba(30,18,12,.78);color:#fff;border:2px solid var(--ouro);border-radius:14px;padding:4px 10px;font-weight:800;font-size:.8rem;white-space:nowrap;}
@@ -102,9 +108,11 @@
 
 <div id="gate"><div class="gcard"><div class="big">⚖️</div><h2>Comarca do FBzinho</h2><p>Faça login no Portal Fonseca e Braga para começar.</p></div></div>
 <div id="mgate"><div class="gcard"><div class="big">🖥️</div><h2>Abra no computador</h2><p>A Comarca do FBzinho joga-se com o teclado (WASD / setas). Abra o Portal num computador.</p></div></div>
+<div id="erro3d"><div class="gcard"><div class="big">😕</div><h2>Não deu para carregar o 3D</h2><p id="erro3d-msg">Seu navegador pode não ter aceleração 3D (WebGL) ativa, ou a biblioteca 3D não carregou. Atualize a página; se persistir, avise o suporte.</p></div></div>
 
 <div id="app">
   <canvas id="cv"></canvas>
+  <div id="vinheta"></div>
   <div id="fade"></div>
   <div id="hud">
     <span class="box" id="h-data">Dia 1</span>
@@ -154,10 +162,11 @@
     <div class="topo"><div class="nome">❔ Como jogar</div><button class="x" id="ajuda-x">fechar</button></div>
     <p>Você é um(a) novo(a) colaborador(a). O <b>FBzinho</b> é o seu guia. Explore a comarca e faça as <b>10 aulas</b> (marcadores ⚖️ que brilham) para se formar.</p>
     <ul>
-      <li><b>WASD</b> / <b>setas</b> = andar &nbsp; <b>Shift</b> = correr &nbsp; <b>E</b> / <b>espaço</b> = usar / interagir.</li>
+      <li><b>WASD</b> / <b>setas</b> = andar (a câmera segue por trás) &nbsp; <b>Shift</b> = correr &nbsp; <b>Q</b> = girar a câmera &nbsp; <b>E</b> / <b>espaço</b> = usar / interagir.</li>
       <li><b>1–8</b> ou <b>roda do mouse</b> = trocar o item da barra.</li>
-      <li>Fale com os colegas, ache os <b>easter eggs</b> (objetos que brilham) sobre advocacia, tribunais e CPC.</li>
-      <li>No escritório: <b>Caneta</b> prepara uma baia de trabalho; plante um <b>Caso</b>; use o <b>Carimbo</b> todo dia (ou deixe a chuva) até virar <b>Sentença</b>; venda na <b>Caixa de Remessa</b>.</li>
+      <li>Fale com os colegas, ache os <b>easter eggs</b> (objetos que brilham e giram) sobre advocacia, tribunais e CPC.</li>
+      <li>No canteiro ao lado do escritório: <b>Caneta</b> prepara uma baia; plante um <b>Caso</b>; use o <b>Carimbo</b> todo dia (ou deixe a chuva) até virar <b>Sentença</b>; venda na <b>Caixa de Remessa</b>.</li>
+      <li>Com a <b>Lupa</b> na beira do rio: triagem de publicações do DJEN (minigame).</li>
       <li>Volte pra <b>cama</b> (ou Menu → Dormir) para salvar e passar o dia. O dia acaba às 02:00.</li>
     </ul>
   </div></div>
@@ -166,8 +175,20 @@
     <div class="topo"><div class="nome">📊 Progresso dos colaboradores</div><button class="x" id="gestor-x">fechar</button></div>
     <div id="gestor-body"><div class="vazio">Carregando…</div></div>
   </div></div>
+
+  <div class="painel centro" id="p-pesca"><div class="card" style="max-width:420px;text-align:center;">
+    <div class="nome" style="margin-bottom:10px;">🔎 Triagem de publicações — DJEN</div>
+    <div id="pesca-msg" style="font-size:.9rem;font-weight:700;color:var(--marrom);margin-bottom:10px;">Vasculhando…</div>
+    <div id="pesca-arena" style="position:relative;height:26px;background:#e7d9bd;border:2px solid var(--marrom);border-radius:14px;overflow:hidden;display:none;">
+      <div id="pesca-alvo" style="position:absolute;top:0;width:16px;height:100%;background:#b8362e;"></div>
+      <div id="pesca-mira" style="position:absolute;top:2px;width:44px;height:22px;background:rgba(90,160,216,.6);border:2px solid #3a6a9a;border-radius:8px;"></div>
+    </div>
+    <div id="pesca-bar" style="height:8px;background:#e6d9c4;border-radius:5px;margin-top:8px;overflow:hidden;display:none;"><div id="pesca-fill" style="height:100%;width:0;background:linear-gradient(90deg,var(--vinho),var(--ouro));"></div></div>
+    <div style="font-size:.72rem;color:var(--tinta-suave);margin-top:8px;">Segure <b>E / espaço</b> para subir a mira, solte para descer. Mantenha sobre a faixa vermelha.</div>
+  </div></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
