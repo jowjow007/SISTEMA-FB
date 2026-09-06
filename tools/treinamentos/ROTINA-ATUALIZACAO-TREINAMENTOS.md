@@ -41,13 +41,22 @@ app, mas qualquer arquivo dentro do repositório — inclusive estes
 documentos — fica acessível por link direto, sem exigir login. Evite
 subir documentos com dados de cliente ou credenciais reais.
 
-## Sub-aba "Trilha de Integração" (o game)
+## Sub-aba "Trilha do FBzinho" (o game)
 
-A primeira sub-aba de Treinamentos é a **Trilha de Integração**: um jogo de
-fases que o novo colaborador percorre para aprender sobre o escritório e o
-Portal. Ao concluir todas as fases ele libera um **certificado de integração**
-(imprimível/PDF) e passa a aparecer como "Concluída" no **Painel do gestor**
-(botão visível só para `admin`/`gestor` dentro do próprio jogo).
+A primeira sub-aba de Treinamentos é a **Trilha do FBzinho**: um jogo com
+**mapa colorido e um mascote de corpo inteiro (o FBzinho)** que caminha de
+parada em parada e conversa com o colaborador (diálogo estilo visual novel,
+com efeito de máquina de escrever). Em cada parada ele ensina um assunto e
+depois faz um quiz. Ao concluir todas as paradas o colaborador libera um
+**diploma de integração** (imprimível/PDF) e passa a aparecer como "Concluída"
+no **painel de progresso** (botão "📊 Gestor", visível só para `admin`/`gestor`
+dentro do próprio jogo).
+
+O jogo é 100% um único arquivo estático (`tools/treinamentos/jogo/index.html`):
+o mapa, a estrada sinuosa, as casinhas das paradas e o FBzinho são todos SVG
+desenhados por código; a caminhada é animação ao longo do path. O mundo do
+jogo tem paleta própria (sempre colorida) e **não** segue o tema claro/escuro
+do Portal — é de propósito.
 
 - **Onde fica o conteúdo:** tudo está no array `CONTEUDO`, no topo do
   `<script>` de `tools/treinamentos/jogo/index.html`. Cada fase tem `id`,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trilha de Integração — Fonseca e Braga</title>
+<title>Trilha do FBzinho — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../../assets/favicon.png">
 <script>
 (function(){
@@ -11,260 +11,337 @@
     var t = localStorage.getItem('fb-portal-theme');
     if(t === 'light') document.documentElement.setAttribute('data-theme','light');
   }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
 })();
 </script>
 <style>
+  /* ====== o mundo do jogo tem paleta própria, sempre colorida ====== */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --gold:#d8b25a;
-    --green:#4c9a68;
-    --green-bright:#63c088;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --node-locked-bg:#241c1b;
-    --node-locked-ink:#6b615d;
-    --lesson-callout-bg:rgba(216,178,90,.10);
-    --lesson-callout-ink:#e6c980;
+    --marrom:#7a2f2a;
+    --marrom-esc:#5c1a16;
+    --vinho:#b8362e;
+    --vinho-claro:#c9463c;
+    --ouro:#e7b84f;
+    --ouro-esc:#c99a34;
+    --creme:#fdf6e8;
+    --creme2:#fdf6e8;
+    --ceu-1:#8fd3ff;
+    --ceu-2:#c7ecff;
+    --grama-1:#7ec86b;
+    --grama-2:#5fae53;
+    --tinta:#3a2b24;
+    --tinta-suave:#6b574d;
+    --branco:#ffffff;
+    --sombra:rgba(60,30,20,.18);
     --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --green:#2f7a4c;
-    --green-bright:#2f7a4c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
-    --node-locked-bg:#e7e0d8;
-    --node-locked-ink:#a99f97;
-    --lesson-callout-bg:rgba(184,54,46,.06);
-    --lesson-callout-ink:#8a2b25;
+    --font-jogo:"Baloo 2","Segoe UI",system-ui,sans-serif;
   }
 
   *{box-sizing:border-box;}
-  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);transition:background-color .2s,color .2s;}
-  button{font-family:inherit;}
+  html,body{margin:0;height:100%;font-family:var(--font-body);color:var(--tinta);overflow:hidden;}
+  body{background:linear-gradient(180deg,var(--ceu-1),var(--ceu-2) 55%,#dff3d6 55%,#eaf7e2);}
+  button{font-family:inherit;cursor:pointer;}
 
-  #gate{padding:80px 24px;text-align:center;color:var(--muted);font-size:.9rem;line-height:1.6;max-width:460px;margin:0 auto;}
+  #gate{
+    display:flex;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;
+    color:var(--tinta-suave);font-size:.95rem;line-height:1.6;
+  }
 
-  /* ---------- cabeçalho / progresso ---------- */
-  header.game-head{
-    position:sticky;top:0;z-index:6;background:var(--panel);border-bottom:1px solid var(--line-strong);
-    padding:16px 22px 14px;
-  }
-  .game-head-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .game-head h1{
-    font-family:var(--font-display);font-weight:600;font-size:1.25rem;margin:0;color:var(--paper);
-    display:flex;align-items:center;gap:9px;
-  }
-  .game-head .sub{font-size:.78rem;color:var(--muted);margin:3px 0 0;}
-  .head-actions{display:flex;gap:8px;flex-wrap:wrap;}
-  .btn{
-    padding:8px 15px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
-    color:var(--paper);font-size:.8rem;cursor:pointer;font-weight:600;transition:border-color .15s,color .15s,background .15s;
-  }
-  .btn:hover{border-color:var(--gold);color:var(--gold);}
-  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
-  .btn.primary:hover{background:var(--red-bright);border-color:var(--red-bright);color:#fff;}
-  .btn.green{background:var(--green);border-color:var(--green);color:#fff;}
-  .btn.green:hover{background:var(--green-bright);border-color:var(--green-bright);color:#fff;}
-  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  #app{display:none;flex-direction:column;height:100%;position:relative;}
 
-  .xp-wrap{margin-top:13px;}
-  .xp-bar-line{display:flex;align-items:center;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:5px;}
-  .xp-bar-line b{color:var(--gold);font-weight:700;}
-  .xp-track{height:9px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-strong);overflow:hidden;}
-  .xp-fill{height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--gold));transition:width .5s ease;}
+  /* ================= HUD ================= */
+  #hud{
+    flex:0 0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:10px 16px;background:linear-gradient(180deg,#ffffff,#fdeede);
+    border-bottom:3px solid var(--ouro);box-shadow:0 3px 12px var(--sombra);z-index:8;
+  }
+  #hud .marca{
+    display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;
+    color:var(--marrom);font-size:1.02rem;white-space:nowrap;
+  }
+  #hud .marca .escudo{font-size:1.3rem;}
+  .hud-pips{display:flex;gap:5px;flex-wrap:wrap;}
+  .pip{width:14px;height:14px;border-radius:50%;background:#e6d9c4;border:2px solid #cdbb9c;transition:transform .2s;}
+  .pip.feita{background:var(--grama-2);border-color:#3f8f36;}
+  .pip.atual{background:var(--ouro);border-color:var(--ouro-esc);transform:scale(1.25);box-shadow:0 0 0 3px rgba(231,184,79,.35);}
+  #hud .hud-label{font-weight:700;color:var(--marrom-esc);font-size:.86rem;white-space:nowrap;}
+  #hud .hud-pts{
+    display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--ouro-esc);
+    background:#fff5df;border:2px solid var(--ouro);border-radius:20px;padding:3px 11px;font-size:.82rem;white-space:nowrap;
+  }
+  #hud .hud-sp{flex:1 1 auto;}
+  .hud-btn{
+    border:2px solid var(--marrom);background:#fff;color:var(--marrom);font-weight:700;
+    border-radius:22px;padding:6px 13px;font-size:.8rem;white-space:nowrap;transition:transform .12s,background .12s;
+  }
+  .hud-btn:hover{transform:translateY(-1px);background:#fff1e2;}
+  .hud-btn.ouro{background:var(--ouro);border-color:var(--ouro-esc);color:var(--marrom-esc);}
 
-  /* ---------- trilha ---------- */
-  main{max-width:720px;margin:0 auto;padding:34px 20px 80px;}
-  .trilha{position:relative;display:flex;flex-direction:column;gap:0;}
-  .fase-row{position:relative;display:flex;padding:16px 0;min-height:96px;}
-  .fase-row.lado-dir{justify-content:flex-end;}
-  .fase-row.lado-esq{justify-content:flex-start;}
-  .fase-row::before{
-    content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);
-    background:var(--line-strong);
-  }
-  .fase-row:first-child::before{top:50%;}
-  .fase-row:last-child::before{bottom:50%;}
-  .fase-row.feita::before{background:var(--green);}
+  /* ================= MAPA ================= */
+  #mapa-wrap{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;position:relative;}
+  #mapa{display:block;width:min(760px,100%);height:auto;margin:0 auto;}
 
-  .node{
-    position:relative;z-index:2;width:min(300px,86%);background:linear-gradient(160deg,var(--panel),var(--panel-2));
-    border:1px solid var(--line-strong);border-radius:16px;padding:15px 16px 14px;text-align:left;cursor:pointer;
-    transition:transform .14s,border-color .14s,box-shadow .14s;
+  .nuvem{animation:flutuaNuvem linear infinite;}
+  @keyframes flutuaNuvem{
+    0%{transform:translateX(-40px);}
+    50%{transform:translateX(40px);}
+    100%{transform:translateX(-40px);}
   }
-  .node:hover{transform:translateY(-2px);border-color:var(--red);}
-  .node .node-emoji{font-size:1.5rem;line-height:1;margin-bottom:7px;display:block;}
-  .node .node-num{font-size:.64rem;font-weight:700;letter-spacing:.09em;color:var(--muted);text-transform:uppercase;}
-  .node h3{font-family:var(--font-display);font-weight:600;font-size:1rem;margin:2px 0 5px;color:var(--paper);line-height:1.25;}
-  .node p{font-size:.76rem;color:var(--muted);margin:0;line-height:1.4;}
-  .node .node-badge{
-    display:inline-flex;align-items:center;gap:5px;margin-top:9px;font-size:.68rem;font-weight:700;
-    padding:3px 9px;border-radius:20px;
-  }
-  .node.st-feita .node-badge{background:rgba(76,154,104,.18);border:1px solid rgba(76,154,104,.45);color:var(--green-bright);}
-  .node.st-atual{border-color:var(--gold);box-shadow:0 0 0 3px rgba(216,178,90,.16);}
-  .node.st-atual .node-badge{background:rgba(216,178,90,.16);border:1px solid rgba(216,178,90,.45);color:var(--gold);}
-  .node.st-locked{cursor:not-allowed;background:var(--node-locked-bg);border-style:dashed;}
-  .node.st-locked:hover{transform:none;border-color:var(--line-strong);}
-  .node.st-locked .node-emoji,.node.st-locked h3,.node.st-locked p,.node.st-locked .node-num{color:var(--node-locked-ink);filter:grayscale(1);opacity:.75;}
-  .node.st-locked .node-badge{background:transparent;border:1px solid var(--line-strong);color:var(--node-locked-ink);}
+  #sol{animation:giraSol 40s linear infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes giraSol{to{transform:rotate(360deg);}}
 
-  .node-dot{
-    position:absolute;top:50%;width:15px;height:15px;border-radius:50%;background:var(--panel-2);
-    border:3px solid var(--line-strong);transform:translateY(-50%);z-index:3;
+  .estacao{cursor:pointer;}
+  .estacao .casa{transition:transform .15s;transform-box:fill-box;transform-origin:bottom center;}
+  .estacao:hover .casa{transform:scale(1.06);}
+  .estacao.bloqueada{cursor:not-allowed;}
+  .estacao.bloqueada .casa{filter:grayscale(.85) brightness(.9);}
+  .estacao .flag-emoji{font-size:22px;}
+  .estacao .est-num{font-family:var(--font-jogo);font-weight:800;fill:#4a2b12;font-size:15px;}
+  .estacao .est-label{
+    font-family:var(--font-jogo);font-weight:700;fill:var(--marrom-esc);font-size:12.5px;
+    paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;
   }
-  .fase-row.lado-dir .node-dot{left:calc(50% - 7px);}
-  .fase-row.lado-esq .node-dot{left:calc(50% - 7px);}
-  .fase-row.feita .node-dot{background:var(--green);border-color:var(--green);}
-  .fase-row.atual .node-dot{background:var(--gold);border-color:var(--gold);}
+  .estacao.atual .anel{animation:pulsaAnel 1.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes pulsaAnel{
+    0%,100%{opacity:.25;transform:scale(1);}
+    50%{opacity:.7;transform:scale(1.14);}
+  }
+  .badge-check{fill:var(--grama-2);}
+  .badge-lock{fill:#b9a888;}
+  .flag-emoji-float{animation:balancaFlag 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom center;}
+  @keyframes balancaFlag{0%,100%{transform:rotate(-5deg);}50%{transform:rotate(5deg);}}
 
-  .final-callout{
-    margin-top:30px;text-align:center;padding:22px;border:1px dashed var(--line-strong);border-radius:16px;
-    background:var(--panel);
-  }
-  .final-callout.pronto{border-color:var(--gold);background:var(--lesson-callout-bg);}
-  .final-callout h3{font-family:var(--font-display);margin:0 0 6px;color:var(--paper);}
-  .final-callout p{font-size:.8rem;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  /* ================= FBZINHO ================= */
+  #fb{pointer-events:none;}
+  #fb .fb-shadow{fill:rgba(40,20,15,.16);}
+  #fb .fb-bob{transform-box:fill-box;}
+  #fb.fb-anda .fb-bob{animation:fbBob .46s ease-in-out infinite;}
+  @keyframes fbBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+  #fb .fb-suit{fill:var(--vinho);}
+  #fb .fb-lapela{fill:var(--vinho-claro);}
+  #fb .fb-shirt{fill:#fff;}
+  #fb .fb-tie{fill:var(--ouro);}
+  #fb .fb-leg rect{fill:#3f2a4d;}
+  #fb .fb-shoe{fill:#2a1c1c;}
+  #fb .fb-arm rect{fill:var(--vinho);}
+  #fb .fb-hand{fill:#f2c9a0;}
+  #fb .fb-face{fill:#f6cfa6;}
+  #fb .fb-hair{fill:#3a2b24;}
+  #fb .fb-eye{fill:#2a1c1c;animation:fbPisca 4s infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes fbPisca{0%,94%,100%{transform:scaleY(1);}97%{transform:scaleY(.1);}}
+  #fb .fb-cheek{fill:#f2a3a0;opacity:.7;}
+  #fb .fb-mouth{fill:none;stroke:#2a1c1c;stroke-width:2.4;stroke-linecap:round;}
+  #fb .fb-mouth-open{fill:#a33;stroke:none;}
+  #fb .m-smile,#fb .m-neutral,#fb .m-open,#fb .m-o{display:none;}
+  #fb .m-smile{display:block;}
+  #fb.exp-oops .m-smile{display:none;} #fb.exp-oops .m-open{display:block;}
+  #fb.exp-think .m-smile{display:none;} #fb.exp-think .m-neutral{display:block;}
+  #fb.exp-uau .m-smile{display:none;} #fb.exp-uau .m-o{display:block;}
+  #fb.fb-fala .fb-head{animation:fbFala .28s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom center;}
+  @keyframes fbFala{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-1px) rotate(-1.5deg);}}
+  #fb .fb-leg{transform-box:fill-box;transform-origin:top center;}
+  #fb .fb-arm{transform-box:fill-box;transform-origin:top center;}
+  #fb.fb-anda .fb-leg-l{animation:passoA .46s ease-in-out infinite;}
+  #fb.fb-anda .fb-leg-r{animation:passoB .46s ease-in-out infinite;}
+  #fb.fb-anda .fb-arm-l{animation:passoB .46s ease-in-out infinite;}
+  #fb.fb-anda .fb-arm-r{animation:passoA .46s ease-in-out infinite;}
+  @keyframes passoA{0%,100%{transform:rotate(22deg);}50%{transform:rotate(-22deg);}}
+  @keyframes passoB{0%,100%{transform:rotate(-22deg);}50%{transform:rotate(22deg);}}
+  #fb.parado:not(.fb-fala) .fb-bob{animation:fbRespira 3s ease-in-out infinite;}
+  @keyframes fbRespira{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}
 
-  /* ---------- overlay de fase ---------- */
-  .overlay{
-    position:fixed;inset:0;background:rgba(10,7,7,.9);z-index:40;display:none;
-    padding:26px 18px;overflow-y:auto;
+  .fb-balao{
+    animation:balaoPop .25s ease;font-family:var(--font-jogo);
   }
-  .overlay.open{display:block;}
-  .overlay-box{
-    max-width:640px;margin:0 auto;background:var(--panel);border:1px solid var(--line-strong);
-    border-radius:18px;padding:26px 26px 22px;
-  }
-  .overlay-box .ov-close{
-    float:right;background:transparent;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;
-  }
-  .ov-kicker{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red-bright);}
-  .overlay-box h2{font-family:var(--font-display);font-weight:600;font-size:1.4rem;margin:4px 0 2px;color:var(--paper);}
-  .ov-emoji{font-size:2rem;}
+  @keyframes balaoPop{from{opacity:0;transform:translateY(6px) scale(.9);}to{opacity:1;transform:none;}}
 
-  /* lição */
-  .licao{margin-top:16px;line-height:1.62;font-size:.9rem;color:var(--paper);}
-  .licao h4{font-family:var(--font-display);font-size:1rem;color:var(--gold);margin:20px 0 6px;}
-  .licao p{margin:0 0 11px;}
-  .licao ul{margin:0 0 12px;padding-left:20px;}
-  .licao li{margin:4px 0;}
-  .licao .callout{
-    background:var(--lesson-callout-bg);border-left:3px solid var(--gold);border-radius:8px;
-    padding:11px 14px;margin:0 0 13px;font-size:.85rem;color:var(--lesson-callout-ink);
+  /* ================= DIÁLOGO ================= */
+  #dlg{
+    position:absolute;left:0;right:0;bottom:0;z-index:20;display:none;
+    padding:0 12px 12px;pointer-events:none;
   }
-  .licao .callout b{color:inherit;}
-
-  /* quiz */
-  .quiz-q{margin:0 0 20px;}
-  .quiz-q .q-txt{font-weight:600;font-size:.92rem;margin-bottom:10px;line-height:1.5;}
-  .quiz-q .q-txt .q-n{color:var(--muted);font-weight:700;margin-right:6px;}
-  .opt{
-    display:block;width:100%;text-align:left;padding:11px 13px;border-radius:10px;margin-bottom:8px;
-    border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.86rem;cursor:pointer;
-    transition:border-color .12s,background .12s;
+  #dlg.aberto{display:block;}
+  .dlg-card{
+    pointer-events:auto;max-width:640px;margin:0 auto;background:var(--creme2);
+    border:3px solid var(--marrom);border-radius:20px;box-shadow:0 -6px 30px rgba(50,25,15,.35);
+    padding:14px 16px 16px;position:relative;
   }
-  .opt:hover{border-color:var(--gold);}
-  .opt.sel{border-color:var(--gold);background:rgba(216,178,90,.12);}
-  .opt.ok{border-color:var(--green);background:rgba(76,154,104,.16);}
-  .opt.bad{border-color:var(--red-bright);background:rgba(184,54,46,.14);}
-  .opt:disabled{cursor:default;}
-  .q-explica{
-    font-size:.8rem;color:var(--muted);margin-top:4px;padding:9px 12px;border-radius:8px;
-    background:var(--panel-2);border:1px solid var(--line);line-height:1.5;
+  .dlg-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .dlg-face{
+    width:52px;height:52px;flex:0 0 auto;border-radius:50%;background:#ffe6c9;border:3px solid var(--ouro);
+    overflow:hidden;box-shadow:0 2px 6px var(--sombra);
   }
-  .q-explica.hidden{display:none;}
-
-  .ov-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;}
-  .ov-foot .hint{font-size:.76rem;color:var(--muted);}
-
-  .resultado{text-align:center;padding:12px 0 4px;}
-  .resultado .big{font-size:2.6rem;margin-bottom:6px;}
-  .resultado h3{font-family:var(--font-display);margin:0 0 4px;color:var(--paper);}
-  .resultado p{font-size:.85rem;color:var(--muted);margin:0 0 16px;line-height:1.5;}
-  .score-pill{display:inline-block;font-weight:700;padding:4px 14px;border-radius:20px;font-size:.85rem;margin-bottom:14px;}
-  .score-pill.pass{background:rgba(76,154,104,.18);color:var(--green-bright);border:1px solid rgba(76,154,104,.45);}
-  .score-pill.fail{background:rgba(184,54,46,.16);color:var(--red-bright);border:1px solid rgba(184,54,46,.4);}
-
-  /* ---------- painel do gestor ---------- */
-  .admin-panel{
-    max-width:900px;margin:0 auto 40px;padding:20px;background:var(--panel);border:1px solid var(--line-strong);
-    border-radius:16px;display:none;
+  .dlg-face svg{width:100%;height:100%;display:block;}
+  .dlg-name{font-family:var(--font-jogo);font-weight:800;color:var(--marrom);font-size:1.02rem;line-height:1;}
+  .dlg-name small{display:block;font-weight:600;color:var(--tinta-suave);font-size:.7rem;margin-top:3px;}
+  .dlg-close{
+    margin-left:auto;border:2px solid var(--marrom);background:#fff;color:var(--marrom);
+    border-radius:16px;padding:4px 10px;font-size:.74rem;font-weight:700;
   }
-  .admin-panel.open{display:block;}
-  .admin-panel h2{font-family:var(--font-display);margin:0 0 14px;color:var(--gold);font-size:1.1rem;}
-  table.prog{width:100%;border-collapse:collapse;font-size:.82rem;}
-  table.prog th,table.prog td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);}
-  table.prog th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
-  table.prog .mini-track{height:7px;border-radius:5px;background:var(--panel-2);overflow:hidden;min-width:90px;}
-  table.prog .mini-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));}
-  table.prog .st-ok{color:var(--green-bright);font-weight:700;}
-  .admin-empty{color:var(--muted);font-size:.85rem;padding:10px 0;}
+  .dlg-body{
+    min-height:74px;font-size:.96rem;line-height:1.55;color:var(--tinta);
+    background:#fff;border:2px dashed var(--ouro);border-radius:14px;padding:12px 14px;
+  }
+  .dlg-body.dica{background:#fff8e3;border-style:solid;}
+  .dlg-body.dica::before{content:"💡 ";}
+  .dlg-body.titulo{background:#f3ecff;border-color:#8367c7;font-weight:800;color:#5b3ea8;font-family:var(--font-jogo);}
+  .dlg-body ul{margin:4px 0 0;padding-left:20px;}
+  .dlg-body li{margin:4px 0;}
+  .cursor-tw::after{content:"▌";animation:piscaCursor .7s steps(1) infinite;color:var(--ouro-esc);}
+  @keyframes piscaCursor{50%{opacity:0;}}
 
-  @media(max-width:560px){
-    .node{width:100%;}
-    .fase-row.lado-dir,.fase-row.lado-esq{justify-content:center;}
-    .fase-row::before,.node-dot{display:none;}
-    .fase-row{padding:9px 0;}
+  .dlg-choices{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .dlg-choice{
+    text-align:left;border:2px solid var(--marrom);background:#fff;color:var(--tinta);
+    border-radius:14px;padding:11px 13px;font-size:.9rem;font-weight:600;transition:transform .1s,background .1s;
+  }
+  .dlg-choice:hover:not(:disabled){transform:translateX(3px);background:#fff1e2;}
+  .dlg-choice:disabled{cursor:default;}
+  .dlg-choice.certa{border-color:var(--grama-2);background:#e4f7dd;}
+  .dlg-choice.errada{border-color:var(--vinho);background:#fbe3e1;}
+
+  .dlg-foot{display:flex;justify-content:flex-end;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap;}
+  .dlg-foot .hint{margin-right:auto;font-size:.76rem;color:var(--tinta-suave);font-weight:600;}
+  .btn-jogo{
+    border:2px solid var(--marrom-esc);background:var(--vinho);color:#fff;font-weight:800;
+    border-radius:20px;padding:9px 18px;font-size:.86rem;font-family:var(--font-jogo);
+    box-shadow:0 3px 0 var(--marrom-esc);transition:transform .1s;
+  }
+  .btn-jogo:hover{transform:translateY(-1px);}
+  .btn-jogo:active{transform:translateY(2px);box-shadow:0 1px 0 var(--marrom-esc);}
+  .btn-jogo.verde{background:var(--grama-2);border-color:#3f8f36;box-shadow:0 3px 0 #3f8f36;}
+  .btn-jogo.ouro{background:var(--ouro);border-color:var(--ouro-esc);box-shadow:0 3px 0 var(--ouro-esc);color:var(--marrom-esc);}
+  .btn-jogo.claro{background:#fff;color:var(--marrom);box-shadow:0 3px 0 #d8c4a3;}
+
+  /* ================= MODAIS ================= */
+  .modal{
+    position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+    background:rgba(40,20,15,.55);padding:20px;
+  }
+  .modal.aberto{display:flex;}
+  .modal-card{
+    background:var(--creme2);border:3px solid var(--marrom);border-radius:20px;padding:22px;
+    width:100%;max-width:560px;max-height:86%;overflow:auto;box-shadow:0 12px 40px rgba(30,15,10,.4);
+  }
+  .modal-card h2{font-family:var(--font-jogo);color:var(--marrom);margin:0 0 12px;font-size:1.2rem;}
+  .modal-card p,.modal-card li{font-size:.9rem;line-height:1.6;}
+  .modal-x{float:right;border:2px solid var(--marrom);background:#fff;color:var(--marrom);border-radius:16px;padding:3px 10px;font-weight:700;font-size:.78rem;}
+  table.prog{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:6px;}
+  table.prog th,table.prog td{text-align:left;padding:8px 9px;border-bottom:1px solid #e7d8bf;}
+  table.prog th{color:var(--tinta-suave);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
+  table.prog .mini-track{height:8px;border-radius:5px;background:#e6d9c4;overflow:hidden;min-width:80px;}
+  table.prog .mini-fill{height:100%;background:linear-gradient(90deg,var(--vinho),var(--ouro));}
+  table.prog .st-ok{color:#3f8f36;font-weight:800;}
+  .modal-vazio{color:var(--tinta-suave);font-size:.88rem;padding:8px 0;}
+
+  /* ================= CONFETE ================= */
+  #confete{position:absolute;inset:0;pointer-events:none;z-index:25;overflow:hidden;}
+  #confete i{
+    position:absolute;top:-24px;width:9px;height:14px;border-radius:2px;opacity:.95;
+    animation:confeteCai linear forwards;
+  }
+  @keyframes confeteCai{to{transform:translateY(115vh) rotate(760deg);opacity:.15;}}
+
+  @media (max-width:560px){
+    #hud .marca small{display:none;}
+    .dlg-body{font-size:.9rem;}
   }
 </style>
 </head>
 <body>
 
-<div id="gate">Faça login no Portal Fonseca e Braga para começar a Trilha de Integração.</div>
+<div id="gate">Faça login no Portal Fonseca e Braga para começar a Trilha do FBzinho.</div>
 
-<div id="app" style="display:none;">
-  <header class="game-head">
-    <div class="game-head-top">
-      <div>
-        <h1>🎓 Trilha de Integração</h1>
-        <p class="sub">Passe pelas fases para conhecer o escritório e o Portal. Ao concluir, você recebe o certificado de integração.</p>
-      </div>
-      <div class="head-actions">
-        <button class="btn" id="btn-admin" style="display:none;">📊 Painel do gestor</button>
-        <button class="btn" id="btn-cert" style="display:none;">🏅 Ver certificado</button>
-      </div>
-    </div>
-    <div class="xp-wrap">
-      <div class="xp-bar-line"><span id="xp-label">Fase 1 de X</span><span><b id="xp-pts">0</b> pontos</span></div>
-      <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
-    </div>
-  </header>
-
-  <div class="admin-panel" id="admin-panel">
-    <h2>Progresso dos colaboradores</h2>
-    <div id="admin-body"><div class="admin-empty">Carregando…</div></div>
+<div id="app">
+  <div id="hud">
+    <span class="marca"><span class="escudo">⚖️</span> Trilha do FBzinho <small>· Fonseca e Braga</small></span>
+    <span class="hud-pips" id="hud-pips"></span>
+    <span class="hud-label" id="hud-label"></span>
+    <span class="hud-pts">⭐ <span id="hud-pts">0</span></span>
+    <span class="hud-sp"></span>
+    <button class="hud-btn" id="btn-help">❔ Como jogar</button>
+    <button class="hud-btn" id="btn-admin" style="display:none;">📊 Gestor</button>
+    <button class="hud-btn ouro" id="btn-cert" style="display:none;">🏅 Diploma</button>
   </div>
 
-  <main>
-    <div class="trilha" id="trilha"></div>
-    <div class="final-callout" id="final-callout"></div>
-  </main>
-</div>
+  <div id="mapa-wrap">
+    <svg id="mapa" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" preserveAspectRatio="xMidYMin meet">
+      <defs>
+        <linearGradient id="gceu" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8fd3ff"/><stop offset="1" stop-color="#cdeeff"/>
+        </linearGradient>
+        <linearGradient id="ggrama" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8ad277"/><stop offset="1" stop-color="#67b657"/>
+        </linearGradient>
+        <filter id="sombraSuave" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#3c1e14" flood-opacity="0.18"/>
+        </filter>
+      </defs>
+      <rect x="0" y="0" width="900" height="4000" fill="url(#ggrama)"/>
+      <rect x="0" y="0" width="900" height="240" fill="url(#gceu)"/>
+      <g id="sol" transform="translate(770,80)">
+        <circle r="34" fill="#ffe08a"/>
+        <g stroke="#ffe08a" stroke-width="6" stroke-linecap="round">
+          <line x1="0" y1="-46" x2="0" y2="-60"/><line x1="0" y1="46" x2="0" y2="60"/>
+          <line x1="-46" y1="0" x2="-60" y2="0"/><line x1="46" y1="0" x2="60" y2="0"/>
+          <line x1="-33" y1="-33" x2="-43" y2="-43"/><line x1="33" y1="33" x2="43" y2="43"/>
+          <line x1="-33" y1="33" x2="-43" y2="43"/><line x1="33" y1="-33" x2="43" y2="-43"/>
+        </g>
+      </g>
+      <g class="nuvem" style="animation-duration:26s" transform="translate(120,70)">
+        <ellipse cx="0" cy="0" rx="38" ry="20" fill="#fff"/><ellipse cx="34" cy="6" rx="28" ry="16" fill="#fff"/><ellipse cx="-30" cy="8" rx="24" ry="14" fill="#fff"/>
+      </g>
+      <g class="nuvem" style="animation-duration:34s" transform="translate(430,130)">
+        <ellipse cx="0" cy="0" rx="30" ry="16" fill="#fff"/><ellipse cx="26" cy="5" rx="22" ry="13" fill="#fff"/><ellipse cx="-24" cy="6" rx="18" ry="11" fill="#fff"/>
+      </g>
+      <g id="camada-hills"></g>
+      <g id="camada-estrada"></g>
+      <g id="camada-decor"></g>
+      <g id="camada-estacoes"></g>
+      <g id="fb"></g>
+    </svg>
+  </div>
 
-<div class="overlay" id="overlay">
-  <div class="overlay-box" id="overlay-box"></div>
+  <div id="dlg">
+    <div class="dlg-card">
+      <div class="dlg-top">
+        <div class="dlg-face" id="dlg-face"></div>
+        <div>
+          <div class="dlg-name">FBzinho <small id="dlg-tag">seu guia de integração</small></div>
+        </div>
+        <button class="dlg-close" id="dlg-close">🗺️ mapa</button>
+      </div>
+      <div class="dlg-body" id="dlg-body"></div>
+      <div class="dlg-choices" id="dlg-choices"></div>
+      <div class="dlg-foot" id="dlg-foot"></div>
+    </div>
+  </div>
+
+  <div id="confete"></div>
+
+  <div class="modal" id="modal-admin">
+    <div class="modal-card">
+      <button class="modal-x" id="admin-x">fechar</button>
+      <h2>📊 Progresso dos colaboradores</h2>
+      <div id="admin-body"><div class="modal-vazio">Carregando…</div></div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-help">
+    <div class="modal-card">
+      <button class="modal-x" id="help-x">fechar</button>
+      <h2>❔ Como jogar</h2>
+      <p>O <b>FBzinho</b> é o seu guia. Ele caminha pelo mapa e conversa com você em cada parada.</p>
+      <ul>
+        <li>Clique numa <b>parada liberada</b> do mapa para o FBzinho ir até lá.</li>
+        <li>Em cada parada ele te <b>ensina</b> um assunto e depois faz um <b>quiz</b>.</li>
+        <li>Acerte pelo menos <b>70%</b> do quiz para liberar a próxima parada.</li>
+        <li>Errou? Sem problema — dá pra refazer quantas vezes quiser.</li>
+        <li>Seu progresso fica <b>salvo na sua conta</b>: pare e volte quando quiser, de qualquer computador.</li>
+        <li>Ao completar todas as paradas você ganha o <b>Diploma de Integração</b> (dá pra imprimir / salvar em PDF).</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -279,54 +356,53 @@
      CONTEÚDO DA TRILHA  —  RASCUNHO, PRONTO PARA EDIÇÃO
      ------------------------------------------------------------
      Cada fase tem:
-       id       : identificador curto e estável (NÃO renomear depois
-                  que gente já tiver progresso salvo com ele)
-       emoji    : ícone da fase
-       titulo   : nome da fase
-       resumo   : uma linha que aparece no card da trilha
-       licao    : blocos de conteúdo. Tipos aceitos:
-                    {h:'Subtítulo'}
-                    {p:'Parágrafo em texto simples.'}
-                    {ul:['item um','item dois']}
-                    {callout:'Caixa de destaque (dica / atenção).'}
-       quiz     : lista de perguntas. Cada uma:
-                    {q:'Pergunta?', opcoes:['A','B','C'], correta:1,
-                     explica:'Por que a resposta certa é essa.'}
-                  ('correta' é o índice na lista 'opcoes', começando em 0)
-     Regra para passar de fase: acertar pelo menos 70% do quiz.
-     Onde estiver [entre colchetes] é um dado do escritório que
-     precisa ser confirmado e preenchido.
+       id     : identificador curto e estável. NÃO renomear depois
+                que alguém já tiver progresso salvo (o progresso é
+                gravado por id de fase).
+       emoji  : ícone da fase (aparece na bandeirinha da parada)
+       cor    : cor da casinha da parada no mapa
+       titulo : nome completo da fase
+       curto  : rótulo curto que aparece embaixo da parada no mapa
+       resumo : uma linha (usada em telas de apoio)
+       licao  : blocos de conteúdo que o FBzinho fala, na ordem:
+                  {h:'Subtítulo'}
+                  {p:'Fala normal.'}
+                  {ul:['item 1','item 2']}
+                  {callout:'Dica / atenção.'}
+       quiz   : perguntas. Cada uma:
+                  {q:'Pergunta?', opcoes:['A','B','C'], correta:1,
+                   explica:'Por que a resposta certa é essa.'}
+     Passa de fase quem acerta >= 70% (PASS_RATIO) do quiz.
+     Texto entre [colchetes] = dado do escritório a confirmar.
+     Adicionar fases novas no fim é seguro. Remover/renomear id, não.
      ============================================================ */
 
   var CONTEUDO = [
     {
-      id:'boas-vindas',
-      emoji:'👋',
-      titulo:'Boas-vindas ao escritório',
+      id:'boas-vindas', emoji:'👋', cor:'#f4a259', titulo:'Boas-vindas ao escritório', curto:'Boas-vindas',
       resumo:'Quem somos, o que fazemos e como esta trilha funciona.',
       licao:[
-        {p:'Seja bem-vindo(a) à Fonseca e Braga Advocacia. Esta trilha existe para que, ao terminá-la, você já conheça o essencial sobre o escritório e sobre o Portal interno — e possa começar a colaborar com segurança.'},
+        {p:'Oi! Eu sou o FBzinho e vou te acompanhar nessa jornada de integração. Seja muito bem-vindo(a) à Fonseca e Braga Advocacia!'},
+        {p:'Esta trilha existe para que, ao terminá-la, você já conheça o essencial sobre o escritório e sobre o nosso Portal interno — e possa começar a colaborar com segurança.'},
         {h:'Como a trilha funciona'},
         {ul:[
-          'São várias fases em sequência. Cada fase tem uma leitura curta e um quiz.',
-          'Você precisa acertar pelo menos 70% do quiz para liberar a próxima fase.',
-          'Pode refazer um quiz quantas vezes precisar — o objetivo é aprender, não decorar.',
+          'São várias paradas no mapa, em sequência. Em cada uma eu te ensino um assunto e depois faço um quiz.',
+          'Você precisa acertar pelo menos 70% do quiz para liberar a próxima parada.',
+          'Pode refazer um quiz quantas vezes precisar — a ideia é aprender, não decorar.',
           'Seu progresso fica salvo na sua conta: dá para parar e voltar depois, de qualquer computador.'
         ]},
         {h:'O escritório em uma frase'},
         {p:'A Fonseca e Braga atua em [áreas principais: cível, condominial, trabalhista, família, consumidor — confirmar] com foco em [diferencial do escritório — confirmar]. A sede fica em [endereço — confirmar] e o horário de funcionamento é [horário — confirmar].'},
-        {callout:'Dúvida em qualquer fase? Fale com o seu gestor ou com o responsável pela sua área. Ninguém precisa aprender tudo sozinho.'}
+        {callout:'Dúvida em qualquer parada? Fale com o seu gestor ou com o responsável pela sua área. Ninguém precisa aprender tudo sozinho.'}
       ],
       quiz:[
-        {q:'O que você precisa fazer para liberar a próxima fase?', opcoes:['Assistir a um vídeo até o fim','Acertar pelo menos 70% do quiz da fase','Pedir liberação ao gestor','Esperar 24 horas'], correta:1, explica:'Cada fase libera a seguinte quando você acerta 70% ou mais do quiz. Pode refazer à vontade.'},
+        {q:'O que você precisa fazer para liberar a próxima parada?', opcoes:['Assistir a um vídeo até o fim','Acertar pelo menos 70% do quiz da parada','Pedir liberação ao gestor','Esperar 24 horas'], correta:1, explica:'Cada parada libera a seguinte quando você acerta 70% ou mais do quiz. Pode refazer à vontade.'},
         {q:'Seu progresso na trilha…', opcoes:['Fica só neste computador','É salvo na sua conta e acompanha você em qualquer máquina','Some quando você fecha a aba','Só o gestor consegue ver'], correta:1, explica:'O progresso é gravado na sua conta do Portal, então você pode continuar de onde parou em qualquer lugar.'}
       ]
     },
 
     {
-      id:'valores-postura',
-      emoji:'⚖️',
-      titulo:'Valores e postura profissional',
+      id:'valores-postura', emoji:'⚖️', cor:'#57a773', titulo:'Valores e postura profissional', curto:'Valores',
       resumo:'Como nos comportamos com clientes, colegas e informação.',
       licao:[
         {h:'Nossos valores'},
@@ -339,23 +415,21 @@
         {h:'Postura no dia a dia'},
         {ul:[
           'Não comente casos, nomes ou valores de clientes em lugar público (elevador, redes sociais, grupos externos).',
-          'E-mails e mensagens em nome do escritório têm tom profissional e revisados antes de enviar.',
+          'E-mails e mensagens em nome do escritório têm tom profissional e são revisados antes de enviar.',
           'Documentos de cliente não saem do escritório nem vão para dispositivos pessoais sem autorização.',
           'Dúvida sobre ética ou conflito de interesse: leve ao gestor antes de agir.'
         ]},
         {callout:'O Código de Ética da OAB proíbe prometer resultado ao cliente. A gente explica caminhos e riscos — nunca garante ganho de causa.'}
       ],
       quiz:[
-        {q:'Um amigo pergunta num churrasco sobre um caso conhecido que o escritório conduz. O que você faz?', opcoes:['Conta os detalhes, já saiu na imprensa mesmo','Não comento — informação de cliente é sigilosa','Conto só o valor da causa','Peço para ele não espalhar e conto'], correta:1, explica:'Sigilo profissional vale em qualquer lugar. Mesmo informação "que já saiu na imprensa" não deve ser confirmada ou comentada por você.'},
+        {q:'Um amigo pergunta num churrasco sobre um caso conhecido que o escritório conduz. O que você faz?', opcoes:['Conto os detalhes, já saiu na imprensa mesmo','Não comento — informação de cliente é sigilosa','Conto só o valor da causa','Peço para ele não espalhar e conto'], correta:1, explica:'Sigilo profissional vale em qualquer lugar. Mesmo informação "que já saiu na imprensa" não deve ser confirmada ou comentada por você.'},
         {q:'O cliente pede uma garantia de que vai ganhar a ação. Resposta correta:', opcoes:['Garantir para não perder o cliente','Explicar os caminhos possíveis e os riscos, sem prometer resultado','Dizer que ganha com certeza se pagar mais','Encaminhar direto para o sócio'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB. Nós gerenciamos expectativa com honestidade.'},
         {q:'Sobre documentos de clientes:', opcoes:['Podem ir para o meu e-mail pessoal se for mais prático','Ficam nos sistemas do escritório; não vão para dispositivos pessoais sem autorização','Posso levar para casa para adiantar','Podem ser enviados por qualquer app'], correta:1, explica:'Documentos de cliente ficam nos sistemas oficiais do escritório. Tirar cópia para dispositivo pessoal só com autorização.'}
       ]
     },
 
     {
-      id:'setores',
-      emoji:'🏛️',
-      titulo:'Setores e organograma',
+      id:'setores', emoji:'🏛️', cor:'#8367c7', titulo:'Setores e organograma', curto:'Setores',
       resumo:'Como o escritório se divide e quem procurar em cada área.',
       licao:[
         {p:'O escritório se organiza por departamentos. Você encontra o quadro completo — com foto, cargo e departamento de cada colega — na aba Organograma do Portal.'},
@@ -383,9 +457,7 @@
     },
 
     {
-      id:'portal-abas',
-      emoji:'🧭',
-      titulo:'O Portal por dentro',
+      id:'portal-abas', emoji:'🧭', cor:'#4d9de0', titulo:'O Portal por dentro', curto:'O Portal',
       resumo:'As abas e ferramentas que você vai usar todo dia.',
       licao:[
         {p:'O Portal Fonseca e Braga (portal.fonsecaebraga.com.br) reúne as ferramentas internas do escritório em abas. Você só enxerga as abas que o administrador liberou para o seu perfil.'},
@@ -417,9 +489,7 @@
     },
 
     {
-      id:'sistemas-externos',
-      emoji:'🔐',
-      titulo:'Sistemas externos do escritório',
+      id:'sistemas-externos', emoji:'🔐', cor:'#e15554', titulo:'Sistemas externos do escritório', curto:'Sistemas',
       resumo:'ASTREA, Google, Digisac, ZapSign, token e 2FA dos tribunais.',
       licao:[
         {p:'Além do Portal, o escritório usa sistemas de terceiros. O ícone ao lado da engrenagem, no Portal, mostra quais já foram liberados para você. Se algum que você precisa está como não liberado, peça ao administrador.'},
@@ -445,9 +515,7 @@
     },
 
     {
-      id:'clientes-comunicacao',
-      emoji:'💬',
-      titulo:'Atendimento e comunicação com o cliente',
+      id:'clientes-comunicacao', emoji:'💬', cor:'#e8709b', titulo:'Atendimento e comunicação com o cliente', curto:'Cliente',
       resumo:'Como e quando falar com o cliente, e por qual canal.',
       licao:[
         {h:'Canais'},
@@ -473,9 +541,7 @@
     },
 
     {
-      id:'condominial',
-      emoji:'🏢',
-      titulo:'Rotina condominial e prazos (SLA)',
+      id:'condominial', emoji:'🏢', cor:'#3bceac', titulo:'Rotina condominial e prazos (SLA)', curto:'Condomínios',
       resumo:'Se você vai atuar com condomínios: prazos e ferramentas.',
       licao:[
         {p:'Se o seu trabalho envolve a assessoria condominial, a aba Condomínios do Portal é a sua base: POPs específicos, lista de clientes (condomínios), guia do ASTREA, gerador de notificações e relatórios mensais.'},
@@ -503,9 +569,7 @@
     },
 
     {
-      id:'seguranca-lgpd',
-      emoji:'🛡️',
-      titulo:'Segurança da informação e LGPD',
+      id:'seguranca-lgpd', emoji:'🛡️', cor:'#f6ae2d', titulo:'Segurança da informação e LGPD', curto:'Segurança',
       resumo:'Dados de cliente, senhas, backup e vazamento.',
       licao:[
         {h:'LGPD em uma frase'},
@@ -531,9 +595,7 @@
     },
 
     {
-      id:'prazos-processos',
-      emoji:'📅',
-      titulo:'Prazos processuais e publicações',
+      id:'prazos-processos', emoji:'📅', cor:'#5c9ead', titulo:'Prazos processuais e publicações', curto:'Prazos',
       resumo:'Como o escritório acompanha intimações e não perde prazo.',
       licao:[
         {p:'O maior risco do trabalho jurídico é perder um prazo. O escritório acompanha as publicações oficiais e distribui os prazos para os responsáveis.'},
@@ -560,14 +622,13 @@
     },
 
     {
-      id:'prova-final',
-      emoji:'🏅',
-      titulo:'Prova de Integração',
-      resumo:'Revisão geral. Passe aqui e receba o certificado.',
+      id:'prova-final', emoji:'🏅', cor:'#d8b25a', titulo:'Prova de Integração', curto:'Prova final',
+      resumo:'Revisão geral. Passe aqui e receba o diploma.',
       licao:[
-        {p:'Esta é a última fase. As perguntas misturam tudo que você viu na trilha. Ao acertar 70% ou mais, sua integração é concluída e o certificado fica disponível no topo da tela.'},
-        {p:'Se não passar de primeira, sem problema: revise as fases anteriores e volte aqui. O objetivo é você começar seguro(a).'},
-        {callout:'Depois de concluir, seu gestor consegue ver que você finalizou a trilha no Painel do gestor.'}
+        {p:'Chegamos à última parada! As perguntas misturam tudo que você viu na trilha.'},
+        {p:'Ao acertar 70% ou mais, sua integração é concluída e o diploma fica disponível no topo da tela.'},
+        {p:'Se não passar de primeira, tudo bem: a gente revisa as paradas anteriores e volta aqui. O objetivo é você começar seguro(a).'},
+        {callout:'Depois de concluir, seu gestor consegue ver que você finalizou a trilha no painel de progresso.'}
       ],
       quiz:[
         {q:'Informação de cliente pode ser comentada fora do escritório se já saiu na imprensa?', opcoes:['Pode','Não pode — o sigilo vale sempre','Só o valor da causa','Depende do cliente'], correta:1, explica:'Sigilo profissional não tem exceção "de bar". Não se confirma nem se comenta.'},
@@ -585,11 +646,11 @@
   ];
 
   var PASS_RATIO = 0.7;
+  var CONFETE_CORES = ['#e15554','#f4a259','#f6ae2d','#57a773','#4d9de0','#8367c7','#e8709b','#d8b25a'];
 
   /* ============================================================
-     MOTOR DO JOGO
+     FIREBASE
      ============================================================ */
-
   if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
     document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
     return;
@@ -598,304 +659,525 @@
   var auth = firebase.auth();
   var db = firebase.firestore();
 
-  var els = {
-    gate: document.getElementById('gate'),
-    app: document.getElementById('app'),
-    trilha: document.getElementById('trilha'),
-    finalCallout: document.getElementById('final-callout'),
-    overlay: document.getElementById('overlay'),
-    overlayBox: document.getElementById('overlay-box'),
-    xpLabel: document.getElementById('xp-label'),
-    xpPts: document.getElementById('xp-pts'),
-    xpFill: document.getElementById('xp-fill'),
-    btnAdmin: document.getElementById('btn-admin'),
-    btnCert: document.getElementById('btn-cert'),
-    adminPanel: document.getElementById('admin-panel'),
-    adminBody: document.getElementById('admin-body')
-  };
-
-  var meuUid = null;
-  var meuNome = '';
-  var souAdmin = false;
-  var souGestor = false;
-  var progRef = null;
-  var prog = { concluidas:{}, pontosTotais:0, concluidoEm:null, nome:'' };
-  var faseAberta = null;
-
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var $ = function(id){ return document.getElementById(id); };
+  function el(tag, attrs, parent){
+    var e = document.createElementNS(SVGNS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
   function escapeHtml(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
 
+  var els = {
+    gate:$('gate'), app:$('app'),
+    hudPips:$('hud-pips'), hudLabel:$('hud-label'), hudPts:$('hud-pts'),
+    btnHelp:$('btn-help'), btnAdmin:$('btn-admin'), btnCert:$('btn-cert'),
+    mapaWrap:$('mapa-wrap'), mapa:$('mapa'),
+    camHills:$('camada-hills'), camEstrada:$('camada-estrada'), camDecor:$('camada-decor'),
+    camEstacoes:$('camada-estacoes'), fb:$('fb'),
+    dlg:$('dlg'), dlgFace:$('dlg-face'), dlgTag:$('dlg-tag'), dlgBody:$('dlg-body'),
+    dlgChoices:$('dlg-choices'), dlgFoot:$('dlg-foot'), dlgClose:$('dlg-close'),
+    confete:$('confete'),
+    modalAdmin:$('modal-admin'), adminBody:$('admin-body'), adminX:$('admin-x'),
+    modalHelp:$('modal-help'), helpX:$('help-x')
+  };
+
+  var meuUid = null, meuNome = '', souAdmin = false, souGestor = false;
+  var progRef = null;
+  var prog = { concluidas:{}, pontosTotais:0, concluidoEm:null, nome:'' };
+
   var totalFases = CONTEUDO.length;
-  var pontosPossiveis = CONTEUDO.reduce(function(acc,f){ return acc + f.quiz.length; }, 0);
+  var pontosPossiveis = CONTEUDO.reduce(function(a,f){ return a + f.quiz.length; }, 0);
 
   function faseConcluida(id){ return !!prog.concluidas[id]; }
-
   function indiceFaseAtual(){
-    for (var i = 0; i < CONTEUDO.length; i++){
-      if (!faseConcluida(CONTEUDO[i].id)) return i;
-    }
-    return CONTEUDO.length; // tudo concluído
+    for (var i=0;i<CONTEUDO.length;i++) if(!faseConcluida(CONTEUDO[i].id)) return i;
+    return CONTEUDO.length;
   }
-
   function faseDesbloqueada(idx){
-    if (idx === 0) return true;
-    return faseConcluida(CONTEUDO[idx - 1].id);
+    if (idx <= 0) return true;
+    return faseConcluida(CONTEUDO[idx-1].id);
   }
 
-  /* ---------- render da trilha ---------- */
+  /* ============================================================
+     MAPA — geometria
+     ============================================================ */
+  var VBW = 900, topY = 140, gapY = 128, leftX = 200, rightX = 700;
+  var VBH = topY + (totalFases - 1) * gapY + 180;
+  els.mapa.setAttribute('viewBox', '0 0 ' + VBW + ' ' + VBH);
 
-  function render(){
+  var pts = CONTEUDO.map(function(_, i){
+    return { x: (i % 2 === 0 ? leftX : rightX), y: topY + i * gapY };
+  });
+
+  function splinePath(p){
+    if (p.length < 2) return '';
+    var d = 'M ' + p[0].x + ' ' + p[0].y;
+    for (var i=0;i<p.length-1;i++){
+      var p0 = p[i-1] || p[i], p1 = p[i], p2 = p[i+1], p3 = p[i+2] || p2;
+      var c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      var c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ' C ' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) + ' ' + p2.x + ' ' + p2.y;
+    }
+    return d;
+  }
+
+  var estradaBase, estradaTop, knotLen = [];
+
+  function montarEstrada(){
+    var d = splinePath(pts);
+    estradaBase = el('path', { d:d, fill:'none', stroke:'#caa46a', 'stroke-width':30, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, els.camEstrada);
+    estradaTop = el('path', { d:d, fill:'none', stroke:'#f0dcb0', 'stroke-width':18, 'stroke-linecap':'round', 'stroke-linejoin':'round', 'stroke-dasharray':'2 22' }, els.camEstrada);
+    // comprimento de arco de cada parada
+    var L = estradaBase.getTotalLength();
+    var passo = 3;
+    pts.forEach(function(pt){
+      var best = 0, bd = Infinity;
+      for (var l=0; l<=L; l+=passo){
+        var q = estradaBase.getPointAtLength(l);
+        var dd = (q.x-pt.x)*(q.x-pt.x) + (q.y-pt.y)*(q.y-pt.y);
+        if (dd < bd){ bd = dd; best = l; }
+      }
+      knotLen.push(best);
+    });
+  }
+
+  function montarDecor(){
+    // colinas
+    [[140,300,180,60,'#7cc86a'],[720,430,220,70,'#6bbd59'],[200,650,240,64,'#84cf72'],
+     [700,880,210,66,'#6bbd59'],[160,1100,230,62,'#7cc86a']].forEach(function(h){
+      if (h[1] < VBH) el('ellipse', { cx:h[0], cy:h[1], rx:h[2], ry:h[3], fill:h[4], opacity:0.55 }, els.camHills);
+    });
+    // arvorezinhas ao longo do caminho
+    var L = estradaBase.getTotalLength();
+    for (var f=0.06; f<0.98; f+=0.12){
+      var base = estradaBase.getPointAtLength(L*f);
+      var lado = (Math.floor(f*100) % 2 === 0) ? -1 : 1;
+      var tx = base.x + lado * 92, ty = base.y + 8;
+      if (tx < 30 || tx > VBW-30) continue;
+      var g = el('g', { transform:'translate('+tx.toFixed(0)+','+ty.toFixed(0)+')' }, els.camDecor);
+      el('rect', { x:-4, y:-4, width:8, height:20, rx:3, fill:'#8a5a34' }, g);
+      el('circle', { cx:0, cy:-14, r:15, fill:'#4c9a4c' }, g);
+      el('circle', { cx:-9, cy:-6, r:11, fill:'#57a857' }, g);
+      el('circle', { cx:9, cy:-6, r:11, fill:'#57a857' }, g);
+    }
+  }
+
+  var estacaoNodes = [];
+
+  function montarEstacoes(){
+    els.camEstacoes.innerHTML = '';
+    estacaoNodes = [];
+    CONTEUDO.forEach(function(f, i){
+      var p = pts[i];
+      var g = el('g', { class:'estacao', id:'est-'+i, transform:'translate('+p.x+','+p.y+')' }, els.camEstacoes);
+      // anel pulsante (fase atual)
+      el('circle', { class:'anel', cx:0, cy:-2, r:52, fill:f.cor, opacity:0 }, g);
+      // plataforma
+      el('ellipse', { cx:0, cy:6, rx:46, ry:14, fill:'rgba(40,20,15,0.16)' }, g);
+      // casa
+      var casa = el('g', { class:'casa' }, g);
+      el('rect', { x:-32, y:-46, width:64, height:52, rx:10, fill:f.cor, stroke:'#fff', 'stroke-width':3, filter:'url(#sombraSuave)' }, casa);
+      el('path', { d:'M -38 -44 L 0 -74 L 38 -44 Z', fill:'#fff', opacity:0.92 }, casa);
+      el('circle', { cx:0, cy:-16, r:12, fill:'rgba(255,255,255,0.85)' }, casa);
+      var num = el('text', { class:'est-num', x:0, y:-11, 'text-anchor':'middle' }, casa);
+      num.textContent = (i+1);
+      // mastro + bandeira com emoji
+      el('line', { x1:24, y1:-46, x2:24, y2:-84, stroke:'#8a5a34', 'stroke-width':3 }, casa);
+      var flag = el('g', { class:'flag-emoji-float', transform:'translate(24,-78)' }, casa);
+      var fe = el('text', { class:'flag-emoji', x:8, y:6, 'text-anchor':'start' }, flag);
+      fe.textContent = f.emoji;
+      // rótulo curto
+      var lab = el('text', { class:'est-label', x:0, y:32, 'text-anchor':'middle' }, g);
+      lab.textContent = f.curto || f.titulo;
+      // badge de estado
+      var badge = el('g', { class:'badge', transform:'translate(30,-46)' }, g);
+      el('circle', { class:'badge-bg', r:12, fill:'#fff' }, badge);
+      var mark = el('text', { class:'badge-mark', x:0, y:5, 'text-anchor':'middle', 'font-size':'14', 'font-weight':'800' }, badge);
+
+      g.addEventListener('click', function(){ cliqueEstacao(i); });
+      estacaoNodes.push({ g:g, badge:badge, mark:mark });
+    });
+  }
+
+  function pintarEstacoes(){
     var atual = indiceFaseAtual();
-    var concluiuTudo = atual >= CONTEUDO.length;
-
-    // barra de progresso
-    var feitas = Object.keys(prog.concluidas).length;
-    var pct = Math.round((feitas / totalFases) * 100);
-    els.xpFill.style.width = pct + '%';
-    els.xpPts.textContent = prog.pontosTotais + ' / ' + pontosPossiveis;
-    els.xpLabel.textContent = concluiuTudo
-      ? 'Trilha concluída — ' + feitas + ' de ' + totalFases + ' fases'
-      : 'Fase ' + (atual + 1) + ' de ' + totalFases;
-
-    els.btnCert.style.display = concluiuTudo ? 'inline-block' : 'none';
-
-    // nós
-    els.trilha.innerHTML = CONTEUDO.map(function(f, idx){
+    CONTEUDO.forEach(function(f, i){
       var feita = faseConcluida(f.id);
-      var desbloqueada = faseDesbloqueada(idx);
-      var ehAtual = !feita && desbloqueada;
-      var st = feita ? 'st-feita' : (ehAtual ? 'st-atual' : (desbloqueada ? '' : 'st-locked'));
-      var lado = idx % 2 === 0 ? 'lado-dir' : 'lado-esq';
-      var rowCls = 'fase-row ' + lado + (feita ? ' feita' : '') + (ehAtual ? ' atual' : '');
-
-      var badge;
-      if (feita){
-        var c = prog.concluidas[f.id];
-        badge = '<span class="node-badge">✓ Concluída — ' + c.pontos + '/' + c.total + '</span>';
-      } else if (ehAtual){
-        badge = '<span class="node-badge">▶ Começar agora</span>';
-      } else if (desbloqueada){
-        badge = '<span class="node-badge">Disponível</span>';
-      } else {
-        badge = '<span class="node-badge">🔒 Bloqueada</span>';
-      }
-
-      return '<div class="' + rowCls + '">' +
-        '<span class="node-dot"></span>' +
-        '<button class="node ' + st + '" data-fase="' + f.id + '"' + (desbloqueada ? '' : ' disabled') + '>' +
-          '<span class="node-emoji">' + f.emoji + '</span>' +
-          '<span class="node-num">Fase ' + (idx + 1) + '</span>' +
-          '<h3>' + escapeHtml(f.titulo) + '</h3>' +
-          '<p>' + escapeHtml(f.resumo) + '</p>' +
-          badge +
-        '</button>' +
-      '</div>';
-    }).join('');
-
-    Array.prototype.forEach.call(els.trilha.querySelectorAll('.node:not([disabled])'), function(btn){
-      btn.addEventListener('click', function(){ abrirFase(btn.dataset.fase); });
+      var desb = faseDesbloqueada(i);
+      var ehAtual = (i === atual);
+      var no = estacaoNodes[i];
+      no.g.classList.toggle('bloqueada', !desb);
+      no.g.classList.toggle('atual', ehAtual && !feita);
+      if (feita){ no.mark.textContent = '✓'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#e4f7dd'); no.mark.setAttribute('fill', '#3f8f36'); }
+      else if (!desb){ no.mark.textContent = '🔒'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#f0e6d2'); no.mark.setAttribute('fill', '#b9a888'); }
+      else { no.mark.textContent = '★'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#fff5df'); no.mark.setAttribute('fill', '#c99a34'); }
     });
+  }
 
-    // rodapé
-    if (concluiuTudo){
-      els.finalCallout.className = 'final-callout pronto';
-      els.finalCallout.innerHTML =
-        '<h3>🎉 Integração concluída!</h3>' +
-        '<p>Você passou por todas as fases. Seu certificado está disponível no botão "Ver certificado", no topo. ' +
-        'Seu gestor consegue ver a conclusão no Painel do gestor.</p>' +
-        '<button class="btn green" id="fc-cert">🏅 Ver meu certificado</button>';
-      var b = document.getElementById('fc-cert');
-      if (b) b.addEventListener('click', abrirCertificado);
+  /* ============================================================
+     FBZINHO — desenho + animação de caminhada
+     ============================================================ */
+  function bustoSvg(){
+    return '<svg viewBox="-26 -46 52 46" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M-22 2 Q0 -10 22 2 L22 6 -22 6 Z" fill="#b8362e"/>' +
+      '<path d="M-6 -4 L0 6 L6 -4 Z" fill="#fff"/>' +
+      '<path d="M0 -4 l4 4 -4 14 -4 -14 z" fill="#e7b84f"/>' +
+      '<circle cx="0" cy="-20" r="17" fill="#f6cfa6"/>' +
+      '<path d="M-17 -22 Q-13 -44 0 -42 Q13 -44 17 -22 Q8 -33 0 -31 Q-8 -33 -17 -22 Z" fill="#3a2b24"/>' +
+      '<circle cx="-6" cy="-20" r="2.3" fill="#2a1c1c"/><circle cx="6" cy="-20" r="2.3" fill="#2a1c1c"/>' +
+      '<path d="M-6 -13 Q0 -8 6 -13" fill="none" stroke="#2a1c1c" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<circle cx="-11" cy="-15" r="2.6" fill="#f2a3a0" opacity="0.7"/><circle cx="11" cy="-15" r="2.6" fill="#f2a3a0" opacity="0.7"/>' +
+      '</svg>';
+  }
+
+  function montarFBzinho(){
+    els.fb.innerHTML =
+      '<ellipse class="fb-shadow" cx="0" cy="3" rx="26" ry="7"/>' +
+      '<g class="fb-bob">' +
+        '<g class="fb-leg fb-leg-l"><rect x="-12" y="-40" width="10" height="42" rx="5"/><ellipse class="fb-shoe" cx="-7" cy="2" rx="9" ry="4.5"/></g>' +
+        '<g class="fb-leg fb-leg-r"><rect x="2" y="-40" width="10" height="42" rx="5"/><ellipse class="fb-shoe" cx="7" cy="2" rx="9" ry="4.5"/></g>' +
+        '<path class="fb-suit" d="M-19 -86 Q0 -94 19 -86 L23 -42 Q0 -34 -23 -42 Z"/>' +
+        '<path class="fb-lapela" d="M-19 -86 L0 -66 L-6 -86 Z"/>' +
+        '<path class="fb-lapela" d="M19 -86 L0 -66 L6 -86 Z"/>' +
+        '<path class="fb-shirt" d="M-5 -86 L0 -66 L5 -86 Z"/>' +
+        '<path class="fb-tie" d="M0 -82 l4 5 -4 20 -4 -20 z"/>' +
+        '<g class="fb-arm fb-arm-l"><rect x="-28" y="-84" width="9" height="38" rx="4.5"/><circle class="fb-hand" cx="-23.5" cy="-46" r="5.5"/></g>' +
+        '<g class="fb-arm fb-arm-r"><rect x="19" y="-84" width="9" height="38" rx="4.5"/><circle class="fb-hand" cx="23.5" cy="-46" r="5.5"/></g>' +
+        '<g class="fb-head">' +
+          '<circle class="fb-face" cx="0" cy="-104" r="19"/>' +
+          '<path class="fb-hair" d="M-19 -106 Q-15 -130 0 -128 Q15 -130 19 -106 Q9 -118 0 -116 Q-9 -118 -19 -106 Z"/>' +
+          '<circle class="fb-eye fb-eye-l" cx="-6.5" cy="-105" r="2.5"/>' +
+          '<circle class="fb-eye fb-eye-r" cx="6.5" cy="-105" r="2.5"/>' +
+          '<circle class="fb-cheek" cx="-12" cy="-98" r="3"/>' +
+          '<circle class="fb-cheek" cx="12" cy="-98" r="3"/>' +
+          '<path class="fb-mouth m-smile" d="M-6 -96 Q0 -90 6 -96"/>' +
+          '<path class="fb-mouth m-neutral" d="M-5 -95 L5 -95"/>' +
+          '<ellipse class="fb-mouth fb-mouth-open m-open" cx="0" cy="-94" rx="4.5" ry="3.5"/>' +
+          '<ellipse class="fb-mouth fb-mouth-open m-o" cx="0" cy="-95" rx="3.5" ry="4"/>' +
+        '</g>' +
+      '</g>';
+  }
+
+  var fbFace = 1, fbLen = 0, fbAnimReq = null;
+
+  function fbColocar(x, y){
+    els.fb.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') scale(' + fbFace + ',1)');
+  }
+  function fbExpr(e){
+    els.fb.classList.remove('exp-oops','exp-think','exp-uau');
+    if (e) els.fb.classList.add('exp-' + e);
+  }
+  function fbParadoEm(idx){
+    var p = pts[idx];
+    fbLen = knotLen[idx];
+    els.fb.classList.remove('fb-anda');
+    els.fb.classList.add('parado');
+    fbColocar(p.x, p.y - 4);
+  }
+  function scrollParaEstacao(idx){
+    try {
+      var mapaH = els.mapa.getBoundingClientRect().height;
+      var wrapH = els.mapaWrap.clientHeight;
+      if (!mapaH || !wrapH) return;
+      var alvo = (pts[idx].y / VBH) * mapaH - wrapH / 2;
+      els.mapaWrap.scrollTo({ top: Math.max(0, alvo), behavior:'smooth' });
+    } catch(e){
+      var node = $('est-' + idx);
+      if (node && node.scrollIntoView) try { node.scrollIntoView({ block:'center' }); } catch(e2){}
+    }
+  }
+
+  function fbAndarPara(idx, aoChegar){
+    if (fbAnimReq){ cancelAnimationFrame(fbAnimReq); fbAnimReq = null; }
+    var destino = knotLen[idx];
+    var origem = fbLen;
+    var dist = Math.abs(destino - origem);
+    if (dist < 2){ fbParadoEm(idx); if (aoChegar) aoChegar(); return; }
+    var dur = Math.min(2200, Math.max(600, dist / 260 * 1000));
+    var t0 = null, sentido = destino > origem ? 1 : -1, prevX = null;
+    els.fb.classList.remove('parado');
+    els.fb.classList.add('fb-anda');
+    scrollParaEstacao(idx);
+    function frame(ts){
+      if (t0 === null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / dur);
+      var eased = k < 0.5 ? 2*k*k : -1 + (4 - 2*k) * k;
+      var cur = origem + (destino - origem) * eased;
+      var q = estradaBase.getPointAtLength(Math.max(0, Math.min(estradaBase.getTotalLength(), cur)));
+      if (prevX !== null && Math.abs(q.x - prevX) > 0.4) fbFace = (q.x > prevX) ? 1 : -1;
+      prevX = q.x;
+      fbColocar(q.x, q.y - 4);
+      if (k < 1){ fbAnimReq = requestAnimationFrame(frame); }
+      else { fbAnimReq = null; fbLen = destino; fbParadoEm(idx); if (aoChegar) aoChegar(); }
+    }
+    fbAnimReq = requestAnimationFrame(frame);
+  }
+
+  /* ============================================================
+     HUD
+     ============================================================ */
+  function renderHud(){
+    var atual = indiceFaseAtual();
+    var feitas = Object.keys(prog.concluidas).length;
+    els.hudPips.innerHTML = CONTEUDO.map(function(f, i){
+      var cls = faseConcluida(f.id) ? 'feita' : (i === atual ? 'atual' : '');
+      return '<span class="pip ' + cls + '" title="' + escapeHtml(f.curto || f.titulo) + '"></span>';
+    }).join('');
+    els.hudLabel.textContent = (feitas >= totalFases)
+      ? 'Trilha concluída!'
+      : 'Parada ' + (atual + 1) + ' de ' + totalFases;
+    els.hudPts.textContent = prog.pontosTotais + '/' + pontosPossiveis;
+    els.btnCert.style.display = (feitas >= totalFases) ? 'inline-block' : 'none';
+  }
+
+  function renderTudo(){
+    pintarEstacoes();
+    renderHud();
+  }
+
+  /* ============================================================
+     SESSÃO DE FASE — diálogo + quiz
+     ============================================================ */
+  var sessao = null;
+  var twToken = 0, twCompleto = null;
+
+  function typewriter(html, plano){
+    twToken++;
+    var meu = twToken;
+    els.dlgBody.classList.add('cursor-tw');
+    if (plano === false){ els.dlgBody.innerHTML = html; els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; return; }
+    var texto = plano;
+    els.dlgBody.textContent = '';
+    twCompleto = function(){ if (meu === twToken){ els.dlgBody.textContent = texto; els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; } };
+    var i = 0;
+    (function passo(){
+      if (meu !== twToken) return;
+      i += 2;
+      els.dlgBody.textContent = texto.slice(0, i);
+      if (i < texto.length) setTimeout(passo, 16);
+      else { els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; }
+    })();
+  }
+
+  function construirFalas(f, idx){
+    var falas = [{ tipo:'fala', txt:'Parada ' + (idx+1) + '! Bora falar sobre ' + f.titulo + '. ' + f.emoji, exp:'uau' }];
+    f.licao.forEach(function(b){
+      if (b.h) falas.push({ tipo:'titulo', txt:b.h });
+      else if (b.p) falas.push({ tipo:'fala', txt:b.p });
+      else if (b.callout) falas.push({ tipo:'dica', txt:b.callout, exp:'think' });
+      else if (b.ul) falas.push({ tipo:'lista', itens:b.ul });
+    });
+    falas.push({ tipo:'fala', txt:'Agora deixa eu te fazer ' + f.quiz.length + ' pergunta(s) rápida(s). Presta atenção!', exp:'think' });
+    return falas;
+  }
+
+  function cliqueEstacao(idx){
+    if (sessao) return;
+    if (!faseDesbloqueada(idx)){
+      fbBalao('Essa ainda tá trancada! Termina a parada anterior primeiro. 🔒');
+      return;
+    }
+    iniciarSessao(idx);
+  }
+
+  var balaoTimer = null;
+  function fbBalao(txt){
+    // usa o próprio diálogo de forma leve, sem entrar em sessão
+    els.dlg.classList.add('aberto');
+    els.dlgTag.textContent = 'dica rápida';
+    els.dlgChoices.innerHTML = '';
+    els.dlgBody.className = 'dlg-body dica';
+    els.dlgFoot.innerHTML = '<button class="btn-jogo claro" id="balao-ok">entendi</button>';
+    typewriter(null, txt);
+    els.fb.classList.add('fb-fala'); fbExpr('think');
+    $('balao-ok').onclick = fecharDlg;
+    if (balaoTimer) clearTimeout(balaoTimer);
+    balaoTimer = setTimeout(function(){ if (!sessao) fecharDlg(); }, 6000);
+  }
+
+  function iniciarSessao(idx){
+    var f = CONTEUDO[idx];
+    sessao = { f:f, idx:idx, falas:construirFalas(f, idx), fi:0, modo:'narrativa', qi:0, acertos:0 };
+    els.dlgTag.textContent = 'sua parada: ' + (f.curto || f.titulo);
+    els.dlg.classList.add('aberto');
+    fbAndarPara(idx, function(){
+      els.fb.classList.add('fb-fala');
+      mostrarFala();
+    });
+  }
+
+  function mostrarFala(){
+    var s = sessao; if (!s) return;
+    if (s.fi >= s.falas.length){ iniciarQuiz(); return; }
+    var fala = s.falas[s.fi];
+    els.dlgChoices.innerHTML = '';
+    els.dlgBody.className = 'dlg-body' + (fala.tipo === 'dica' ? ' dica' : fala.tipo === 'titulo' ? ' titulo' : '');
+    fbExpr(fala.exp || null);
+    if (fala.tipo === 'lista'){
+      typewriter('<ul>' + fala.itens.map(function(it){ return '<li>' + escapeHtml(it) + '</li>'; }).join('') + '</ul>', false);
     } else {
-      els.finalCallout.className = 'final-callout';
-      els.finalCallout.innerHTML =
-        '<h3>Faltam ' + (totalFases - feitas) + ' fase(s)</h3>' +
-        '<p>Complete todas as fases para concluir sua integração e liberar o certificado.</p>';
+      typewriter(null, fala.txt);
     }
+    var ultima = s.fi === s.falas.length - 1;
+    els.dlgFoot.innerHTML =
+      '<span class="hint">' + (s.fi + 1) + ' / ' + s.falas.length + '</span>' +
+      '<button class="btn-jogo" id="dlg-next">' + (ultima ? 'Vamos ao quiz! ▶' : 'Continuar ▶') + '</button>';
+    $('dlg-next').onclick = function(){
+      if (twCompleto){ twCompleto(); return; }
+      s.fi++; mostrarFala();
+    };
   }
 
-  /* ---------- overlay: lição + quiz ---------- */
+  function iniciarQuiz(){
+    var s = sessao; s.modo = 'quiz'; s.qi = 0; s.acertos = 0;
+    mostrarPergunta();
+  }
 
-  function licaoHtml(blocos){
-    return blocos.map(function(b){
-      if (b.h) return '<h4>' + escapeHtml(b.h) + '</h4>';
-      if (b.p) return '<p>' + escapeHtml(b.p) + '</p>';
-      if (b.callout) return '<div class="callout">' + escapeHtml(b.callout) + '</div>';
-      if (b.ul) return '<ul>' + b.ul.map(function(i){ return '<li>' + escapeHtml(i) + '</li>'; }).join('') + '</ul>';
-      return '';
+  function mostrarPergunta(){
+    var s = sessao;
+    var q = s.f.quiz[s.qi];
+    els.dlgBody.className = 'dlg-body';
+    fbExpr('think');
+    els.fb.classList.add('fb-fala');
+    typewriter(null, 'Pergunta ' + (s.qi + 1) + ' de ' + s.f.quiz.length + ': ' + q.q);
+    els.dlgChoices.innerHTML = q.opcoes.map(function(op, oi){
+      return '<button class="dlg-choice" data-oi="' + oi + '">' + escapeHtml(op) + '</button>';
     }).join('');
-  }
-
-  function abrirFase(id){
-    var idx = CONTEUDO.findIndex(function(f){ return f.id === id; });
-    if (idx < 0 || !faseDesbloqueada(idx)) return;
-    faseAberta = { fase: CONTEUDO[idx], idx: idx };
-    telaLicao();
-    els.overlay.classList.add('open');
-    els.overlay.scrollTop = 0;
-  }
-
-  function fecharOverlay(){
-    els.overlay.classList.remove('open');
-    els.overlayBox.innerHTML = '';
-    faseAberta = null;
-  }
-
-  function telaLicao(){
-    var f = faseAberta.fase;
-    els.overlayBox.innerHTML =
-      '<button class="ov-close" id="ov-x">✕</button>' +
-      '<div class="ov-kicker">Fase ' + (faseAberta.idx + 1) + ' de ' + totalFases + '</div>' +
-      '<h2><span class="ov-emoji">' + f.emoji + '</span> ' + escapeHtml(f.titulo) + '</h2>' +
-      '<div class="licao">' + licaoHtml(f.licao) + '</div>' +
-      '<div class="ov-foot">' +
-        '<span class="hint">' + f.quiz.length + ' pergunta(s) • precisa de ' + Math.ceil(f.quiz.length * PASS_RATIO) + ' acerto(s)</span>' +
-        '<button class="btn primary" id="ov-ir-quiz">Ir para o quiz →</button>' +
-      '</div>';
-    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
-    document.getElementById('ov-ir-quiz').addEventListener('click', function(){ telaQuiz(); });
-    els.overlay.scrollTop = 0;
-  }
-
-  function telaQuiz(){
-    var f = faseAberta.fase;
-    var respostas = new Array(f.quiz.length).fill(null);
-    var corrigido = false;
-
-    function pintar(){
-      var qs = els.overlayBox.querySelectorAll('.quiz-q');
-      Array.prototype.forEach.call(qs, function(qEl, qi){
-        var opts = qEl.querySelectorAll('.opt');
-        Array.prototype.forEach.call(opts, function(oEl, oi){
-          oEl.classList.remove('sel','ok','bad');
-          oEl.disabled = corrigido;
-          if (!corrigido){
-            if (respostas[qi] === oi) oEl.classList.add('sel');
-          } else {
-            if (oi === f.quiz[qi].correta) oEl.classList.add('ok');
-            else if (respostas[qi] === oi) oEl.classList.add('bad');
-          }
-        });
-        var ex = qEl.querySelector('.q-explica');
-        if (ex) ex.classList.toggle('hidden', !corrigido);
-      });
-      var btn = document.getElementById('ov-corrigir');
-      if (btn && !corrigido){
-        btn.disabled = respostas.indexOf(null) !== -1;
-      }
-    }
-
-    els.overlayBox.innerHTML =
-      '<button class="ov-close" id="ov-x">✕</button>' +
-      '<div class="ov-kicker">Quiz — ' + escapeHtml(f.titulo) + '</div>' +
-      '<h2><span class="ov-emoji">📝</span> Responda para avançar</h2>' +
-      '<div class="licao" style="margin-top:14px;">' +
-        f.quiz.map(function(q, qi){
-          return '<div class="quiz-q" data-qi="' + qi + '">' +
-            '<div class="q-txt"><span class="q-n">' + (qi + 1) + '.</span>' + escapeHtml(q.q) + '</div>' +
-            q.opcoes.map(function(op, oi){
-              return '<button class="opt" data-qi="' + qi + '" data-oi="' + oi + '">' + escapeHtml(op) + '</button>';
-            }).join('') +
-            '<div class="q-explica hidden">' + escapeHtml(q.explica || '') + '</div>' +
-          '</div>';
-        }).join('') +
-      '</div>' +
-      '<div class="ov-foot" id="ov-foot">' +
-        '<button class="btn" id="ov-voltar-licao">← Rever a lição</button>' +
-        '<button class="btn primary" id="ov-corrigir" disabled>Corrigir</button>' +
-      '</div>';
-
-    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
-    document.getElementById('ov-voltar-licao').addEventListener('click', telaLicao);
-
-    Array.prototype.forEach.call(els.overlayBox.querySelectorAll('.opt'), function(oEl){
-      oEl.addEventListener('click', function(){
-        if (corrigido) return;
-        respostas[Number(oEl.dataset.qi)] = Number(oEl.dataset.oi);
-        pintar();
-      });
+    els.dlgFoot.innerHTML = '<span class="hint">Escolha uma resposta</span>';
+    Array.prototype.forEach.call(els.dlgChoices.querySelectorAll('.dlg-choice'), function(btn){
+      btn.onclick = function(){ responder(Number(btn.dataset.oi)); };
     });
-
-    document.getElementById('ov-corrigir').addEventListener('click', function(){
-      corrigido = true;
-      pintar();
-      var acertos = 0;
-      f.quiz.forEach(function(q, qi){ if (respostas[qi] === q.correta) acertos++; });
-      // mostra as correções e as explicações na própria tela do quiz,
-      // com um passo extra antes do resultado
-      document.getElementById('ov-foot').innerHTML =
-        '<span class="hint">' + acertos + ' de ' + f.quiz.length + ' certos — revise abaixo o que errou</span>' +
-        '<button class="btn primary" id="ov-ver-result">Ver resultado →</button>';
-      document.getElementById('ov-ver-result').addEventListener('click', function(){
-        telaResultado(acertos, respostas);
-      });
-      els.overlay.scrollTop = 0;
-    });
-
-    els.overlay.scrollTop = 0;
   }
 
-  function telaResultado(acertos, respostas){
-    var f = faseAberta.fase;
-    var total = f.quiz.length;
+  function responder(oi){
+    var s = sessao;
+    var q = s.f.quiz[s.qi];
+    var acertou = oi === q.correta;
+    if (acertou) s.acertos++;
+    Array.prototype.forEach.call(els.dlgChoices.querySelectorAll('.dlg-choice'), function(btn){
+      btn.disabled = true;
+      var bi = Number(btn.dataset.oi);
+      if (bi === q.correta) btn.classList.add('certa');
+      else if (bi === oi) btn.classList.add('errada');
+    });
+    els.fb.classList.add('fb-fala');
+    fbExpr(acertou ? 'uau' : 'oops');
+    if (acertou) soltarConfete(24);
+    els.dlgBody.className = 'dlg-body dica';
+    typewriter(null, (acertou ? 'Boa! ' : 'Quase! ') + (q.explica || ''));
+    var ultima = s.qi === s.f.quiz.length - 1;
+    els.dlgFoot.innerHTML =
+      '<span class="hint">' + s.acertos + ' certo(s) até aqui</span>' +
+      '<button class="btn-jogo" id="dlg-next">' + (ultima ? 'Ver resultado ▶' : 'Próxima ▶') + '</button>';
+    $('dlg-next').onclick = function(){
+      if (ultima) mostrarResultado();
+      else { s.qi++; mostrarPergunta(); }
+    };
+  }
+
+  function mostrarResultado(){
+    var s = sessao;
+    var total = s.f.quiz.length;
     var minimo = Math.ceil(total * PASS_RATIO);
-    var passou = acertos >= minimo;
-    var jaFeita = faseConcluida(f.id);
+    var passou = s.acertos >= minimo;
+    var jaFeita = faseConcluida(s.f.id);
+    var ehUltima = s.idx === totalFases - 1;
 
-    var extra = '';
-    if (passou && !jaFeita){
-      extra = '<button class="btn green" id="ov-continuar">Concluir fase e continuar →</button>';
-    } else if (passou && jaFeita){
-      extra = '<button class="btn" id="ov-continuar">Voltar à trilha</button>';
+    els.dlgChoices.innerHTML = '';
+    els.dlgBody.className = 'dlg-body';
+    els.fb.classList.add('fb-fala');
+    fbExpr(passou ? 'uau' : 'oops');
+
+    if (passou){
+      if (!jaFeita) salvarConclusao(s.f.id, s.acertos, total);
+      soltarConfete(passou ? 90 : 0);
+      var msg = jaFeita
+        ? 'Você fez ' + s.acertos + '/' + total + '. Revisão concluída! 🎉'
+        : (ehUltima
+            ? 'PERFEITO! ' + s.acertos + '/' + total + '. Você terminou a trilha e está pronto(a) pra começar. Seu diploma já está lá em cima! 🎓'
+            : 'Mandou bem! ' + s.acertos + '/' + total + '. A próxima parada tá liberada. Bora seguir viagem!');
+      typewriter(null, msg);
+      var acoes = '';
+      if (ehUltima && !jaFeita) acoes = '<button class="btn-jogo ouro" id="r-cert">🏅 Ver meu diploma</button><button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
+      else if (!ehUltima) acoes = '<button class="btn-jogo verde" id="r-segue">Seguir viagem ▶</button><button class="btn-jogo claro" id="r-mapa">Ficar no mapa</button>';
+      else acoes = '<button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
+      els.dlgFoot.innerHTML = acoes;
+      if ($('r-cert')) $('r-cert').onclick = function(){ fecharDlg(); abrirCertificado(); };
+      if ($('r-segue')) $('r-segue').onclick = function(){
+        var prox = s.idx + 1;
+        fecharDlg();
+        if (prox < totalFases) fbAndarPara(prox, function(){ scrollParaEstacao(prox); });
+      };
+      if ($('r-mapa')) $('r-mapa').onclick = fecharDlg;
     } else {
-      extra = '<button class="btn primary" id="ov-refazer">Refazer o quiz</button>' +
-              '<button class="btn" id="ov-rever">Rever a lição</button>';
+      typewriter(null, 'Você fez ' + s.acertos + '/' + total + ' e o mínimo é ' + minimo + '. Sem crise — a gente revisa e tenta de novo. Você consegue!');
+      els.dlgFoot.innerHTML =
+        '<button class="btn-jogo" id="r-quiz">Refazer o quiz</button>' +
+        '<button class="btn-jogo claro" id="r-licao">Rever a conversa</button>' +
+        '<button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
+      $('r-quiz').onclick = function(){ sessao.modo = 'quiz'; sessao.qi = 0; sessao.acertos = 0; mostrarPergunta(); };
+      $('r-licao').onclick = function(){ sessao.fi = 0; sessao.modo = 'narrativa'; mostrarFala(); };
+      $('r-mapa').onclick = fecharDlg;
     }
-
-    els.overlayBox.innerHTML =
-      '<button class="ov-close" id="ov-x">✕</button>' +
-      '<div class="resultado">' +
-        '<div class="big">' + (passou ? '🎯' : '💪') + '</div>' +
-        '<h3>' + (passou ? 'Fase liberada!' : 'Quase lá') + '</h3>' +
-        '<div class="score-pill ' + (passou ? 'pass' : 'fail') + '">' + acertos + ' de ' + total + ' certos</div>' +
-        '<p>' + (passou
-          ? (jaFeita ? 'Você já tinha concluído esta fase — revisão feita.' : 'Você atingiu o mínimo de ' + minimo + ' acertos. A próxima fase está desbloqueada.')
-          : 'O mínimo é ' + minimo + ' acertos. Revise os pontos marcados e tente de novo — dá para refazer quantas vezes quiser.') + '</p>' +
-        '<div class="ov-foot" style="justify-content:center;">' + extra + '</div>' +
-      '</div>';
-
-    document.getElementById('ov-x').addEventListener('click', fecharOverlay);
-    var cont = document.getElementById('ov-continuar');
-    if (cont) cont.addEventListener('click', function(){
-      if (passou && !jaFeita) salvarConclusao(f.id, acertos, total);
-      fecharOverlay();
-    });
-    var ref = document.getElementById('ov-refazer');
-    if (ref) ref.addEventListener('click', telaQuiz);
-    var rev = document.getElementById('ov-rever');
-    if (rev) rev.addEventListener('click', telaLicao);
-
-    els.overlay.scrollTop = 0;
   }
 
-  /* ---------- persistência ---------- */
+  function fecharDlg(){
+    if (balaoTimer){ clearTimeout(balaoTimer); balaoTimer = null; }
+    twToken++;
+    els.dlg.classList.remove('aberto');
+    els.dlgBody.className = 'dlg-body';
+    els.dlgBody.innerHTML = '';
+    els.dlgChoices.innerHTML = '';
+    els.dlgFoot.innerHTML = '';
+    els.dlgTag.textContent = 'seu guia de integração';
+    els.fb.classList.remove('fb-fala');
+    fbExpr(null);
+    sessao = null;
+    renderTudo();
+  }
+  els.dlgClose.onclick = fecharDlg;
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && els.dlg.classList.contains('aberto')) fecharDlg();
+  });
 
+  /* ============================================================
+     CONFETE
+     ============================================================ */
+  function soltarConfete(n){
+    if (!n) return;
+    var frag = document.createDocumentFragment();
+    for (var i=0;i<n;i++){
+      var c = document.createElement('i');
+      c.style.left = Math.random()*100 + '%';
+      c.style.background = CONFETE_CORES[i % CONFETE_CORES.length];
+      c.style.animationDuration = (1.6 + Math.random()*1.6) + 's';
+      c.style.animationDelay = (Math.random()*0.4) + 's';
+      c.style.transform = 'rotate(' + (Math.random()*360) + 'deg)';
+      frag.appendChild(c);
+    }
+    els.confete.appendChild(frag);
+    setTimeout(function(){ els.confete.innerHTML = ''; }, 3600);
+  }
+
+  /* ============================================================
+     PERSISTÊNCIA
+     ============================================================ */
   function recalcularPontos(c){
-    return Object.keys(c).reduce(function(acc, id){ return acc + (c[id].pontos || 0); }, 0);
+    return Object.keys(c).reduce(function(a, id){ return a + (c[id].pontos || 0); }, 0);
   }
-
   function salvarConclusao(faseId, pontos, total){
-    prog.concluidas[faseId] = { pontos: pontos, total: total, em: Date.now() };
+    prog.concluidas[faseId] = { pontos:pontos, total:total, em:Date.now() };
     prog.pontosTotais = recalcularPontos(prog.concluidas);
     prog.nome = meuNome;
     var tudo = Object.keys(prog.concluidas).length >= totalFases;
     if (tudo && !prog.concluidoEm) prog.concluidoEm = Date.now();
-
-    render();
-
+    renderTudo();
     if (!progRef) return;
     var payload = {
       concluidas: prog.concluidas,
@@ -904,13 +1186,12 @@
       atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (tudo) payload.concluidoEm = prog.concluidoEm;
-    progRef.set(payload, { merge: true }).catch(function(err){
+    progRef.set(payload, { merge:true }).catch(function(err){
       console.warn('Falha ao salvar progresso da trilha:', err && err.message);
     });
   }
-
-  function carregarProgresso(){
-    if (!progRef) { render(); return; }
+  function carregarProgresso(cb){
+    if (!progRef){ if (cb) cb(); return; }
     progRef.get().then(function(doc){
       if (doc.exists){
         var d = doc.data();
@@ -921,23 +1202,21 @@
       }
     }).catch(function(err){
       console.warn('Falha ao carregar progresso:', err && err.message);
-    }).finally(render);
+    }).finally(function(){ if (cb) cb(); });
   }
 
-  /* ---------- certificado ---------- */
-
+  /* ============================================================
+     DIPLOMA
+     ============================================================ */
   function abrirCertificado(){
     var feitas = Object.keys(prog.concluidas).length;
-    if (feitas < totalFases){
-      alert('Conclua todas as fases para gerar o certificado.');
-      return;
-    }
+    if (feitas < totalFases){ alert('Conclua todas as paradas para gerar o diploma.'); return; }
     var nome = meuNome || prog.nome || 'Colaborador(a)';
     var dataStr = new Date(prog.concluidoEm || Date.now()).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
     var w = window.open('', '_blank');
-    if (!w){ alert('Permita pop-ups para abrir o certificado.'); return; }
+    if (!w){ alert('Permita pop-ups para abrir o diploma.'); return; }
     w.document.write(
-      '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Certificado de Integração — ' + escapeHtml(nome) + '</title>' +
+      '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Diploma de Integração — ' + escapeHtml(nome) + '</title>' +
       '<style>' +
       '*{box-sizing:border-box;margin:0;padding:0;}' +
       'body{font-family:"Segoe UI",system-ui,sans-serif;background:#1a1210;padding:40px;display:flex;justify-content:center;}' +
@@ -952,37 +1231,39 @@
       '.rodape{display:flex;justify-content:space-between;font-size:.85rem;color:#7d716b;margin-top:40px;}' +
       '.selo{font-size:2.4rem;}' +
       '@media print{body{background:#fff;padding:0;}.cert{border-radius:0;}.no-print{display:none;}}' +
-      '.no-print{margin-top:24px;}' +
+      '.no-print{margin-top:24px;text-align:center;}' +
       'button{padding:10px 22px;border-radius:22px;border:1px solid #b8362e;background:#b8362e;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;}' +
       '</style></head><body>' +
       '<div class="cert">' +
         '<div class="kick">Fonseca e Braga Advocacia</div>' +
-        '<h1>Certificado de Integração</h1>' +
-        '<div class="sub">Trilha de Integração do Portal Interno</div>' +
+        '<h1>Diploma de Integração</h1>' +
+        '<div class="sub">Trilha do FBzinho — Portal Interno</div>' +
         '<div>Certificamos que</div>' +
         '<div class="nome">' + escapeHtml(nome) + '</div>' +
-        '<div class="corpo">concluiu todas as ' + totalFases + ' fases da Trilha de Integração, ' +
+        '<div class="corpo">concluiu todas as ' + totalFases + ' paradas da Trilha de Integração, ' +
           'demonstrando conhecimento sobre a estrutura do escritório, o Portal interno, os sistemas ' +
           'utilizados, as rotinas de atendimento, os prazos e a segurança da informação, ' +
           'com <span class="pts">' + prog.pontosTotais + ' de ' + pontosPossiveis + ' pontos</span>.</div>' +
         '<div class="selo">⚖️</div>' +
         '<div class="rodape"><span>Emitido em ' + escapeHtml(dataStr) + '</span><span>Portal Fonseca e Braga</span></div>' +
       '</div>' +
-      '<div class="no-print" style="text-align:center;"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>' +
+      '<div class="no-print"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>' +
       '</body></html>'
     );
     w.document.close();
   }
-  els.btnCert.addEventListener('click', abrirCertificado);
+  els.btnCert.onclick = abrirCertificado;
 
-  /* ---------- painel do gestor ---------- */
-
+  /* ============================================================
+     PAINEL DO GESTOR
+     ============================================================ */
   var adminCarregado = false;
-  els.btnAdmin.addEventListener('click', function(){
-    var abrir = !els.adminPanel.classList.contains('open');
-    els.adminPanel.classList.toggle('open', abrir);
-    if (abrir && !adminCarregado) carregarPainelGestor();
-  });
+  els.btnAdmin.onclick = function(){
+    els.modalAdmin.classList.add('aberto');
+    if (!adminCarregado) carregarPainelGestor();
+  };
+  els.adminX.onclick = function(){ els.modalAdmin.classList.remove('aberto'); };
+  els.modalAdmin.addEventListener('click', function(e){ if (e.target === els.modalAdmin) els.modalAdmin.classList.remove('aberto'); });
 
   function carregarPainelGestor(){
     adminCarregado = true;
@@ -990,63 +1271,77 @@
       db.collection('treinamentoProgresso').get(),
       db.collection('organograma').get().catch(function(){ return { docs: [] }; })
     ]).then(function(res){
-      var progs = res[0].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); });
+      var progs = res[0].docs.map(function(d){ return Object.assign({ uid:d.id }, d.data()); });
       var nomes = {};
       res[1].docs.forEach(function(d){ nomes[d.id] = (d.data() && d.data().displayName) || ''; });
-
-      if (progs.length === 0){
-        els.adminBody.innerHTML = '<div class="admin-empty">Ninguém começou a trilha ainda.</div>';
-        return;
-      }
-
+      if (progs.length === 0){ els.adminBody.innerHTML = '<div class="modal-vazio">Ninguém começou a trilha ainda.</div>'; return; }
       progs.sort(function(a, b){
-        var fa = a.concluidas ? Object.keys(a.concluidas).length : 0;
-        var fb = b.concluidas ? Object.keys(b.concluidas).length : 0;
-        return fb - fa;
+        return (b.concluidas ? Object.keys(b.concluidas).length : 0) - (a.concluidas ? Object.keys(a.concluidas).length : 0);
       });
-
       els.adminBody.innerHTML =
-        '<table class="prog"><thead><tr>' +
-          '<th>Colaborador</th><th>Fases</th><th>Progresso</th><th>Pontos</th><th>Status</th>' +
-        '</tr></thead><tbody>' +
+        '<table class="prog"><thead><tr><th>Colaborador</th><th>Paradas</th><th>Progresso</th><th>Pontos</th><th>Status</th></tr></thead><tbody>' +
         progs.map(function(p){
           var feitas = p.concluidas ? Object.keys(p.concluidas).length : 0;
           var pct = Math.round((feitas / totalFases) * 100);
           var nome = nomes[p.uid] || p.nome || '(sem nome)';
-          var concluido = feitas >= totalFases;
-          return '<tr>' +
-            '<td>' + escapeHtml(nome) + '</td>' +
-            '<td>' + feitas + ' / ' + totalFases + '</td>' +
+          var ok = feitas >= totalFases;
+          return '<tr><td>' + escapeHtml(nome) + '</td><td>' + feitas + ' / ' + totalFases + '</td>' +
             '<td><div class="mini-track"><div class="mini-fill" style="width:' + pct + '%"></div></div></td>' +
             '<td>' + (p.pontosTotais || 0) + ' / ' + pontosPossiveis + '</td>' +
-            '<td>' + (concluido ? '<span class="st-ok">✓ Concluída</span>' : 'Em andamento') + '</td>' +
-          '</tr>';
-        }).join('') +
-        '</tbody></table>';
+            '<td>' + (ok ? '<span class="st-ok">✓ Concluída</span>' : 'Em andamento') + '</td></tr>';
+        }).join('') + '</tbody></table>';
     }).catch(function(err){
-      els.adminBody.innerHTML = '<div class="admin-empty">Não foi possível carregar (' + escapeHtml(err && err.message) + ').</div>';
+      els.adminBody.innerHTML = '<div class="modal-vazio">Não foi possível carregar (' + escapeHtml(err && err.message) + ').</div>';
     });
   }
 
-  els.overlay.addEventListener('click', function(e){
-    if (e.target === els.overlay) fecharOverlay();
-  });
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && els.overlay.classList.contains('open')) fecharOverlay();
-  });
+  els.btnHelp.onclick = function(){ els.modalHelp.classList.add('aberto'); };
+  els.helpX.onclick = function(){ els.modalHelp.classList.remove('aberto'); };
+  els.modalHelp.addEventListener('click', function(e){ if (e.target === els.modalHelp) els.modalHelp.classList.remove('aberto'); });
 
-  /* ---------- auth ---------- */
+  /* ============================================================
+     BOOT
+     ============================================================ */
+  function iniciarMundo(){
+    els.dlgFace.innerHTML = bustoSvg();
+    montarFBzinho();
+    montarEstrada();
+    montarDecor();
+    montarEstacoes();
+    renderTudo();
+    var comecar = Math.min(indiceFaseAtual(), totalFases - 1);
+    fbParadoEm(comecar);
+    setTimeout(function(){ scrollParaEstacao(comecar); }, 200);
+    // saudação inicial do FBzinho
+    setTimeout(function(){
+      if (sessao) return;
+      var feitas = Object.keys(prog.concluidas).length;
+      els.dlg.classList.add('aberto');
+      els.dlgTag.textContent = 'seu guia de integração';
+      els.dlgChoices.innerHTML = '';
+      els.dlgBody.className = 'dlg-body';
+      els.fb.classList.add('fb-fala'); fbExpr('uau');
+      var oi = feitas === 0
+        ? 'Oi' + (meuNome ? ', ' + meuNome.split(' ')[0] : '') + '! Eu sou o FBzinho. Vou te guiar pela integração. Clique numa parada do mapa pra gente começar!'
+        : (feitas >= totalFases
+            ? 'Você já concluiu a trilha inteira! Pode revisar qualquer parada ou ver seu diploma lá em cima. 🎓'
+            : 'Bem-vindo(a) de volta! Você está na parada ' + (indiceFaseAtual() + 1) + '. Clique nela no mapa pra continuar.');
+      typewriter(null, oi);
+      els.dlgFoot.innerHTML = '<button class="btn-jogo verde" id="oi-ok">Bora! 🗺️</button>';
+      $('oi-ok').onclick = fecharDlg;
+    }, 700);
+  }
 
   auth.onAuthStateChanged(function(user){
     if (!user){
-      els.gate.style.display = 'block';
+      els.gate.style.display = 'flex';
       els.app.style.display = 'none';
       return;
     }
     meuUid = user.uid;
     meuNome = user.displayName || '';
     els.gate.style.display = 'none';
-    els.app.style.display = 'block';
+    els.app.style.display = 'flex';
     progRef = db.collection('treinamentoProgresso').doc(meuUid);
 
     db.collection('users').doc(meuUid).get().then(function(doc){
@@ -1056,13 +1351,12 @@
       if (!meuNome) meuNome = d.displayName || '';
       els.btnAdmin.style.display = (souAdmin || souGestor) ? 'inline-block' : 'none';
     }).catch(function(){}).finally(function(){
-      // nome também pode vir do perfil/organograma
+      var arrancar = function(){ carregarProgresso(iniciarMundo); };
       if (!meuNome){
         db.collection('organograma').doc(meuUid).get().then(function(o){
           if (o.exists && o.data().displayName) meuNome = o.data().displayName;
-        }).catch(function(){});
-      }
-      carregarProgresso();
+        }).catch(function(){}).finally(arrancar);
+      } else arrancar();
     });
   });
 
