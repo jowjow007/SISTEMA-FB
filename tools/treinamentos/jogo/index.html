@@ -6,227 +6,123 @@
 <title>Trilha do FBzinho — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../../assets/favicon.png">
 <script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-})();
+(function(){ try{ if(localStorage.getItem('fb-portal-theme')==='light') document.documentElement.setAttribute('data-theme','light'); }catch(e){} })();
 </script>
 <style>
-  /* ====== o mundo do jogo tem paleta própria, sempre colorida ====== */
   :root{
-    --marrom:#7a2f2a;
-    --marrom-esc:#5c1a16;
-    --vinho:#b8362e;
-    --vinho-claro:#c9463c;
-    --ouro:#e7b84f;
-    --ouro-esc:#c99a34;
-    --creme:#fdf6e8;
-    --creme2:#fdf6e8;
-    --ceu-1:#8fd3ff;
-    --ceu-2:#c7ecff;
-    --grama-1:#7ec86b;
-    --grama-2:#5fae53;
-    --tinta:#3a2b24;
-    --tinta-suave:#6b574d;
-    --branco:#ffffff;
-    --sombra:rgba(60,30,20,.18);
+    --marrom:#7a2f2a; --marrom-esc:#5c1a16; --vinho:#b8362e; --vinho-claro:#c9463c;
+    --ouro:#e7b84f; --ouro-esc:#c99a34; --creme:#fdf6e8; --tinta:#3a2b24; --tinta-suave:#6b574d;
+    --grama:#67b657; --green:#4c9a68; --green-bright:#63c088;
     --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
     --font-jogo:"Baloo 2","Segoe UI",system-ui,sans-serif;
   }
-
   *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;font-family:var(--font-body);color:var(--tinta);overflow:hidden;}
-  body{background:linear-gradient(180deg,var(--ceu-1),var(--ceu-2) 55%,#dff3d6 55%,#eaf7e2);}
+  html,body{margin:0;height:100%;font-family:var(--font-body);color:var(--tinta);overflow:hidden;background:#9fd3f0;}
   button{font-family:inherit;cursor:pointer;}
 
-  #gate{
-    display:flex;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;
-    color:var(--tinta-suave);font-size:.95rem;line-height:1.6;
+  #gate,#mobile-gate,#erro3d{
+    display:none;position:absolute;inset:0;z-index:80;align-items:center;justify-content:center;
+    padding:36px;text-align:center;background:linear-gradient(180deg,#8fd3ff,#eaf7e2);
   }
+  #gate.on,#mobile-gate.on,#erro3d.on{display:flex;}
+  .gate-card{max-width:440px;background:#fff;border:3px solid var(--marrom);border-radius:20px;padding:28px;box-shadow:0 12px 40px rgba(30,15,10,.25);}
+  .gate-card h2{font-family:var(--font-jogo);color:var(--marrom);margin:0 0 10px;}
+  .gate-card p{font-size:.92rem;line-height:1.6;color:var(--tinta-suave);margin:6px 0;}
+  .gate-card .big{font-size:2.6rem;margin-bottom:6px;}
 
-  #app{display:none;flex-direction:column;height:100%;position:relative;}
+  #app{display:none;position:relative;height:100%;}
+  #app.on{display:block;}
+  #c3d{position:absolute;inset:0;}
+  #c3d canvas{display:block;width:100%;height:100%;}
 
-  /* ================= HUD ================= */
+  /* ---------- HUD ---------- */
   #hud{
-    flex:0 0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-    padding:10px 16px;background:linear-gradient(180deg,#ffffff,#fdeede);
-    border-bottom:3px solid var(--ouro);box-shadow:0 3px 12px var(--sombra);z-index:8;
+    position:absolute;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:9px 14px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(253,238,222,.92));
+    border-bottom:3px solid var(--ouro);box-shadow:0 3px 12px rgba(60,30,20,.18);
   }
-  #hud .marca{
-    display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;
-    color:var(--marrom);font-size:1.02rem;white-space:nowrap;
-  }
-  #hud .marca .escudo{font-size:1.3rem;}
+  #hud .marca{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;color:var(--marrom);font-size:1rem;white-space:nowrap;}
   .hud-pips{display:flex;gap:5px;flex-wrap:wrap;}
-  .pip{width:14px;height:14px;border-radius:50%;background:#e6d9c4;border:2px solid #cdbb9c;transition:transform .2s;}
-  .pip.feita{background:var(--grama-2);border-color:#3f8f36;}
-  .pip.atual{background:var(--ouro);border-color:var(--ouro-esc);transform:scale(1.25);box-shadow:0 0 0 3px rgba(231,184,79,.35);}
-  #hud .hud-label{font-weight:700;color:var(--marrom-esc);font-size:.86rem;white-space:nowrap;}
-  #hud .hud-pts{
-    display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--ouro-esc);
-    background:#fff5df;border:2px solid var(--ouro);border-radius:20px;padding:3px 11px;font-size:.82rem;white-space:nowrap;
-  }
-  #hud .hud-sp{flex:1 1 auto;}
-  .hud-btn{
-    border:2px solid var(--marrom);background:#fff;color:var(--marrom);font-weight:700;
-    border-radius:22px;padding:6px 13px;font-size:.8rem;white-space:nowrap;transition:transform .12s,background .12s;
-  }
-  .hud-btn:hover{transform:translateY(-1px);background:#fff1e2;}
+  .pip{width:13px;height:13px;border-radius:50%;background:#e6d9c4;border:2px solid #cdbb9c;}
+  .pip.feita{background:var(--green);border-color:#3f8f36;}
+  .pip.atual{background:var(--ouro);border-color:var(--ouro-esc);box-shadow:0 0 0 3px rgba(231,184,79,.35);}
+  #hud .chip{display:inline-flex;align-items:center;gap:5px;font-weight:800;border-radius:20px;padding:3px 11px;font-size:.8rem;white-space:nowrap;}
+  #hud .chip.pts{color:var(--ouro-esc);background:#fff5df;border:2px solid var(--ouro);}
+  #hud .chip.egg{color:#8a5a1e;background:#fdeecb;border:2px solid #e7c877;}
+  #hud .sp{flex:1 1 auto;}
+  .hud-btn{border:2px solid var(--marrom);background:#fff;color:var(--marrom);font-weight:700;border-radius:20px;padding:6px 12px;font-size:.78rem;white-space:nowrap;}
+  .hud-btn:hover{background:#fff1e2;}
   .hud-btn.ouro{background:var(--ouro);border-color:var(--ouro-esc);color:var(--marrom-esc);}
 
-  /* ================= MAPA ================= */
-  #mapa-wrap{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;position:relative;}
-  #mapa{display:block;width:min(760px,100%);height:auto;margin:0 auto;}
-
-  .nuvem{animation:flutuaNuvem linear infinite;}
-  @keyframes flutuaNuvem{
-    0%{transform:translateX(-40px);}
-    50%{transform:translateX(40px);}
-    100%{transform:translateX(-40px);}
+  #controles{
+    position:absolute;left:14px;bottom:14px;z-index:12;background:rgba(40,22,16,.72);color:#fff;
+    border-radius:14px;padding:9px 13px;font-size:.78rem;line-height:1.7;backdrop-filter:blur(3px);
   }
-  #sol{animation:giraSol 40s linear infinite;transform-box:fill-box;transform-origin:center;}
-  @keyframes giraSol{to{transform:rotate(360deg);}}
+  #controles b{color:var(--ouro);}
 
-  .estacao{cursor:pointer;}
-  .estacao .casa{transition:transform .15s;transform-box:fill-box;transform-origin:bottom center;}
-  .estacao:hover .casa{transform:scale(1.06);}
-  .estacao.bloqueada{cursor:not-allowed;}
-  .estacao.bloqueada .casa{filter:grayscale(.85) brightness(.9);}
-  .estacao .flag-emoji{font-size:22px;}
-  .estacao .est-num{font-family:var(--font-jogo);font-weight:800;fill:#4a2b12;font-size:15px;}
-  .estacao .est-label{
-    font-family:var(--font-jogo);font-weight:700;fill:var(--marrom-esc);font-size:12.5px;
-    paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;
+  #prompt{
+    position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:12;display:none;
+    background:var(--marrom);color:#fff;border:2px solid var(--ouro);border-radius:24px;
+    padding:9px 18px;font-family:var(--font-jogo);font-weight:800;font-size:.92rem;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);animation:promptPop .2s ease;
   }
-  .estacao.atual .anel{animation:pulsaAnel 1.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
-  @keyframes pulsaAnel{
-    0%,100%{opacity:.25;transform:scale(1);}
-    50%{opacity:.7;transform:scale(1.14);}
-  }
-  .badge-check{fill:var(--grama-2);}
-  .badge-lock{fill:#b9a888;}
-  .flag-emoji-float{animation:balancaFlag 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom center;}
-  @keyframes balancaFlag{0%,100%{transform:rotate(-5deg);}50%{transform:rotate(5deg);}}
+  #prompt.on{display:block;}
+  @keyframes promptPop{from{transform:translateX(-50%) scale(.85);opacity:0;}to{transform:translateX(-50%) scale(1);opacity:1;}}
 
-  /* ================= FBZINHO ================= */
-  #fb{pointer-events:none;}
-  #fb .fb-shadow{fill:rgba(40,20,15,.16);}
-  #fb .fb-bob{transform-box:fill-box;}
-  #fb.fb-anda .fb-bob{animation:fbBob .46s ease-in-out infinite;}
-  @keyframes fbBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
-  #fb .fb-suit{fill:var(--vinho);}
-  #fb .fb-lapela{fill:var(--vinho-claro);}
-  #fb .fb-shirt{fill:#fff;}
-  #fb .fb-tie{fill:var(--ouro);}
-  #fb .fb-leg rect{fill:#3f2a4d;}
-  #fb .fb-shoe{fill:#2a1c1c;}
-  #fb .fb-arm rect{fill:var(--vinho);}
-  #fb .fb-hand{fill:#f2c9a0;}
-  #fb .fb-face{fill:#f6cfa6;}
-  #fb .fb-hair{fill:#3a2b24;}
-  #fb .fb-eye{fill:#2a1c1c;animation:fbPisca 4s infinite;transform-box:fill-box;transform-origin:center;}
-  @keyframes fbPisca{0%,94%,100%{transform:scaleY(1);}97%{transform:scaleY(.1);}}
-  #fb .fb-cheek{fill:#f2a3a0;opacity:.7;}
-  #fb .fb-mouth{fill:none;stroke:#2a1c1c;stroke-width:2.4;stroke-linecap:round;}
-  #fb .fb-mouth-open{fill:#a33;stroke:none;}
-  #fb .m-smile,#fb .m-neutral,#fb .m-open,#fb .m-o{display:none;}
-  #fb .m-smile{display:block;}
-  #fb.exp-oops .m-smile{display:none;} #fb.exp-oops .m-open{display:block;}
-  #fb.exp-think .m-smile{display:none;} #fb.exp-think .m-neutral{display:block;}
-  #fb.exp-uau .m-smile{display:none;} #fb.exp-uau .m-o{display:block;}
-  #fb.fb-fala .fb-head{animation:fbFala .28s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom center;}
-  @keyframes fbFala{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-1px) rotate(-1.5deg);}}
-  #fb .fb-leg{transform-box:fill-box;transform-origin:top center;}
-  #fb .fb-arm{transform-box:fill-box;transform-origin:top center;}
-  #fb.fb-anda .fb-leg-l{animation:passoA .46s ease-in-out infinite;}
-  #fb.fb-anda .fb-leg-r{animation:passoB .46s ease-in-out infinite;}
-  #fb.fb-anda .fb-arm-l{animation:passoB .46s ease-in-out infinite;}
-  #fb.fb-anda .fb-arm-r{animation:passoA .46s ease-in-out infinite;}
-  @keyframes passoA{0%,100%{transform:rotate(22deg);}50%{transform:rotate(-22deg);}}
-  @keyframes passoB{0%,100%{transform:rotate(-22deg);}50%{transform:rotate(22deg);}}
-  #fb.parado:not(.fb-fala) .fb-bob{animation:fbRespira 3s ease-in-out infinite;}
-  @keyframes fbRespira{0%,100%{transform:translateY(0);}50%{transform:translateY(-1.5px);}}
-
-  .fb-balao{
-    animation:balaoPop .25s ease;font-family:var(--font-jogo);
+  #egg-toast{
+    position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:13;max-width:min(520px,90vw);
+    display:none;background:#fff8e3;border:3px solid var(--ouro-esc);border-radius:16px;padding:12px 16px;
+    box-shadow:0 10px 30px rgba(50,25,15,.3);animation:promptPop .25s ease;
   }
-  @keyframes balaoPop{from{opacity:0;transform:translateY(6px) scale(.9);}to{opacity:1;transform:none;}}
+  #egg-toast.on{display:block;}
+  #egg-toast .et-tag{font-family:var(--font-jogo);font-weight:800;color:#8a5a1e;font-size:.8rem;}
+  #egg-toast .et-tit{font-family:var(--font-jogo);font-weight:800;color:var(--marrom);font-size:1rem;margin:2px 0 3px;}
+  #egg-toast .et-txt{font-size:.85rem;line-height:1.5;color:var(--tinta);}
 
-  /* ================= DIÁLOGO ================= */
-  #dlg{
-    position:absolute;left:0;right:0;bottom:0;z-index:20;display:none;
-    padding:0 12px 12px;pointer-events:none;
-  }
+  /* ---------- DIÁLOGO ---------- */
+  #dlg{position:absolute;left:0;right:0;bottom:0;z-index:20;display:none;padding:0 12px 12px;pointer-events:none;}
   #dlg.aberto{display:block;}
-  .dlg-card{
-    pointer-events:auto;max-width:640px;margin:0 auto;background:var(--creme2);
-    border:3px solid var(--marrom);border-radius:20px;box-shadow:0 -6px 30px rgba(50,25,15,.35);
-    padding:14px 16px 16px;position:relative;
-  }
+  .dlg-card{pointer-events:auto;max-width:640px;margin:0 auto;background:var(--creme);border:3px solid var(--marrom);
+    border-radius:20px;box-shadow:0 -6px 30px rgba(50,25,15,.4);padding:14px 16px 16px;}
   .dlg-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .dlg-face{
-    width:52px;height:52px;flex:0 0 auto;border-radius:50%;background:#ffe6c9;border:3px solid var(--ouro);
-    overflow:hidden;box-shadow:0 2px 6px var(--sombra);
-  }
+  .dlg-face{width:52px;height:52px;flex:0 0 auto;border-radius:50%;background:#ffe6c9;border:3px solid var(--ouro);overflow:hidden;}
   .dlg-face svg{width:100%;height:100%;display:block;}
   .dlg-name{font-family:var(--font-jogo);font-weight:800;color:var(--marrom);font-size:1.02rem;line-height:1;}
   .dlg-name small{display:block;font-weight:600;color:var(--tinta-suave);font-size:.7rem;margin-top:3px;}
-  .dlg-close{
-    margin-left:auto;border:2px solid var(--marrom);background:#fff;color:var(--marrom);
-    border-radius:16px;padding:4px 10px;font-size:.74rem;font-weight:700;
-  }
-  .dlg-body{
-    min-height:74px;font-size:.96rem;line-height:1.55;color:var(--tinta);
-    background:#fff;border:2px dashed var(--ouro);border-radius:14px;padding:12px 14px;
-  }
+  .dlg-close{margin-left:auto;border:2px solid var(--marrom);background:#fff;color:var(--marrom);border-radius:16px;padding:4px 10px;font-size:.74rem;font-weight:700;}
+  .dlg-body{min-height:72px;font-size:.95rem;line-height:1.55;color:var(--tinta);background:#fff;border:2px dashed var(--ouro);border-radius:14px;padding:12px 14px;}
   .dlg-body.dica{background:#fff8e3;border-style:solid;}
   .dlg-body.dica::before{content:"💡 ";}
   .dlg-body.titulo{background:#f3ecff;border-color:#8367c7;font-weight:800;color:#5b3ea8;font-family:var(--font-jogo);}
   .dlg-body ul{margin:4px 0 0;padding-left:20px;}
   .dlg-body li{margin:4px 0;}
-  .cursor-tw::after{content:"▌";animation:piscaCursor .7s steps(1) infinite;color:var(--ouro-esc);}
-  @keyframes piscaCursor{50%{opacity:0;}}
-
+  .cursor-tw::after{content:"▌";animation:pc .7s steps(1) infinite;color:var(--ouro-esc);}
+  @keyframes pc{50%{opacity:0;}}
   .dlg-choices{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
-  .dlg-choice{
-    text-align:left;border:2px solid var(--marrom);background:#fff;color:var(--tinta);
-    border-radius:14px;padding:11px 13px;font-size:.9rem;font-weight:600;transition:transform .1s,background .1s;
-  }
-  .dlg-choice:hover:not(:disabled){transform:translateX(3px);background:#fff1e2;}
+  .dlg-choice{text-align:left;border:2px solid var(--marrom);background:#fff;color:var(--tinta);border-radius:14px;padding:11px 13px;font-size:.9rem;font-weight:600;}
+  .dlg-choice:hover:not(:disabled){background:#fff1e2;transform:translateX(3px);}
   .dlg-choice:disabled{cursor:default;}
-  .dlg-choice.certa{border-color:var(--grama-2);background:#e4f7dd;}
+  .dlg-choice.certa{border-color:var(--green);background:#e4f7dd;}
   .dlg-choice.errada{border-color:var(--vinho);background:#fbe3e1;}
-
   .dlg-foot{display:flex;justify-content:flex-end;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap;}
   .dlg-foot .hint{margin-right:auto;font-size:.76rem;color:var(--tinta-suave);font-weight:600;}
-  .btn-jogo{
-    border:2px solid var(--marrom-esc);background:var(--vinho);color:#fff;font-weight:800;
-    border-radius:20px;padding:9px 18px;font-size:.86rem;font-family:var(--font-jogo);
-    box-shadow:0 3px 0 var(--marrom-esc);transition:transform .1s;
-  }
+  .btn-jogo{border:2px solid var(--marrom-esc);background:var(--vinho);color:#fff;font-weight:800;border-radius:20px;
+    padding:9px 18px;font-size:.86rem;font-family:var(--font-jogo);box-shadow:0 3px 0 var(--marrom-esc);}
   .btn-jogo:hover{transform:translateY(-1px);}
   .btn-jogo:active{transform:translateY(2px);box-shadow:0 1px 0 var(--marrom-esc);}
-  .btn-jogo.verde{background:var(--grama-2);border-color:#3f8f36;box-shadow:0 3px 0 #3f8f36;}
+  .btn-jogo.verde{background:var(--green);border-color:#3f8f36;box-shadow:0 3px 0 #3f8f36;}
   .btn-jogo.ouro{background:var(--ouro);border-color:var(--ouro-esc);box-shadow:0 3px 0 var(--ouro-esc);color:var(--marrom-esc);}
   .btn-jogo.claro{background:#fff;color:var(--marrom);box-shadow:0 3px 0 #d8c4a3;}
 
-  /* ================= MODAIS ================= */
-  .modal{
-    position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
-    background:rgba(40,20,15,.55);padding:20px;
-  }
+  /* ---------- MODAIS ---------- */
+  .modal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(40,20,15,.55);padding:20px;}
   .modal.aberto{display:flex;}
-  .modal-card{
-    background:var(--creme2);border:3px solid var(--marrom);border-radius:20px;padding:22px;
-    width:100%;max-width:560px;max-height:86%;overflow:auto;box-shadow:0 12px 40px rgba(30,15,10,.4);
-  }
+  .modal-card{background:var(--creme);border:3px solid var(--marrom);border-radius:20px;padding:22px;width:100%;max-width:600px;max-height:86%;overflow:auto;}
   .modal-card h2{font-family:var(--font-jogo);color:var(--marrom);margin:0 0 12px;font-size:1.2rem;}
   .modal-card p,.modal-card li{font-size:.9rem;line-height:1.6;}
   .modal-x{float:right;border:2px solid var(--marrom);background:#fff;color:var(--marrom);border-radius:16px;padding:3px 10px;font-weight:700;font-size:.78rem;}
-  table.prog{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:6px;}
+  table.prog{width:100%;border-collapse:collapse;font-size:.83rem;margin-top:6px;}
   table.prog th,table.prog td{text-align:left;padding:8px 9px;border-bottom:1px solid #e7d8bf;}
   table.prog th{color:var(--tinta-suave);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
   table.prog .mini-track{height:8px;border-radius:5px;background:#e6d9c4;overflow:hidden;min-width:80px;}
@@ -234,82 +130,43 @@
   table.prog .st-ok{color:#3f8f36;font-weight:800;}
   .modal-vazio{color:var(--tinta-suave);font-size:.88rem;padding:8px 0;}
 
-  /* ================= CONFETE ================= */
   #confete{position:absolute;inset:0;pointer-events:none;z-index:25;overflow:hidden;}
-  #confete i{
-    position:absolute;top:-24px;width:9px;height:14px;border-radius:2px;opacity:.95;
-    animation:confeteCai linear forwards;
-  }
-  @keyframes confeteCai{to{transform:translateY(115vh) rotate(760deg);opacity:.15;}}
-
-  @media (max-width:560px){
-    #hud .marca small{display:none;}
-    .dlg-body{font-size:.9rem;}
-  }
+  #confete i{position:absolute;top:-24px;width:9px;height:14px;border-radius:2px;opacity:.95;animation:cc linear forwards;}
+  @keyframes cc{to{transform:translateY(115vh) rotate(760deg);opacity:.15;}}
 </style>
 </head>
 <body>
 
-<div id="gate">Faça login no Portal Fonseca e Braga para começar a Trilha do FBzinho.</div>
+<div id="gate" class="on"><div class="gate-card"><div class="big">⚖️</div><h2>Trilha do FBzinho</h2><p>Faça login no Portal Fonseca e Braga para começar.</p></div></div>
+
+<div id="mobile-gate"><div class="gate-card"><div class="big">🖥️</div><h2>Abra no computador</h2><p>A Trilha do FBzinho é um jogo 3D que se joga com as <b>setas do teclado</b>. Abra o Portal num computador para fazer a integração.</p></div></div>
+
+<div id="erro3d"><div class="gate-card"><div class="big">😕</div><h2>Não deu para carregar o 3D</h2><p id="erro3d-msg">Seu navegador pode não ter aceleração 3D (WebGL) ativa, ou a biblioteca 3D não carregou.</p><p>Tente atualizar a página. Se persistir, avise o suporte.</p></div></div>
 
 <div id="app">
+  <div id="c3d"></div>
+
   <div id="hud">
-    <span class="marca"><span class="escudo">⚖️</span> Trilha do FBzinho <small>· Fonseca e Braga</small></span>
+    <span class="marca">⚖️ Trilha do FBzinho</span>
     <span class="hud-pips" id="hud-pips"></span>
-    <span class="hud-label" id="hud-label"></span>
-    <span class="hud-pts">⭐ <span id="hud-pts">0</span></span>
-    <span class="hud-sp"></span>
+    <span class="chip pts">⭐ <span id="hud-pts">0</span></span>
+    <span class="chip egg">🥚 <span id="hud-egg">0</span></span>
+    <span class="sp"></span>
     <button class="hud-btn" id="btn-help">❔ Como jogar</button>
     <button class="hud-btn" id="btn-admin" style="display:none;">📊 Gestor</button>
     <button class="hud-btn ouro" id="btn-cert" style="display:none;">🏅 Diploma</button>
   </div>
 
-  <div id="mapa-wrap">
-    <svg id="mapa" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" preserveAspectRatio="xMidYMin meet">
-      <defs>
-        <linearGradient id="gceu" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#8fd3ff"/><stop offset="1" stop-color="#cdeeff"/>
-        </linearGradient>
-        <linearGradient id="ggrama" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#8ad277"/><stop offset="1" stop-color="#67b657"/>
-        </linearGradient>
-        <filter id="sombraSuave" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#3c1e14" flood-opacity="0.18"/>
-        </filter>
-      </defs>
-      <rect x="0" y="0" width="900" height="4000" fill="url(#ggrama)"/>
-      <rect x="0" y="0" width="900" height="240" fill="url(#gceu)"/>
-      <g id="sol" transform="translate(770,80)">
-        <circle r="34" fill="#ffe08a"/>
-        <g stroke="#ffe08a" stroke-width="6" stroke-linecap="round">
-          <line x1="0" y1="-46" x2="0" y2="-60"/><line x1="0" y1="46" x2="0" y2="60"/>
-          <line x1="-46" y1="0" x2="-60" y2="0"/><line x1="46" y1="0" x2="60" y2="0"/>
-          <line x1="-33" y1="-33" x2="-43" y2="-43"/><line x1="33" y1="33" x2="43" y2="43"/>
-          <line x1="-33" y1="33" x2="-43" y2="43"/><line x1="33" y1="-33" x2="43" y2="-43"/>
-        </g>
-      </g>
-      <g class="nuvem" style="animation-duration:26s" transform="translate(120,70)">
-        <ellipse cx="0" cy="0" rx="38" ry="20" fill="#fff"/><ellipse cx="34" cy="6" rx="28" ry="16" fill="#fff"/><ellipse cx="-30" cy="8" rx="24" ry="14" fill="#fff"/>
-      </g>
-      <g class="nuvem" style="animation-duration:34s" transform="translate(430,130)">
-        <ellipse cx="0" cy="0" rx="30" ry="16" fill="#fff"/><ellipse cx="26" cy="5" rx="22" ry="13" fill="#fff"/><ellipse cx="-24" cy="6" rx="18" ry="11" fill="#fff"/>
-      </g>
-      <g id="camada-hills"></g>
-      <g id="camada-estrada"></g>
-      <g id="camada-decor"></g>
-      <g id="camada-estacoes"></g>
-      <g id="fb"></g>
-    </svg>
-  </div>
+  <div id="controles"><b>↑</b> andar &nbsp; <b>↓</b> ré &nbsp; <b>← →</b> virar &nbsp; <b>Shift</b> correr &nbsp; <b>E</b> entrar</div>
+  <div id="prompt"></div>
+  <div id="egg-toast"><div class="et-tag" id="et-tag">🥚 Easter egg</div><div class="et-tit" id="et-tit"></div><div class="et-txt" id="et-txt"></div></div>
 
   <div id="dlg">
     <div class="dlg-card">
       <div class="dlg-top">
         <div class="dlg-face" id="dlg-face"></div>
-        <div>
-          <div class="dlg-name">FBzinho <small id="dlg-tag">seu guia de integração</small></div>
-        </div>
-        <button class="dlg-close" id="dlg-close">🗺️ mapa</button>
+        <div><div class="dlg-name">FBzinho <small id="dlg-tag">seu guia de integração</small></div></div>
+        <button class="dlg-close" id="dlg-close">🎮 mapa</button>
       </div>
       <div class="dlg-body" id="dlg-body"></div>
       <div class="dlg-choices" id="dlg-choices"></div>
@@ -331,19 +188,20 @@
     <div class="modal-card">
       <button class="modal-x" id="help-x">fechar</button>
       <h2>❔ Como jogar</h2>
-      <p>O <b>FBzinho</b> é o seu guia. Ele caminha pelo mapa e conversa com você em cada parada.</p>
+      <p>O <b>FBzinho</b> é um advogado e o seu guia de integração. Ande com ele pelo mapa e visite cada <b>prédio</b> — cada um é uma parada da trilha, com um ensinamento e um quiz.</p>
       <ul>
-        <li>Clique numa <b>parada liberada</b> do mapa para o FBzinho ir até lá.</li>
-        <li>Em cada parada ele te <b>ensina</b> um assunto e depois faz um <b>quiz</b>.</li>
-        <li>Acerte pelo menos <b>70%</b> do quiz para liberar a próxima parada.</li>
-        <li>Errou? Sem problema — dá pra refazer quantas vezes quiser.</li>
-        <li>Seu progresso fica <b>salvo na sua conta</b>: pare e volte quando quiser, de qualquer computador.</li>
-        <li>Ao completar todas as paradas você ganha o <b>Diploma de Integração</b> (dá pra imprimir / salvar em PDF).</li>
+        <li><b>↑</b> anda para frente &nbsp; <b>↓</b> anda de ré &nbsp; <b>← →</b> viram o FBzinho &nbsp; <b>Shift</b> corre.</li>
+        <li>Chegue perto de um prédio <b>liberado</b> e aperte <b>E</b> para entrar.</li>
+        <li>Acerte pelo menos <b>70%</b> do quiz para liberar o próximo prédio.</li>
+        <li>Espalhados pelo mapa há <b>Easter eggs</b> (objetos que brilham e giram) com curiosidades sobre advocacia, tribunais e o CPC. Encoste neles para colecionar.</li>
+        <li>Concluiu todos os prédios? Ganha o <b>Diploma de Integração</b> (imprimível / PDF).</li>
+        <li>Seu progresso fica salvo na sua conta — pare e volte quando quiser.</li>
       </ul>
     </div>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -353,333 +211,217 @@
   "use strict";
 
   /* ============================================================
-     CONTEÚDO DA TRILHA  —  RASCUNHO, PRONTO PARA EDIÇÃO
-     ------------------------------------------------------------
-     Cada fase tem:
-       id     : identificador curto e estável. NÃO renomear depois
-                que alguém já tiver progresso salvo (o progresso é
-                gravado por id de fase).
-       emoji  : ícone da fase (aparece na bandeirinha da parada)
-       cor    : cor da casinha da parada no mapa
-       titulo : nome completo da fase
-       curto  : rótulo curto que aparece embaixo da parada no mapa
-       resumo : uma linha (usada em telas de apoio)
-       licao  : blocos de conteúdo que o FBzinho fala, na ordem:
-                  {h:'Subtítulo'}
-                  {p:'Fala normal.'}
-                  {ul:['item 1','item 2']}
-                  {callout:'Dica / atenção.'}
-       quiz   : perguntas. Cada uma:
-                  {q:'Pergunta?', opcoes:['A','B','C'], correta:1,
-                   explica:'Por que a resposta certa é essa.'}
-     Passa de fase quem acerta >= 70% (PASS_RATIO) do quiz.
-     Texto entre [colchetes] = dado do escritório a confirmar.
-     Adicionar fases novas no fim é seguro. Remover/renomear id, não.
+     CONTEÚDO DA TRILHA — RASCUNHO, PRONTO PARA EDIÇÃO
+     Cada fase: id (estável, não renomear), emoji, cor, titulo, curto,
+     resumo, licao [{h}|{p}|{ul}|{callout}], quiz [{q,opcoes,correta,explica}].
+     Passa quem acerta >= 70%. Texto entre [colchetes] = confirmar.
      ============================================================ */
-
   var CONTEUDO = [
-    {
-      id:'boas-vindas', emoji:'👋', cor:'#f4a259', titulo:'Boas-vindas ao escritório', curto:'Boas-vindas',
-      resumo:'Quem somos, o que fazemos e como esta trilha funciona.',
+    { id:'boas-vindas', emoji:'👋', cor:'#f4a259', titulo:'Boas-vindas ao escritório', curto:'Recepção',
+      resumo:'Quem somos e como a trilha funciona.',
       licao:[
-        {p:'Oi! Eu sou o FBzinho e vou te acompanhar nessa jornada de integração. Seja muito bem-vindo(a) à Fonseca e Braga Advocacia!'},
-        {p:'Esta trilha existe para que, ao terminá-la, você já conheça o essencial sobre o escritório e sobre o nosso Portal interno — e possa começar a colaborar com segurança.'},
+        {p:'Oi! Eu sou o FBzinho, advogado e seu guia de integração. Seja muito bem-vindo(a) à Fonseca e Braga Advocacia!'},
+        {p:'Ande comigo pelo mapa e visite cada prédio. Em cada um eu te ensino um assunto e depois faço um quiz.'},
         {h:'Como a trilha funciona'},
         {ul:[
-          'São várias paradas no mapa, em sequência. Em cada uma eu te ensino um assunto e depois faço um quiz.',
-          'Você precisa acertar pelo menos 70% do quiz para liberar a próxima parada.',
-          'Pode refazer um quiz quantas vezes precisar — a ideia é aprender, não decorar.',
-          'Seu progresso fica salvo na sua conta: dá para parar e voltar depois, de qualquer computador.'
+          'Cada prédio é uma parada. Aperte E na porta para entrar.',
+          'Você precisa acertar pelo menos 70% do quiz para liberar o próximo prédio.',
+          'Pode refazer um quiz quantas vezes precisar.',
+          'Seu progresso fica salvo na sua conta: pare e volte de qualquer computador.',
+          'Procure os Easter eggs espalhados pelo mapa — curiosidades sobre advocacia, tribunais e o CPC.'
         ]},
         {h:'O escritório em uma frase'},
-        {p:'A Fonseca e Braga atua em [áreas principais: cível, condominial, trabalhista, família, consumidor — confirmar] com foco em [diferencial do escritório — confirmar]. A sede fica em [endereço — confirmar] e o horário de funcionamento é [horário — confirmar].'},
-        {callout:'Dúvida em qualquer parada? Fale com o seu gestor ou com o responsável pela sua área. Ninguém precisa aprender tudo sozinho.'}
+        {p:'A Fonseca e Braga atua em [áreas principais — confirmar] com foco em [diferencial — confirmar]. A sede fica em [endereço — confirmar] e o horário é [horário — confirmar].'},
+        {callout:'Dúvida em qualquer parada? Fale com o seu gestor. Ninguém aprende tudo sozinho.'}
       ],
       quiz:[
-        {q:'O que você precisa fazer para liberar a próxima parada?', opcoes:['Assistir a um vídeo até o fim','Acertar pelo menos 70% do quiz da parada','Pedir liberação ao gestor','Esperar 24 horas'], correta:1, explica:'Cada parada libera a seguinte quando você acerta 70% ou mais do quiz. Pode refazer à vontade.'},
-        {q:'Seu progresso na trilha…', opcoes:['Fica só neste computador','É salvo na sua conta e acompanha você em qualquer máquina','Some quando você fecha a aba','Só o gestor consegue ver'], correta:1, explica:'O progresso é gravado na sua conta do Portal, então você pode continuar de onde parou em qualquer lugar.'}
-      ]
-    },
+        {q:'Como você libera o próximo prédio da trilha?', opcoes:['Assistindo a um vídeo','Acertando pelo menos 70% do quiz','Pedindo ao gestor','Esperando 24 horas'], correta:1, explica:'Cada parada libera a seguinte quando você acerta 70% ou mais. Pode refazer à vontade.'},
+        {q:'Seu progresso na trilha…', opcoes:['Fica só neste computador','É salvo na sua conta e acompanha você','Some ao fechar a aba','Só o gestor vê'], correta:1, explica:'O progresso é gravado na sua conta do Portal.'}
+      ] },
 
-    {
-      id:'valores-postura', emoji:'⚖️', cor:'#57a773', titulo:'Valores e postura profissional', curto:'Valores',
-      resumo:'Como nos comportamos com clientes, colegas e informação.',
+    { id:'valores-postura', emoji:'⚖️', cor:'#57a773', titulo:'Valores e postura profissional', curto:'Ética',
+      resumo:'Como agimos com clientes, colegas e informação.',
       licao:[
         {h:'Nossos valores'},
-        {ul:[
-          'Sigilo: tudo que envolve cliente é confidencial — dentro e fora do escritório.',
-          'Prazo é compromisso: um prazo perdido pode custar o direito do cliente.',
-          'Comunicação clara: o cliente precisa entender o que está acontecendo no caso dele.',
-          'Respeito entre colegas: pergunte, ajude, revise o trabalho do outro sem constrangimento.'
-        ]},
+        {ul:['Sigilo: tudo que envolve cliente é confidencial, dentro e fora do escritório.','Prazo é compromisso: um prazo perdido pode custar o direito do cliente.','Comunicação clara: o cliente precisa entender o caso dele.','Respeito entre colegas: pergunte, ajude, revise sem constrangimento.']},
         {h:'Postura no dia a dia'},
-        {ul:[
-          'Não comente casos, nomes ou valores de clientes em lugar público (elevador, redes sociais, grupos externos).',
-          'E-mails e mensagens em nome do escritório têm tom profissional e são revisados antes de enviar.',
-          'Documentos de cliente não saem do escritório nem vão para dispositivos pessoais sem autorização.',
-          'Dúvida sobre ética ou conflito de interesse: leve ao gestor antes de agir.'
-        ]},
-        {callout:'O Código de Ética da OAB proíbe prometer resultado ao cliente. A gente explica caminhos e riscos — nunca garante ganho de causa.'}
+        {ul:['Não comente casos, nomes ou valores de clientes em lugar público.','E-mails e mensagens em nome do escritório: tom profissional, revisados antes de enviar.','Documentos de cliente não vão para dispositivos pessoais sem autorização.','Dúvida sobre ética ou conflito de interesse: leve ao gestor antes de agir.']},
+        {callout:'O Código de Ética da OAB proíbe prometer resultado ao cliente. Explicamos caminhos e riscos — nunca garantimos ganho de causa.'}
       ],
       quiz:[
-        {q:'Um amigo pergunta num churrasco sobre um caso conhecido que o escritório conduz. O que você faz?', opcoes:['Conto os detalhes, já saiu na imprensa mesmo','Não comento — informação de cliente é sigilosa','Conto só o valor da causa','Peço para ele não espalhar e conto'], correta:1, explica:'Sigilo profissional vale em qualquer lugar. Mesmo informação "que já saiu na imprensa" não deve ser confirmada ou comentada por você.'},
-        {q:'O cliente pede uma garantia de que vai ganhar a ação. Resposta correta:', opcoes:['Garantir para não perder o cliente','Explicar os caminhos possíveis e os riscos, sem prometer resultado','Dizer que ganha com certeza se pagar mais','Encaminhar direto para o sócio'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB. Nós gerenciamos expectativa com honestidade.'},
-        {q:'Sobre documentos de clientes:', opcoes:['Podem ir para o meu e-mail pessoal se for mais prático','Ficam nos sistemas do escritório; não vão para dispositivos pessoais sem autorização','Posso levar para casa para adiantar','Podem ser enviados por qualquer app'], correta:1, explica:'Documentos de cliente ficam nos sistemas oficiais do escritório. Tirar cópia para dispositivo pessoal só com autorização.'}
-      ]
-    },
+        {q:'Num churrasco, um amigo pergunta sobre um caso conhecido do escritório. Você:', opcoes:['Conta, já saiu na imprensa','Não comenta — informação de cliente é sigilosa','Conta só o valor da causa','Pede segredo e conta'], correta:1, explica:'Sigilo profissional vale em qualquer lugar, mesmo sobre o que "já saiu na imprensa".'},
+        {q:'O cliente pede garantia de vitória. Resposta correta:', opcoes:['Garantir para não perder o cliente','Explicar caminhos e riscos, sem prometer resultado','Garantir se pagar mais','Encaminhar ao sócio'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB.'},
+        {q:'Documentos de clientes:', opcoes:['Podem ir para o e-mail pessoal se for prático','Ficam nos sistemas do escritório; nada de dispositivo pessoal sem autorização','Posso levar para casa','Podem ir por qualquer app'], correta:1, explica:'Documentos de cliente ficam nos sistemas oficiais.'}
+      ] },
 
-    {
-      id:'setores', emoji:'🏛️', cor:'#8367c7', titulo:'Setores e organograma', curto:'Setores',
-      resumo:'Como o escritório se divide e quem procurar em cada área.',
+    { id:'setores', emoji:'🏛️', cor:'#8367c7', titulo:'Setores e organograma', curto:'Setores',
+      resumo:'Como o escritório se divide e quem procurar.',
       licao:[
-        {p:'O escritório se organiza por departamentos. Você encontra o quadro completo — com foto, cargo e departamento de cada colega — na aba Organograma do Portal.'},
-        {h:'Departamentos (confirmar a lista real na aba Organograma)'},
-        {ul:[
-          'Cível — ações de cobrança, contratos, indenizações, revisões.',
-          'Condominial — assessoria a condomínios, notificações, relatórios mensais.',
-          'Trabalhista — reclamações e defesas.',
-          'Família — divórcios, guarda, alimentos, inventários.',
-          'Consumidor — Procon e ações contra práticas abusivas.',
-          'Administrativo / Financeiro — apoio, compras, patrimônio, contas.'
-        ]},
+        {p:'O escritório se organiza por departamentos. O quadro completo — com foto, cargo e departamento de cada colega — está na aba Organograma do Portal.'},
+        {h:'Departamentos (confirmar na aba Organograma)'},
+        {ul:['Cível — cobrança, contratos, indenizações, revisões.','Condominial — assessoria a condomínios, notificações, relatórios.','Trabalhista — reclamações e defesas.','Família — divórcios, guarda, alimentos, inventários.','Consumidor — Procon e ações contra práticas abusivas.','Administrativo / Financeiro — apoio, compras, patrimônio, contas.']},
         {h:'Como usar o Organograma'},
-        {ul:[
-          'Abra a aba Organograma para ver em qual departamento cada pessoa está.',
-          'Precisa falar com uma área e não sabe com quem? Comece pelo gestor daquele departamento.',
-          'Seu próprio cadastro (departamento, data de ingresso) também aparece lá.'
-        ]},
-        {callout:'Ainda não sabe em que departamento você está? Confirme com quem te integrou — isso define quais abas do Portal você recebe.'}
+        {ul:['Veja em qual departamento cada pessoa está.','Precisa falar com uma área e não sabe com quem? Comece pelo gestor do departamento.','Seu próprio cadastro também aparece lá.']},
+        {callout:'Não sabe seu departamento? Confirme com quem te integrou — isso define quais abas do Portal você recebe.'}
       ],
       quiz:[
-        {q:'Onde você vê o departamento de cada colega?', opcoes:['Na aba Organograma','No grupo de WhatsApp','Só perguntando na recepção','Na aba Notícias'], correta:0, explica:'A aba Organograma mostra o quadro de colaboradores por departamento, com foto e cargo.'},
-        {q:'Você precisa resolver algo com o setor Condominial e não conhece ninguém lá. Melhor caminho:', opcoes:['Mandar e-mail para todos do escritório','Procurar o gestor do departamento Condominial','Esperar alguém falar com você','Abrir um chamado externo'], correta:1, explica:'O gestor do departamento é o ponto de entrada quando você não sabe exatamente com quem falar.'}
-      ]
-    },
+        {q:'Onde você vê o departamento de cada colega?', opcoes:['Na aba Organograma','No grupo de WhatsApp','Na recepção','Na aba Notícias'], correta:0, explica:'A aba Organograma mostra o quadro por departamento.'},
+        {q:'Precisa resolver algo com o setor Condominial e não conhece ninguém lá:', opcoes:['E-mail para todo o escritório','Procurar o gestor do departamento Condominial','Esperar alguém falar com você','Abrir chamado externo'], correta:1, explica:'O gestor do departamento é o ponto de entrada.'}
+      ] },
 
-    {
-      id:'portal-abas', emoji:'🧭', cor:'#4d9de0', titulo:'O Portal por dentro', curto:'O Portal',
-      resumo:'As abas e ferramentas que você vai usar todo dia.',
+    { id:'portal-abas', emoji:'🧭', cor:'#4d9de0', titulo:'O Portal por dentro', curto:'Portal',
+      resumo:'As abas e ferramentas do dia a dia.',
       licao:[
-        {p:'O Portal Fonseca e Braga (portal.fonsecaebraga.com.br) reúne as ferramentas internas do escritório em abas. Você só enxerga as abas que o administrador liberou para o seu perfil.'},
-        {h:'Ferramentas que costumam estar disponíveis'},
-        {ul:[
-          'Treinamentos — onde esta trilha, o Manual, os POPs, vídeos e documentos ficam.',
-          'POPs — Procedimentos Operacionais Padrão: o passo a passo de cada tarefa recorrente.',
-          'Organograma — quadro de colaboradores por departamento.',
-          'Chat — comunicação interna entre colegas.',
-          'Minhas Anotações — suas tarefas e lembretes pessoais.',
-          'Condomínios — base de assessoria condominial (POPs, clientes, SLA, notificações).',
-          'Gestão — Colaboradores, Patrimônio e Controle de Compras.',
-          'Documentos / Contratos — geração de documentos padronizados.',
-          'Aniversariantes, Notícias, Números do Escritório, Sugestões.'
-        ]},
-        {h:'Regras de ouro do Portal'},
-        {ul:[
-          'Se falta uma aba que você deveria ter, peça ao administrador — acesso é liberado por pessoa.',
-          'O tema (claro/escuro) fica no menu do canto; a sua escolha vale em todas as ferramentas.',
-          'O ícone ao lado da engrenagem mostra quais sistemas externos já foram liberados para você.'
-        ]},
-        {callout:'Antes de perguntar "como faço X?", procure um POP de X. O POP é a resposta oficial e atualizada.'}
+        {p:'O Portal (portal.fonsecaebraga.com.br) reúne as ferramentas internas em abas. Você só vê as abas que o administrador liberou para o seu perfil.'},
+        {h:'Ferramentas comuns'},
+        {ul:['Treinamentos — esta trilha, o Manual, os POPs, vídeos e documentos.','POPs — o passo a passo de cada tarefa recorrente.','Organograma — colaboradores por departamento.','Chat — comunicação interna.','Minhas Anotações — suas tarefas e lembretes.','Condomínios — base da assessoria condominial.','Gestão — Colaboradores, Patrimônio, Controle de Compras.','Documentos / Contratos — geração de documentos padronizados.']},
+        {h:'Regras de ouro'},
+        {ul:['Falta uma aba que deveria ter? Peça ao administrador — acesso é por pessoa.','O tema claro/escuro fica no menu do canto e vale em todas as ferramentas.','O ícone ao lado da engrenagem mostra os sistemas externos já liberados para você.']},
+        {callout:'Antes de perguntar "como faço X?", procure o POP de X. É a resposta oficial e atualizada.'}
       ],
       quiz:[
-        {q:'Você acha que deveria ter acesso a uma aba, mas ela não aparece. O que fazer?', opcoes:['Criar outra conta','Pedir ao administrador para liberar a aba no seu perfil','Usar a conta de um colega','Desistir da tarefa'], correta:1, explica:'As abas são liberadas por pessoa pelo administrador. É só pedir a liberação.'},
-        {q:'Qual a primeira coisa a consultar quando não sabe como executar uma tarefa recorrente?', opcoes:['O POP correspondente','O Google','Um colega qualquer','A aba Notícias'], correta:0, explica:'O POP (Procedimento Operacional Padrão) é a instrução oficial e mantida atualizada para cada tarefa.'},
-        {q:'A sua escolha de tema claro/escuro no Portal…', opcoes:['Vale só na aba aberta','Vale em todas as ferramentas do Portal','Precisa ser refeita toda vez','Só o admin muda'], correta:1, explica:'O tema é sincronizado: escolheu uma vez, vale em todo o Portal e nas ferramentas embutidas.'}
-      ]
-    },
+        {q:'Você deveria ter uma aba, mas ela não aparece. O que faz?', opcoes:['Cria outra conta','Pede ao administrador para liberar no seu perfil','Usa a conta de um colega','Desiste'], correta:1, explica:'As abas são liberadas por pessoa pelo administrador.'},
+        {q:'Primeira coisa a consultar para uma tarefa recorrente:', opcoes:['O POP correspondente','O Google','Um colega qualquer','A aba Notícias'], correta:0, explica:'O POP é a instrução oficial e atualizada.'},
+        {q:'Sua escolha de tema claro/escuro:', opcoes:['Vale só na aba aberta','Vale em todo o Portal','Refaz toda vez','Só o admin muda'], correta:1, explica:'O tema é sincronizado em todo o Portal.'}
+      ] },
 
-    {
-      id:'sistemas-externos', emoji:'🔐', cor:'#e15554', titulo:'Sistemas externos do escritório', curto:'Sistemas',
-      resumo:'ASTREA, Google, Digisac, ZapSign, token e 2FA dos tribunais.',
+    { id:'sistemas-externos', emoji:'🔐', cor:'#e15554', titulo:'Sistemas externos do escritório', curto:'Sistemas',
+      resumo:'ASTREA, Google, Digisac, ZapSign, token e 2FA.',
       licao:[
-        {p:'Além do Portal, o escritório usa sistemas de terceiros. O ícone ao lado da engrenagem, no Portal, mostra quais já foram liberados para você. Se algum que você precisa está como não liberado, peça ao administrador.'},
+        {p:'Além do Portal, o escritório usa sistemas de terceiros. O ícone ao lado da engrenagem mostra quais já foram liberados para você. Falta algum? Peça ao administrador.'},
         {h:'Os sistemas'},
-        {ul:[
-          'ASTREA — controle jurídico: cadastro de pessoas, clientes, processos e casos. É o sistema central do trabalho jurídico.',
-          'Google Drive — documentos e pastas dos clientes.',
-          'Google Agenda — compromissos e prazos do escritório.',
-          'Sistema Google (Workspace) — e-mail, Docs, Sheets.',
-          'Digisac — atendimento aos clientes por WhatsApp.',
-          'ZapSign — assinatura digital de documentos.',
-          'Token — token instalado no computador para acessar os sistemas dos tribunais.',
-          'Authenticator — autenticação em dois fatores (2FA) nos sistemas dos tribunais.'
-        ]},
-        {callout:'Nunca compartilhe sua senha, seu token ou seus códigos do Authenticator com ninguém — nem com colegas. Cada acesso é pessoal e rastreável.'}
+        {ul:['ASTREA — controle jurídico: pessoas, clientes, processos e casos. É o sistema central do trabalho jurídico.','Google Drive — documentos e pastas dos clientes.','Google Agenda — compromissos e prazos.','Sistema Google (Workspace) — e-mail, Docs, Sheets.','Digisac — atendimento aos clientes por WhatsApp.','ZapSign — assinatura digital de documentos.','Token — token no computador para os sistemas dos tribunais.','Authenticator — 2FA nos sistemas dos tribunais.']},
+        {callout:'Nunca compartilhe senha, token ou códigos do Authenticator — nem com colegas. Cada acesso é pessoal e rastreável.'}
       ],
       quiz:[
-        {q:'Qual sistema é o controle jurídico central (pessoas, clientes, processos e casos)?', opcoes:['Digisac','ASTREA','ZapSign','Google Agenda'], correta:1, explica:'O ASTREA concentra o cadastro de pessoas, clientes, processos e casos do escritório.'},
-        {q:'Para atender clientes por WhatsApp, o escritório usa:', opcoes:['O WhatsApp pessoal do colaborador','Digisac','ZapSign','Google Chat'], correta:1, explica:'O Digisac é a plataforma oficial de comunicação com clientes via WhatsApp — não se usa o número pessoal.'},
-        {q:'Um colega pede seu código do Authenticator para "adiantar um peticionamento". Você:', opcoes:['Passa, é da equipe','Não passa — acessos são pessoais e rastreáveis','Passa só uma vez','Passa se o gestor autorizar por mensagem'], correta:1, explica:'Códigos de 2FA, token e senhas são individuais e intransferíveis. Cada um usa o próprio acesso.'},
-        {q:'Você vê que precisa do ZapSign mas ele aparece como não liberado no Portal. O certo é:', opcoes:['Usar a conta de outra pessoa','Pedir a liberação ao administrador','Assinar os documentos à mão e digitalizar','Instalar outro app de assinatura'], correta:1, explica:'O painel de sistemas externos é informativo. A liberação de fato é feita pelo administrador, a pedido.'}
-      ]
-    },
+        {q:'Sistema jurídico central (pessoas, clientes, processos e casos):', opcoes:['Digisac','ASTREA','ZapSign','Google Agenda'], correta:1, explica:'O ASTREA concentra o cadastro jurídico do escritório.'},
+        {q:'Para atender clientes por WhatsApp usa-se:', opcoes:['O WhatsApp pessoal','Digisac','ZapSign','Google Chat'], correta:1, explica:'Digisac é a plataforma oficial — nunca o número pessoal.'},
+        {q:'Um colega pede seu código do Authenticator para adiantar um peticionamento:', opcoes:['Passo, é da equipe','Não passo — acesso é pessoal e rastreável','Passo só uma vez','Passo se o gestor autorizar'], correta:1, explica:'2FA, token e senha são individuais e intransferíveis.'},
+        {q:'Você precisa do ZapSign, mas aparece como não liberado:', opcoes:['Uso a conta de outra pessoa','Peço a liberação ao administrador','Assino à mão e digitalizo','Instalo outro app'], correta:1, explica:'O painel é informativo; a liberação é feita pelo administrador.'}
+      ] },
 
-    {
-      id:'clientes-comunicacao', emoji:'💬', cor:'#e8709b', titulo:'Atendimento e comunicação com o cliente', curto:'Cliente',
-      resumo:'Como e quando falar com o cliente, e por qual canal.',
+    { id:'clientes-comunicacao', emoji:'💬', cor:'#e8709b', titulo:'Atendimento e comunicação com o cliente', curto:'Clientes',
+      resumo:'Como, quando e por qual canal falar com o cliente.',
       licao:[
         {h:'Canais'},
-        {ul:[
-          'WhatsApp do cliente: sempre pelo Digisac, nunca pelo número pessoal.',
-          'E-mail: para envio de documentos e confirmações formais.',
-          'Ligação / reunião: para decisões importantes e notícias sensíveis (ex.: decisão desfavorável).'
-        ]},
+        {ul:['WhatsApp do cliente: sempre pelo Digisac, nunca o número pessoal.','E-mail: envio de documentos e confirmações formais.','Ligação / reunião: decisões importantes e notícias sensíveis.']},
         {h:'Boas práticas'},
-        {ul:[
-          'Responda ou dê um retorno em até [prazo interno — confirmar, ex.: 1 dia útil], mesmo que seja "estou verificando".',
-          'Traduza o juridiquês: o cliente precisa entender o próximo passo e o prazo.',
-          'Registre no ASTREA/caso o que foi combinado com o cliente.',
-          'Notícia ruim não se dá por mensagem seca — combine uma ligação e contextualize.'
-        ]},
-        {callout:'Cliente ansioso é normal, especialmente perto de audiência ou decisão. Um retorno curto e honesto vale mais que silêncio.'}
+        {ul:['Dê um retorno em até [prazo interno — confirmar], mesmo que seja "estou verificando".','Traduza o juridiquês: o cliente precisa entender o próximo passo e o prazo.','Registre no ASTREA/caso o que foi combinado.','Notícia ruim não se dá por mensagem seca — combine uma ligação.']},
+        {callout:'Cliente ansioso perto de audiência ou decisão é normal. Um retorno curto e honesto vale mais que silêncio.'}
       ],
       quiz:[
-        {q:'Qual o canal certo para falar com o cliente no WhatsApp?', opcoes:['Meu número pessoal','O Digisac','Um grupo com outros clientes','SMS'], correta:1, explica:'Toda conversa de WhatsApp com cliente passa pelo Digisac — fica registrada e não expõe o número pessoal do colaborador.'},
-        {q:'Saiu uma decisão desfavorável no caso. Como comunicar ao cliente?', opcoes:['Mensagem curta avisando que perdeu','Combinar uma ligação e explicar o cenário e os próximos passos','Esperar o cliente perguntar','Só registrar no sistema'], correta:1, explica:'Notícia sensível pede contato por voz, com contexto e próximos passos — não uma mensagem seca.'},
-        {q:'Você ainda não tem a resposta que o cliente pediu. O melhor é:', opcoes:['Não responder até ter tudo','Dar um retorno dizendo que está verificando e quando responderá','Responder qualquer coisa','Encaminhar para outro colega sem avisar'], correta:1, explica:'Um retorno rápido de "estou verificando, te respondo até X" evita a sensação de abandono.'}
-      ]
-    },
+        {q:'Canal certo para WhatsApp com cliente:', opcoes:['Meu número pessoal','O Digisac','Grupo com vários clientes','SMS'], correta:1, explica:'Toda conversa passa pelo Digisac — registrada e sem expor seu número.'},
+        {q:'Saiu decisão desfavorável. Como comunicar?', opcoes:['Mensagem curta avisando que perdeu','Ligação explicando cenário e próximos passos','Esperar o cliente perguntar','Só registrar no sistema'], correta:1, explica:'Notícia sensível pede contato por voz, com contexto.'},
+        {q:'Ainda não tem a resposta que o cliente pediu:', opcoes:['Não responder até ter tudo','Retornar dizendo que está verificando e quando responde','Responder qualquer coisa','Repassar sem avisar'], correta:1, explica:'Um retorno rápido evita a sensação de abandono.'}
+      ] },
 
-    {
-      id:'condominial', emoji:'🏢', cor:'#3bceac', titulo:'Rotina condominial e prazos (SLA)', curto:'Condomínios',
-      resumo:'Se você vai atuar com condomínios: prazos e ferramentas.',
+    { id:'condominial', emoji:'🏢', cor:'#3bceac', titulo:'Rotina condominial e prazos (SLA)', curto:'Condomínios',
+      resumo:'Prazos e ferramentas da assessoria condominial.',
       licao:[
-        {p:'Se o seu trabalho envolve a assessoria condominial, a aba Condomínios do Portal é a sua base: POPs específicos, lista de clientes (condomínios), guia do ASTREA, gerador de notificações e relatórios mensais.'},
+        {p:'Se o seu trabalho envolve condomínios, a aba Condomínios é a base: POPs, lista de clientes, guia do ASTREA, gerador de notificações e relatórios mensais.'},
         {h:'Prazos que não se perde'},
-        {ul:[
-          'Notificação de Infração de Regimento Interno: [3 dias úteis — confirmar na aba Condomínios].',
-          'Notificação Extrajudicial: [7 dias úteis — confirmar].',
-          'Análise Contratual / Parecer Técnico: [7 dias úteis — confirmar].',
-          'Relatório Mensal Geral: [7 dias corridos — confirmar].'
-        ]},
-        {p:'A ferramenta traz a tabela de SLA detalhada por tipo de tarefa e por volume. Sempre confira nela — este resumo pode estar desatualizado.'},
+        {ul:['Notificação de Infração de RI: [3 dias úteis — confirmar].','Notificação Extrajudicial: [7 dias úteis — confirmar].','Análise Contratual / Parecer Técnico: [7 dias úteis — confirmar].','Relatório Mensal Geral: [7 dias corridos — confirmar].']},
+        {p:'A ferramenta traz a tabela de SLA detalhada por tipo e por volume. Sempre confira nela.'},
         {h:'Notificações'},
-        {ul:[
-          'A notificação é gerada na ferramenta e passa por aprovação antes de sair.',
-          'Só o autor da notificação pode corrigir e reenviar se ela for rejeitada.',
-          'A lista de notificações enviadas fica visível para toda a equipe da aba.'
-        ]},
-        {callout:'Não decore os prazos daqui. A fonte oficial é a tabela de SLA dentro da aba Condomínios, que é mantida atualizada.'}
+        {ul:['A notificação é gerada na ferramenta e passa por aprovação antes de sair.','Só o autor pode corrigir e reenviar se for rejeitada.','A lista de notificações enviadas é visível para toda a equipe da aba.']},
+        {callout:'Não decore prazos daqui. A fonte oficial é a tabela de SLA dentro da aba Condomínios.'}
       ],
       quiz:[
-        {q:'Qual a fonte oficial dos prazos (SLA) da área condominial?', opcoes:['Este resumo da trilha','A tabela de SLA dentro da aba Condomínios','O grupo de WhatsApp','A memória do colega mais antigo'], correta:1, explica:'O resumo da trilha é só orientação. A tabela na aba Condomínios é a versão mantida e atualizada.'},
-        {q:'Uma notificação que você gerou foi rejeitada na aprovação. Quem pode corrigir e reenviar?', opcoes:['Qualquer pessoa da equipe','Somente você, que é o autor','Só o administrador','Ninguém — tem que gerar outra do zero'], correta:1, explica:'Apenas o autor original consegue corrigir e reenviar uma notificação rejeitada.'},
-        {q:'Onde ficam a lista de condomínios clientes e o gerador de notificações?', opcoes:['Na aba Condomínios','Na aba Organograma','Na aba Contratos','No ASTREA apenas'], correta:0, explica:'A aba Condomínios concentra POPs, clientes, guia do ASTREA, notificações e relatórios da área.'}
-      ]
-    },
+        {q:'Fonte oficial dos prazos (SLA) da área condominial:', opcoes:['Este resumo da trilha','A tabela de SLA na aba Condomínios','O grupo de WhatsApp','O colega mais antigo'], correta:1, explica:'A tabela na aba Condomínios é a versão mantida e atualizada.'},
+        {q:'Sua notificação foi rejeitada na aprovação. Quem corrige e reenvia?', opcoes:['Qualquer pessoa da equipe','Somente você, o autor','Só o administrador','Ninguém — gera outra do zero'], correta:1, explica:'Apenas o autor original consegue corrigir e reenviar.'},
+        {q:'Onde ficam a lista de condomínios e o gerador de notificações?', opcoes:['Na aba Condomínios','Na aba Organograma','Na aba Contratos','Só no ASTREA'], correta:0, explica:'A aba Condomínios concentra tudo da área.'}
+      ] },
 
-    {
-      id:'seguranca-lgpd', emoji:'🛡️', cor:'#f6ae2d', titulo:'Segurança da informação e LGPD', curto:'Segurança',
+    { id:'seguranca-lgpd', emoji:'🛡️', cor:'#f6ae2d', titulo:'Segurança da informação e LGPD', curto:'Segurança',
       resumo:'Dados de cliente, senhas, backup e vazamento.',
       licao:[
         {h:'LGPD em uma frase'},
-        {p:'A Lei Geral de Proteção de Dados (Lei 13.709/2018) trata dados pessoais como algo que a gente guarda em confiança. Todo dado de cliente — nome, CPF, processo, valores — é dado protegido.'},
+        {p:'A LGPD (Lei 13.709/2018) trata dado pessoal como algo guardado em confiança. Nome, CPF, processo, valores de cliente: tudo é dado protegido.'},
         {h:'O que você faz'},
-        {ul:[
-          'Usa senha forte e única nos sistemas do escritório; ativa 2FA onde houver.',
-          'Não guarda documento de cliente em pen drive, e-mail pessoal ou nuvem particular.',
-          'Bloqueia a tela ao sair da mesa.',
-          'Confere o destinatário antes de enviar e-mail com anexo de cliente.',
-          'Só compartilha dados de cliente com quem precisa deles para o trabalho.'
-        ]},
+        {ul:['Senha forte e única nos sistemas; ativa 2FA onde houver.','Não guarda documento de cliente em pen drive, e-mail pessoal ou nuvem particular.','Bloqueia a tela ao sair da mesa.','Confere o destinatário antes de enviar e-mail com anexo de cliente.','Só compartilha dado de cliente com quem precisa para o trabalho.']},
         {h:'Backup'},
-        {p:'O escritório segue a regra 3-2-1 para os arquivos: 3 cópias, em 2 tipos de mídia, sendo 1 fora do local. Você não precisa operar isso, mas precisa salvar o trabalho nos locais oficiais — o que fica só na sua máquina não entra no backup.'},
-        {callout:'Suspeita de vazamento (e-mail errado, notebook perdido, acesso estranho)? Avise o gestor imediatamente. A LGPD dá prazo curto para comunicar incidentes — a rapidez importa.'}
+        {p:'O escritório segue a regra 3-2-1: 3 cópias, 2 tipos de mídia, 1 fora do local. Você só precisa salvar o trabalho nos locais oficiais — o que fica só na sua máquina não entra no backup.'},
+        {callout:'Suspeita de vazamento (e-mail errado, notebook perdido, acesso estranho)? Avise o gestor na hora. A LGPD dá prazo curto para comunicar incidentes.'}
       ],
       quiz:[
-        {q:'Onde NÃO pode ficar um documento de cliente?', opcoes:['Nos sistemas oficiais do escritório','No seu pen drive pessoal','Na pasta do cliente no Drive do escritório','No ASTREA'], correta:1, explica:'Mídia e contas pessoais estão fora do controle do escritório e do backup. Documentos de cliente ficam só nos sistemas oficiais.'},
-        {q:'Você percebe que enviou um anexo com dados de um cliente para o e-mail errado. O que fazer primeiro?', opcoes:['Nada, foi engano','Avisar o gestor imediatamente','Apagar o e-mail da sua caixa e seguir','Esperar para ver se dá problema'], correta:1, explica:'Isso é um possível incidente de dados. A LGPD exige comunicação rápida — avisar o gestor na hora é o passo certo.'},
-        {q:'A regra 3-2-1 de backup significa:', opcoes:['3 senhas, 2 usuários, 1 admin','3 cópias, em 2 tipos de mídia, 1 delas fora do local','3 dias, 2 responsáveis, 1 relatório','Nada específico'], correta:1, explica:'3 cópias / 2 mídias / 1 off-site. É o padrão que protege contra perda, roubo e ransomware.'},
-        {q:'O trabalho que fica salvo só no disco do seu computador…', opcoes:['Está protegido pelo backup do escritório','NÃO entra no backup — precisa ir para os locais oficiais','É copiado automaticamente para o Drive','É mais seguro assim'], correta:1, explica:'O backup cobre os sistemas oficiais. Arquivo local solto não é copiado — salve nos locais corretos.'}
-      ]
-    },
+        {q:'Onde NÃO pode ficar documento de cliente?', opcoes:['Nos sistemas oficiais','No seu pen drive pessoal','Na pasta do cliente no Drive do escritório','No ASTREA'], correta:1, explica:'Mídia e contas pessoais estão fora do controle e do backup.'},
+        {q:'Você enviou anexo com dados de cliente para o e-mail errado. Primeiro:', opcoes:['Nada, foi engano','Avisar o gestor imediatamente','Apagar o e-mail e seguir','Esperar para ver'], correta:1, explica:'É um possível incidente de dados — a LGPD exige comunicação rápida.'},
+        {q:'A regra 3-2-1 de backup:', opcoes:['3 senhas, 2 usuários, 1 admin','3 cópias, 2 mídias, 1 fora do local','3 dias, 2 responsáveis, 1 relatório','Nada específico'], correta:1, explica:'3 cópias / 2 mídias / 1 off-site — protege contra perda, roubo e ransomware.'},
+        {q:'Trabalho salvo só no disco do seu computador:', opcoes:['Está no backup','NÃO entra no backup — precisa ir para os locais oficiais','Vai sozinho para o Drive','É mais seguro'], correta:1, explica:'O backup cobre os sistemas oficiais, não arquivo local solto.'}
+      ] },
 
-    {
-      id:'prazos-processos', emoji:'📅', cor:'#5c9ead', titulo:'Prazos processuais e publicações', curto:'Prazos',
-      resumo:'Como o escritório acompanha intimações e não perde prazo.',
+    { id:'prazos-processos', emoji:'📅', cor:'#5c9ead', titulo:'Prazos processuais e publicações', curto:'Prazos',
+      resumo:'Como o escritório não perde prazo.',
       licao:[
         {p:'O maior risco do trabalho jurídico é perder um prazo. O escritório acompanha as publicações oficiais e distribui os prazos para os responsáveis.'},
         {h:'Como funciona'},
-        {ul:[
-          'As publicações do Diário de Justiça Eletrônico Nacional (DJEN) são monitoradas [diariamente — confirmar a rotina].',
-          'Cada intimação vira um prazo com data fatal, calculado em dias úteis (regra do CPC).',
-          'Prazos têm régua de lembrete (por exemplo D-7, D-3, D-1) antes do vencimento.',
-          'Se um prazo cai para você, confirme o recebimento e registre no controle.'
-        ]},
+        {ul:['As publicações do DJEN (Diário de Justiça Eletrônico Nacional) são monitoradas [rotina — confirmar].','Cada intimação vira um prazo com data fatal, contado em dias úteis (CPC art. 219).','Prazos têm régua de lembrete (D-7, D-3, D-1) antes do vencimento.','Prazo que cai para você: confirme o recebimento e registre no controle.']},
         {h:'Sua responsabilidade'},
-        {ul:[
-          'Nunca deixe um prazo "para depois" sem registrar.',
-          'Ficou em dúvida sobre a contagem (feriado forense, recesso, prazo em dobro)? Pergunte antes, não no último dia.',
-          'Vai se ausentar? Combine cobertura dos seus prazos com antecedência.'
-        ]},
+        {ul:['Nunca deixe um prazo "para depois" sem registrar.','Dúvida na contagem (feriado forense, recesso, prazo em dobro)? Pergunte antes, não no último dia.','Vai se ausentar? Combine a cobertura dos seus prazos com antecedência.']},
         {callout:'Recesso forense (20/12 a 20/01) e feriados do tribunal suspendem prazos. Na dúvida, confirme a data fatal com quem controla a agenda.'}
       ],
       quiz:[
-        {q:'Como os prazos processuais são contados, em regra, no CPC atual?', opcoes:['Em dias corridos','Em dias úteis','Em semanas','Depende do juiz'], correta:1, explica:'Desde o CPC de 2015, o prazo processual conta-se em dias úteis (art. 219).'},
-        {q:'Um prazo foi atribuído a você. Primeira atitude:', opcoes:['Deixar para a semana que vem','Confirmar o recebimento e registrar no controle com a data fatal','Assumir que alguém vai lembrar','Resolver só se sobrar tempo'], correta:1, explica:'Prazo recebido é prazo confirmado e registrado na hora, com data fatal clara.'},
-        {q:'Você vai tirar férias e tem prazos no período. O certo é:', opcoes:['Não avisar, você volta a tempo','Combinar a cobertura dos prazos com antecedência','Levar o notebook e trabalhar de férias','Adiar as férias sempre'], correta:1, explica:'Ausências se planejam: a cobertura dos prazos precisa estar combinada antes de você sair.'}
-      ]
-    },
+        {q:'Como se contam os prazos processuais, em regra, no CPC atual?', opcoes:['Dias corridos','Dias úteis','Semanas','Depende do juiz'], correta:1, explica:'CPC art. 219: prazo processual conta-se em dias úteis.'},
+        {q:'Um prazo foi atribuído a você. Primeira atitude:', opcoes:['Deixar para a semana que vem','Confirmar o recebimento e registrar com a data fatal','Assumir que alguém lembra','Só se sobrar tempo'], correta:1, explica:'Prazo recebido é prazo confirmado e registrado na hora.'},
+        {q:'Você vai tirar férias e tem prazos no período:', opcoes:['Não avisar, volta a tempo','Combinar a cobertura dos prazos com antecedência','Levar o notebook','Adiar as férias'], correta:1, explica:'A cobertura dos prazos precisa estar combinada antes de você sair.'}
+      ] },
 
-    {
-      id:'prova-final', emoji:'🏅', cor:'#d8b25a', titulo:'Prova de Integração', curto:'Prova final',
+    { id:'prova-final', emoji:'🏅', cor:'#d8b25a', titulo:'Prova de Integração', curto:'Prova final',
       resumo:'Revisão geral. Passe aqui e receba o diploma.',
       licao:[
-        {p:'Chegamos à última parada! As perguntas misturam tudo que você viu na trilha.'},
+        {p:'Chegamos ao último prédio! As perguntas misturam tudo que você viu na trilha.'},
         {p:'Ao acertar 70% ou mais, sua integração é concluída e o diploma fica disponível no topo da tela.'},
-        {p:'Se não passar de primeira, tudo bem: a gente revisa as paradas anteriores e volta aqui. O objetivo é você começar seguro(a).'},
+        {p:'Não passou de primeira? A gente revisa e volta. O objetivo é você começar seguro(a).'},
         {callout:'Depois de concluir, seu gestor consegue ver que você finalizou a trilha no painel de progresso.'}
       ],
       quiz:[
-        {q:'Informação de cliente pode ser comentada fora do escritório se já saiu na imprensa?', opcoes:['Pode','Não pode — o sigilo vale sempre','Só o valor da causa','Depende do cliente'], correta:1, explica:'Sigilo profissional não tem exceção "de bar". Não se confirma nem se comenta.'},
-        {q:'WhatsApp com cliente é sempre por:', opcoes:['Número pessoal','Digisac','Grupo geral','Telegram'], correta:1, explica:'Digisac: registrado, oficial, sem expor número pessoal.'},
-        {q:'Qual é o sistema jurídico central do escritório?', opcoes:['ZapSign','ASTREA','Google Agenda','Portal'], correta:1, explica:'O ASTREA concentra pessoas, clientes, processos e casos.'},
-        {q:'Prazo processual, em regra, conta-se em:', opcoes:['Dias corridos','Dias úteis','Meses','Horas'], correta:1, explica:'Dias úteis, conforme o CPC.'},
-        {q:'Documento de cliente pode ser salvo no seu e-mail pessoal?', opcoes:['Sim, se for prático','Não — só nos sistemas oficiais do escritório','Sim, com cópia para o gestor','Só PDFs'], correta:1, explica:'Contas e mídias pessoais estão fora do controle e do backup do escritório.'},
-        {q:'Você deveria ter uma aba no Portal que não aparece. O que faz?', opcoes:['Cria outra conta','Pede ao administrador para liberar','Usa a conta de um colega','Desiste'], correta:1, explica:'Acesso é concedido por pessoa pelo administrador.'},
-        {q:'Qual a fonte oficial de "como fazer" uma tarefa recorrente?', opcoes:['O POP correspondente','Um colega','O Google','A aba Notícias'], correta:0, explica:'O POP é o procedimento oficial e atualizado.'},
-        {q:'Suspeita de vazamento de dados. Você:', opcoes:['Espera para ver','Avisa o gestor imediatamente','Apaga o rastro','Resolve sozinho'], correta:1, explica:'Incidente de dados exige comunicação rápida — a LGPD dá prazo curto.'},
-        {q:'Um colega pede seu código do Authenticator. Você:', opcoes:['Passa, é da equipe','Não passa — acesso é pessoal e rastreável','Passa uma vez só','Passa se ele pedir por escrito'], correta:1, explica:'Token, senha e 2FA são individuais e intransferíveis.'},
-        {q:'O cliente quer garantia de vitória. Você:', opcoes:['Garante','Explica caminhos e riscos sem prometer resultado','Garante se ele pagar mais','Ignora a pergunta'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB.'}
-      ]
-    }
+        {q:'Informação de cliente pode ser comentada fora do escritório se saiu na imprensa?', opcoes:['Pode','Não — o sigilo vale sempre','Só o valor da causa','Depende do cliente'], correta:1, explica:'Sigilo profissional não tem exceção.'},
+        {q:'WhatsApp com cliente é sempre por:', opcoes:['Número pessoal','Digisac','Grupo geral','Telegram'], correta:1, explica:'Digisac: oficial e registrado.'},
+        {q:'Sistema jurídico central do escritório:', opcoes:['ZapSign','ASTREA','Google Agenda','Portal'], correta:1, explica:'ASTREA concentra pessoas, clientes, processos e casos.'},
+        {q:'Prazo processual, em regra, conta-se em:', opcoes:['Dias corridos','Dias úteis','Meses','Horas'], correta:1, explica:'Dias úteis (CPC art. 219).'},
+        {q:'Documento de cliente pode ser salvo no seu e-mail pessoal?', opcoes:['Sim, se for prático','Não — só nos sistemas oficiais','Sim, com cópia ao gestor','Só PDFs'], correta:1, explica:'Contas pessoais estão fora do controle e do backup.'},
+        {q:'Você deveria ter uma aba no Portal que não aparece:', opcoes:['Cria outra conta','Pede ao administrador para liberar','Usa a conta de um colega','Desiste'], correta:1, explica:'Acesso é concedido por pessoa pelo administrador.'},
+        {q:'Fonte oficial de "como fazer" uma tarefa recorrente:', opcoes:['O POP correspondente','Um colega','O Google','A aba Notícias'], correta:0, explica:'O POP é o procedimento oficial.'},
+        {q:'Suspeita de vazamento de dados. Você:', opcoes:['Espera para ver','Avisa o gestor imediatamente','Apaga o rastro','Resolve sozinho'], correta:1, explica:'Incidente de dados exige comunicação rápida.'},
+        {q:'Um colega pede seu código do Authenticator:', opcoes:['Passo, é da equipe','Não passo — acesso é pessoal e rastreável','Passo uma vez só','Passo se pedir por escrito'], correta:1, explica:'Token, senha e 2FA são individuais.'},
+        {q:'O cliente quer garantia de vitória:', opcoes:['Garanto','Explico caminhos e riscos, sem prometer resultado','Garanto se pagar mais','Ignoro'], correta:1, explica:'Prometer resultado é vedado pelo Código de Ética da OAB.'}
+      ] }
   ];
-
   var PASS_RATIO = 0.7;
-  var CONFETE_CORES = ['#e15554','#f4a259','#f6ae2d','#57a773','#4d9de0','#8367c7','#e8709b','#d8b25a'];
 
   /* ============================================================
-     FIREBASE
+     EASTER EGGS — advocacia / tribunais / CPC
+     Encoste no objeto (que brilha e gira) para colecionar.
+     kind: forma 3D. cor: cor base. x,z: posição no mapa.
      ============================================================ */
-  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
-    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
-    return;
-  }
-  firebase.initializeApp(firebaseConfig);
-  var auth = firebase.auth();
-  var db = firebase.firestore();
+  var EASTER_EGGS = [
+    { id:'balanca',    kind:'balanca',  cor:'#e7b84f', x:-9,  z:11,  titulo:'A balança da Justiça', texto:'A balança pesa os argumentos; a espada é a força da lei; a venda nos olhos é a imparcialidade — julgar sem olhar quem está à frente.' },
+    { id:'cpc219',     kind:'livro',    cor:'#3b7dd8', x:14,  z:-4,  titulo:'CPC art. 219', texto:'Os prazos processuais contam-se somente em dias úteis. Foi uma das maiores mudanças do CPC de 2015.' },
+    { id:'cpc300',     kind:'livro',    cor:'#c0392b', x:-16, z:-10, titulo:'CPC art. 300 — Tutela de urgência', texto:'A tutela de urgência exige, ao mesmo tempo, probabilidade do direito e perigo de dano ou risco ao resultado útil do processo.' },
+    { id:'stf',        kind:'coluna',   cor:'#d7d2c8', x:22,  z:14,  titulo:'STF', texto:'Supremo Tribunal Federal: guardião da Constituição, 11 ministros. Sua súmula vinculante (CF art. 103-A) obriga todos os juízes e a Administração Pública.' },
+    { id:'stj',        kind:'coluna',   cor:'#cdd6e0', x:-22, z:16,  titulo:'STJ', texto:'Superior Tribunal de Justiça, o "Tribunal da Cidadania": uniformiza a interpretação da lei federal. Julga recursos repetitivos (CPC art. 1.036).' },
+    { id:'toga',       kind:'toga',     cor:'#2b2b30', x:4,   z:-16, titulo:'A toga preta', texto:'A cor preta e sóbria lembra que, no tribunal, o que vale é o argumento, não a pessoa. O advogado usa toga nas sustentações orais.' },
+    { id:'prescricao', kind:'ampulheta',cor:'#8e7cc3', x:-10, z:20,  titulo:'Prescrição x decadência', texto:'A prescrição atinge a pretensão (o direito de exigir) e pode ser interrompida. A decadência atinge o próprio direito e, em regra, não se interrompe.' },
+    { id:'oab',        kind:'selo',     cor:'#b8362e', x:10,  z:10,  titulo:'Estatuto da OAB', texto:'Lei 8.906/94: a advocacia é função essencial à administração da Justiça; o advogado é indispensável a ela (CF art. 133) e inviolável por seus atos e manifestações no exercício da profissão.' },
+    { id:'inicial',    kind:'pergaminho',cor:'#e6d3a3',x:18,  z:2,   titulo:'CPC art. 319 — Petição inicial', texto:'A inicial precisa indicar: o juízo, as partes, os fatos e os fundamentos jurídicos, o pedido com suas especificações, o valor da causa, as provas e a opção por audiência de conciliação.' },
+    { id:'coisajulgada',kind:'carimbo', cor:'#7f8c8d', x:-4,  z:-22, titulo:'CPC art. 502 — Coisa julgada', texto:'É a autoridade que torna imutável a decisão de mérito não mais sujeita a recurso. Segurança jurídica: o que foi decidido, decidido está.' },
+    { id:'forum',      kind:'placa',    cor:'#2e7d5b', x:26,  z:-8,  titulo:'Fórum x Tribunal', texto:'O Fórum é o prédio da 1ª instância (juiz de direito). O Tribunal de Justiça (TJ) é a 2ª instância, onde os desembargadores julgam os recursos.' },
+    { id:'juri',       kind:'cadeira',  cor:'#8d6e63', x:-26, z:2,   titulo:'Tribunal do Júri', texto:'Competência para os crimes dolosos contra a vida (CF art. 5º, XXXVIII). O Conselho de Sentença é formado por 7 jurados sorteados, que decidem em sigilo.' },
+    { id:'cafezinho',  kind:'caneca',   cor:'#6d4c41', x:2,   z:12,  titulo:'Sabedoria forense', texto:'"Audiência sem cafezinho é causa de nulidade material." — jurisprudência de corredor, pacífica e não recorrível. (Essa não cai na prova.)' },
+    { id:'precatorio', kind:'livro',    cor:'#16a085', x:-14, z:-2,  titulo:'Precatório (CF art. 100)', texto:'É a ordem de pagamento de dívida da Fazenda Pública reconhecida por decisão judicial transitada em julgado. Segue ordem cronológica de apresentação.' }
+  ];
 
-  var SVGNS = 'http://www.w3.org/2000/svg';
+  var CONFETE_CORES = ['#e15554','#f4a259','#f6ae2d','#57a773','#4d9de0','#8367c7','#e8709b','#d8b25a'];
+
+  /* ============================================================ */
   var $ = function(id){ return document.getElementById(id); };
-  function el(tag, attrs, parent){
-    var e = document.createElementNS(SVGNS, tag);
-    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e);
-    return e;
-  }
-  function escapeHtml(s){
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 
   var els = {
-    gate:$('gate'), app:$('app'),
-    hudPips:$('hud-pips'), hudLabel:$('hud-label'), hudPts:$('hud-pts'),
+    gate:$('gate'), mobileGate:$('mobile-gate'), erro3d:$('erro3d'), erro3dMsg:$('erro3d-msg'), app:$('app'), c3d:$('c3d'),
+    hudPips:$('hud-pips'), hudPts:$('hud-pts'), hudEgg:$('hud-egg'),
     btnHelp:$('btn-help'), btnAdmin:$('btn-admin'), btnCert:$('btn-cert'),
-    mapaWrap:$('mapa-wrap'), mapa:$('mapa'),
-    camHills:$('camada-hills'), camEstrada:$('camada-estrada'), camDecor:$('camada-decor'),
-    camEstacoes:$('camada-estacoes'), fb:$('fb'),
+    prompt:$('prompt'), eggToast:$('egg-toast'), etTit:$('et-tit'), etTxt:$('et-txt'),
     dlg:$('dlg'), dlgFace:$('dlg-face'), dlgTag:$('dlg-tag'), dlgBody:$('dlg-body'),
     dlgChoices:$('dlg-choices'), dlgFoot:$('dlg-foot'), dlgClose:$('dlg-close'),
     confete:$('confete'),
@@ -687,236 +429,492 @@
     modalHelp:$('modal-help'), helpX:$('help-x')
   };
 
-  var meuUid = null, meuNome = '', souAdmin = false, souGestor = false;
-  var progRef = null;
-  var prog = { concluidas:{}, pontosTotais:0, concluidoEm:null, nome:'' };
+  if (!window.firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY"){
+    els.gate.querySelector('p').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+
+  var meuUid=null, meuNome='', souAdmin=false, souGestor=false, progRef=null;
+  var prog = { concluidas:{}, pontosTotais:0, concluidoEm:null, nome:'', easterEggs:[] };
 
   var totalFases = CONTEUDO.length;
   var pontosPossiveis = CONTEUDO.reduce(function(a,f){ return a + f.quiz.length; }, 0);
-
   function faseConcluida(id){ return !!prog.concluidas[id]; }
-  function indiceFaseAtual(){
-    for (var i=0;i<CONTEUDO.length;i++) if(!faseConcluida(CONTEUDO[i].id)) return i;
-    return CONTEUDO.length;
-  }
-  function faseDesbloqueada(idx){
-    if (idx <= 0) return true;
-    return faseConcluida(CONTEUDO[idx-1].id);
-  }
+  function indiceFaseAtual(){ for (var i=0;i<CONTEUDO.length;i++) if(!faseConcluida(CONTEUDO[i].id)) return i; return CONTEUDO.length; }
+  function faseDesbloqueada(idx){ return idx<=0 || faseConcluida(CONTEUDO[idx-1].id); }
+  function eggColetado(id){ return prog.easterEggs.indexOf(id) !== -1; }
 
   /* ============================================================
-     MAPA — geometria
+     MUNDO 3D
      ============================================================ */
-  var VBW = 900, topY = 140, gapY = 128, leftX = 200, rightX = 700;
-  var VBH = topY + (totalFases - 1) * gapY + 180;
-  els.mapa.setAttribute('viewBox', '0 0 ' + VBW + ' ' + VBH);
+  var THREEOK = (typeof THREE !== 'undefined');
+  var scene, camera, renderer, clock, raf=null;
+  var fb, fbParts, mundo;
+  var landmarks = [], eggs = [];
+  var RING_R = 30, MAP_LIMIT = 46;
+  var keys = {};
+  var pausado = false;
+  var promptAlvo = null;
+  var eggToastTimer = null;
 
-  var pts = CONTEUDO.map(function(_, i){
-    return { x: (i % 2 === 0 ? leftX : rightX), y: topY + i * gapY };
-  });
+  function mat(cor, extra){
+    var o = { color: cor };
+    if (extra) for (var k in extra) o[k] = extra[k];
+    return new THREE.MeshLambertMaterial(o);
+  }
+  function meshBox(w,h,d,cor,extra){ var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat(cor,extra)); m.castShadow=true; m.receiveShadow=true; return m; }
+  function meshCyl(rt,rb,h,cor,seg){ var m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||16), mat(cor)); m.castShadow=true; return m; }
+  function meshCone(r,h,cor,seg){ var m=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg||16), mat(cor)); m.castShadow=true; return m; }
+  function meshSphere(r,cor,seg){ var m=new THREE.Mesh(new THREE.SphereGeometry(r,seg||18,seg||14), mat(cor)); m.castShadow=true; return m; }
 
-  function splinePath(p){
-    if (p.length < 2) return '';
-    var d = 'M ' + p[0].x + ' ' + p[0].y;
-    for (var i=0;i<p.length-1;i++){
-      var p0 = p[i-1] || p[i], p1 = p[i], p2 = p[i+1], p3 = p[i+2] || p2;
-      var c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
-      var c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
-      d += ' C ' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) + ' ' + p2.x + ' ' + p2.y;
-    }
-    return d;
+  function rrect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function spriteLabel(text, opts){
+    opts = opts || {};
+    var fs = opts.fs || 46, padX = 26, padY = 16;
+    var cv = document.createElement('canvas'); var ctx = cv.getContext('2d');
+    var font = '800 ' + fs + 'px "Segoe UI", system-ui, sans-serif';
+    ctx.font = font; var w = ctx.measureText(text).width;
+    cv.width = Math.ceil(w + padX*2); cv.height = Math.ceil(fs + padY*2);
+    ctx = cv.getContext('2d'); ctx.font = font;
+    ctx.fillStyle = opts.bg || 'rgba(45,24,16,0.86)';
+    rrect(ctx, 0, 0, cv.width, cv.height, 22); ctx.fill();
+    if (opts.borda){ ctx.strokeStyle = opts.borda; ctx.lineWidth = 6; rrect(ctx,3,3,cv.width-6,cv.height-6,19); ctx.stroke(); }
+    ctx.fillStyle = opts.color || '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, cv.width/2, cv.height/2 + 2);
+    var tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false, depthTest: opts.depthTest !== false }));
+    var h = opts.h || 1.5;
+    sp.scale.set(h * cv.width/cv.height, h, 1);
+    sp.userData.cv = cv; sp.userData.tex = tex;
+    return sp;
   }
 
-  var estradaBase, estradaTop, knotLen = [];
+  function construirFB(){
+    var g = new THREE.Group();
+    var pele = '#f0c9a0', terno = '#2f2440', togaCor = '#1c1720', cabelo = '#3a2b24';
 
-  function montarEstrada(){
-    var d = splinePath(pts);
-    estradaBase = el('path', { d:d, fill:'none', stroke:'#caa46a', 'stroke-width':30, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, els.camEstrada);
-    estradaTop = el('path', { d:d, fill:'none', stroke:'#f0dcb0', 'stroke-width':18, 'stroke-linecap':'round', 'stroke-linejoin':'round', 'stroke-dasharray':'2 22' }, els.camEstrada);
-    // comprimento de arco de cada parada
-    var L = estradaBase.getTotalLength();
-    var passo = 3;
-    pts.forEach(function(pt){
-      var best = 0, bd = Infinity;
-      for (var l=0; l<=L; l+=passo){
-        var q = estradaBase.getPointAtLength(l);
-        var dd = (q.x-pt.x)*(q.x-pt.x) + (q.y-pt.y)*(q.y-pt.y);
-        if (dd < bd){ bd = dd; best = l; }
+    var pernaL = new THREE.Group(), pernaR = new THREE.Group();
+    var plMesh = meshBox(0.42, 1.15, 0.42, terno); plMesh.position.y = -0.575; pernaL.add(plMesh);
+    var prMesh = meshBox(0.42, 1.15, 0.42, terno); prMesh.position.y = -0.575; pernaR.add(prMesh);
+    pernaL.position.set(-0.28, 1.15, 0); pernaR.position.set(0.28, 1.15, 0);
+    var sapatoL = meshBox(0.46, 0.24, 0.62, '#20161a'); sapatoL.position.set(0, -1.15, 0.08); pernaL.add(sapatoL);
+    var sapatoR = meshBox(0.46, 0.24, 0.62, '#20161a'); sapatoR.position.set(0, -1.15, 0.08); pernaR.add(sapatoR);
+    g.add(pernaL); g.add(pernaR);
+
+    var tronco = meshBox(1.15, 1.5, 0.7, terno); tronco.position.y = 2.0; g.add(tronco);
+    var camisa = meshBox(0.42, 1.2, 0.2, '#f7f4ee'); camisa.position.set(0, 2.05, 0.36); g.add(camisa);
+    // bandas brancas de advogado
+    var bandaL = meshBox(0.12, 0.42, 0.06, '#ffffff'); bandaL.position.set(-0.1, 2.42, 0.42); g.add(bandaL);
+    var bandaR = meshBox(0.12, 0.42, 0.06, '#ffffff'); bandaR.position.set(0.1, 2.42, 0.42); g.add(bandaR);
+    var gravata = meshBox(0.16, 0.8, 0.06, '#b8362e'); gravata.position.set(0, 1.95, 0.4); g.add(gravata);
+
+    // toga / beca por trás
+    var toga = meshBox(1.5, 2.2, 0.22, togaCor); toga.position.set(0, 1.7, -0.42); toga.rotation.x = 0.06; g.add(toga);
+    var togaOmbro = meshBox(1.55, 0.4, 0.5, togaCor); togaOmbro.position.set(0, 2.6, -0.05); g.add(togaOmbro);
+    var trilhaOuro = meshBox(0.12, 2.0, 0.06, '#e7b84f'); trilhaOuro.position.set(-0.5, 1.7, -0.53); g.add(trilhaOuro);
+    var trilhaOuro2 = trilhaOuro.clone(); trilhaOuro2.position.x = 0.5; g.add(trilhaOuro2);
+
+    var bracoL = new THREE.Group(), bracoR = new THREE.Group();
+    var blMesh = meshBox(0.34, 1.25, 0.34, terno); blMesh.position.y = -0.6; bracoL.add(blMesh);
+    var brMesh = meshBox(0.34, 1.25, 0.34, terno); brMesh.position.y = -0.6; bracoR.add(brMesh);
+    var maoL = meshSphere(0.2, pele); maoL.position.y = -1.28; bracoL.add(maoL);
+    var maoR = meshSphere(0.2, pele); maoR.position.y = -1.28; bracoR.add(maoR);
+    bracoL.position.set(-0.78, 2.55, 0); bracoR.position.set(0.78, 2.55, 0);
+    g.add(bracoL); g.add(bracoR);
+
+    // maleta de advogado na mão direita
+    var maleta = new THREE.Group();
+    var mBody = meshBox(0.9, 0.62, 0.28, '#5a3a22'); maleta.add(mBody);
+    var mAlca = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, 16), mat('#3a2413')); mAlca.position.y = 0.4; mAlca.rotation.x = Math.PI/2; maleta.add(mAlca);
+    var mFecho = meshBox(0.9, 0.08, 0.3, '#c99a34'); maleta.add(mFecho);
+    maleta.position.set(0, -1.5, 0.1); bracoR.add(maleta);
+
+    var pescoco = meshCyl(0.18, 0.18, 0.3, pele, 10); pescoco.position.y = 2.9; g.add(pescoco);
+    var cabeca = meshSphere(0.52, pele); cabeca.position.y = 3.42; g.add(cabeca);
+    var cab = new THREE.Mesh(new THREE.SphereGeometry(0.54, 18, 12, 0, Math.PI*2, 0, Math.PI*0.62), mat(cabelo));
+    cab.position.y = 3.46; g.add(cab);
+    var olhoL = meshSphere(0.07, '#20161a', 8); olhoL.position.set(-0.18, 3.46, 0.46); g.add(olhoL);
+    var olhoR = meshSphere(0.07, '#20161a', 8); olhoR.position.set(0.18, 3.46, 0.46); g.add(olhoR);
+    var oculosL = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 8, 16), mat('#20161a')); oculosL.position.set(-0.18, 3.46, 0.48); g.add(oculosL);
+    var oculosR = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 8, 16), mat('#20161a')); oculosR.position.set(0.18, 3.46, 0.48); g.add(oculosR);
+    var sorriso = meshBox(0.24, 0.05, 0.05, '#8a3b32'); sorriso.position.set(0, 3.24, 0.48); g.add(sorriso);
+
+    var sombra = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), new THREE.MeshBasicMaterial({ color:0x1a0f0a, transparent:true, opacity:0.22 }));
+    sombra.rotation.x = -Math.PI/2; sombra.position.y = 0.02; g.add(sombra);
+
+    g.traverse(function(o){ if (o.isMesh) o.castShadow = true; });
+    return { group:g, pernaL:pernaL, pernaR:pernaR, bracoL:bracoL, bracoR:bracoR, sombra:sombra };
+  }
+
+  function construirLandmark(fase, idx, ang){
+    var g = new THREE.Group();
+    var x = Math.cos(ang) * RING_R, z = Math.sin(ang) * RING_R;
+    g.position.set(x, 0, z);
+    g.lookAt(0, 0, 0);
+
+    var base = meshBox(6, 4.6, 5, fase.cor); base.position.y = 2.3; g.add(base);
+    var telhado = meshCone(4.6, 2.6, '#8a4b3a', 4); telhado.position.y = 5.9; telhado.rotation.y = Math.PI/4; g.add(telhado);
+    var porta = meshBox(1.7, 2.6, 0.3, '#4a2f1e'); porta.position.set(0, 1.3, 2.55); g.add(porta);
+    var degrau = meshBox(3, 0.4, 1.2, '#d9c7a6'); degrau.position.set(0, 0.2, 3.1); g.add(degrau);
+    var janL = meshBox(1, 1, 0.2, '#bfe3ff'); janL.position.set(-1.9, 2.6, 2.55); g.add(janL);
+    var janR = janL.clone(); janR.position.x = 1.9; g.add(janR);
+
+    // placa com número acima da porta
+    var placaNum = spriteLabel('#' + (idx+1), { fs:52, h:1.1, bg:'rgba(255,255,255,0.95)', color:'#4a2b12', borda:fase.cor });
+    placaNum.position.set(0, 3.4, 2.7); g.add(placaNum);
+
+    // billboard: emoji + título curto
+    var billboard = spriteLabel(fase.emoji + '  ' + (fase.curto || fase.titulo), { fs:44, h:1.7, borda:'#e7b84f' });
+    billboard.position.set(0, 7.6, 0); g.add(billboard);
+
+    // anel no chão (fase atual)
+    var anel = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.4, 40), new THREE.MeshBasicMaterial({ color:0xe7b84f, transparent:true, opacity:0.0, side:THREE.DoubleSide }));
+    anel.rotation.x = -Math.PI/2; anel.position.y = 0.05; g.add(anel);
+
+    // selos de estado
+    var selo = spriteLabel('🔒', { fs:52, h:1.2, bg:'rgba(0,0,0,0)', color:'#fff' });
+    selo.position.set(0, 5.2, 2.9); g.add(selo);
+
+    mundo.add(g);
+    return { group:g, fase:fase, idx:idx, base:base, anel:anel, selo:selo, billboard:billboard, pos:new THREE.Vector3(x,0,z) };
+  }
+
+  function construirEggProp(kind, cor){
+    var g = new THREE.Group();
+    if (kind === 'livro'){
+      var b = meshBox(0.9, 1.2, 0.28, cor); b.position.y = 0.6; g.add(b);
+      var p = meshBox(0.8, 1.0, 0.3, '#f7f2e4'); p.position.set(0.06, 0.6, 0); g.add(p);
+    } else if (kind === 'coluna'){
+      var c = meshCyl(0.4, 0.46, 2.6, cor, 14); c.position.y = 1.3; g.add(c);
+      var capT = meshBox(1.1, 0.28, 1.1, cor); capT.position.y = 2.7; g.add(capT);
+      var capB = meshBox(1.1, 0.3, 1.1, cor); capB.position.y = 0.15; g.add(capB);
+    } else if (kind === 'balanca'){
+      var post = meshCyl(0.1, 0.12, 2.4, '#8a5a1e', 10); post.position.y = 1.2; g.add(post);
+      var beam = meshBox(2.2, 0.12, 0.12, cor); beam.position.y = 2.3; g.add(beam);
+      [-1, 1].forEach(function(s){
+        var str = meshCyl(0.02, 0.02, 0.7, '#555', 6); str.position.set(s*0.95, 1.95, 0); g.add(str);
+        var pan = meshCyl(0.35, 0.3, 0.12, cor, 14); pan.position.set(s*0.95, 1.6, 0); g.add(pan);
+      });
+    } else if (kind === 'martelo'){
+      var hd = meshCyl(0.32, 0.32, 0.9, cor, 12); hd.rotation.z = Math.PI/2; hd.position.y = 1.4; g.add(hd);
+      var hn = meshCyl(0.11, 0.11, 1.3, '#8a5a1e', 10); hn.position.set(0, 0.75, 0); g.add(hn);
+    } else if (kind === 'ampulheta'){
+      var top = meshCone(0.5, 0.9, cor, 14); top.position.y = 1.55; g.add(top);
+      var bot = meshCone(0.5, 0.9, cor, 14); bot.rotation.x = Math.PI; bot.position.y = 0.75; g.add(bot);
+      var f1 = meshBox(1.2, 0.14, 1.2, '#8a5a1e'); f1.position.y = 0.1; g.add(f1);
+      var f2 = meshBox(1.2, 0.14, 1.2, '#8a5a1e'); f2.position.y = 2.2; g.add(f2);
+    } else if (kind === 'caneca'){
+      var mug = meshCyl(0.42, 0.38, 0.9, cor, 16); mug.position.y = 0.8; g.add(mug);
+      var hnd = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.07, 8, 14), mat(cor)); hnd.position.set(0.5, 0.8, 0); hnd.rotation.y = Math.PI/2; g.add(hnd);
+      var caf = meshCyl(0.34, 0.34, 0.06, '#3a2413', 16); caf.position.y = 1.2; g.add(caf);
+    } else if (kind === 'pergaminho'){
+      var roll = meshCyl(0.28, 0.28, 1.6, '#efe3c2', 14); roll.rotation.z = Math.PI/2; roll.position.y = 1.0; g.add(roll);
+      var e1 = meshCyl(0.16, 0.16, 1.8, cor, 12); e1.rotation.z = Math.PI/2; e1.position.y = 1.0; g.add(e1);
+    } else if (kind === 'toga'){
+      var rob = meshBox(1.1, 1.8, 0.5, cor); rob.position.y = 1.0; g.add(rob);
+      var col = meshBox(1.3, 0.4, 0.6, '#e7b84f'); col.position.y = 1.9; g.add(col);
+      var hg = meshBox(0.28, 1.7, 0.55, '#e7b84f'); hg.position.set(0, 1.0, 0.02); g.add(hg);
+    } else if (kind === 'selo'){
+      var d1 = meshCyl(0.7, 0.7, 0.24, cor, 24); d1.position.y = 0.9; g.add(d1);
+      var d2 = meshCyl(0.5, 0.5, 0.3, '#e7b84f', 24); d2.position.y = 1.0; g.add(d2);
+      var pin = meshCyl(0.12, 0.12, 1.2, '#8a5a1e', 8); pin.position.y = 0.4; g.add(pin);
+    } else if (kind === 'carimbo'){
+      var kn = meshCyl(0.3, 0.3, 0.7, cor, 12); kn.position.y = 1.5; g.add(kn);
+      var mid = meshCyl(0.18, 0.18, 0.5, '#5a5a5a', 10); mid.position.y = 1.0; g.add(mid);
+      var pad = meshBox(0.9, 0.5, 0.9, cor); pad.position.y = 0.45; g.add(pad);
+    } else if (kind === 'placa'){
+      var pl = meshBox(1.8, 1.0, 0.16, cor); pl.position.y = 1.9; g.add(pl);
+      var ps = meshCyl(0.1, 0.1, 2.0, '#8a5a1e', 8); ps.position.y = 1.0; g.add(ps);
+    } else if (kind === 'cadeira'){
+      var seat = meshBox(1.0, 0.24, 1.0, cor); seat.position.y = 1.0; g.add(seat);
+      var bk = meshBox(1.0, 1.2, 0.2, cor); bk.position.set(0, 1.7, -0.4); g.add(bk);
+      [[-0.4,-0.4],[0.4,-0.4],[-0.4,0.4],[0.4,0.4]].forEach(function(p){
+        var lg = meshBox(0.16, 1.0, 0.16, '#5a3a22'); lg.position.set(p[0], 0.5, p[1]); g.add(lg);
+      });
+    } else {
+      var box = meshBox(1, 1, 1, cor); box.position.y = 0.6; g.add(box);
+    }
+    return g;
+  }
+
+  function construirEgg(def){
+    var g = new THREE.Group();
+    g.position.set(def.x, 0, def.z);
+    var prop = construirEggProp(def.kind, def.cor);
+    g.add(prop);
+    var brilho = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), new THREE.MeshBasicMaterial({ color:0xffe08a }));
+    brilho.position.y = 3.4; g.add(brilho);
+    var q = spriteLabel('?', { fs:60, h:0.9, bg:'rgba(0,0,0,0)', color:'#e7b84f' });
+    q.position.y = 4.4; g.add(q);
+    mundo.add(g);
+    return { group:g, def:def, prop:prop, brilho:brilho, q:q, pos:new THREE.Vector3(def.x,0,def.z) };
+  }
+
+  function construirCenario(){
+    // luzes
+    scene.add(new THREE.HemisphereLight(0xbfe3ff, 0x88aa66, 0.85));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    var sol = new THREE.DirectionalLight(0xfff2d6, 0.95);
+    sol.position.set(40, 60, 24); sol.castShadow = true;
+    sol.shadow.mapSize.set(2048, 2048);
+    sol.shadow.camera.left = -70; sol.shadow.camera.right = 70;
+    sol.shadow.camera.top = 70; sol.shadow.camera.bottom = -70;
+    sol.shadow.camera.near = 1; sol.shadow.camera.far = 200;
+    scene.add(sol);
+
+    // chão
+    var chao = new THREE.Mesh(new THREE.CircleGeometry(120, 48), new THREE.MeshLambertMaterial({ color:0x6fbf5c }));
+    chao.rotation.x = -Math.PI/2; chao.receiveShadow = true; scene.add(chao);
+
+    // anel-estrada
+    var estrada = new THREE.Mesh(new THREE.RingGeometry(RING_R-2.4, RING_R+2.4, 96), new THREE.MeshLambertMaterial({ color:0xd8c29a }));
+    estrada.rotation.x = -Math.PI/2; estrada.position.y = 0.02; estrada.receiveShadow = true; scene.add(estrada);
+
+    // praça central: "Palácio da Justiça"
+    var pal = new THREE.Group();
+    var plat = meshBox(14, 1, 14, '#e8e2d2'); plat.position.y = 0.5; pal.add(plat);
+    var plat2 = meshBox(11, 1, 11, '#efe9dc'); plat2.position.y = 1.4; pal.add(plat2);
+    for (var i=0;i<8;i++){
+      var a = i/8 * Math.PI*2;
+      var col = meshCyl(0.55, 0.6, 6.5, '#f2ede0', 16);
+      col.position.set(Math.cos(a)*4.4, 5.2, Math.sin(a)*4.4); pal.add(col);
+    }
+    var teto = meshBox(11, 1.2, 11, '#e2dbc9'); teto.position.y = 8.6; pal.add(teto);
+    var fronton = meshCone(6, 2.4, '#d8d0bc', 4); fronton.rotation.y = Math.PI/4; fronton.position.y = 10; pal.add(fronton);
+    var brasao = spriteLabel('⚖️ JUSTIÇA', { fs:40, h:1.6, borda:'#c99a34' });
+    brasao.position.y = 12.4; pal.add(brasao);
+    pal.traverse(function(o){ if (o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    scene.add(pal);
+
+    // arvores decorativas
+    for (var t=0;t<40;t++){
+      var rr = 8 + Math.random()*52;
+      var aa = Math.random()*Math.PI*2;
+      var tx = Math.cos(aa)*rr, tz = Math.sin(aa)*rr;
+      if (Math.abs(rr - RING_R) < 4) continue;
+      var tree = new THREE.Group();
+      var tr = meshCyl(0.22, 0.3, 1.6, '#7a4a22', 8); tr.position.y = 0.8; tree.add(tr);
+      var cr = meshSphere(1.1 + Math.random()*0.6, t%3===0 ? '#5aa84f' : '#4f9a48'); cr.position.y = 2.3; tree.add(cr);
+      tree.position.set(tx, 0, tz);
+      tree.traverse(function(o){ if (o.isMesh) o.castShadow = true; });
+      scene.add(tree);
+    }
+    // nuvens
+    for (var n=0;n<8;n++){
+      var cl = new THREE.Group();
+      for (var k=0;k<3;k++){ var pf = meshSphere(2 + Math.random()*1.6, '#ffffff'); pf.position.set(k*2.4 - 2.4, Math.random()*0.6, Math.random()*1.2); pf.castShadow=false; cl.add(pf); }
+      cl.position.set((Math.random()-0.5)*140, 28 + Math.random()*10, (Math.random()-0.5)*140);
+      cl.userData.drift = 0.4 + Math.random()*0.7;
+      scene.add(cl); nuvens.push(cl);
+    }
+  }
+  var nuvens = [];
+
+  function init3D(){
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9fd7f2);
+    scene.fog = new THREE.Fog(0x9fd7f2, 55, 145);
+
+    camera = new THREE.PerspectiveCamera(58, els.c3d.clientWidth / els.c3d.clientHeight, 0.1, 400);
+
+    renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(els.c3d.clientWidth, els.c3d.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    els.c3d.appendChild(renderer.domElement);
+
+    mundo = new THREE.Group(); scene.add(mundo);
+    construirCenario();
+
+    var fbObj = construirFB();
+    fb = fbObj.group; fbParts = fbObj;
+    fb.scale.set(0.85, 0.85, 0.85);
+    // nasce entre a praça central e o 1º prédio, virado para ele
+    fb.position.set(0, 0, -(RING_R - 12));
+    fb.rotation.y = Math.PI;
+    scene.add(fb);
+    camera.position.set(0, 6.2, -(RING_R - 12) + 9.5);
+
+    CONTEUDO.forEach(function(f, i){
+      var ang = (i / totalFases) * Math.PI*2 - Math.PI/2;
+      landmarks.push(construirLandmark(f, i, ang));
+    });
+    EASTER_EGGS.forEach(function(def){ eggs.push(construirEgg(def)); });
+
+    clock = new THREE.Clock();
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('keyup', onKey);
+    window.addEventListener('blur', function(){ keys = {}; });
+
+    pintarLandmarks3D();
+    atualizarEggs3D();
+    loop();
+  }
+
+  function onResize(){
+    if (!renderer) return;
+    camera.aspect = els.c3d.clientWidth / els.c3d.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(els.c3d.clientWidth, els.c3d.clientHeight);
+  }
+
+  function onKey(e){
+    var k = e.key;
+    var down = e.type === 'keydown';
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].indexOf(k) !== -1) e.preventDefault();
+    if (k === 'Shift') keys.run = down;
+    else if (k === 'ArrowUp' || k === 'w' || k === 'W') keys.fwd = down;
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') keys.back = down;
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.left = down;
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.right = down;
+    else if ((k === 'e' || k === 'E') && down && !pausado){ interagir(); }
+    else if (k === 'Escape' && down && els.dlg.classList.contains('aberto')) fecharDlg();
+  }
+
+  var camAlvo = new THREE.Vector3();
+  var _fwd = new THREE.Vector3();
+  var andando = false, walkPhase = 0;
+
+  function loop(){
+    raf = requestAnimationFrame(loop);
+    var dt = Math.min(0.05, clock.getDelta());
+
+    nuvens.forEach(function(cl){ cl.position.x += cl.userData.drift * dt; if (cl.position.x > 90) cl.position.x = -90; });
+    eggs.forEach(function(eg){
+      if (eg.coletado) return;
+      eg.brilho.rotation.y += dt * 2.2; eg.brilho.rotation.x += dt * 1.3;
+      eg.brilho.position.y = 3.4 + Math.sin(clock.elapsedTime*2 + eg.pos.x) * 0.18;
+      eg.q.position.y = 4.4 + Math.sin(clock.elapsedTime*2 + eg.pos.x) * 0.18;
+    });
+    landmarks.forEach(function(lm){
+      if (lm.ehAtual){ lm.anel.rotation.z += dt * 0.8; lm.group.position.y = Math.sin(clock.elapsedTime*2)*0.12; }
+    });
+
+    if (!pausado){
+      var v = (keys.run ? 16 : 9);
+      var turn = 2.5 * dt;
+      if (keys.left) fb.rotation.y -= turn;
+      if (keys.right) fb.rotation.y += turn;
+      _fwd.set(Math.sin(fb.rotation.y), 0, Math.cos(fb.rotation.y));
+      andando = false;
+      if (keys.fwd){ fb.position.addScaledVector(_fwd, v * dt); andando = true; }
+      if (keys.back){ fb.position.addScaledVector(_fwd, -v * 0.6 * dt); andando = true; }
+
+      // limites + colisão simples
+      var d = Math.sqrt(fb.position.x*fb.position.x + fb.position.z*fb.position.z);
+      if (d > MAP_LIMIT){ fb.position.x *= MAP_LIMIT/d; fb.position.z *= MAP_LIMIT/d; }
+      if (d < 7.6){ var s = 7.6/(d||0.001); fb.position.x *= s; fb.position.z *= s; } // praça central
+      landmarks.forEach(function(lm){
+        var dx = fb.position.x - lm.pos.x, dz = fb.position.z - lm.pos.z;
+        var dd = Math.sqrt(dx*dx + dz*dz);
+        if (dd < 3.4 && dd > 0.001){ fb.position.x = lm.pos.x + dx/dd*3.4; fb.position.z = lm.pos.z + dz/dd*3.4; }
+      });
+
+      // animação de caminhada
+      if (andando){
+        walkPhase += dt * 11;
+        var sw = Math.sin(walkPhase);
+        fbParts.pernaL.rotation.x = sw * 0.55; fbParts.pernaR.rotation.x = -sw * 0.55;
+        fbParts.bracoL.rotation.x = -sw * 0.4; fbParts.bracoR.rotation.x = sw * 0.4;
+        fb.position.y = Math.abs(Math.sin(walkPhase)) * 0.06;
+      } else {
+        ['pernaL','pernaR','bracoL','bracoR'].forEach(function(p){ fbParts[p].rotation.x *= 0.8; });
+        fb.position.y *= 0.8;
       }
-      knotLen.push(best);
-    });
-  }
 
-  function montarDecor(){
-    // colinas
-    [[140,300,180,60,'#7cc86a'],[720,430,220,70,'#6bbd59'],[200,650,240,64,'#84cf72'],
-     [700,880,210,66,'#6bbd59'],[160,1100,230,62,'#7cc86a']].forEach(function(h){
-      if (h[1] < VBH) el('ellipse', { cx:h[0], cy:h[1], rx:h[2], ry:h[3], fill:h[4], opacity:0.55 }, els.camHills);
-    });
-    // arvorezinhas ao longo do caminho
-    var L = estradaBase.getTotalLength();
-    for (var f=0.06; f<0.98; f+=0.12){
-      var base = estradaBase.getPointAtLength(L*f);
-      var lado = (Math.floor(f*100) % 2 === 0) ? -1 : 1;
-      var tx = base.x + lado * 92, ty = base.y + 8;
-      if (tx < 30 || tx > VBW-30) continue;
-      var g = el('g', { transform:'translate('+tx.toFixed(0)+','+ty.toFixed(0)+')' }, els.camDecor);
-      el('rect', { x:-4, y:-4, width:8, height:20, rx:3, fill:'#8a5a34' }, g);
-      el('circle', { cx:0, cy:-14, r:15, fill:'#4c9a4c' }, g);
-      el('circle', { cx:-9, cy:-6, r:11, fill:'#57a857' }, g);
-      el('circle', { cx:9, cy:-6, r:11, fill:'#57a857' }, g);
+      atualizarProximidade();
     }
+
+    // câmera 3ª pessoa
+    _fwd.set(Math.sin(fb.rotation.y), 0, Math.cos(fb.rotation.y));
+    camAlvo.copy(fb.position).addScaledVector(_fwd, -9.5).add(new THREE.Vector3(0, 6.2, 0));
+    camera.position.lerp(camAlvo, 1 - Math.pow(0.0016, dt));
+    camera.lookAt(fb.position.x, fb.position.y + 2.4, fb.position.z);
+
+    renderer.render(scene, camera);
   }
 
-  var estacaoNodes = [];
+  function atualizarProximidade(){
+    // prédio mais próximo
+    var alvo = null, melhor = 8;
+    landmarks.forEach(function(lm){
+      var dx = fb.position.x - lm.pos.x, dz = fb.position.z - lm.pos.z;
+      var dd = Math.sqrt(dx*dx + dz*dz);
+      if (dd < melhor){ melhor = dd; alvo = lm; }
+    });
+    if (alvo && faseDesbloqueada(alvo.idx) && !pausado){
+      promptAlvo = alvo;
+      var jaFeita = faseConcluida(alvo.fase.id);
+      els.prompt.textContent = (jaFeita ? '↩ Revisar: ' : '▶ Entrar: ') + alvo.fase.titulo + '  —  tecla E';
+      els.prompt.classList.add('on');
+    } else {
+      promptAlvo = null;
+      els.prompt.classList.remove('on');
+    }
 
-  function montarEstacoes(){
-    els.camEstacoes.innerHTML = '';
-    estacaoNodes = [];
-    CONTEUDO.forEach(function(f, i){
-      var p = pts[i];
-      var g = el('g', { class:'estacao', id:'est-'+i, transform:'translate('+p.x+','+p.y+')' }, els.camEstacoes);
-      // anel pulsante (fase atual)
-      el('circle', { class:'anel', cx:0, cy:-2, r:52, fill:f.cor, opacity:0 }, g);
-      // plataforma
-      el('ellipse', { cx:0, cy:6, rx:46, ry:14, fill:'rgba(40,20,15,0.16)' }, g);
-      // casa
-      var casa = el('g', { class:'casa' }, g);
-      el('rect', { x:-32, y:-46, width:64, height:52, rx:10, fill:f.cor, stroke:'#fff', 'stroke-width':3, filter:'url(#sombraSuave)' }, casa);
-      el('path', { d:'M -38 -44 L 0 -74 L 38 -44 Z', fill:'#fff', opacity:0.92 }, casa);
-      el('circle', { cx:0, cy:-16, r:12, fill:'rgba(255,255,255,0.85)' }, casa);
-      var num = el('text', { class:'est-num', x:0, y:-11, 'text-anchor':'middle' }, casa);
-      num.textContent = (i+1);
-      // mastro + bandeira com emoji
-      el('line', { x1:24, y1:-46, x2:24, y2:-84, stroke:'#8a5a34', 'stroke-width':3 }, casa);
-      var flag = el('g', { class:'flag-emoji-float', transform:'translate(24,-78)' }, casa);
-      var fe = el('text', { class:'flag-emoji', x:8, y:6, 'text-anchor':'start' }, flag);
-      fe.textContent = f.emoji;
-      // rótulo curto
-      var lab = el('text', { class:'est-label', x:0, y:32, 'text-anchor':'middle' }, g);
-      lab.textContent = f.curto || f.titulo;
-      // badge de estado
-      var badge = el('g', { class:'badge', transform:'translate(30,-46)' }, g);
-      el('circle', { class:'badge-bg', r:12, fill:'#fff' }, badge);
-      var mark = el('text', { class:'badge-mark', x:0, y:5, 'text-anchor':'middle', 'font-size':'14', 'font-weight':'800' }, badge);
-
-      g.addEventListener('click', function(){ cliqueEstacao(i); });
-      estacaoNodes.push({ g:g, badge:badge, mark:mark });
+    // easter eggs
+    eggs.forEach(function(eg){
+      if (eg.coletado) return;
+      var dx = fb.position.x - eg.pos.x, dz = fb.position.z - eg.pos.z;
+      if (Math.sqrt(dx*dx + dz*dz) < 2.6) coletarEgg(eg);
     });
   }
 
-  function pintarEstacoes(){
+  function interagir(){
+    if (promptAlvo) iniciarSessao(promptAlvo.idx);
+  }
+
+  function coletarEgg(eg){
+    eg.coletado = true;
+    eg.group.visible = false;
+    if (!eggColetado(eg.def.id)){
+      prog.easterEggs.push(eg.def.id);
+      salvarProgresso();
+      soltarConfete(18);
+    }
+    els.etTit.textContent = eg.def.titulo;
+    els.etTxt.textContent = eg.def.texto;
+    var n = prog.easterEggs.length;
+    $('et-tag').textContent = '🥚 Easter egg  ' + n + '/' + EASTER_EGGS.length + (n === EASTER_EGGS.length ? '  — todos!' : '');
+    els.eggToast.classList.add('on');
+    renderHud();
+    if (eggToastTimer) clearTimeout(eggToastTimer);
+    eggToastTimer = setTimeout(function(){ els.eggToast.classList.remove('on'); }, 7000);
+  }
+
+  function pintarLandmarks3D(){
     var atual = indiceFaseAtual();
-    CONTEUDO.forEach(function(f, i){
-      var feita = faseConcluida(f.id);
-      var desb = faseDesbloqueada(i);
-      var ehAtual = (i === atual);
-      var no = estacaoNodes[i];
-      no.g.classList.toggle('bloqueada', !desb);
-      no.g.classList.toggle('atual', ehAtual && !feita);
-      if (feita){ no.mark.textContent = '✓'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#e4f7dd'); no.mark.setAttribute('fill', '#3f8f36'); }
-      else if (!desb){ no.mark.textContent = '🔒'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#f0e6d2'); no.mark.setAttribute('fill', '#b9a888'); }
-      else { no.mark.textContent = '★'; no.badge.querySelector('.badge-bg').setAttribute('fill', '#fff5df'); no.mark.setAttribute('fill', '#c99a34'); }
+    landmarks.forEach(function(lm){
+      var feita = faseConcluida(lm.fase.id);
+      var desb = faseDesbloqueada(lm.idx);
+      lm.ehAtual = (lm.idx === atual) && !feita;
+      lm.base.material.emissive = new THREE.Color(lm.ehAtual ? 0x3a2f10 : 0x000000);
+      lm.base.material.color = new THREE.Color(feita ? lm.fase.cor : (desb ? lm.fase.cor : 0x8b8378));
+      lm.base.material.needsUpdate = true;
+      lm.anel.material.opacity = lm.ehAtual ? 0.55 : 0.0;
+      if (feita){ setSpriteText(lm.selo, '✅'); }
+      else if (!desb){ setSpriteText(lm.selo, '🔒'); }
+      else { setSpriteText(lm.selo, '⭐'); }
+      if (!feita && !desb) lm.group.position.y = 0;
     });
   }
-
-  /* ============================================================
-     FBZINHO — desenho + animação de caminhada
-     ============================================================ */
-  function bustoSvg(){
-    return '<svg viewBox="-26 -46 52 46" xmlns="http://www.w3.org/2000/svg">' +
-      '<path d="M-22 2 Q0 -10 22 2 L22 6 -22 6 Z" fill="#b8362e"/>' +
-      '<path d="M-6 -4 L0 6 L6 -4 Z" fill="#fff"/>' +
-      '<path d="M0 -4 l4 4 -4 14 -4 -14 z" fill="#e7b84f"/>' +
-      '<circle cx="0" cy="-20" r="17" fill="#f6cfa6"/>' +
-      '<path d="M-17 -22 Q-13 -44 0 -42 Q13 -44 17 -22 Q8 -33 0 -31 Q-8 -33 -17 -22 Z" fill="#3a2b24"/>' +
-      '<circle cx="-6" cy="-20" r="2.3" fill="#2a1c1c"/><circle cx="6" cy="-20" r="2.3" fill="#2a1c1c"/>' +
-      '<path d="M-6 -13 Q0 -8 6 -13" fill="none" stroke="#2a1c1c" stroke-width="2.2" stroke-linecap="round"/>' +
-      '<circle cx="-11" cy="-15" r="2.6" fill="#f2a3a0" opacity="0.7"/><circle cx="11" cy="-15" r="2.6" fill="#f2a3a0" opacity="0.7"/>' +
-      '</svg>';
+  function atualizarEggs3D(){
+    eggs.forEach(function(eg){
+      if (eggColetado(eg.def.id)){ eg.coletado = true; eg.group.visible = false; }
+    });
   }
-
-  function montarFBzinho(){
-    els.fb.innerHTML =
-      '<ellipse class="fb-shadow" cx="0" cy="3" rx="26" ry="7"/>' +
-      '<g class="fb-bob">' +
-        '<g class="fb-leg fb-leg-l"><rect x="-12" y="-40" width="10" height="42" rx="5"/><ellipse class="fb-shoe" cx="-7" cy="2" rx="9" ry="4.5"/></g>' +
-        '<g class="fb-leg fb-leg-r"><rect x="2" y="-40" width="10" height="42" rx="5"/><ellipse class="fb-shoe" cx="7" cy="2" rx="9" ry="4.5"/></g>' +
-        '<path class="fb-suit" d="M-19 -86 Q0 -94 19 -86 L23 -42 Q0 -34 -23 -42 Z"/>' +
-        '<path class="fb-lapela" d="M-19 -86 L0 -66 L-6 -86 Z"/>' +
-        '<path class="fb-lapela" d="M19 -86 L0 -66 L6 -86 Z"/>' +
-        '<path class="fb-shirt" d="M-5 -86 L0 -66 L5 -86 Z"/>' +
-        '<path class="fb-tie" d="M0 -82 l4 5 -4 20 -4 -20 z"/>' +
-        '<g class="fb-arm fb-arm-l"><rect x="-28" y="-84" width="9" height="38" rx="4.5"/><circle class="fb-hand" cx="-23.5" cy="-46" r="5.5"/></g>' +
-        '<g class="fb-arm fb-arm-r"><rect x="19" y="-84" width="9" height="38" rx="4.5"/><circle class="fb-hand" cx="23.5" cy="-46" r="5.5"/></g>' +
-        '<g class="fb-head">' +
-          '<circle class="fb-face" cx="0" cy="-104" r="19"/>' +
-          '<path class="fb-hair" d="M-19 -106 Q-15 -130 0 -128 Q15 -130 19 -106 Q9 -118 0 -116 Q-9 -118 -19 -106 Z"/>' +
-          '<circle class="fb-eye fb-eye-l" cx="-6.5" cy="-105" r="2.5"/>' +
-          '<circle class="fb-eye fb-eye-r" cx="6.5" cy="-105" r="2.5"/>' +
-          '<circle class="fb-cheek" cx="-12" cy="-98" r="3"/>' +
-          '<circle class="fb-cheek" cx="12" cy="-98" r="3"/>' +
-          '<path class="fb-mouth m-smile" d="M-6 -96 Q0 -90 6 -96"/>' +
-          '<path class="fb-mouth m-neutral" d="M-5 -95 L5 -95"/>' +
-          '<ellipse class="fb-mouth fb-mouth-open m-open" cx="0" cy="-94" rx="4.5" ry="3.5"/>' +
-          '<ellipse class="fb-mouth fb-mouth-open m-o" cx="0" cy="-95" rx="3.5" ry="4"/>' +
-        '</g>' +
-      '</g>';
-  }
-
-  var fbFace = 1, fbLen = 0, fbAnimReq = null;
-
-  function fbColocar(x, y){
-    els.fb.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') scale(' + fbFace + ',1)');
-  }
-  function fbExpr(e){
-    els.fb.classList.remove('exp-oops','exp-think','exp-uau');
-    if (e) els.fb.classList.add('exp-' + e);
-  }
-  function fbParadoEm(idx){
-    var p = pts[idx];
-    fbLen = knotLen[idx];
-    els.fb.classList.remove('fb-anda');
-    els.fb.classList.add('parado');
-    fbColocar(p.x, p.y - 4);
-  }
-  function scrollParaEstacao(idx){
-    try {
-      var mapaH = els.mapa.getBoundingClientRect().height;
-      var wrapH = els.mapaWrap.clientHeight;
-      if (!mapaH || !wrapH) return;
-      var alvo = (pts[idx].y / VBH) * mapaH - wrapH / 2;
-      els.mapaWrap.scrollTo({ top: Math.max(0, alvo), behavior:'smooth' });
-    } catch(e){
-      var node = $('est-' + idx);
-      if (node && node.scrollIntoView) try { node.scrollIntoView({ block:'center' }); } catch(e2){}
-    }
-  }
-
-  function fbAndarPara(idx, aoChegar){
-    if (fbAnimReq){ cancelAnimationFrame(fbAnimReq); fbAnimReq = null; }
-    var destino = knotLen[idx];
-    var origem = fbLen;
-    var dist = Math.abs(destino - origem);
-    if (dist < 2){ fbParadoEm(idx); if (aoChegar) aoChegar(); return; }
-    var dur = Math.min(2200, Math.max(600, dist / 260 * 1000));
-    var t0 = null, sentido = destino > origem ? 1 : -1, prevX = null;
-    els.fb.classList.remove('parado');
-    els.fb.classList.add('fb-anda');
-    scrollParaEstacao(idx);
-    function frame(ts){
-      if (t0 === null) t0 = ts;
-      var k = Math.min(1, (ts - t0) / dur);
-      var eased = k < 0.5 ? 2*k*k : -1 + (4 - 2*k) * k;
-      var cur = origem + (destino - origem) * eased;
-      var q = estradaBase.getPointAtLength(Math.max(0, Math.min(estradaBase.getTotalLength(), cur)));
-      if (prevX !== null && Math.abs(q.x - prevX) > 0.4) fbFace = (q.x > prevX) ? 1 : -1;
-      prevX = q.x;
-      fbColocar(q.x, q.y - 4);
-      if (k < 1){ fbAnimReq = requestAnimationFrame(frame); }
-      else { fbAnimReq = null; fbLen = destino; fbParadoEm(idx); if (aoChegar) aoChegar(); }
-    }
-    fbAnimReq = requestAnimationFrame(frame);
+  function setSpriteText(sp, txt){
+    var cv = sp.userData.cv, ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.font = '800 52px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, cv.width/2, cv.height/2 + 2);
+    sp.userData.tex.needsUpdate = true;
   }
 
   /* ============================================================
@@ -929,87 +927,52 @@
       var cls = faseConcluida(f.id) ? 'feita' : (i === atual ? 'atual' : '');
       return '<span class="pip ' + cls + '" title="' + escapeHtml(f.curto || f.titulo) + '"></span>';
     }).join('');
-    els.hudLabel.textContent = (feitas >= totalFases)
-      ? 'Trilha concluída!'
-      : 'Parada ' + (atual + 1) + ' de ' + totalFases;
     els.hudPts.textContent = prog.pontosTotais + '/' + pontosPossiveis;
+    els.hudEgg.textContent = prog.easterEggs.length + '/' + EASTER_EGGS.length;
     els.btnCert.style.display = (feitas >= totalFases) ? 'inline-block' : 'none';
   }
-
-  function renderTudo(){
-    pintarEstacoes();
-    renderHud();
-  }
+  function renderTudo(){ if (THREEOK && landmarks.length) pintarLandmarks3D(); renderHud(); }
 
   /* ============================================================
-     SESSÃO DE FASE — diálogo + quiz
+     DIÁLOGO + QUIZ
      ============================================================ */
-  var sessao = null;
-  var twToken = 0, twCompleto = null;
+  var sessao = null, twToken = 0, twCompleto = null;
 
   function typewriter(html, plano){
-    twToken++;
-    var meu = twToken;
+    twToken++; var meu = twToken;
     els.dlgBody.classList.add('cursor-tw');
     if (plano === false){ els.dlgBody.innerHTML = html; els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; return; }
-    var texto = plano;
-    els.dlgBody.textContent = '';
+    var texto = plano; els.dlgBody.textContent = '';
     twCompleto = function(){ if (meu === twToken){ els.dlgBody.textContent = texto; els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; } };
     var i = 0;
     (function passo(){
       if (meu !== twToken) return;
-      i += 2;
-      els.dlgBody.textContent = texto.slice(0, i);
+      i += 2; els.dlgBody.textContent = texto.slice(0, i);
       if (i < texto.length) setTimeout(passo, 16);
       else { els.dlgBody.classList.remove('cursor-tw'); twCompleto = null; }
     })();
   }
 
   function construirFalas(f, idx){
-    var falas = [{ tipo:'fala', txt:'Parada ' + (idx+1) + '! Bora falar sobre ' + f.titulo + '. ' + f.emoji, exp:'uau' }];
+    var falas = [{ tipo:'fala', txt:'Prédio ' + (idx+1) + '! Bora falar sobre ' + f.titulo + '. ' + f.emoji }];
     f.licao.forEach(function(b){
       if (b.h) falas.push({ tipo:'titulo', txt:b.h });
       else if (b.p) falas.push({ tipo:'fala', txt:b.p });
-      else if (b.callout) falas.push({ tipo:'dica', txt:b.callout, exp:'think' });
+      else if (b.callout) falas.push({ tipo:'dica', txt:b.callout });
       else if (b.ul) falas.push({ tipo:'lista', itens:b.ul });
     });
-    falas.push({ tipo:'fala', txt:'Agora deixa eu te fazer ' + f.quiz.length + ' pergunta(s) rápida(s). Presta atenção!', exp:'think' });
+    falas.push({ tipo:'fala', txt:'Agora ' + f.quiz.length + ' pergunta(s) rápida(s). Presta atenção!' });
     return falas;
-  }
-
-  function cliqueEstacao(idx){
-    if (sessao) return;
-    if (!faseDesbloqueada(idx)){
-      fbBalao('Essa ainda tá trancada! Termina a parada anterior primeiro. 🔒');
-      return;
-    }
-    iniciarSessao(idx);
-  }
-
-  var balaoTimer = null;
-  function fbBalao(txt){
-    // usa o próprio diálogo de forma leve, sem entrar em sessão
-    els.dlg.classList.add('aberto');
-    els.dlgTag.textContent = 'dica rápida';
-    els.dlgChoices.innerHTML = '';
-    els.dlgBody.className = 'dlg-body dica';
-    els.dlgFoot.innerHTML = '<button class="btn-jogo claro" id="balao-ok">entendi</button>';
-    typewriter(null, txt);
-    els.fb.classList.add('fb-fala'); fbExpr('think');
-    $('balao-ok').onclick = fecharDlg;
-    if (balaoTimer) clearTimeout(balaoTimer);
-    balaoTimer = setTimeout(function(){ if (!sessao) fecharDlg(); }, 6000);
   }
 
   function iniciarSessao(idx){
     var f = CONTEUDO[idx];
     sessao = { f:f, idx:idx, falas:construirFalas(f, idx), fi:0, modo:'narrativa', qi:0, acertos:0 };
-    els.dlgTag.textContent = 'sua parada: ' + (f.curto || f.titulo);
+    pausado = true; keys = {};
+    els.prompt.classList.remove('on');
+    els.dlgTag.textContent = 'prédio ' + (idx+1) + ': ' + (f.curto || f.titulo);
     els.dlg.classList.add('aberto');
-    fbAndarPara(idx, function(){
-      els.fb.classList.add('fb-fala');
-      mostrarFala();
-    });
+    mostrarFala();
   }
 
   function mostrarFala(){
@@ -1018,37 +981,21 @@
     var fala = s.falas[s.fi];
     els.dlgChoices.innerHTML = '';
     els.dlgBody.className = 'dlg-body' + (fala.tipo === 'dica' ? ' dica' : fala.tipo === 'titulo' ? ' titulo' : '');
-    fbExpr(fala.exp || null);
-    if (fala.tipo === 'lista'){
-      typewriter('<ul>' + fala.itens.map(function(it){ return '<li>' + escapeHtml(it) + '</li>'; }).join('') + '</ul>', false);
-    } else {
-      typewriter(null, fala.txt);
-    }
+    if (fala.tipo === 'lista') typewriter('<ul>' + fala.itens.map(function(it){ return '<li>' + escapeHtml(it) + '</li>'; }).join('') + '</ul>', false);
+    else typewriter(null, fala.txt);
     var ultima = s.fi === s.falas.length - 1;
-    els.dlgFoot.innerHTML =
-      '<span class="hint">' + (s.fi + 1) + ' / ' + s.falas.length + '</span>' +
-      '<button class="btn-jogo" id="dlg-next">' + (ultima ? 'Vamos ao quiz! ▶' : 'Continuar ▶') + '</button>';
-    $('dlg-next').onclick = function(){
-      if (twCompleto){ twCompleto(); return; }
-      s.fi++; mostrarFala();
-    };
+    els.dlgFoot.innerHTML = '<span class="hint">' + (s.fi+1) + ' / ' + s.falas.length + '</span>' +
+      '<button class="btn-jogo" id="dlg-next">' + (ultima ? 'Ao quiz! ▶' : 'Continuar ▶') + '</button>';
+    $('dlg-next').onclick = function(){ if (twCompleto){ twCompleto(); return; } s.fi++; mostrarFala(); };
   }
 
-  function iniciarQuiz(){
-    var s = sessao; s.modo = 'quiz'; s.qi = 0; s.acertos = 0;
-    mostrarPergunta();
-  }
+  function iniciarQuiz(){ sessao.modo = 'quiz'; sessao.qi = 0; sessao.acertos = 0; mostrarPergunta(); }
 
   function mostrarPergunta(){
-    var s = sessao;
-    var q = s.f.quiz[s.qi];
+    var s = sessao, q = s.f.quiz[s.qi];
     els.dlgBody.className = 'dlg-body';
-    fbExpr('think');
-    els.fb.classList.add('fb-fala');
-    typewriter(null, 'Pergunta ' + (s.qi + 1) + ' de ' + s.f.quiz.length + ': ' + q.q);
-    els.dlgChoices.innerHTML = q.opcoes.map(function(op, oi){
-      return '<button class="dlg-choice" data-oi="' + oi + '">' + escapeHtml(op) + '</button>';
-    }).join('');
+    typewriter(null, 'Pergunta ' + (s.qi+1) + ' de ' + s.f.quiz.length + ': ' + q.q);
+    els.dlgChoices.innerHTML = q.opcoes.map(function(op, oi){ return '<button class="dlg-choice" data-oi="' + oi + '">' + escapeHtml(op) + '</button>'; }).join('');
     els.dlgFoot.innerHTML = '<span class="hint">Escolha uma resposta</span>';
     Array.prototype.forEach.call(els.dlgChoices.querySelectorAll('.dlg-choice'), function(btn){
       btn.onclick = function(){ responder(Number(btn.dataset.oi)); };
@@ -1056,95 +1003,61 @@
   }
 
   function responder(oi){
-    var s = sessao;
-    var q = s.f.quiz[s.qi];
+    var s = sessao, q = s.f.quiz[s.qi];
     var acertou = oi === q.correta;
     if (acertou) s.acertos++;
     Array.prototype.forEach.call(els.dlgChoices.querySelectorAll('.dlg-choice'), function(btn){
-      btn.disabled = true;
-      var bi = Number(btn.dataset.oi);
+      btn.disabled = true; var bi = Number(btn.dataset.oi);
       if (bi === q.correta) btn.classList.add('certa');
       else if (bi === oi) btn.classList.add('errada');
     });
-    els.fb.classList.add('fb-fala');
-    fbExpr(acertou ? 'uau' : 'oops');
-    if (acertou) soltarConfete(24);
+    if (acertou) soltarConfete(22);
     els.dlgBody.className = 'dlg-body dica';
     typewriter(null, (acertou ? 'Boa! ' : 'Quase! ') + (q.explica || ''));
     var ultima = s.qi === s.f.quiz.length - 1;
-    els.dlgFoot.innerHTML =
-      '<span class="hint">' + s.acertos + ' certo(s) até aqui</span>' +
+    els.dlgFoot.innerHTML = '<span class="hint">' + s.acertos + ' certo(s) até aqui</span>' +
       '<button class="btn-jogo" id="dlg-next">' + (ultima ? 'Ver resultado ▶' : 'Próxima ▶') + '</button>';
-    $('dlg-next').onclick = function(){
-      if (ultima) mostrarResultado();
-      else { s.qi++; mostrarPergunta(); }
-    };
+    $('dlg-next').onclick = function(){ if (ultima) mostrarResultado(); else { s.qi++; mostrarPergunta(); } };
   }
 
   function mostrarResultado(){
-    var s = sessao;
-    var total = s.f.quiz.length;
-    var minimo = Math.ceil(total * PASS_RATIO);
-    var passou = s.acertos >= minimo;
-    var jaFeita = faseConcluida(s.f.id);
-    var ehUltima = s.idx === totalFases - 1;
-
-    els.dlgChoices.innerHTML = '';
-    els.dlgBody.className = 'dlg-body';
-    els.fb.classList.add('fb-fala');
-    fbExpr(passou ? 'uau' : 'oops');
-
+    var s = sessao, total = s.f.quiz.length, minimo = Math.ceil(total * PASS_RATIO);
+    var passou = s.acertos >= minimo, jaFeita = faseConcluida(s.f.id), ehUltima = s.idx === totalFases - 1;
+    els.dlgChoices.innerHTML = ''; els.dlgBody.className = 'dlg-body';
     if (passou){
       if (!jaFeita) salvarConclusao(s.f.id, s.acertos, total);
-      soltarConfete(passou ? 90 : 0);
-      var msg = jaFeita
-        ? 'Você fez ' + s.acertos + '/' + total + '. Revisão concluída! 🎉'
-        : (ehUltima
-            ? 'PERFEITO! ' + s.acertos + '/' + total + '. Você terminou a trilha e está pronto(a) pra começar. Seu diploma já está lá em cima! 🎓'
-            : 'Mandou bem! ' + s.acertos + '/' + total + '. A próxima parada tá liberada. Bora seguir viagem!');
+      soltarConfete(90);
+      var msg = jaFeita ? ('Você fez ' + s.acertos + '/' + total + '. Revisão concluída! 🎉')
+        : (ehUltima ? ('PERFEITO! ' + s.acertos + '/' + total + '. Você terminou a trilha e está pronto(a) pra começar. Seu diploma está lá em cima! 🎓')
+                    : ('Mandou bem! ' + s.acertos + '/' + total + '. O próximo prédio tá liberado — sai por aí e procura ele. Aproveita e cata os easter eggs!'));
       typewriter(null, msg);
-      var acoes = '';
-      if (ehUltima && !jaFeita) acoes = '<button class="btn-jogo ouro" id="r-cert">🏅 Ver meu diploma</button><button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
-      else if (!ehUltima) acoes = '<button class="btn-jogo verde" id="r-segue">Seguir viagem ▶</button><button class="btn-jogo claro" id="r-mapa">Ficar no mapa</button>';
-      else acoes = '<button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
+      var acoes = ehUltima
+        ? '<button class="btn-jogo ouro" id="r-cert">🏅 Ver meu diploma</button><button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>'
+        : '<button class="btn-jogo verde" id="r-mapa">Voltar ao mapa ▶</button>';
       els.dlgFoot.innerHTML = acoes;
       if ($('r-cert')) $('r-cert').onclick = function(){ fecharDlg(); abrirCertificado(); };
-      if ($('r-segue')) $('r-segue').onclick = function(){
-        var prox = s.idx + 1;
-        fecharDlg();
-        if (prox < totalFases) fbAndarPara(prox, function(){ scrollParaEstacao(prox); });
-      };
       if ($('r-mapa')) $('r-mapa').onclick = fecharDlg;
     } else {
       typewriter(null, 'Você fez ' + s.acertos + '/' + total + ' e o mínimo é ' + minimo + '. Sem crise — a gente revisa e tenta de novo. Você consegue!');
-      els.dlgFoot.innerHTML =
-        '<button class="btn-jogo" id="r-quiz">Refazer o quiz</button>' +
+      els.dlgFoot.innerHTML = '<button class="btn-jogo" id="r-quiz">Refazer o quiz</button>' +
         '<button class="btn-jogo claro" id="r-licao">Rever a conversa</button>' +
         '<button class="btn-jogo claro" id="r-mapa">Voltar ao mapa</button>';
-      $('r-quiz').onclick = function(){ sessao.modo = 'quiz'; sessao.qi = 0; sessao.acertos = 0; mostrarPergunta(); };
+      $('r-quiz').onclick = function(){ sessao.qi = 0; sessao.acertos = 0; mostrarPergunta(); };
       $('r-licao').onclick = function(){ sessao.fi = 0; sessao.modo = 'narrativa'; mostrarFala(); };
       $('r-mapa').onclick = fecharDlg;
     }
   }
 
   function fecharDlg(){
-    if (balaoTimer){ clearTimeout(balaoTimer); balaoTimer = null; }
     twToken++;
     els.dlg.classList.remove('aberto');
-    els.dlgBody.className = 'dlg-body';
-    els.dlgBody.innerHTML = '';
-    els.dlgChoices.innerHTML = '';
-    els.dlgFoot.innerHTML = '';
+    els.dlgBody.className = 'dlg-body'; els.dlgBody.innerHTML = '';
+    els.dlgChoices.innerHTML = ''; els.dlgFoot.innerHTML = '';
     els.dlgTag.textContent = 'seu guia de integração';
-    els.fb.classList.remove('fb-fala');
-    fbExpr(null);
-    sessao = null;
+    sessao = null; pausado = false; keys = {};
     renderTudo();
   }
   els.dlgClose.onclick = fecharDlg;
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && els.dlg.classList.contains('aberto')) fecharDlg();
-  });
 
   /* ============================================================
      CONFETE
@@ -1158,7 +1071,6 @@
       c.style.background = CONFETE_CORES[i % CONFETE_CORES.length];
       c.style.animationDuration = (1.6 + Math.random()*1.6) + 's';
       c.style.animationDelay = (Math.random()*0.4) + 's';
-      c.style.transform = 'rotate(' + (Math.random()*360) + 'deg)';
       frag.appendChild(c);
     }
     els.confete.appendChild(frag);
@@ -1168,27 +1080,26 @@
   /* ============================================================
      PERSISTÊNCIA
      ============================================================ */
-  function recalcularPontos(c){
-    return Object.keys(c).reduce(function(a, id){ return a + (c[id].pontos || 0); }, 0);
+  function recalcularPontos(c){ return Object.keys(c).reduce(function(a, id){ return a + (c[id].pontos || 0); }, 0); }
+
+  function salvarProgresso(){
+    if (!progRef) return;
+    var tudo = Object.keys(prog.concluidas).length >= totalFases;
+    if (tudo && !prog.concluidoEm) prog.concluidoEm = Date.now();
+    var payload = {
+      concluidas: prog.concluidas, pontosTotais: prog.pontosTotais,
+      easterEggs: prog.easterEggs, nome: meuNome,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (tudo) payload.concluidoEm = prog.concluidoEm;
+    progRef.set(payload, { merge:true }).catch(function(err){ console.warn('Falha ao salvar progresso:', err && err.message); });
   }
   function salvarConclusao(faseId, pontos, total){
     prog.concluidas[faseId] = { pontos:pontos, total:total, em:Date.now() };
     prog.pontosTotais = recalcularPontos(prog.concluidas);
     prog.nome = meuNome;
-    var tudo = Object.keys(prog.concluidas).length >= totalFases;
-    if (tudo && !prog.concluidoEm) prog.concluidoEm = Date.now();
     renderTudo();
-    if (!progRef) return;
-    var payload = {
-      concluidas: prog.concluidas,
-      pontosTotais: prog.pontosTotais,
-      nome: meuNome,
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (tudo) payload.concluidoEm = prog.concluidoEm;
-    progRef.set(payload, { merge:true }).catch(function(err){
-      console.warn('Falha ao salvar progresso da trilha:', err && err.message);
-    });
+    salvarProgresso();
   }
   function carregarProgresso(cb){
     if (!progRef){ if (cb) cb(); return; }
@@ -1197,12 +1108,11 @@
         var d = doc.data();
         prog.concluidas = d.concluidas || {};
         prog.pontosTotais = d.pontosTotais || recalcularPontos(prog.concluidas);
+        prog.easterEggs = Array.isArray(d.easterEggs) ? d.easterEggs : [];
         prog.concluidoEm = d.concluidoEm || null;
         prog.nome = d.nome || '';
       }
-    }).catch(function(err){
-      console.warn('Falha ao carregar progresso:', err && err.message);
-    }).finally(function(){ if (cb) cb(); });
+    }).catch(function(err){ console.warn('Falha ao carregar progresso:', err && err.message); }).finally(function(){ if (cb) cb(); });
   }
 
   /* ============================================================
@@ -1210,45 +1120,33 @@
      ============================================================ */
   function abrirCertificado(){
     var feitas = Object.keys(prog.concluidas).length;
-    if (feitas < totalFases){ alert('Conclua todas as paradas para gerar o diploma.'); return; }
+    if (feitas < totalFases){ alert('Conclua todos os prédios para gerar o diploma.'); return; }
     var nome = meuNome || prog.nome || 'Colaborador(a)';
     var dataStr = new Date(prog.concluidoEm || Date.now()).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+    var eggsLinha = prog.easterEggs.length >= EASTER_EGGS.length
+      ? ' Encontrou também todos os ' + EASTER_EGGS.length + ' easter eggs sobre advocacia, tribunais e o CPC.' : '';
     var w = window.open('', '_blank');
     if (!w){ alert('Permita pop-ups para abrir o diploma.'); return; }
     w.document.write(
-      '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Diploma de Integração — ' + escapeHtml(nome) + '</title>' +
-      '<style>' +
-      '*{box-sizing:border-box;margin:0;padding:0;}' +
-      'body{font-family:"Segoe UI",system-ui,sans-serif;background:#1a1210;padding:40px;display:flex;justify-content:center;}' +
-      '.cert{width:900px;max-width:100%;background:#faf6f0;color:#241c1b;border:2px solid #b8362e;border-radius:8px;padding:56px 60px;text-align:center;position:relative;}' +
-      '.cert::after{content:"";position:absolute;inset:14px;border:1px solid #d8b25a;border-radius:4px;pointer-events:none;}' +
-      '.kick{letter-spacing:.32em;font-size:.8rem;color:#b8362e;font-weight:700;text-transform:uppercase;}' +
-      'h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:2.5rem;margin:18px 0 6px;}' +
-      '.sub{color:#7d716b;font-size:.95rem;margin-bottom:34px;}' +
-      '.nome{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:2rem;color:#5c1a16;border-bottom:2px solid #d8b25a;display:inline-block;padding:0 30px 8px;margin-bottom:26px;}' +
-      '.corpo{font-size:1rem;line-height:1.7;max-width:620px;margin:0 auto 36px;}' +
-      '.pts{font-weight:700;color:#b8362e;}' +
-      '.rodape{display:flex;justify-content:space-between;font-size:.85rem;color:#7d716b;margin-top:40px;}' +
-      '.selo{font-size:2.4rem;}' +
-      '@media print{body{background:#fff;padding:0;}.cert{border-radius:0;}.no-print{display:none;}}' +
-      '.no-print{margin-top:24px;text-align:center;}' +
-      'button{padding:10px 22px;border-radius:22px;border:1px solid #b8362e;background:#b8362e;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;}' +
-      '</style></head><body>' +
-      '<div class="cert">' +
-        '<div class="kick">Fonseca e Braga Advocacia</div>' +
-        '<h1>Diploma de Integração</h1>' +
-        '<div class="sub">Trilha do FBzinho — Portal Interno</div>' +
-        '<div>Certificamos que</div>' +
-        '<div class="nome">' + escapeHtml(nome) + '</div>' +
-        '<div class="corpo">concluiu todas as ' + totalFases + ' paradas da Trilha de Integração, ' +
-          'demonstrando conhecimento sobre a estrutura do escritório, o Portal interno, os sistemas ' +
-          'utilizados, as rotinas de atendimento, os prazos e a segurança da informação, ' +
-          'com <span class="pts">' + prog.pontosTotais + ' de ' + pontosPossiveis + ' pontos</span>.</div>' +
-        '<div class="selo">⚖️</div>' +
-        '<div class="rodape"><span>Emitido em ' + escapeHtml(dataStr) + '</span><span>Portal Fonseca e Braga</span></div>' +
-      '</div>' +
-      '<div class="no-print"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>' +
-      '</body></html>'
+      '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Diploma de Integracao — ' + escapeHtml(nome) + '</title>' +
+      '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",system-ui,sans-serif;background:#1a1210;padding:40px;display:flex;justify-content:center}' +
+      '.cert{width:900px;max-width:100%;background:#faf6f0;color:#241c1b;border:2px solid #b8362e;border-radius:8px;padding:56px 60px;text-align:center;position:relative}' +
+      '.cert::after{content:"";position:absolute;inset:14px;border:1px solid #d8b25a;border-radius:4px;pointer-events:none}' +
+      '.kick{letter-spacing:.32em;font-size:.8rem;color:#b8362e;font-weight:700;text-transform:uppercase}' +
+      'h1{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-size:2.5rem;margin:18px 0 6px}' +
+      '.sub{color:#7d716b;font-size:.95rem;margin-bottom:34px}' +
+      '.nome{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:2rem;color:#5c1a16;border-bottom:2px solid #d8b25a;display:inline-block;padding:0 30px 8px;margin-bottom:26px}' +
+      '.corpo{font-size:1rem;line-height:1.7;max-width:640px;margin:0 auto 36px}.pts{font-weight:700;color:#b8362e}' +
+      '.rodape{display:flex;justify-content:space-between;font-size:.85rem;color:#7d716b;margin-top:40px}.selo{font-size:2.4rem}' +
+      '@media print{body{background:#fff;padding:0}.cert{border-radius:0}.no-print{display:none}}.no-print{margin-top:24px;text-align:center}' +
+      'button{padding:10px 22px;border-radius:22px;border:1px solid #b8362e;background:#b8362e;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer}</style></head><body>' +
+      '<div class="cert"><div class="kick">Fonseca e Braga Advocacia</div><h1>Diploma de Integracao</h1>' +
+      '<div class="sub">Trilha do FBzinho — Portal Interno</div><div>Certificamos que</div>' +
+      '<div class="nome">' + escapeHtml(nome) + '</div>' +
+      '<div class="corpo">concluiu todas as ' + totalFases + ' paradas da Trilha de Integracao, demonstrando conhecimento sobre a estrutura do escritorio, o Portal interno, os sistemas utilizados, as rotinas de atendimento, os prazos e a seguranca da informacao, com <span class="pts">' + prog.pontosTotais + ' de ' + pontosPossiveis + ' pontos</span>.' + eggsLinha + '</div>' +
+      '<div class="selo">&#9878;</div>' +
+      '<div class="rodape"><span>Emitido em ' + escapeHtml(dataStr) + '</span><span>Portal Fonseca e Braga</span></div></div>' +
+      '<div class="no-print"><button onclick="window.print()">Imprimir / Salvar PDF</button></div></body></html>'
     );
     w.document.close();
   }
@@ -1258,10 +1156,7 @@
      PAINEL DO GESTOR
      ============================================================ */
   var adminCarregado = false;
-  els.btnAdmin.onclick = function(){
-    els.modalAdmin.classList.add('aberto');
-    if (!adminCarregado) carregarPainelGestor();
-  };
+  els.btnAdmin.onclick = function(){ els.modalAdmin.classList.add('aberto'); if (!adminCarregado) carregarPainelGestor(); };
   els.adminX.onclick = function(){ els.modalAdmin.classList.remove('aberto'); };
   els.modalAdmin.addEventListener('click', function(e){ if (e.target === els.modalAdmin) els.modalAdmin.classList.remove('aberto'); });
 
@@ -1275,89 +1170,103 @@
       var nomes = {};
       res[1].docs.forEach(function(d){ nomes[d.id] = (d.data() && d.data().displayName) || ''; });
       if (progs.length === 0){ els.adminBody.innerHTML = '<div class="modal-vazio">Ninguém começou a trilha ainda.</div>'; return; }
-      progs.sort(function(a, b){
-        return (b.concluidas ? Object.keys(b.concluidas).length : 0) - (a.concluidas ? Object.keys(a.concluidas).length : 0);
-      });
+      progs.sort(function(a, b){ return (b.concluidas ? Object.keys(b.concluidas).length : 0) - (a.concluidas ? Object.keys(a.concluidas).length : 0); });
       els.adminBody.innerHTML =
-        '<table class="prog"><thead><tr><th>Colaborador</th><th>Paradas</th><th>Progresso</th><th>Pontos</th><th>Status</th></tr></thead><tbody>' +
+        '<table class="prog"><thead><tr><th>Colaborador</th><th>Prédios</th><th>Progresso</th><th>Pontos</th><th>Eggs</th><th>Status</th></tr></thead><tbody>' +
         progs.map(function(p){
           var feitas = p.concluidas ? Object.keys(p.concluidas).length : 0;
           var pct = Math.round((feitas / totalFases) * 100);
           var nome = nomes[p.uid] || p.nome || '(sem nome)';
           var ok = feitas >= totalFases;
+          var ne = Array.isArray(p.easterEggs) ? p.easterEggs.length : 0;
           return '<tr><td>' + escapeHtml(nome) + '</td><td>' + feitas + ' / ' + totalFases + '</td>' +
             '<td><div class="mini-track"><div class="mini-fill" style="width:' + pct + '%"></div></div></td>' +
             '<td>' + (p.pontosTotais || 0) + ' / ' + pontosPossiveis + '</td>' +
+            '<td>' + ne + ' / ' + EASTER_EGGS.length + '</td>' +
             '<td>' + (ok ? '<span class="st-ok">✓ Concluída</span>' : 'Em andamento') + '</td></tr>';
         }).join('') + '</tbody></table>';
-    }).catch(function(err){
-      els.adminBody.innerHTML = '<div class="modal-vazio">Não foi possível carregar (' + escapeHtml(err && err.message) + ').</div>';
-    });
+    }).catch(function(err){ els.adminBody.innerHTML = '<div class="modal-vazio">Não foi possível carregar (' + escapeHtml(err && err.message) + ').</div>'; });
   }
 
   els.btnHelp.onclick = function(){ els.modalHelp.classList.add('aberto'); };
   els.helpX.onclick = function(){ els.modalHelp.classList.remove('aberto'); };
   els.modalHelp.addEventListener('click', function(e){ if (e.target === els.modalHelp) els.modalHelp.classList.remove('aberto'); });
 
+  els.dlgFace.innerHTML =
+    '<svg viewBox="-26 -46 52 46" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M-24 4 Q0 -6 24 4 L24 6 -24 6 Z" fill="#1c1720"/>' +
+    '<path d="M-20 2 Q0 -10 20 2 L20 6 -20 6 Z" fill="#2f2440"/>' +
+    '<rect x="-3" y="-6" width="2.4" height="8" fill="#fff"/><rect x="0.6" y="-6" width="2.4" height="8" fill="#fff"/>' +
+    '<circle cx="0" cy="-20" r="17" fill="#f0c9a0"/>' +
+    '<path d="M-17 -22 Q-13 -44 0 -42 Q13 -44 17 -22 Q8 -33 0 -31 Q-8 -33 -17 -22 Z" fill="#3a2b24"/>' +
+    '<circle cx="-6" cy="-20" r="3" fill="none" stroke="#20161a" stroke-width="1.6"/><circle cx="6" cy="-20" r="3" fill="none" stroke="#20161a" stroke-width="1.6"/>' +
+    '<line x1="-3" y1="-20" x2="3" y2="-20" stroke="#20161a" stroke-width="1.4"/>' +
+    '<path d="M-6 -12 Q0 -7 6 -12" fill="none" stroke="#8a3b32" stroke-width="2.2" stroke-linecap="round"/>' +
+    '</svg>';
+
   /* ============================================================
      BOOT
      ============================================================ */
+  function ehMobile(){
+    try { if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(pointer: fine)').matches) return true; } catch(e){}
+    return (window.innerWidth || 999) < 780;
+  }
+
   function iniciarMundo(){
-    els.dlgFace.innerHTML = bustoSvg();
-    montarFBzinho();
-    montarEstrada();
-    montarDecor();
-    montarEstacoes();
-    renderTudo();
-    var comecar = Math.min(indiceFaseAtual(), totalFases - 1);
-    fbParadoEm(comecar);
-    setTimeout(function(){ scrollParaEstacao(comecar); }, 200);
-    // saudação inicial do FBzinho
+    renderHud();
+    if (ehMobile()){ els.mobileGate.classList.add('on'); return; }
+    if (!THREEOK){
+      els.erro3dMsg.textContent = 'A biblioteca 3D (Three.js) não carregou. Verifique a conexão e atualize a página.';
+      els.erro3d.classList.add('on'); return;
+    }
+    try {
+      els.app.classList.add('on');
+      init3D();
+    } catch(err){
+      console.error(err);
+      els.app.classList.remove('on');
+      els.erro3dMsg.textContent = 'Erro ao iniciar o 3D: ' + (err && err.message || err);
+      els.erro3d.classList.add('on');
+      return;
+    }
     setTimeout(function(){
       if (sessao) return;
       var feitas = Object.keys(prog.concluidas).length;
-      els.dlg.classList.add('aberto');
+      els.dlg.classList.add('aberto'); pausado = true;
       els.dlgTag.textContent = 'seu guia de integração';
-      els.dlgChoices.innerHTML = '';
-      els.dlgBody.className = 'dlg-body';
-      els.fb.classList.add('fb-fala'); fbExpr('uau');
+      els.dlgChoices.innerHTML = ''; els.dlgBody.className = 'dlg-body';
       var oi = feitas === 0
-        ? 'Oi' + (meuNome ? ', ' + meuNome.split(' ')[0] : '') + '! Eu sou o FBzinho. Vou te guiar pela integração. Clique numa parada do mapa pra gente começar!'
+        ? ('Oi' + (meuNome ? ', ' + meuNome.split(' ')[0] : '') + '! Eu sou o FBzinho, advogado e seu guia. Use as setas do teclado pra andar comigo até o primeiro prédio e aperte E na porta. No caminho, cata os easter eggs que brilham!')
         : (feitas >= totalFases
-            ? 'Você já concluiu a trilha inteira! Pode revisar qualquer parada ou ver seu diploma lá em cima. 🎓'
-            : 'Bem-vindo(a) de volta! Você está na parada ' + (indiceFaseAtual() + 1) + '. Clique nela no mapa pra continuar.');
+            ? 'Você já concluiu a trilha inteira! Pode revisitar qualquer prédio, caçar os easter eggs que faltam ou ver seu diploma lá em cima. 🎓'
+            : 'Bem-vindo(a) de volta! Falta o prédio ' + (indiceFaseAtual()+1) + ' (o que está com a ⭐). Anda até lá com as setas e aperta E.');
       typewriter(null, oi);
-      els.dlgFoot.innerHTML = '<button class="btn-jogo verde" id="oi-ok">Bora! 🗺️</button>';
+      els.dlgFoot.innerHTML = '<button class="btn-jogo verde" id="oi-ok">Bora! 🎮</button>';
       $('oi-ok').onclick = fecharDlg;
-    }, 700);
+    }, 600);
   }
 
   auth.onAuthStateChanged(function(user){
-    if (!user){
-      els.gate.style.display = 'flex';
-      els.app.style.display = 'none';
-      return;
-    }
-    meuUid = user.uid;
-    meuNome = user.displayName || '';
-    els.gate.style.display = 'none';
-    els.app.style.display = 'flex';
+    if (!user){ els.gate.classList.add('on'); els.app.classList.remove('on'); return; }
+    meuUid = user.uid; meuNome = user.displayName || '';
+    els.gate.classList.remove('on');
     progRef = db.collection('treinamentoProgresso').doc(meuUid);
-
     db.collection('users').doc(meuUid).get().then(function(doc){
       var d = doc.exists ? doc.data() : {};
-      souAdmin = d.role === 'admin';
-      souGestor = d.role === 'gestor';
+      souAdmin = d.role === 'admin'; souGestor = d.role === 'gestor';
       if (!meuNome) meuNome = d.displayName || '';
       els.btnAdmin.style.display = (souAdmin || souGestor) ? 'inline-block' : 'none';
     }).catch(function(){}).finally(function(){
       var arrancar = function(){ carregarProgresso(iniciarMundo); };
       if (!meuNome){
-        db.collection('organograma').doc(meuUid).get().then(function(o){
-          if (o.exists && o.data().displayName) meuNome = o.data().displayName;
-        }).catch(function(){}).finally(arrancar);
+        db.collection('organograma').doc(meuUid).get().then(function(o){ if (o.exists && o.data().displayName) meuNome = o.data().displayName; }).catch(function(){}).finally(arrancar);
       } else arrancar();
     });
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+    else if (!raf && renderer && clock){ clock.getDelta(); loop(); }
   });
 
 })();

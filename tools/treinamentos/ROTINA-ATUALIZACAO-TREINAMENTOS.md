@@ -41,28 +41,41 @@ app, mas qualquer arquivo dentro do repositório — inclusive estes
 documentos — fica acessível por link direto, sem exigir login. Evite
 subir documentos com dados de cliente ou credenciais reais.
 
-## Sub-aba "Trilha do FBzinho" (o game)
+## Sub-aba "Trilha do FBzinho" (o game 3D)
 
-A primeira sub-aba de Treinamentos é a **Trilha do FBzinho**: um jogo com
-**mapa colorido e um mascote de corpo inteiro (o FBzinho)** que caminha de
-parada em parada e conversa com o colaborador (diálogo estilo visual novel,
-com efeito de máquina de escrever). Em cada parada ele ensina um assunto e
-depois faz um quiz. Ao concluir todas as paradas o colaborador libera um
+A primeira sub-aba de Treinamentos é a **Trilha do FBzinho**: um jogo 3D em que
+o colaborador anda com o **FBzinho** (um advogado de toga) pelo mapa, em 3ª
+pessoa, com as **setas do teclado**. Cada **prédio** é uma parada — ele entra
+(tecla **E**), o FBzinho ensina o assunto (diálogo com efeito de máquina de
+escrever) e faz um quiz. Ao concluir todos os prédios o colaborador libera um
 **diploma de integração** (imprimível/PDF) e passa a aparecer como "Concluída"
 no **painel de progresso** (botão "📊 Gestor", visível só para `admin`/`gestor`
-dentro do próprio jogo).
+dentro do próprio jogo). O painel também mostra quantos Easter eggs cada um
+achou.
 
-O jogo é 100% um único arquivo estático (`tools/treinamentos/jogo/index.html`):
-o mapa, a estrada sinuosa, as casinhas das paradas e o FBzinho são todos SVG
-desenhados por código; a caminhada é animação ao longo do path. O mundo do
-jogo tem paleta própria (sempre colorida) e **não** segue o tema claro/escuro
-do Portal — é de propósito.
+É um jogo **3D** (Three.js): o colaborador anda com o FBzinho — um advogado de
+toga — pelas **setas do teclado**, em 3ª pessoa, e visita 10 **prédios** (um por
+parada). Chega perto de um prédio liberado, aperta **E** e abre a lição + quiz.
+Espalhados pelo mapa há **Easter eggs** (objetos que brilham/giram) com
+curiosidades sobre advocacia, tribunais e o CPC — encostar neles coleciona.
+
+- **Só funciona no computador.** No celular aparece um aviso "abra no computador"
+  (o jogo é controlado por teclado). É de propósito.
+- **Three.js** carrega de `cdnjs.cloudflare.com` (igual o Firebase carrega de
+  `gstatic.com`). GitHub Pages não tem CSP, então funciona. Se o 3D não abrir,
+  o jogo mostra uma tela de erro amigável em vez de quebrar.
+- É um único arquivo estático (`tools/treinamentos/jogo/index.html`). Mundo,
+  prédios, FBzinho e eggs são todos geometria criada por código, sem imagens.
+- Paleta própria, sempre colorida — **não** segue o tema claro/escuro do Portal.
 
 - **Onde fica o conteúdo:** tudo está no array `CONTEUDO`, no topo do
   `<script>` de `tools/treinamentos/jogo/index.html`. Cada fase tem `id`,
-  `emoji`, `titulo`, `resumo`, `licao` (blocos `{h}`/`{p}`/`{ul}`/`{callout}`)
-  e `quiz` (`{q, opcoes, correta, explica}`). Comentário no próprio arquivo
-  explica o formato.
+  `emoji`, `cor`, `titulo`, `curto` (rótulo no prédio), `resumo`, `licao`
+  (blocos `{h}`/`{p}`/`{ul}`/`{callout}`) e `quiz` (`{q, opcoes, correta,
+  explica}`). Comentário no próprio arquivo explica o formato.
+- **Easter eggs:** array `EASTER_EGGS` logo abaixo de `CONTEUDO` — cada um tem
+  `id` (estável), `kind` (forma 3D), `cor`, `x`/`z` (posição no mapa),
+  `titulo` e `texto`. Para acrescentar/editar curiosidades, mexa só nesse array.
 - **Para editar uma fase / trocar textos / ajustar perguntas:** mande o que
   quer mudar numa conversa, ou edite direto o array. É só HTML/JS estático —
   commit + push e publica sozinho.
