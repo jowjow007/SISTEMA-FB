@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Academia do Escritório — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010; --panel:#211918; --panel-2:#2a1f1e; --paper:#ece6e1; --muted:#9c908b;
+    --red:#b8362e; --red-bright:#c9463c; --red-deep:#5c1a16;
+    --gold:#d8b25a; --gold-2:#c99a34; --green:#4c9a68; --green-bright:#63c088;
+    --blue:#5b8fc9; --purple:#8367c7; --line:rgba(236,230,225,0.10); --line-strong:rgba(236,230,225,0.18);
+    --card-shadow:0 10px 30px rgba(0,0,0,.35);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9; --panel:#ffffff; --panel-2:#f1ece6; --paper:#241c1b; --muted:#7d716b;
+    --line:rgba(36,28,27,0.10); --line-strong:rgba(36,28,27,0.16);
+    --card-shadow:0 8px 24px rgba(60,40,20,.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;transition:background-color .2s,color .2s;}
+  button{font-family:inherit;}
+  ::-webkit-scrollbar{width:10px;height:10px;} ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px;}
+
+  #gate{display:none;position:fixed;inset:0;align-items:center;justify-content:center;padding:40px;text-align:center;color:var(--muted);}
+  #gate.on{display:flex;}
+
+  #shell{display:none;flex-direction:column;height:100%;}
+  #shell.on{display:flex;}
+
+  header.hud{
+    flex:0 0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 20px;background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border-bottom:1px solid var(--line-strong);
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:1.06rem;color:var(--paper);white-space:nowrap;}
+  .brand .ic{font-size:1.25rem;}
+  nav.subtabs{display:flex;gap:4px;}
+  nav.subtabs button{
+    background:transparent;border:1px solid transparent;border-radius:20px;padding:7px 14px;
+    font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.15s;
+  }
+  nav.subtabs button:hover{color:var(--paper);}
+  nav.subtabs button.active{color:var(--gold);background:rgba(216,178,90,.12);border-color:rgba(216,178,90,.35);}
+  .hud-sp{flex:1 1 auto;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:20px;padding:6px 12px;font-size:.78rem;font-weight:700;color:var(--paper);white-space:nowrap;}
+  .chip.gold{color:var(--gold);border-color:rgba(216,178,90,.4);}
+  .chip.streak{color:#ff9d5c;}
+  .avatar-mini{width:30px;height:30px;border-radius:50%;background:conic-gradient(var(--gold) calc(var(--pct,30)*1%),var(--line-strong) 0);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .avatar-mini b{width:24px;height:24px;border-radius:50%;background:var(--panel);color:var(--gold);font-size:.68rem;display:flex;align-items:center;justify-content:center;}
+
+  #panels{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
+  .panel{position:absolute;inset:0;display:none;overflow:auto;padding:24px 26px 60px;}
+  .panel.active{display:block;}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:16px;box-shadow:var(--card-shadow);padding:20px 22px;}
+  .saudacao{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+  .saudacao h1{font-family:var(--font-display);font-weight:600;font-size:1.4rem;margin:0 0 4px;color:var(--paper);}
+  .saudacao p{margin:0;font-size:.86rem;color:var(--muted);}
+  .saudacao .sp{flex:1 1 auto;}
+  .btn{border:none;border-radius:22px;padding:11px 20px;font-weight:800;font-size:.86rem;cursor:pointer;transition:.15s;
+    background:var(--red);color:#fff;box-shadow:0 3px 0 var(--red-deep);}
+  .btn:hover{transform:translateY(-1px);} .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--red-deep);}
+  .btn.ouro{background:var(--gold);color:var(--red-deep);box-shadow:0 3px 0 var(--gold-2);}
+  .btn.claro{background:var(--panel-2);color:var(--paper);border:1px solid var(--line-strong);box-shadow:none;}
+  .btn.verde{background:var(--green);box-shadow:0 3px 0 #357048;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+  .btn.sm{padding:7px 13px;font-size:.76rem;border-radius:16px;}
+
+  .grid-setores{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:10px;}
+  .setor-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:16px;cursor:pointer;
+    transition:.15s;position:relative;overflow:hidden;}
+  .setor-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+  .setor-card .ic{font-size:1.8rem;margin-bottom:8px;display:block;}
+  .setor-card h3{font-family:var(--font-display);font-size:.98rem;margin:0 0 4px;color:var(--paper);}
+  .setor-card p{margin:0;font-size:.72rem;color:var(--muted);}
+  .setor-card .badge-count{position:absolute;top:10px;right:12px;font-size:.68rem;font-weight:800;color:var(--gold);}
+
+  .pacotes-topo{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .pacotes-lista{display:flex;flex-direction:column;gap:10px;}
+  .pacote-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:14px 16px;
+    display:flex;align-items:center;gap:14px;}
+  .pacote-card .tipo-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:1.2rem;flex:0 0 auto;background:var(--panel-2);}
+  .pacote-card .info{flex:1 1 auto;min-width:0;}
+  .pacote-card h4{margin:0 0 3px;font-size:.92rem;font-family:var(--font-display);color:var(--paper);}
+  .pacote-card .meta{font-size:.72rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .risco-pill{font-size:.64rem;font-weight:800;padding:2px 8px;border-radius:12px;letter-spacing:.02em;text-transform:uppercase;}
+  .risco-baixo{background:rgba(76,154,104,.18);color:var(--green-bright);}
+  .risco-medio{background:rgba(216,178,90,.18);color:var(--gold);}
+  .risco-alto{background:rgba(216,140,90,.2);color:#e8935a;}
+  .risco-critico{background:rgba(184,54,46,.2);color:var(--red-bright);}
+  .tag{font-size:.64rem;font-weight:700;padding:2px 8px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);}
+
+  .perfil-topo{display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin-bottom:24px;}
+  .avatar-grande{width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--gold) calc(var(--pct,30)*1%),var(--line-strong) 0);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .avatar-grande b{width:80px;height:80px;border-radius:50%;background:var(--panel);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;color:var(--gold);}
+  .avatar-grande b .n{font-size:1.6rem;font-family:var(--font-display);line-height:1;}
+  .avatar-grande b .t{font-size:.6rem;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+  .xp-track{height:10px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-strong);overflow:hidden;margin:6px 0;}
+  .xp-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));}
+  .badges-shelf{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 22px;}
+  .badge-pill{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:20px;padding:7px 13px 7px 7px;}
+  .badge-pill .ic{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--gold),var(--gold-2));
+    display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+  .badge-pill span{font-size:.74rem;font-weight:700;}
+  .badge-pill.bloqueado{opacity:.35;}
+  .comp-row{display:grid;grid-template-columns:170px 1fr 46px;align-items:center;gap:10px;margin-bottom:9px;}
+  .comp-row .nome{font-size:.8rem;font-weight:700;}
+  .comp-row .pct{font-size:.76rem;text-align:right;color:var(--muted);}
+  table.rank{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table.rank th,table.rank td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.rank th{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;}
+  table.rank tr.eu{background:rgba(216,178,90,.08);}
+  .pos-num{font-family:var(--font-display);font-weight:700;color:var(--gold);}
+
+  .gestao-nav{display:flex;gap:6px;margin-bottom:18px;}
+  .gestao-nav button{background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:16px;
+    padding:7px 14px;font-size:.78rem;font-weight:700;cursor:pointer;}
+  .gestao-nav button.active{color:var(--gold);border-color:rgba(216,178,90,.4);}
+  table.gestor{width:100%;border-collapse:collapse;font-size:.82rem;}
+  table.gestor th,table.gestor td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.gestor th{color:var(--muted);font-size:.68rem;text-transform:uppercase;}
+  .mini-track{height:7px;border-radius:5px;background:var(--panel-2);overflow:hidden;min-width:70px;}
+  .mini-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));}
+  .heat-row{display:grid;grid-template-columns:180px 1fr 90px;align-items:center;gap:12px;margin-bottom:10px;}
+  .heat-bar-track{height:14px;border-radius:8px;background:var(--panel-2);overflow:hidden;}
+  .heat-bar{height:100%;}
+  textarea.json-in{width:100%;min-height:160px;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:10px;color:var(--paper);font-family:ui-monospace,Consolas,monospace;font-size:.78rem;padding:12px;}
+  .content-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .content-row .info{flex:1 1 auto;}
+  .content-row h4{margin:0 0 3px;font-size:.86rem;}
+  .switch{position:relative;width:38px;height:22px;flex:0 0 auto;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .sl{position:absolute;inset:0;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:20px;cursor:pointer;transition:.15s;}
+  .switch .sl::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:.15s;}
+  .switch input:checked + .sl{background:rgba(76,154,104,.25);border-color:var(--green);}
+  .switch input:checked + .sl::before{transform:translateX(16px);background:var(--green-bright);}
+
+  /* ---- modal missão ---- */
+  .overlay{position:fixed;inset:0;background:rgba(10,7,7,.86);z-index:60;display:none;align-items:center;justify-content:center;padding:20px;}
+  .overlay.on{display:flex;}
+  .missao-box{width:100%;max-width:640px;max-height:92vh;overflow:auto;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:20px;padding:26px 28px 24px;box-shadow:var(--card-shadow);}
+  .missao-topo{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .missao-topo .kick{font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);}
+  .missao-topo h2{font-family:var(--font-display);font-size:1.2rem;margin:2px 0 0;color:var(--paper);}
+  .missao-topo .x{margin-left:auto;background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);
+    border-radius:14px;padding:5px 11px;font-size:.72rem;cursor:pointer;}
+  .situacao{background:var(--panel-2);border-left:3px solid var(--gold);border-radius:10px;padding:14px 16px;
+    font-size:.92rem;line-height:1.55;margin-bottom:16px;}
+  .opcoes{display:flex;flex-direction:column;gap:9px;}
+  .opcao{text-align:left;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    padding:12px 14px;font-size:.86rem;color:var(--paper);cursor:pointer;transition:.12s;}
+  .opcao:hover:not(:disabled){border-color:var(--gold);background:var(--panel-2);}
+  .opcao:disabled{cursor:default;}
+  .opcao.certa{border-color:var(--green);background:rgba(76,154,104,.12);}
+  .opcao.errada{border-color:var(--red);background:rgba(184,54,46,.1);}
+  .feedback-box{margin-top:14px;border-radius:12px;padding:14px 16px;font-size:.84rem;line-height:1.6;}
+  .feedback-box.ok{background:rgba(76,154,104,.1);border:1px solid rgba(76,154,104,.35);}
+  .feedback-box.bad{background:rgba(184,54,46,.08);border:1px solid rgba(184,54,46,.3);}
+  .feedback-box .linha{margin:5px 0;}
+  .feedback-box b{color:var(--gold);}
+  .fonte-tag{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:700;color:var(--muted);
+    background:var(--panel-2);border-radius:10px;padding:3px 9px;}
+  .flash-card{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:14px;padding:24px;
+    text-align:center;min-height:110px;display:flex;align-items:center;justify-content:center;font-size:.98rem;cursor:pointer;margin-bottom:12px;}
+  .flash-nav{display:flex;justify-content:space-between;align-items:center;}
+  .resultado{text-align:center;padding:8px 0;}
+  .resultado .big{font-size:2.4rem;margin-bottom:6px;}
+  .resultado h3{font-family:var(--font-display);margin:0 0 4px;}
+  .resultado .score{font-size:1.6rem;font-weight:800;color:var(--gold);margin:8px 0;}
+  .ganhos{display:flex;justify-content:center;gap:16px;margin:14px 0;flex-wrap:wrap;}
+  .ganho-item{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:9px 16px;font-size:.82rem;font-weight:700;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--gold);
+    border-radius:14px;padding:12px 20px;box-shadow:var(--card-shadow);z-index:80;display:none;font-size:.86rem;max-width:420px;text-align:center;}
+  .toast.on{display:block;}
+  .vazio{color:var(--muted);font-size:.85rem;padding:30px 10px;text-align:center;}
+  h2.sec-title{font-family:var(--font-display);font-size:1.1rem;margin:0 0 14px;color:var(--paper);}
+  @media(max-width:640px){ .perfil-topo{flex-direction:column;align-items:flex-start;} .heat-row,.comp-row{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div id="gate"><div><h2 style="font-family:var(--font-display);color:var(--paper);">🎓 Academia do Escritório</h2>
+<p>Faça login no Portal Fonseca e Braga para acessar.</p></div></div>
+
+<div id="shell">
+  <header class="hud">
+    <span class="brand"><span class="ic">🎓</span> Academia do Escritório</span>
+    <nav class="subtabs" id="nav-subtabs">
+      <button data-p="jogar" class="active">Jogar</button>
+      <button data-p="perfil">Perfil &amp; Ranking</button>
+      <button data-p="gestao" id="nav-gestao" style="display:none;">Gestão</button>
+    </nav>
+    <span class="hud-sp"></span>
+    <span class="chip streak" id="hud-streak">🔥 0 dias</span>
+    <span class="chip gold" id="hud-moedas">🪙 0</span>
+    <span class="chip" id="hud-xp">0 XP</span>
+    <span class="avatar-mini" id="hud-avatar" style="--pct:0"><b id="hud-nivel">1</b></span>
+  </header>
+
+  <div id="panels">
+    <div class="panel active" id="panel-jogar">
+      <div class="card saudacao">
+        <div>
+          <h1 id="saud-titulo">Bom dia!</h1>
+          <p id="saud-sub">Carregando sua jornada…</p>
+        </div>
+        <span class="sp"></span>
+        <button class="btn ouro" id="btn-missao-dia">🎯 Missão do dia</button>
+      </div>
+      <div id="jogar-setores">
+        <h2 class="sec-title">Ambientes do escritório</h2>
+        <div class="grid-setores" id="grid-setores"></div>
+      </div>
+      <div id="jogar-pacotes" style="display:none;">
+        <div class="pacotes-topo">
+          <button class="btn claro sm" id="btn-voltar-setores">← Ambientes</button>
+          <h2 class="sec-title" id="setor-titulo" style="margin:0;"></h2>
+        </div>
+        <div class="pacotes-lista" id="pacotes-lista"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-perfil">
+      <div class="card">
+        <div class="perfil-topo">
+          <div class="avatar-grande" id="perfil-avatar" style="--pct:0"><b><span class="n" id="perfil-nivel-num">1</span><span class="t" id="perfil-nivel-nome">Iniciante</span></b></div>
+          <div style="flex:1 1 240px;min-width:200px;">
+            <h1 style="font-family:var(--font-display);margin:0 0 4px;font-size:1.3rem;" id="perfil-nome">—</h1>
+            <p style="margin:0 0 8px;color:var(--muted);font-size:.82rem;" id="perfil-cargo">—</p>
+            <div class="xp-track"><div class="xp-fill" id="perfil-xp-fill" style="width:0%"></div></div>
+            <p style="margin:0;font-size:.74rem;color:var(--muted);" id="perfil-xp-txt">0 / 0 XP para o próximo nível</p>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div class="ganho-item">🪙 <span id="perfil-moedas">0</span> moedas</div>
+            <div class="ganho-item">🔥 <span id="perfil-streak">0</span> dias seguidos</div>
+          </div>
+        </div>
+        <h2 class="sec-title">Conquistas</h2>
+        <div class="badges-shelf" id="badges-shelf"></div>
+        <h2 class="sec-title">Mapa de competências</h2>
+        <div id="mapa-competencias"></div>
+      </div>
+      <div class="card" style="margin-top:18px;">
+        <h2 class="sec-title">Ranking geral</h2>
+        <div style="overflow-x:auto;"><table class="rank" id="tabela-ranking"><thead><tr><th>#</th><th>Colaborador(a)</th><th>Nível</th><th>XP</th><th>Streak</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-gestao">
+      <div class="gestao-nav" id="gestao-nav">
+        <button data-g="visao" class="active">Visão geral</button>
+        <button data-g="riscos">Riscos</button>
+        <button data-g="conteudo">Conteúdo</button>
+      </div>
+      <div id="gestao-visao">
+        <div class="card">
+          <h2 class="sec-title">Quem treinou</h2>
+          <div style="overflow-x:auto;"><table class="gestor" id="tabela-gestor"><thead><tr><th>Colaborador(a)</th><th>Setor</th><th>Nível</th><th>Missões</th><th>Obrigatórias pendentes</th><th>XP</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <div id="gestao-riscos" style="display:none;">
+        <div class="card">
+          <h2 class="sec-title">🔥 Riscos operacionais — temas com mais erro</h2>
+          <div id="heatmap-lista"></div>
+        </div>
+      </div>
+      <div id="gestao-conteudo" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <h2 class="sec-title">Importar novo pacote</h2>
+          <p style="font-size:.8rem;color:var(--muted);margin:0 0 10px;">Cole aqui o JSON do pacote gerado (peça pra quem monta o conteúdo — inclusive numa conversa comigo — te entregar nesse formato). <button class="btn claro sm" id="btn-exemplo-json" type="button" style="margin-left:6px;">ver exemplo</button></p>
+          <textarea class="json-in" id="json-import" placeholder='{"titulo":"...", "setor":"juridico", "tema":"...", "risco":"medio", "tipo":"missao", "resumo":"...", "fonte":{"doc":"POP 00X","item":"..."}, "cenario":{"passos":[{"situacao":"...","opcoes":[{"texto":"...","correta":true,"pontos":10,"feedback":"..."}]}]}, "quiz":[], "xpBase":40, "moedasBase":10}'></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn sm" id="btn-validar-json">Validar</button>
+            <button class="btn verde sm" id="btn-publicar-json" disabled>Publicar</button>
+          </div>
+          <div id="json-status" style="font-size:.78rem;margin-top:8px;color:var(--muted);"></div>
+        </div>
+        <div class="card">
+          <h2 class="sec-title">Pacotes publicados</h2>
+          <div id="conteudo-lista"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-missao">
+  <div class="missao-box" id="missao-box"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ================================================================
+   ACADEMIA DO ESCRITÓRIO — MVP funcional
+   ------------------------------------------------------------
+   Sem chamada de IA em tempo real dentro do app (custo/infra a
+   combinar). O "motor de IA" é o formato de pacote de conteúdo:
+   quando você me manda um documento numa conversa, eu gero um pacote
+   neste formato e você cola/importa em Gestão > Conteúdo — publica
+   na hora, sem mexer em código.
+   ================================================================ */
+
+var SETORES = [
+  { id:'recepcao', nome:'Recepção', emoji:'🛎️' },
+  { id:'administrativo', nome:'Administrativo', emoji:'🗂️' },
+  { id:'financeiro', nome:'Financeiro', emoji:'💰' },
+  { id:'juridico', nome:'Jurídico', emoji:'⚖️' },
+  { id:'controladoria', nome:'Controladoria', emoji:'📋' },
+  { id:'comercial', nome:'Comercial', emoji:'🤝' },
+  { id:'atendimento', nome:'Atendimento ao Cliente', emoji:'💬' },
+  { id:'reuniao', nome:'Sala de Reunião', emoji:'🗣️' },
+  { id:'socios', nome:'Sala dos Sócios', emoji:'🏛️' },
+  { id:'tribunal', nome:'Tribunal', emoji:'🏢' },
+  { id:'condominio', nome:'Condomínio', emoji:'🏘️' },
+  { id:'clientes', nome:'Empresas Clientes', emoji:'🏭' },
+  { id:'homeoffice', nome:'Home Office', emoji:'💻' }
+];
+var NIVEIS = [
+  {n:1,nome:'Iniciante',xp:0}, {n:2,nome:'Assistente',xp:120}, {n:3,nome:'Analista',xp:300},
+  {n:4,nome:'Especialista',xp:550}, {n:5,nome:'Master',xp:900}, {n:6,nome:'Elite',xp:1350}, {n:7,nome:'Líder',xp:1900}
+];
+var BADGES = {
+  'primeiro-passo':{nome:'Primeiro Passo', ic:'👣', desc:'Concluiu a primeira missão.'},
+  'sem-perder-prazo':{nome:'Sem Perder Prazo', ic:'⏱️', desc:'100% em uma missão de controle de prazos.'},
+  'cliente-feliz':{nome:'Cliente Feliz', ic:'😊', desc:'100% em uma missão de atendimento.'},
+  'mestre-dos-pops':{nome:'Mestre dos POPs', ic:'📚', desc:'Concluiu 10 pacotes diferentes.'},
+  'streak-7':{nome:'7 Dias Seguidos', ic:'🔥', desc:'Treinou 7 dias seguidos.'},
+  'cem-por-cento':{nome:'100% de Acerto', ic:'💯', desc:'Gabaritou uma missão.'},
+  'guardiao':{nome:'Guardião do Procedimento', ic:'🛡️', desc:'Concluiu todas as missões obrigatórias.'}
+};
+var PASS_CERT = 0.8;
+
+/* ---------- exemplo de conteúdo seed (marcado [EXEMPLO] — troque pelo real) ---------- */
+var SEED_PACOTES = [
+  { id:'ex-prazo-intimacao', titulo:'[EXEMPLO] Intimação às 15h32', setor:'juridico', tema:'controle-de-prazos', risco:'critico',
+    tipo:'missao', obrigatorio:false, trilha:null, ordem:null, preRequisitos:[],
+    fonte:{doc:'[POP a definir]', item:'-'},
+    resumo:'Uma intimação chegou perto do fim do expediente. O que você faz primeiro?',
+    flashcards:[{frente:'Prazo processual conta em quê?',verso:'Em dias úteis (regra geral do CPC).'}],
+    cenario:{ passos:[{
+      situacao:'Você recebeu uma intimação às 15h32 informando abertura de prazo processual. O que você faz primeiro?',
+      opcoes:[
+        {texto:'Deixo para olhar amanhã, ainda dá tempo.', correta:false, pontos:0, erro:'Adiar sem registrar cria risco de esquecimento.', risco:'Perda do prazo processual — pode custar o direito do cliente.', correto:'Registrar o recebimento e a data fatal imediatamente, mesmo que a análise detalhada fique para depois.', fonte:'[POP a definir]'},
+        {texto:'Identifico o processo e o cliente, calculo a data fatal e registro no controle antes de mais nada.', correta:true, pontos:10, feedback:'Exatamente — primeiro se garante que o prazo está registrado e rastreável, depois se aprofunda no mérito.'},
+        {texto:'Respondo à intimação na hora, sem checar o processo.', correta:false, pontos:0, erro:'Responder sem identificar processo/cliente corretamente pode gerar erro grave.', risco:'Peça equivocada ou enviada no processo errado.', correto:'Confirmar processo e cliente antes de qualquer providência.', fonte:'[POP a definir]'},
+        {texto:'Encaminho para outra pessoa sem registrar nada.', correta:false, pontos:2, erro:'Delegar sem registro quebra a rastreabilidade do prazo.', risco:'Ninguém fica formalmente responsável — prazo pode ser perdido "entre as mãos".', correto:'Registrar o prazo no controle E informar o responsável.', fonte:'[POP a definir]'}
+      ]
+    }]},
+    quiz:[{q:'Em regra, o prazo processual conta-se em:', opcoes:['Dias corridos','Dias úteis','Meses','Depende do juiz'], correta:1, explica:'CPC art. 219: dias úteis.'}],
+    xpBase:40, moedasBase:10, badge:'sem-perder-prazo', publicado:true, versao:1, obsoleto:false },
+
+  { id:'ex-cliente-insatisfeito', titulo:'[EXEMPLO] Cliente insatisfeito', setor:'atendimento', tema:'atendimento', risco:'alto',
+    tipo:'missao', obrigatorio:false, trilha:null, ordem:null, preRequisitos:[],
+    fonte:{doc:'[POP a definir]', item:'-'},
+    resumo:'Um cliente reclama que não recebeu retorno. Como agir?',
+    flashcards:[],
+    cenario:{ passos:[{
+      situacao:'Um cliente envia uma mensagem reclamando que não recebeu retorno há dias. Como você responde?',
+      opcoes:[
+        {texto:'Ignoro até que alguém mais sênior perceba.', correta:false, pontos:0, erro:'Silêncio piora a percepção do cliente.', risco:'Perda de confiança e possível churn.', correto:'Reconhecer a demora, se desculpar e dar um prazo concreto de retorno.', fonte:'[POP a definir]'},
+        {texto:'Respondo reconhecendo a demora, peço desculpas e informo quando terá uma resposta concreta, registrando o combinado.', correta:true, pontos:10, feedback:'Boa! Reconhecer, se desculpar e dar um prazo concreto restaura a confiança — e registrar evita repetir o problema.'},
+        {texto:'Explico tecnicamente por que o processo está demorado, sem pedir desculpas.', correta:false, pontos:3, erro:'Faltou reconhecer o incômodo do cliente antes da explicação técnica.', risco:'Cliente sente que o escritório não se importou.', correto:'Reconhecer o sentimento do cliente antes de explicar o processo.', fonte:'[POP a definir]'}
+      ]
+    }]},
+    quiz:[],
+    xpBase:35, moedasBase:8, badge:'cliente-feliz', publicado:true, versao:1, obsoleto:false },
+
+  { id:'ex-boss-prazo-urgente', titulo:'[EXEMPLO] BOSS: Prazo processual urgente', setor:'juridico', tema:'controle-de-prazos', risco:'critico',
+    tipo:'boss', obrigatorio:false, trilha:null, ordem:null, preRequisitos:['ex-prazo-intimacao'],
+    fonte:{doc:'[POP a definir]', item:'-'},
+    resumo:'Sequência completa: da intimação ao registro do responsável. Vale mais XP.',
+    flashcards:[],
+    cenario:{ passos:[
+      {situacao:'PASSO 1 de 4 — Uma intimação chegou. Primeira ação:', opcoes:[
+        {texto:'Identificar o processo e o cliente relacionados.', correta:true, pontos:8, feedback:'Correto, sempre comece confirmando processo e cliente.'},
+        {texto:'Já sair calculando prazo sem saber de qual processo se trata.', correta:false, pontos:0, erro:'Calcular prazo sem saber o processo é arriscado.', risco:'Prazo errado por confundir processos.', correto:'Confirmar processo/cliente primeiro.', fonte:'[POP a definir]'}
+      ]},
+      {situacao:'PASSO 2 de 4 — Processo e cliente identificados. Agora:', opcoes:[
+        {texto:'Classificar o tipo de prazo e calcular a data fatal.', correta:true, pontos:8, feedback:'Isso mesmo — classificar o tipo de prazo define como ele é contado.'},
+        {texto:'Cadastrar sem definir o tipo de prazo.', correta:false, pontos:1, erro:'Sem classificar, o cálculo pode ficar errado.', risco:'Data fatal incorreta.', correto:'Classificar antes de cadastrar.', fonte:'[POP a definir]'}
+      ]},
+      {situacao:'PASSO 3 de 4 — Prazo classificado e calculado. Agora:', opcoes:[
+        {texto:'Cadastrar no sistema de controle de prazos.', correta:true, pontos:8, feedback:'Perfeito — sem cadastro, o prazo só existe na sua cabeça.'},
+        {texto:'Guardar de cabeça e cadastrar depois.', correta:false, pontos:0, erro:'Prazo não registrado é prazo em risco.', risco:'Esquecimento.', correto:'Cadastrar imediatamente.', fonte:'[POP a definir]'}
+      ]},
+      {situacao:'PASSO 4 de 4 — Prazo cadastrado. Última etapa:', opcoes:[
+        {texto:'Informar o responsável e conferir se o procedimento interno foi seguido.', correta:true, pontos:8, feedback:'Fechou o ciclo — responsável avisado e procedimento conferido.'},
+        {texto:'Considerar a tarefa encerrada assim que cadastrar.', correta:false, pontos:2, erro:'Sem avisar o responsável, o prazo pode não ser cumprido.', risco:'Ninguém trabalha o prazo a tempo.', correto:'Sempre avisar o responsável.', fonte:'[POP a definir]'}
+      ]}
+    ]},
+    quiz:[], xpBase:90, moedasBase:25, badge:null, publicado:true, versao:1, obsoleto:false },
+
+  { id:'ex-cert-prazos', titulo:'[EXEMPLO] Certificação — Controle de Prazos (Avançado)', setor:'juridico', tema:'controle-de-prazos', risco:'alto',
+    tipo:'certificacao', obrigatorio:false, trilha:null, ordem:null, preRequisitos:['ex-prazo-intimacao','ex-boss-prazo-urgente'],
+    fonte:{doc:'[POP a definir]', item:'-'},
+    resumo:'Prova final sobre controle de prazos. Exige 80% para certificar.',
+    flashcards:[], cenario:{passos:[]},
+    quiz:[
+      {q:'Prazo processual conta-se em regra em:', opcoes:['Dias corridos','Dias úteis','Meses','Semanas'], correta:1, explica:'Dias úteis, CPC art. 219.'},
+      {q:'Antes de cadastrar um prazo, o primeiro passo é:', opcoes:['Confirmar processo e cliente','Responder direto','Ignorar até amanhã','Perguntar a outro setor'], correta:0, explica:'Sempre identifique processo e cliente primeiro.'},
+      {q:'Depois de cadastrar um prazo, você deve:', opcoes:['Nada mais','Informar o responsável','Apagar a intimação','Esperar reclamação'], correta:1, explica:'Fechar o ciclo avisando quem vai trabalhar o prazo.'}
+    ],
+    xpBase:60, moedasBase:20, badge:null, publicado:true, versao:1, obsoleto:false },
+
+  { id:'onb-dia1', titulo:'Dia 1 — Conhecendo o escritório', setor:'recepcao', tema:'onboarding', risco:'baixo',
+    tipo:'missao', obrigatorio:true, trilha:'onboarding', ordem:1, preRequisitos:[],
+    fonte:{doc:'Manual do Portal', item:'-'}, resumo:'Primeiros passos na Fonseca e Braga.',
+    flashcards:[{frente:'Onde ficam os procedimentos do escritório?',verso:'Na aba POPs do Portal.'}],
+    cenario:{passos:[{situacao:'É seu primeiro dia. Onde você procura o passo a passo de uma tarefa que não conhece?', opcoes:[
+      {texto:'Na aba POPs do Portal.', correta:true, pontos:10, feedback:'Isso — os POPs são a fonte oficial e atualizada.'},
+      {texto:'Pergunto no grupo de WhatsApp.', correta:false, pontos:2, erro:'Pode receber uma resposta desatualizada.', risco:'Fazer errado por informação informal.', correto:'Consultar o POP oficial primeiro.', fonte:'Manual do Portal'}
+    ]}]}, quiz:[], xpBase:20, moedasBase:5, badge:null, publicado:true, versao:1, obsoleto:false },
+  { id:'onb-dia2', titulo:'Dia 2 — Ferramentas do Portal', setor:'administrativo', tema:'onboarding', risco:'baixo',
+    tipo:'missao', obrigatorio:true, trilha:'onboarding', ordem:2, preRequisitos:['onb-dia1'],
+    fonte:{doc:'Manual do Portal', item:'-'}, resumo:'As ferramentas internas do dia a dia.', flashcards:[],
+    cenario:{passos:[{situacao:'Você precisa que uma aba nova seja liberada para você no Portal. O que faz?', opcoes:[
+      {texto:'Peço ao administrador para liberar no meu perfil.', correta:true, pontos:10, feedback:'Certo — acesso é liberado por pessoa pelo administrador.'},
+      {texto:'Uso a conta de um colega.', correta:false, pontos:0, erro:'Nunca use a conta de outra pessoa.', risco:'Ações ficam registradas no nome errado.', correto:'Pedir a liberação ao administrador.', fonte:'Manual do Portal'}
+    ]}]}, quiz:[], xpBase:20, moedasBase:5, badge:null, publicado:true, versao:1, obsoleto:false },
+  { id:'onb-dia3', titulo:'Dia 3 — Procedimentos internos', setor:'controladoria', tema:'onboarding', risco:'baixo',
+    tipo:'missao', obrigatorio:true, trilha:'onboarding', ordem:3, preRequisitos:['onb-dia2'],
+    fonte:{doc:'[POP a definir]', item:'-'}, resumo:'Como seguir um procedimento interno.', flashcards:[],
+    cenario:{passos:[{situacao:'Você não tem certeza se um procedimento mudou recentemente. O que faz?', opcoes:[
+      {texto:'Confiro a versão mais recente do POP antes de agir.', correta:true, pontos:10, feedback:'Isso — procedimentos mudam, sempre confira a versão vigente.'},
+      {texto:'Faço do jeito que sempre fiz.', correta:false, pontos:1, erro:'Procedimentos são atualizados; o jeito antigo pode estar obsoleto.', risco:'Executar um passo já superado.', correto:'Conferir a versão vigente do POP.', fonte:'[POP a definir]'}
+    ]}]}, quiz:[], xpBase:20, moedasBase:5, badge:null, publicado:true, versao:1, obsoleto:false },
+  { id:'onb-dia4', titulo:'Dia 4 — Atendimento ao cliente', setor:'atendimento', tema:'atendimento', risco:'medio',
+    tipo:'missao', obrigatorio:true, trilha:'onboarding', ordem:4, preRequisitos:['onb-dia3'],
+    fonte:{doc:'[POP a definir]', item:'-'}, resumo:'Boas práticas no primeiro contato com cliente.', flashcards:[],
+    cenario:{passos:[{situacao:'Um cliente pede uma garantia de que vai ganhar a causa. Você:', opcoes:[
+      {texto:'Explico os caminhos possíveis e os riscos, sem prometer resultado.', correta:true, pontos:10, feedback:'Correto — prometer resultado é vedado pelo Código de Ética da OAB.'},
+      {texto:'Garanto para deixar o cliente tranquilo.', correta:false, pontos:0, erro:'Prometer resultado é vedado.', risco:'Quebra de confiança se o resultado for diferente, além de questão ética.', correto:'Explicar caminhos e riscos, nunca garantir.', fonte:'Código de Ética OAB'}
+    ]}]}, quiz:[], xpBase:20, moedasBase:5, badge:null, publicado:true, versao:1, obsoleto:false },
+  { id:'onb-dia5', titulo:'Dia 5 — Casos simulados', setor:'juridico', tema:'controle-de-prazos', risco:'medio',
+    tipo:'missao', obrigatorio:true, trilha:'onboarding', ordem:5, preRequisitos:['onb-dia4'],
+    fonte:{doc:'[POP a definir]', item:'-'}, resumo:'Um caso prático simples para fechar a semana.', flashcards:[],
+    cenario:{passos:[{situacao:'Você recebeu uma tarefa com prazo e não tem certeza do procedimento. O que faz primeiro?', opcoes:[
+      {texto:'Confirmo o prazo, registro, e só depois tiro dúvidas sobre o procedimento com calma.', correta:true, pontos:10, feedback:'Isso — primeiro protege o prazo (o que é urgente), depois resolve a dúvida (o que é importante).'},
+      {texto:'Só tiro a dúvida depois de resolver tudo sozinho.', correta:false, pontos:2, erro:'Tentar sozinho sem registrar o prazo primeiro é arriscado.', risco:'Perder tempo e o prazo por tentar descobrir tudo antes de agir.', correto:'Proteger o prazo primeiro, tirar dúvida depois.', fonte:'[POP a definir]'}
+    ]}]}, quiz:[], xpBase:25, moedasBase:6, badge:null, publicado:true, versao:1, obsoleto:false }
+];
+
+/* ================================================================ */
+var $=function(id){return document.getElementById(id);};
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function hoje(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function shuffle(arr){ var a=arr.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+
+if (typeof firebaseConfig === 'undefined' || !firebaseConfig || firebaseConfig.apiKey === 'COLE_AQUI_SUA_API_KEY'){
+  $('gate').classList.add('on');
+  $('gate').querySelector('p').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+} else {
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+
+  var meuUid=null, meuNome='', souAdmin=false, souGestor=false;
+  var pacotes=[]; // publicados, mesclando seed + firestore
+  var prog=null, progRef=null;
+  var perfilRef=null;
+
+  function nivelInfo(xp){
+    var atual=NIVEIS[0];
+    for (var i=0;i<NIVEIS.length;i++) if (xp>=NIVEIS[i].xp) atual=NIVEIS[i];
+    var prox = NIVEIS[atual.n] || null;
+    return { atual:atual, proxXp: prox?prox.xp:null };
+  }
+  function progNovo(){
+    return { xp:0, moedas:0, streakDias:0, ultimoDia:null, badges:[], pacotes:{}, porTema:{}, nome:meuNome, setorEscolhido:null };
+  }
+
+  /* ---------- boot ---------- */
+  auth.onAuthStateChanged(function(user){
+    if (!user){ $('gate').classList.add('on'); $('shell').classList.remove('on'); return; }
+    meuUid=user.uid; meuNome=user.displayName||'Colaborador(a)';
+    $('gate').classList.remove('on'); $('shell').classList.add('on');
+    progRef = db.collection('academiaProgresso').doc(meuUid);
+    perfilRef = db.collection('academiaPerfil').doc(meuUid);
+
+    db.collection('users').doc(meuUid).get().then(function(doc){
+      var d=doc.exists?doc.data():{};
+      souAdmin = d.role==='admin'; souGestor = d.role==='gestor';
+      $('nav-gestao').style.display = (souAdmin||souGestor) ? 'inline-block':'none';
+    }).catch(function(){}).finally(function(){
+      carregarPacotes(function(){
+        carregarProgresso(function(){
+          renderTudo();
+        });
+      });
+    });
+  });
+
+  function carregarPacotes(cb){
+    db.collection('academiaConteudo').get().then(function(snap){
+      var doFirestore = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      var idsFs = doFirestore.map(function(p){ return p.id; });
+      var seedFiltrado = SEED_PACOTES.filter(function(p){ return idsFs.indexOf(p.id)===-1; });
+      pacotes = seedFiltrado.concat(doFirestore).filter(function(p){ return p.publicado && !p.obsoleto; });
+      cb();
+    }).catch(function(){ pacotes = SEED_PACOTES.filter(function(p){ return p.publicado && !p.obsoleto; }); cb(); });
+  }
+  function carregarProgresso(cb){
+    progRef.get().then(function(doc){
+      prog = doc.exists ? Object.assign(progNovo(), doc.data()) : progNovo();
+      cb();
+    }).catch(function(){ prog=progNovo(); cb(); });
+  }
+  function salvarProgresso(){
+    prog.nome = meuNome;
+    progRef.set(prog, {merge:true}).catch(function(e){ console.warn('save prog', e&&e.message); });
+    var ni = nivelInfo(prog.xp);
+    perfilRef.set({ nome:meuNome, setor:prog.setorEscolhido||'', nivel:ni.atual.n, nivelNome:ni.atual.nome, xp:prog.xp, streakDias:prog.streakDias, badges:prog.badges, atualizadoEm:firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}).catch(function(){});
+  }
+
+  /* ---------- navegação de sub-abas ---------- */
+  Array.prototype.forEach.call($('nav-subtabs').querySelectorAll('button'), function(b){
+    b.addEventListener('click', function(){
+      Array.prototype.forEach.call($('nav-subtabs').querySelectorAll('button'), function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      Array.prototype.forEach.call(document.querySelectorAll('#panels .panel'), function(p){ p.classList.remove('active'); });
+      $('panel-'+b.dataset.p).classList.add('active');
+      if (b.dataset.p==='perfil') renderPerfil();
+      if (b.dataset.p==='gestao') renderGestao();
+    });
+  });
+  Array.prototype.forEach.call($('gestao-nav').querySelectorAll('button'), function(b){
+    b.addEventListener('click', function(){
+      Array.prototype.forEach.call($('gestao-nav').querySelectorAll('button'), function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      ['visao','riscos','conteudo'].forEach(function(k){ $('gestao-'+k).style.display = (k===b.dataset.g)?'block':'none'; });
+      if (b.dataset.g==='riscos') renderHeatmap();
+      if (b.dataset.g==='conteudo') renderConteudoLista();
+    });
+  });
+
+  /* ---------- render geral ---------- */
+  function renderTudo(){
+    renderHud();
+    renderJogar();
+  }
+  function renderHud(){
+    var ni = nivelInfo(prog.xp);
+    var pct = ni.proxXp ? clamp(Math.round((prog.xp-ni.atual.xp)/(ni.proxXp-ni.atual.xp)*100),0,100) : 100;
+    $('hud-streak').textContent = '🔥 '+prog.streakDias+' dia'+(prog.streakDias===1?'':'s');
+    $('hud-moedas').textContent = '🪙 '+prog.moedas;
+    $('hud-xp').textContent = prog.xp+' XP';
+    $('hud-nivel').textContent = ni.atual.n;
+    $('hud-avatar').style.setProperty('--pct', pct);
+  }
+  function pacotesConcluidos(){ return Object.keys(prog.pacotes).filter(function(k){ return prog.pacotes[k].concluido; }); }
+  function contarPorSetor(setorId){ return pacotes.filter(function(p){ return p.setor===setorId; }).length; }
+
+  function renderJogar(){
+    var feitas = pacotesConcluidos().length;
+    $('saud-titulo').textContent = 'Bom dia, '+meuNome.split(' ')[0]+'!';
+    $('saud-sub').textContent = prog.streakDias>0
+      ? ('Você está há '+prog.streakDias+' dia'+(prog.streakDias===1?'':'s')+' seguido(s) treinando. '+feitas+' missão(ões) concluída(s).')
+      : ('Bora começar hoje? '+feitas+' missão(ões) concluída(s) até agora.');
+    $('grid-setores').innerHTML = SETORES.map(function(s){
+      var n = contarPorSetor(s.id);
+      return '<div class="setor-card" data-setor="'+s.id+'"><span class="badge-count">'+(n||'')+'</span>'+
+        '<span class="ic">'+s.emoji+'</span><h3>'+esc(s.nome)+'</h3><p>'+(n? n+' missão(ões)':'Em breve')+'</p></div>';
+    }).join('');
+    Array.prototype.forEach.call($('grid-setores').querySelectorAll('.setor-card'), function(c){
+      c.addEventListener('click', function(){ abrirSetor(c.dataset.setor); });
+    });
+    $('btn-missao-dia').onclick = function(){ var p = escolherMissaoDoDia(); if (p) abrirMissao(p.id); else toast('Tudo em dia!','Você concluiu tudo disponível por enquanto. 🎉'); };
+  }
+
+  function abrirSetor(setorId){
+    $('jogar-setores').style.display='none'; $('jogar-pacotes').style.display='block';
+    var s = SETORES.filter(function(x){return x.id===setorId;})[0];
+    $('setor-titulo').textContent = s.emoji+' '+s.nome;
+    var lista = pacotes.filter(function(p){ return p.setor===setorId; });
+    $('pacotes-lista').innerHTML = lista.length ? lista.map(pacoteCardHtml).join('') : '<div class="vazio">Nenhuma missão publicada neste ambiente ainda.</div>';
+    ligarBotoesPacote();
+  }
+  $('btn-voltar-setores').onclick = function(){ $('jogar-pacotes').style.display='none'; $('jogar-setores').style.display='block'; };
+
+  function tipoIcone(tipo){ return tipo==='boss' ? '👑' : tipo==='certificacao' ? '🏅' : '🎯'; }
+  function pacoteCardHtml(p){
+    var pr = prog.pacotes[p.id];
+    var bloqueado = (p.preRequisitos||[]).some(function(id){ return !(prog.pacotes[id]&&prog.pacotes[id].concluido); });
+    return '<div class="pacote-card">'+
+      '<div class="tipo-ic">'+tipoIcone(p.tipo)+'</div>'+
+      '<div class="info"><h4>'+esc(p.titulo)+(pr&&pr.concluido?' ✅':'')+'</h4>'+
+        '<div class="meta"><span class="risco-pill risco-'+p.risco+'">'+p.risco+'</span>'+
+        (p.obrigatorio?'<span class="tag">obrigatória</span>':'')+
+        (p.tipo==='boss'?'<span class="tag">boss battle</span>':'')+
+        (p.tipo==='certificacao'?'<span class="tag">certificação</span>':'')+
+        '<span class="tag">'+(p.xpBase||0)+' XP</span></span></div>'+
+        '<p style="margin:6px 0 0;font-size:.78rem;color:var(--muted);">'+esc(p.resumo||'')+'</p></div>'+
+      '<button class="btn sm'+(bloqueado?'':' ouro')+'" data-jogar="'+p.id+'"'+(bloqueado?' disabled':'')+'>'+(bloqueado?'🔒 bloqueada':(pr&&pr.concluido?'Jogar de novo':'Jogar'))+'</button>'+
+      '</div>';
+  }
+  function ligarBotoesPacote(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-jogar]'), function(b){
+      b.onclick = function(){ abrirMissao(b.dataset.jogar); };
+    });
+  }
+
+  function escolherMissaoDoDia(){
+    var candidatos = pacotes.filter(function(p){ return !p.preRequisitos || p.preRequisitos.every(function(id){ return prog.pacotes[id]&&prog.pacotes[id].concluido; }); });
+    var obrigNaoFeitas = candidatos.filter(function(p){ return p.obrigatorio && !(prog.pacotes[p.id]&&prog.pacotes[p.id].concluido); });
+    if (obrigNaoFeitas.length){ obrigNaoFeitas.sort(function(a,b){ return (a.ordem||99)-(b.ordem||99); }); return obrigNaoFeitas[0]; }
+    var naoFeitas = candidatos.filter(function(p){ return !(prog.pacotes[p.id]&&prog.pacotes[p.id].concluido) && p.tipo!=='certificacao'; });
+    if (!naoFeitas.length) return null;
+    // prioriza o tema com pior desempenho
+    naoFeitas.sort(function(a,b){
+      var ta=prog.porTema[a.tema], tb=prog.porTema[b.tema];
+      var pa = ta&&ta.total ? ta.acertos/ta.total : 0, pb = tb&&tb.total ? tb.acertos/tb.total : 0;
+      return pa-pb;
+    });
+    return naoFeitas[0];
+  }
+
+  /* ================================================================
+     MOTOR DA MISSÃO
+     ================================================================ */
+  var sessao=null;
+  function abrirMissao(id){
+    var p = pacotes.filter(function(x){return x.id===id;})[0]; if (!p) return;
+    sessao = { p:p, fase:'intro', flashIdx:0, passoIdx:0, quizIdx:0, pontos:0, maxPontos:0, respostasCerto:0, respostasTotal:0 };
+    (p.cenario&&p.cenario.passos||[]).forEach(function(ps){ var max=0; ps.opcoes.forEach(function(o){ max=Math.max(max,o.pontos||0); }); sessao.maxPontos+=max; });
+    (p.quiz||[]).forEach(function(){ sessao.maxPontos+=10; });
+    $('overlay-missao').classList.add('on');
+    telaIntro();
+  }
+  function fecharMissao(){ $('overlay-missao').classList.remove('on'); sessao=null; renderJogar(); if ($('panel-perfil').classList.contains('active')) renderPerfil(); }
+
+  function telaIntro(){
+    var p=sessao.p;
+    var temFlash = p.flashcards && p.flashcards.length;
+    $('missao-box').innerHTML =
+      '<div class="missao-topo"><span class="kick">'+esc(SETORES.filter(function(s){return s.id===p.setor;})[0]?.nome||p.setor)+'</span><button class="x" id="m-x">✕ fechar</button></div>'+
+      '<h2>'+tipoIcone(p.tipo)+' '+esc(p.titulo)+'</h2>'+
+      '<p style="color:var(--muted);font-size:.86rem;margin:8px 0 18px;">'+esc(p.resumo||'')+'</p>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">'+
+        (temFlash?'<button class="btn claro" id="m-flash">📇 Rever flashcards</button>':'')+
+        '<button class="btn ouro" id="m-comecar">Começar ▶</button>'+
+      '</div>';
+    $('m-x').onclick=fecharMissao;
+    $('m-comecar').onclick=function(){ sessao.fase='cenario'; telaPasso(); };
+    if ($('m-flash')) $('m-flash').onclick=function(){ sessao.fase='flash'; sessao.flashIdx=0; telaFlash(); };
+  }
+  function telaFlash(){
+    var p=sessao.p, fc=p.flashcards[sessao.flashIdx], virado=false;
+    $('missao-box').innerHTML =
+      '<div class="missao-topo"><span class="kick">Flashcard '+(sessao.flashIdx+1)+'/'+p.flashcards.length+'</span><button class="x" id="m-x">✕ fechar</button></div>'+
+      '<div class="flash-card" id="m-flip">'+esc(fc.frente)+'</div>'+
+      '<div class="flash-nav"><button class="btn claro sm" id="m-fant" '+(sessao.flashIdx===0?'disabled':'')+'>← anterior</button>'+
+      '<span style="font-size:.76rem;color:var(--muted);">clique no card pra virar</span>'+
+      '<button class="btn sm" id="m-fprox">'+(sessao.flashIdx<p.flashcards.length-1?'próximo →':'ir para a missão ▶')+'</button></div>';
+    $('m-x').onclick=fecharMissao;
+    $('m-flip').onclick=function(){ virado=!virado; $('m-flip').textContent = virado?fc.verso:fc.frente; };
+    $('m-fant').onclick=function(){ sessao.flashIdx--; telaFlash(); };
+    $('m-fprox').onclick=function(){ if (sessao.flashIdx<p.flashcards.length-1){ sessao.flashIdx++; telaFlash(); } else { sessao.fase='cenario'; telaPasso(); } };
+  }
+  function telaPasso(){
+    var p=sessao.p, passos=(p.cenario&&p.cenario.passos)||[];
+    if (sessao.passoIdx>=passos.length){ sessao.fase='quiz'; sessao.quizIdx=0; telaQuiz(); return; }
+    var ps=passos[sessao.passoIdx];
+    var opcoesEmbaralhadas = shuffle(ps.opcoes.map(function(o,i){ return Object.assign({_i:i},o); }));
+    $('missao-box').innerHTML =
+      '<div class="missao-topo"><span class="kick">Cenário '+(passos.length>1?(sessao.passoIdx+1)+'/'+passos.length:'')+'</span><button class="x" id="m-x">✕ fechar</button></div>'+
+      '<div class="situacao">'+esc(ps.situacao)+'</div>'+
+      '<div class="opcoes" id="m-opcoes">'+opcoesEmbaralhadas.map(function(o){ return '<button class="opcao" data-i="'+o._i+'">'+esc(o.texto)+'</button>'; }).join('')+'</div>'+
+      '<div id="m-feedback"></div>';
+    $('m-x').onclick=fecharMissao;
+    Array.prototype.forEach.call($('m-opcoes').querySelectorAll('.opcao'), function(btn){
+      btn.onclick=function(){
+        var idx=parseInt(btn.dataset.i,10), o=ps.opcoes[idx];
+        sessao.respostasTotal++; if (o.correta) sessao.respostasCerto++;
+        sessao.pontos += (o.pontos||0);
+        Array.prototype.forEach.call($('m-opcoes').querySelectorAll('.opcao'), function(b2){ b2.disabled=true; if (parseInt(b2.dataset.i,10)===idx) b2.classList.add(o.correta?'certa':'errada'); });
+        var fb='';
+        if (o.correta){ fb='<div class="feedback-box ok">✅ '+esc(o.feedback||'Boa escolha!')+'</div>'; }
+        else {
+          fb='<div class="feedback-box bad">❌ <b>Risco:</b> '+esc(o.risco||'—')+
+             '<div class="linha"><b>Procedimento correto:</b> '+esc(o.correto||'—')+'</div>'+
+             (o.fonte?'<span class="fonte-tag">Fonte: '+esc(o.fonte)+'</span>':'')+'</div>';
+        }
+        $('m-feedback').innerHTML = fb + '<div style="text-align:right;margin-top:12px;"><button class="btn ouro" id="m-continuar">Continuar ▶</button></div>';
+        $('m-continuar').onclick=function(){ sessao.passoIdx++; telaPasso(); };
+      };
+    });
+  }
+  function telaQuiz(){
+    var p=sessao.p, quiz=p.quiz||[];
+    if (sessao.quizIdx>=quiz.length){ finalizarMissao(); return; }
+    var q=quiz[sessao.quizIdx];
+    var ordem = shuffle(q.opcoes.map(function(o,i){return i;}));
+    $('missao-box').innerHTML =
+      '<div class="missao-topo"><span class="kick">Quiz '+(sessao.quizIdx+1)+'/'+quiz.length+'</span><button class="x" id="m-x">✕ fechar</button></div>'+
+      '<div class="situacao">'+esc(q.q)+'</div>'+
+      '<div class="opcoes" id="m-opcoes">'+ordem.map(function(i){ return '<button class="opcao" data-i="'+i+'">'+esc(q.opcoes[i])+'</button>'; }).join('')+'</div>'+
+      '<div id="m-feedback"></div>';
+    $('m-x').onclick=fecharMissao;
+    Array.prototype.forEach.call($('m-opcoes').querySelectorAll('.opcao'), function(btn){
+      btn.onclick=function(){
+        var idx=parseInt(btn.dataset.i,10), ok = idx===q.correta;
+        sessao.respostasTotal++; if (ok) sessao.respostasCerto++;
+        sessao.pontos += ok?10:0;
+        Array.prototype.forEach.call($('m-opcoes').querySelectorAll('.opcao'), function(b2){ b2.disabled=true; var bi=parseInt(b2.dataset.i,10); if(bi===q.correta) b2.classList.add('certa'); else if(bi===idx) b2.classList.add('errada'); });
+        $('m-feedback').innerHTML = '<div class="feedback-box '+(ok?'ok':'bad')+'">'+(ok?'✅ Boa! ':'❌ ')+esc(q.explica||'')+'</div>'+
+          '<div style="text-align:right;margin-top:12px;"><button class="btn ouro" id="m-continuar">'+(sessao.quizIdx<quiz.length-1?'Próxima ▶':'Ver resultado ▶')+'</button></div>';
+        $('m-continuar').onclick=function(){ sessao.quizIdx++; telaQuiz(); };
+      };
+    });
+  }
+
+  function finalizarMissao(){
+    var p=sessao.p;
+    var percentual = sessao.maxPontos>0 ? clamp(sessao.pontos/sessao.maxPontos,0,1) : (sessao.respostasTotal? sessao.respostasCerto/sessao.respostasTotal : 1);
+    var xpGanho = Math.round((p.xpBase||30) * (0.4 + percentual*0.6));
+    var moedasGanho = Math.round((p.moedasBase||8) * (0.4 + percentual*0.6));
+
+    // streak
+    var h = hoje();
+    if (prog.ultimoDia !== h){
+      var ontem = new Date(Date.now()-86400000); var strOntem = ontem.getFullYear()+'-'+String(ontem.getMonth()+1).padStart(2,'0')+'-'+String(ontem.getDate()).padStart(2,'0');
+      prog.streakDias = (prog.ultimoDia===strOntem) ? prog.streakDias+1 : 1;
+      prog.ultimoDia = h;
+    }
+    var nivelAntes = nivelInfo(prog.xp).atual.n;
+    prog.xp += xpGanho; prog.moedas += moedasGanho;
+    var jaTinha = prog.pacotes[p.id]&&prog.pacotes[p.id].concluido;
+    var melhorAnterior = (prog.pacotes[p.id]&&prog.pacotes[p.id].melhorPercentual)||0;
+    prog.pacotes[p.id] = { concluido: percentual>=0.5 || jaTinha, tentativas:((prog.pacotes[p.id]&&prog.pacotes[p.id].tentativas)||0)+1, melhorPercentual:Math.max(percentual,melhorAnterior), ultimaEm:Date.now() };
+    if (!prog.porTema[p.tema]) prog.porTema[p.tema]={acertos:0,total:0};
+    prog.porTema[p.tema].acertos += sessao.respostasCerto; prog.porTema[p.tema].total += sessao.respostasTotal;
+
+    var novosBadges=[];
+    function ganhar(id){ if (prog.badges.indexOf(id)===-1){ prog.badges.push(id); novosBadges.push(id); } }
+    if (pacotesConcluidos().length>=1) ganhar('primeiro-passo');
+    if (percentual>=0.999) ganhar('cem-por-cento');
+    if (percentual>=0.999 && p.badge) ganhar(p.badge);
+    if (pacotesConcluidos().length>=10) ganhar('mestre-dos-pops');
+    if (prog.streakDias>=7) ganhar('streak-7');
+    var obrigatorias = pacotes.filter(function(x){return x.obrigatorio;});
+    if (obrigatorias.length && obrigatorias.every(function(x){return prog.pacotes[x.id]&&prog.pacotes[x.id].concluido;})) ganhar('guardiao');
+
+    var nivelDepois = nivelInfo(prog.xp).atual;
+    var subiuNivel = nivelDepois.n>nivelAntes;
+
+    salvarProgresso();
+    renderHud();
+
+    var podeCertificar = p.tipo==='certificacao' && percentual>=PASS_CERT;
+    $('missao-box').innerHTML =
+      '<div class="missao-topo"><span class="kick">Resultado</span><button class="x" id="m-x">✕ fechar</button></div>'+
+      '<div class="resultado"><div class="big">'+(percentual>=0.8?'🏆':percentual>=0.5?'🎯':'💪')+'</div>'+
+      '<h3>'+(percentual>=0.5?'Missão concluída!':'Quase lá')+'</h3>'+
+      '<div class="score">'+Math.round(percentual*100)+'%</div>'+
+      '<div class="ganhos"><div class="ganho-item">+'+xpGanho+' XP</div><div class="ganho-item">+'+moedasGanho+' 🪙</div>'+
+        (subiuNivel?'<div class="ganho-item" style="color:var(--gold);">🎉 Subiu para '+nivelDepois.nome+'!</div>':'')+'</div>'+
+      (novosBadges.length? '<p style="font-size:.82rem;color:var(--muted);">Conquistas: '+novosBadges.map(function(b){return (BADGES[b]?BADGES[b].ic+' '+BADGES[b].nome:b);}).join(', ')+'</p>':'')+
+      (percentual<0.5?'<p style="font-size:.82rem;color:var(--muted);">O mínimo pra concluir é 50%. Sem problema, dá pra tentar de novo.</p>':'')+
+      '<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap;">'+
+        '<button class="btn claro" id="m-refazer">Refazer</button>'+
+        (podeCertificar?'<button class="btn ouro" id="m-cert">🏅 Emitir certificado</button>':'')+
+        '<button class="btn verde" id="m-fechar">Voltar</button>'+
+      '</div></div>';
+    $('m-x').onclick=fecharMissao; $('m-fechar').onclick=fecharMissao;
+    $('m-refazer').onclick=function(){ abrirMissao(p.id); };
+    if ($('m-cert')) $('m-cert').onclick=function(){ emitirCertificado(p); };
+  }
+
+  function emitirCertificado(p){
+    var dataStr = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    var w=window.open('','_blank'); if(!w){ toast('Pop-up bloqueado','Permita pop-ups para emitir o certificado.'); return; }
+    w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Certificado — '+esc(meuNome)+'</title>'+
+      '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",system-ui,sans-serif;background:#1a1210;padding:40px;display:flex;justify-content:center}'+
+      '.c{width:900px;max-width:100%;background:#faf6f0;color:#241c1b;border:2px solid #b8362e;border-radius:8px;padding:56px 60px;text-align:center;position:relative}'+
+      '.c::after{content:"";position:absolute;inset:14px;border:1px solid #d8b25a;border-radius:4px}.k{letter-spacing:.32em;font-size:.8rem;color:#b8362e;font-weight:700;text-transform:uppercase}'+
+      'h1{font-family:Georgia,serif;font-size:2.3rem;margin:18px 0 6px}.s{color:#7d716b;font-size:.95rem;margin-bottom:30px}'+
+      '.n{font-family:Georgia,serif;font-size:1.8rem;color:#5c1a16;border-bottom:2px solid #d8b25a;display:inline-block;padding:0 30px 8px;margin-bottom:24px}'+
+      '.b{font-size:1rem;line-height:1.7;max-width:640px;margin:0 auto 30px}.r{display:flex;justify-content:space-between;font-size:.85rem;color:#7d716b;margin-top:34px}'+
+      '@media print{body{background:#fff;padding:0}.np{display:none}}.np{margin-top:20px;text-align:center}button{padding:10px 22px;border-radius:22px;border:1px solid #b8362e;background:#b8362e;color:#fff;font-weight:700;cursor:pointer}</style></head><body>'+
+      '<div class="c"><div class="k">Fonseca e Braga Advocacia</div><h1>Certificado</h1><div class="s">Academia do Escritório</div><div>Certificamos que</div>'+
+      '<div class="n">'+esc(meuNome)+'</div><div class="b">concluiu a certificação <b>'+esc(p.titulo.replace('[EXEMPLO] ',''))+'</b> com aproveitamento igual ou superior a '+Math.round(PASS_CERT*100)+'%.</div>'+
+      '<div style="font-size:2rem;">🏅</div><div class="r"><span>Emitido em '+esc(dataStr)+'</span><span>Portal Fonseca e Braga</span></div></div>'+
+      '<div class="np"><button onclick="window.print()">Imprimir / Salvar PDF</button></div></body></html>');
+    w.document.close();
+  }
+
+  /* ================================================================
+     PERFIL & RANKING
+     ================================================================ */
+  function renderPerfil(){
+    var ni=nivelInfo(prog.xp);
+    var pct = ni.proxXp ? clamp(Math.round((prog.xp-ni.atual.xp)/(ni.proxXp-ni.atual.xp)*100),0,100) : 100;
+    $('perfil-avatar').style.setProperty('--pct', pct);
+    $('perfil-nivel-num').textContent = ni.atual.n;
+    $('perfil-nivel-nome').textContent = ni.atual.nome;
+    $('perfil-nome').textContent = meuNome;
+    $('perfil-cargo').textContent = 'Nível '+ni.atual.n+' · '+ni.atual.nome;
+    $('perfil-xp-fill').style.width = pct+'%';
+    $('perfil-xp-txt').textContent = ni.proxXp ? (prog.xp+' / '+ni.proxXp+' XP para o próximo nível') : (prog.xp+' XP · nível máximo atingido');
+    $('perfil-moedas').textContent = prog.moedas;
+    $('perfil-streak').textContent = prog.streakDias;
+    $('badges-shelf').innerHTML = Object.keys(BADGES).map(function(id){
+      var b=BADGES[id], tem=prog.badges.indexOf(id)!==-1;
+      return '<div class="badge-pill'+(tem?'':' bloqueado')+'" title="'+esc(b.desc)+'"><span class="ic">'+b.ic+'</span><span>'+esc(b.nome)+'</span></div>';
+    }).join('');
+    var temas = Object.keys(prog.porTema);
+    $('mapa-competencias').innerHTML = temas.length ? temas.map(function(t){
+      var d=prog.porTema[t]; var pct2 = d.total? Math.round(d.acertos/d.total*100):0;
+      return '<div class="comp-row"><span class="nome">'+esc(t)+'</span><div class="xp-track" style="margin:0;"><div class="xp-fill" style="width:'+pct2+'%"></div></div><span class="pct">'+pct2+'%</span></div>';
+    }).join('') : '<p class="vazio">Jogue algumas missões para ver seu mapa de competências.</p>';
+    renderRanking();
+  }
+  function renderRanking(){
+    db.collection('academiaPerfil').orderBy('xp','desc').limit(50).get().then(function(snap){
+      var linhas = snap.docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); });
+      var tb = $('tabela-ranking').querySelector('tbody');
+      tb.innerHTML = linhas.length ? linhas.map(function(l,i){
+        return '<tr class="'+(l.uid===meuUid?'eu':'')+'"><td class="pos-num">'+(i+1)+'</td><td>'+esc(l.nome||'—')+(l.uid===meuUid?' (você)':'')+'</td><td>'+(l.nivel||1)+' · '+esc(l.nivelNome||'')+'</td><td>'+(l.xp||0)+'</td><td>🔥 '+(l.streakDias||0)+'</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="vazio">Ninguém no ranking ainda — seja o primeiro!</td></tr>';
+    }).catch(function(){ $('tabela-ranking').querySelector('tbody').innerHTML='<tr><td colspan="5" class="vazio">Não foi possível carregar o ranking.</td></tr>'; });
+  }
+
+  /* ================================================================
+     GESTÃO
+     ================================================================ */
+  function renderGestao(){ renderVisaoGeral(); }
+  function renderVisaoGeral(){
+    if (!(souAdmin||souGestor)) return;
+    Promise.all([ db.collection('academiaProgresso').get(), db.collection('organograma').get().catch(function(){return {docs:[]};}) ])
+    .then(function(res){
+      var nomes={}; res[1].docs.forEach(function(d){ nomes[d.id]=(d.data()&&d.data().displayName)||''; });
+      var linhas = res[0].docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); });
+      var tb=$('tabela-gestor').querySelector('tbody');
+      if (!linhas.length){ tb.innerHTML='<tr><td colspan="6" class="vazio">Ninguém treinou ainda.</td></tr>'; return; }
+      tb.innerHTML = linhas.map(function(l){
+        var ni=nivelInfo(l.xp||0);
+        var feitas = l.pacotes?Object.keys(l.pacotes).filter(function(k){return l.pacotes[k].concluido;}).length:0;
+        var obrig = pacotes.filter(function(p){return p.obrigatorio;});
+        var pendentes = obrig.filter(function(p){ return !(l.pacotes && l.pacotes[p.id] && l.pacotes[p.id].concluido); }).length;
+        return '<tr><td>'+esc(nomes[l.uid]||l.nome||'(sem nome)')+'</td><td>'+esc(l.setorEscolhido||'—')+'</td><td>'+ni.atual.n+' · '+ni.atual.nome+'</td><td>'+feitas+'</td><td>'+(pendentes? '<span class="risco-pill risco-alto">'+pendentes+' pendente(s)</span>':'<span class="risco-pill risco-baixo">em dia</span>')+'</td><td>'+(l.xp||0)+'</td></tr>';
+      }).join('');
+    });
+  }
+  function renderHeatmap(){
+    if (!(souAdmin||souGestor)) return;
+    db.collection('academiaProgresso').get().then(function(snap){
+      var agregada={};
+      snap.docs.forEach(function(d){
+        var pt=(d.data()||{}).porTema||{};
+        Object.keys(pt).forEach(function(t){ if(!agregada[t]) agregada[t]={acertos:0,total:0}; agregada[t].acertos+=pt[t].acertos||0; agregada[t].total+=pt[t].total||0; });
+      });
+      var temas = Object.keys(agregada);
+      if (!temas.length){ $('heatmap-lista').innerHTML='<div class="vazio">Ainda não há dados suficientes.</div>'; return; }
+      temas.sort(function(a,b){ var pa=agregada[a].total?agregada[a].acertos/agregada[a].total:1, pb=agregada[b].total?agregada[b].acertos/agregada[b].total:1; return pa-pb; });
+      $('heatmap-lista').innerHTML = temas.map(function(t){
+        var d=agregada[t]; var pctAcerto = d.total?Math.round(d.acertos/d.total*100):0; var risco=pctAcerto>=85?'baixo':pctAcerto>=65?'medio':pctAcerto>=45?'alto':'critico';
+        var cor = risco==='baixo'?'var(--green)':risco==='medio'?'var(--gold)':risco==='alto'?'#e8935a':'var(--red)';
+        return '<div class="heat-row"><span>'+esc(t)+'</span><div class="heat-bar-track"><div class="heat-bar" style="width:'+(100-pctAcerto)+'%;background:'+cor+';"></div></div><span class="risco-pill risco-'+risco+'">'+risco+' ('+pctAcerto+'% acerto)</span></div>';
+      }).join('');
+    });
+  }
+
+  /* ---- conteúdo: importar / gerenciar pacotes ---- */
+  var EXEMPLO_JSON = JSON.stringify({
+    titulo:'Nome da missão', setor:'juridico', tema:'tema-do-assunto', risco:'medio', tipo:'missao', obrigatorio:false,
+    fonte:{doc:'POP 00X', item:'2.1'}, resumo:'Uma frase resumindo a situação.',
+    flashcards:[{frente:'Pergunta rápida?',verso:'Resposta rápida.'}],
+    cenario:{ passos:[{ situacao:'Descreva a situação prática aqui...',
+      opcoes:[
+        {texto:'Alternativa correta', correta:true, pontos:10, feedback:'Por que está certa.'},
+        {texto:'Alternativa errada', correta:false, pontos:0, erro:'O que deu errado.', risco:'Qual o risco disso.', correto:'Qual seria o procedimento certo.', fonte:'POP 00X, item 2.1'}
+      ] }] },
+    quiz:[{q:'Pergunta objetiva?', opcoes:['A','B','C','D'], correta:1, explica:'Por que B é a certa.'}],
+    xpBase:40, moedasBase:10
+  }, null, 2);
+  $('btn-exemplo-json').onclick = function(){ $('json-import').value = EXEMPLO_JSON; };
+  var pacoteValidado=null;
+  $('btn-validar-json').onclick = function(){
+    var raw = $('json-import').value.trim();
+    var st = $('json-status');
+    try {
+      var obj = JSON.parse(raw);
+      var faltando=[];
+      ['titulo','setor','resumo'].forEach(function(k){ if(!obj[k]) faltando.push(k); });
+      if (!obj.tema) obj.tema='geral';
+      if (!obj.risco) obj.risco='medio';
+      if (!obj.tipo) obj.tipo='missao';
+      if (!obj.cenario) obj.cenario={passos:[]};
+      if (!obj.quiz) obj.quiz=[];
+      if (faltando.length){ st.textContent='Faltam campos obrigatórios: '+faltando.join(', '); st.style.color='var(--red-bright)'; $('btn-publicar-json').disabled=true; return; }
+      pacoteValidado = obj;
+      st.textContent='✅ JSON válido — "'+obj.titulo+'" pronto para publicar.'; st.style.color='var(--green-bright)';
+      $('btn-publicar-json').disabled=false;
+    } catch(e){
+      st.textContent='JSON inválido: '+e.message; st.style.color='var(--red-bright)'; $('btn-publicar-json').disabled=true;
+    }
+  };
+  $('btn-publicar-json').onclick = function(){
+    if (!pacoteValidado) return;
+    var p = pacoteValidado;
+    p.publicado=true; p.obsoleto=false; p.versao=1; p.criadoPorUid=meuUid; p.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
+    var id = 'p-'+Date.now().toString(36);
+    db.collection('academiaConteudo').doc(id).set(p).then(function(){
+      toast('Publicado!', '"'+p.titulo+'" já está disponível para os colaboradores.');
+      $('json-import').value=''; $('json-status').textContent=''; $('btn-publicar-json').disabled=true; pacoteValidado=null;
+      carregarPacotes(renderConteudoLista);
+    }).catch(function(e){ toast('Erro ao publicar', e.message); });
+  };
+  function renderConteudoLista(){
+    if (!(souAdmin||souGestor)) return;
+    db.collection('academiaConteudo').get().then(function(snap){
+      var lista = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      var seedNaoSobrepostos = SEED_PACOTES.filter(function(sp){ return lista.every(function(l){return l.id!==sp.id;}); }).map(function(sp){ return Object.assign({},sp,{_seed:true}); });
+      var todos = seedNaoSobrepostos.concat(lista);
+      $('conteudo-lista').innerHTML = todos.length ? todos.map(function(p){
+        return '<div class="content-row"><div class="info"><h4>'+esc(p.titulo)+'</h4>'+
+          '<div class="meta" style="font-size:.72rem;color:var(--muted);">'+esc(p.setor)+' · '+esc(p.tema)+' · risco '+esc(p.risco)+(p._seed?' · exemplo interno':'')+'</div></div>'+
+          (p._seed ? '<span class="tag">padrão do sistema</span>' :
+            '<label class="switch"><input type="checkbox" '+(p.publicado?'checked':'')+' data-pub="'+p.id+'"><span class="sl"></span></label>'+
+            '<button class="btn claro sm" data-obsoleto="'+p.id+'">Marcar obsoleto</button>')+
+          '</div>';
+      }).join('') : '<div class="vazio">Nenhum pacote importado ainda.</div>';
+      Array.prototype.forEach.call($('conteudo-lista').querySelectorAll('[data-pub]'), function(cb){
+        cb.onchange=function(){ db.collection('academiaConteudo').doc(cb.dataset.pub).update({publicado:cb.checked}).then(function(){ carregarPacotes(function(){}); }); };
+      });
+      Array.prototype.forEach.call($('conteudo-lista').querySelectorAll('[data-obsoleto]'), function(b){
+        b.onclick=function(){ db.collection('academiaConteudo').doc(b.dataset.obsoleto).update({obsoleto:true}).then(function(){ carregarPacotes(renderConteudoLista); }); };
+      });
+    });
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer=null;
+  function toast(t,x){ $('toast').innerHTML='<b>'+esc(t)+'</b><br>'+esc(x||''); $('toast').classList.add('on'); if(toastTimer) clearTimeout(toastTimer); toastTimer=setTimeout(function(){ $('toast').classList.remove('on'); },4200); }
+}
+})();
+</script>
+</body>
+</html>

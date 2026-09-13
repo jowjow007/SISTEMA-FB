@@ -298,6 +298,19 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && request.auth.uid == uid;
       allow delete: if isAdmin();
     }
+    match /academiaConteudo/{pacoteId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isGestor();
+    }
+    match /academiaProgresso/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin() || isGestor());
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+    match /academiaPerfil/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+    }
   }
 }
 ```
@@ -330,7 +343,9 @@ service cloud.firestore {
 
 > `unidadeResets/{docId}` (`docId` = condomínio+torre+apto simplificados) guarda, por unidade, a partir de qual data as ocorrências antigas deixam de contar para fins de reincidência (`resetAPartirDe`, `resetPorUid`/`resetPorNome`, `resetEm`) — usado quando a unidade troca de inquilino. Qualquer logado lê (necessário tanto para o aprovador consultar quanto para quem está lançando uma notificação nova ver se a unidade é reincidente); **só admin do Portal escreve** (`allow write: if isAdmin()`), pedido explícito do usuário ("quem pode zerar tem que ser somente eu administrador geral" — na prática, qualquer conta com `role:'admin'`, não uma pessoa específica por e-mail). Zerar nunca apaga as notificações antigas — elas continuam existindo em `notificacoesGeradas` para histórico/auditoria; o reset só faz a contagem de reincidência (calculada no cliente, em `aplicarCorteReset()`) ignorar tudo com `criadoEm` anterior à data escolhida.
 
-> A regra de `treinamentoProgresso/{uid}` (usada pela ferramenta **Treinamentos → Trilha de Integração**) é pessoal na escrita e semi-aberta na leitura: cada colaborador só cria/atualiza o próprio documento de progresso (`request.auth.uid == uid`), que guarda quais fases concluiu, a pontuação e a data de conclusão. A leitura é liberada para o próprio dono, para `admin` e para `gestor` — é o que faz o "Painel do gestor" dentro do jogo conseguir listar o progresso de todo mundo (nomes vêm de `organograma`, que já é lido por qualquer logado). Só admin apaga (limpeza de teste). O jogo em si (fases, textos, perguntas) é 100% estático no arquivo `tools/treinamentos/jogo/index.html` — não usa Firestore para o conteúdo, só para o progresso.
+> A regra de `treinamentoProgresso/{uid}` foi criada para uma trilha gamificada de integração que existiu em **Treinamentos** e foi removida a pedido do usuário em 2026-09-12 (arquivo e sub-aba apagados). A regra ficou — não guarda nada sensível e é inofensiva parada — mas hoje nenhuma ferramenta a usa. Pode ser removida com segurança se quiserem limpar, ou reaproveitada por uma ferramenta futura com o mesmo formato (progresso pessoal por `uid`, leitura liberada a admin/gestor).
+
+> As regras de `academiaConteudo`, `academiaProgresso` e `academiaPerfil` (usadas pela ferramenta **Academia do Escritório**, `tools/academia/index.html`) seguem o mesmo padrão de outras ferramentas gamificadas do Portal: `academiaConteudo/{pacoteId}` guarda cada "pacote" de treinamento (missão, boss battle ou certificação — título, cenário com alternativas, quiz, XP) e só `admin`/`gestor` podem escrever nela (é isso que trava a caixa de "Importar novo pacote" na aba Gestão — mesmo que alguém burle a interface, a regra do Firestore recusa a escrita); qualquer logado lê, para poder jogar. `academiaProgresso/{uid}` é pessoal na escrita (só o dono cria/atualiza o próprio XP, moedas, badges e desempenho por tema) e semi-aberta na leitura (dono + admin + gestor, para alimentar o Painel do Gestor e o heatmap de risco). `academiaPerfil/{uid}` é um espelho público só com os campos não sensíveis (nome, setor, nível, XP, streak, badges) — mesma lógica do espelho `organograma` — para o ranking geral poder ser lido por qualquer colaborador sem expor o documento de progresso completo de ninguém. **Não há geração de conteúdo por IA rodando dentro do app** (decisão consciente por causa do custo de infraestrutura — ver `tools/academia/ROTINA-ATUALIZACAO-ACADEMIA.md`): novos pacotes são gerados por fora (numa conversa) e colados/publicados manualmente por quem tem papel `admin` ou `gestor`.
 
 > `condoUnidades/{slug}` (usada pela ferramenta **Condomínios**, aba "Clientes" e na calculadora de Pauta de Assembleia) guarda o número de unidades de cada condomínio (`unidades`, `atualizadoPorUid`/`atualizadoPorNome`/`atualizadoEm`). Aparece no card de cada condomínio na grade de clientes (botão "editar", só visível para quem `isAdminUser()`) e é usado pela calculadora de assembleia para dividir o valor de cada item de pauta pelo número de unidades. Qualquer logado lê; só admin escreve — mesmo padrão de `condoAprovadores`/`unidadeResets`.
 
