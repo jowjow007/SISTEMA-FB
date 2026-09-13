@@ -4,47 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sugestões — Fonseca e Braga</title>
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <style>
+  /* Apelidos: nomes de variável antigos deste arquivo -> tokens do design system compartilhado */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --green:#4c9a6a;
-    --green-bg:rgba(76,154,106,.15);
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    --ink: var(--bg);
+    --panel: var(--surface);
+    --panel-2: var(--surface-2);
+    --paper: var(--text);
+    --muted: var(--text-muted);
+    --red: var(--brand);
+    --red-bright: var(--brand-strong);
+    --red-deep: var(--brand-deep);
+    --green: var(--ok);
+    --green-bg: var(--ok-bg);
+    --silver: var(--text-muted);
+    --line: var(--border);
+    --line-strong: var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -300,7 +279,7 @@
       els.novaSugestao.value = '';
       els.charCount.textContent = '0/2000';
     }).catch(function(e){
-      alert('Não foi possível enviar a sugestão: ' + e.message);
+      FBModal.alert({ title: 'Não foi possível enviar', body: e.message, danger: true });
     }).finally(function(){
       els.enviarBtn.disabled = false;
     });
@@ -317,19 +296,29 @@
   });
 
   window.__marcarImplantada = function(id){
-    if (!confirm('Marcar esta sugestão como implantada?')) return;
-    db.collection('sugestoes').doc(id).update({
-      status: 'implantada',
-      motivoExclusao: null,
-      decididoPor: currentProfile.displayName || currentProfile.email,
-      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(function(e){ alert('Erro: ' + e.message); });
+    FBModal.confirm({ title: 'Marcar como implantada?', confirmLabel: 'Marcar' }).then(function(ok){
+      if (!ok) return;
+      db.collection('sugestoes').doc(id).update({
+        status: 'implantada',
+        motivoExclusao: null,
+        decididoPor: currentProfile.displayName || currentProfile.email,
+        decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){ FBModal.toast('Sugestão marcada como implantada.'); })
+        .catch(function(e){ FBModal.alert({ title: 'Erro', body: e.message, danger: true }); });
+    });
   };
 
   window.__excluirPermanente = function(id){
-    if (!confirm('Excluir esta sugestão PERMANENTEMENTE?\n\nEla some do histórico para todo mundo e não pode ser recuperada. Use isso só para lixo/teste — para recusar uma sugestão de verdade, use "Marcar como excluída" (com motivo).')) return;
-    db.collection('sugestoes').doc(id).delete().catch(function(e){
-      alert('Não foi possível excluir: ' + e.message);
+    FBModal.confirm({
+      title: 'Excluir esta sugestão permanentemente?',
+      body: 'Ela some do histórico para todo mundo e não pode ser recuperada. Use isso só para lixo/teste — para recusar uma sugestão de verdade, use "Marcar como excluída" (com motivo).',
+      danger: true,
+      confirmLabel: 'Excluir permanentemente'
+    }).then(function(ok){
+      if (!ok) return;
+      db.collection('sugestoes').doc(id).delete().then(function(){ FBModal.toast('Sugestão excluída.'); }).catch(function(e){
+        FBModal.alert({ title: 'Não foi possível excluir', body: e.message, danger: true });
+      });
     });
   };
 
