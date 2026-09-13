@@ -4,35 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manual Operacional — Fonseca e Braga</title>
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
+  /* Nomes antigos deste arquivo mantidos como apelidos dos tokens novos
+     (assets/design-system.css) — evita reescrever todo o CSS abaixo.
+     --ink fica de propósito FORA do tema (a topbar é sempre escura, nas
+     duas aparências, igual já era antes desta migração).
+     --text e --warn-bg/--warn-text/--warn-line/--warn-gold-text/--pill-text
+     têm o MESMO NOME em design-system.css só que com valores diferentes —
+     por isso continuam declarados aqui embaixo com os valores originais
+     deste arquivo (a declaração local, por vir depois no documento, prevalece
+     e preserva exatamente a aparência de antes; não é um esquecimento). */
   :root{
     --ink:#161010;
-    --paper:#211918;
-    --card:#2a1f1e;
-    --card-line:rgba(236,230,225,0.14);
+    --paper:var(--bg);
+    --card:var(--surface);
+    --card-line:var(--border);
     --text:#ece6e1;
-    --muted:#9c908b;
-    --red:#8a231f;
-    --red-bright:#a8332c;
-    --red-deep:#5c1a16;
-    --red-pale:rgba(184,54,46,0.18);
-    --gold:#b8862f;
-    --green-bg:rgba(76,154,106,.18);
-    --green-text:#6fcf8f;
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --red-pale:var(--brand-wash);
+    --gold:var(--accent);
+    --green-bg:var(--ok-bg);
+    --green-text:var(--ok-text);
     --warn-bg:rgba(233,201,138,0.16);
     --warn-line:#e9c98a;
     --warn-text:#f0b8b0;
@@ -43,14 +40,7 @@
     --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
   }
   :root[data-theme="light"]{
-    --paper:#faf7f2;
-    --card:#ffffff;
-    --card-line:#e7e1d8;
     --text:#211a17;
-    --muted:#7c716a;
-    --red-pale:#f7e6e4;
-    --green-bg:#e3f3e6;
-    --green-text:#256b38;
     --warn-bg:#fdf0e0;
     --warn-line:#e9c98a;
     --warn-text:#5c1a16;
@@ -271,7 +261,7 @@
 
 <div class="topbar">
   <div class="brand"><img src="../../assets/logo-dark.png" alt="Fonseca e Braga"></div>
-  <div class="search">🔎 Buscar POPs, condomínios, procedimentos…</div>
+  <div class="search" id="search-box"><span id="search-box-icon"></span> Buscar POPs, condomínios, procedimentos…</div>
 </div>
 
 <nav class="tabs" id="tabs-nav"></nav>
@@ -286,6 +276,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="../../firebase-config.js"></script>
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script>
 /* ---------- data ---------- */
 
@@ -528,20 +520,20 @@ function bindDynamic(){
 
 function viewInicio(){
   var cards = [
-    {ic:'🚀', t:'Comece por Aqui', d:'Onboarding obrigatório para quem está começando', go:'comece'},
-    {ic:'📋', t:'Ver POPs', d:'Procedimentos operacionais padrão', go:'pops'},
-    {ic:'🏢', t:'Consultar Clientes', d:'Síndicos, observações e regras', go:'condominios'},
-    {ic:'⚖️', t:'Como usar o ASTREA', d:'Casos, tarefas e SLA', go:'astrea'},
-    {ic:'🔑', t:'BRCondos', d:'Livro de ocorrências e gestão condominial', go:'brcondos'},
-    {ic:'🏦', t:'AlmahCondos', d:'Padrão de cores das ocorrências', go:'almahcondos'},
-    {ic:'📝', t:'Padrão de Notificações', d:'Estrutura, blocos e fluxo', go:'notificacoes'},
-    {ic:'✉️', t:'Gerar Notificação', d:'Compor e aprovar notificações extrajudiciais', go:'gerar-notificacao'},
-    {ic:'🏷️', t:'Nomenclatura de Documentos', d:'POP Nº 008 — gerador automático', go:'nomenclatura'},
-    {ic:'📊', t:'Relatórios Condominiais', d:'Acompanhamento jurídico por condomínio', go:'relatorios-condominiais'}
+    {ic:'sparkle', t:'Comece por Aqui', d:'Onboarding obrigatório para quem está começando', go:'comece'},
+    {ic:'clipboard', t:'Ver POPs', d:'Procedimentos operacionais padrão', go:'pops'},
+    {ic:'building', t:'Consultar Clientes', d:'Síndicos, observações e regras', go:'condominios'},
+    {ic:'scale', t:'Como usar o ASTREA', d:'Casos, tarefas e SLA', go:'astrea'},
+    {ic:'lock', t:'BRCondos', d:'Livro de ocorrências e gestão condominial', go:'brcondos'},
+    {ic:'building', t:'AlmahCondos', d:'Padrão de cores das ocorrências', go:'almahcondos'},
+    {ic:'pencil', t:'Padrão de Notificações', d:'Estrutura, blocos e fluxo', go:'notificacoes'},
+    {ic:'envelope', t:'Gerar Notificação', d:'Compor e aprovar notificações extrajudiciais', go:'gerar-notificacao'},
+    {ic:'tag', t:'Nomenclatura de Documentos', d:'POP Nº 008 — gerador automático', go:'nomenclatura'},
+    {ic:'chart', t:'Relatórios Condominiais', d:'Acompanhamento jurídico por condomínio', go:'relatorios-condominiais'}
   ];
   return '<div class="grid g3">' + cards.map(function(c){
-        return '<div class="card"><div class="icon-sq">'+c.ic+'</div><h3>'+c.t+'</h3><p>'+c.d+'</p>'
-          + '<button class="acessar" data-go="'+c.go+'">Acessar →</button></div>';
+        return '<div class="card"><div class="icon-sq">'+FBIcons.svg(c.ic,{size:20})+'</div><h3>'+c.t+'</h3><p>'+c.d+'</p>'
+          + '<button class="acessar" data-go="'+c.go+'">Acessar '+FBIcons.svg('chevron-right',{size:14})+'</button></div>';
       }).join('') + '</div>';
 }
 
@@ -551,32 +543,32 @@ function viewComece(){
     + '<p class="lead">Bem-vindo(a) à equipe Fonseca &amp; Braga. Esta página é o ponto de partida obrigatório — leia com atenção antes de iniciar suas atividades.</p>'
     + '<hr class="rule">'
 
-    + '<h2 class="section-h"><span class="ic">🏢</span> Como o Escritório atua com os Condomínios</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('building',{size:16}) + '</span> Como o Escritório atua com os Condomínios</h2>'
     + '<div class="box">'
       + '<p>O escritório Fonseca &amp; Braga presta assessoria jurídica completa a condomínios residenciais — atuando no cumprimento das normas internas, na aplicação de penalidades, na análise de contratos e pareceres jurídicos e, quando necessário, no ajuizamento de demandas judiciais.</p>'
       + '<p>Cada condomínio possui dois documentos fundamentais que regem sua vida interna:</p>'
       + '<div class="split"><div><div class="t">Convenção Condominial</div><p>Documento constitutivo: estrutura, direitos e deveres, administração e disposições gerais.</p></div>'
       + '<div><div class="t">Regimento Interno</div><p>Documento operacional: normas do dia a dia, uso das áreas comuns, proibições e penalidades (advertências e multas).</p></div></div>'
-      + '<div class="warn"><span class="ic">⚠️</span><span><b>Toda atuação jurídica é fundamentada nesses dois documentos.</b> Nenhum artigo é criado ou presumido — tudo deve estar expressamente previsto no regimento do condomínio em questão.</span></div>'
+      + '<div class="warn"><span class="ic">' + FBIcons.svg('warning',{size:16}) + '</span><span><b>Toda atuação jurídica é fundamentada nesses dois documentos.</b> Nenhum artigo é criado ou presumido — tudo deve estar expressamente previsto no regimento do condomínio em questão.</span></div>'
     + '</div>'
 
-    + '<h2 class="section-h"><span class="ic">🖥️</span> Como funcionam as ocorrências</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('monitor',{size:16}) + '</span> Como funcionam as ocorrências</h2>'
     + '<div class="box">'
       + '<p>Os condomínios utilizam a plataforma <b>BRCondos</b> para registro e gestão das ocorrências. Dependendo do condomínio, elas podem ser:</p>'
-      + '<ul><li>✅ Criadas diretamente pelos condôminos na plataforma</li><li>✅ Enviadas pelos síndicos ao escritório por e-mail — e nós registramos no BRCondos</li></ul>'
+      + '<ul><li>' + FBIcons.svg('checkcircle',{size:13}) + ' Criadas diretamente pelos condôminos na plataforma</li><li>' + FBIcons.svg('checkcircle',{size:13}) + ' Enviadas pelos síndicos ao escritório por e-mail — e nós registramos no BRCondos</li></ul>'
       + '<p>Cada ocorrência é analisada pelo jurídico para verificar se há infração e qual a penalidade aplicável: <b>advertência escrita</b> ou <b>multa</b>.</p>'
     + '</div>'
 
-    + '<h2 class="section-h"><span class="ic">✏️</span> Advertências e Multas</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('pencil',{size:16}) + '</span> Advertências e Multas</h2>'
     + '<div class="split">'
       + '<div><span class="badge atencao" style="background:#fbe2df;color:#a3312a;">ADVERTÊNCIA</span>'
       + '<p style="margin-top:8px;">Penalidade inicial para a maioria das infrações. É formalizada por meio de <b>notificação extrajudicial</b> redigida pelo escritório e enviada ao condômino infrator.</p></div>'
       + '<div><span class="badge atencao">MULTA</span>'
       + '<p style="margin-top:8px;">Aplicada em casos de reincidência ou quando o regimento prevê sua aplicação direta. <b>Valor, percentual e cálculo variam</b> por condomínio.</p></div>'
     + '</div>'
-    + '<div class="warn gold"><span class="ic">⚠️</span><span><b>Atenção:</b> nunca invente artigos, valores ou percentuais. Tudo deve estar expressamente previsto no regimento interno. Em caso de dúvida, consulte o advogado responsável antes de prosseguir.</span></div>'
+    + '<div class="warn gold"><span class="ic">' + FBIcons.svg('warning',{size:16}) + '</span><span><b>Atenção:</b> nunca invente artigos, valores ou percentuais. Tudo deve estar expressamente previsto no regimento interno. Em caso de dúvida, consulte o advogado responsável antes de prosseguir.</span></div>'
 
-    + '<h2 class="section-h"><span class="ic">📋</span> Como as Notificações são Redigidas e Enviadas</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('clipboard',{size:16}) + '</span> Como as Notificações são Redigidas e Enviadas</h2>'
     + '<div class="steps">'
       + step(1,'Identificação da infração no BRCondos','Verificamos a ocorrência e identificamos a unidade infratora, data, horário e descrição dos fatos.')
       + step(2,'Verificação do Regimento Interno','Consultamos os artigos aplicáveis. Sempre incluímos os artigos fixos (direitos e deveres) e o artigo específico da infração.')
@@ -586,14 +578,14 @@ function viewComece(){
       + step(6,'Encerramento da ocorrência','Apenas se não houver demanda pendente ou prazo em curso.')
     + '</div>'
 
-    + '<h2 class="section-h"><span class="ic">📖</span> Outras Atuações do Escritório</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('book',{size:16}) + '</span> Outras Atuações do Escritório</h2>'
     + '<div class="grid g3" style="margin-bottom:26px;">'
-      + '<div class="card"><div class="icon-sq">📄</div><h3>Análise contratual</h3><p>Revisão e elaboração de contratos solicitados pelos síndicos.</p></div>'
-      + '<div class="card"><div class="icon-sq">✉️</div><h3>Pareceres jurídicos</h3><p>Orientações formais sobre questões específicas do condomínio.</p></div>'
-      + '<div class="card"><div class="icon-sq">⚖️</div><h3>Demandas judiciais</h3><p>Inadimplência, danos, conflitos graves — registradas no ASTREA.</p></div>'
+      + '<div class="card"><div class="icon-sq">' + FBIcons.svg('docstack',{size:20}) + '</div><h3>Análise contratual</h3><p>Revisão e elaboração de contratos solicitados pelos síndicos.</p></div>'
+      + '<div class="card"><div class="icon-sq">' + FBIcons.svg('envelope',{size:20}) + '</div><h3>Pareceres jurídicos</h3><p>Orientações formais sobre questões específicas do condomínio.</p></div>'
+      + '<div class="card"><div class="icon-sq">' + FBIcons.svg('scale',{size:20}) + '</div><h3>Demandas judiciais</h3><p>Inadimplência, danos, conflitos graves — registradas no ASTREA.</p></div>'
     + '</div>'
 
-    + '<h2 class="section-h"><span class="ic">⚖️</span> ASTREA — Sistema de Controle Interno</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('scale',{size:16}) + '</span> ASTREA — Sistema de Controle Interno</h2>'
     + '<div class="box">'
       + '<p>O <b>ASTREA</b> é a plataforma de gestão jurídica do escritório. Todo trabalho — notificação, parecer, análise contratual ou ação judicial — é registrado e acompanhado nele.</p>'
       + '<div class="grid g3" style="margin:14px 0;">'
@@ -601,14 +593,14 @@ function viewComece(){
         + '<div class="field-box"><div class="label">Tarefas</div><div class="value" style="font-size:.8rem;color:var(--muted);">Cada demanda específica vira uma tarefa dentro do caso.</div></div>'
         + '<div class="field-box"><div class="label">Andamentos</div><div class="value" style="font-size:.8rem;color:var(--muted);">Cada ação é registrada com data e descrição.</div></div>'
       + '</div>'
-      + '<div class="warn gold"><span class="ic">📌</span><span><b>Regra de ouro:</b> tudo deve estar no ASTREA. Registre cada e-mail respondido, cada notificação enviada, cada aprovação recebida.</span></div>'
+      + '<div class="warn gold"><span class="ic">' + FBIcons.svg('tag',{size:16}) + '</span><span><b>Regra de ouro:</b> tudo deve estar no ASTREA. Registre cada e-mail respondido, cada notificação enviada, cada aprovação recebida.</span></div>'
     + '</div>'
 
     + '<h2 class="section-h" style="margin-top:30px;">Próximos passos</h2>'
     + '<div class="grid g3">'
-      + '<div class="card"><h3>Estudar os POPs</h3><p>Procedimentos operacionais padrão do escritório.</p><button class="acessar" data-go="pops">Ver POPs →</button></div>'
-      + '<div class="card"><h3>Conhecer os Clientes</h3><p>Particularidades e regras de cada um.</p><button class="acessar" data-go="condominios">Ver clientes →</button></div>'
-      + '<div class="card"><h3>Aprender o ASTREA</h3><p>Como criar casos, tarefas e registrar andamentos.</p><button class="acessar" data-go="astrea">Guia ASTREA →</button></div>'
+      + '<div class="card"><h3>Estudar os POPs</h3><p>Procedimentos operacionais padrão do escritório.</p><button class="acessar" data-go="pops">Ver POPs ' + FBIcons.svg('chevron-right',{size:14}) + '</button></div>'
+      + '<div class="card"><h3>Conhecer os Clientes</h3><p>Particularidades e regras de cada um.</p><button class="acessar" data-go="condominios">Ver clientes ' + FBIcons.svg('chevron-right',{size:14}) + '</button></div>'
+      + '<div class="card"><h3>Aprender o ASTREA</h3><p>Como criar casos, tarefas e registrar andamentos.</p><button class="acessar" data-go="astrea">Guia ASTREA ' + FBIcons.svg('chevron-right',{size:14}) + '</button></div>'
     + '</div>';
 }
 
@@ -626,7 +618,7 @@ function viewPops(){
         var attrs = p.pdf ? ' target="_blank" rel="noopener"' : ' data-go="'+p.fallback+'"';
         var label = p.pdf ? 'Ver POP completo' : 'Ver conteúdo relacionado';
         return '<div class="card">'
-          + '<div class="icon-sq">📋</div>'
+          + '<div class="icon-sq">' + FBIcons.svg('clipboard',{size:20}) + '</div>'
           + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+p.numero+'</span>'
           + '<h3 style="text-transform:uppercase;font-size:.95rem;">'+p.titulo+'</h3>'
           + '<div style="margin:8px 0 14px;display:flex;gap:6px;flex-wrap:wrap;">'
@@ -657,11 +649,11 @@ function unidadesBlocoCard(slug, nome){
     return '<div style="display:flex;gap:6px;align-items:center;margin:0 0 8px;">'
       + '<input id="unid-input-'+slug+'" type="number" min="1" placeholder="Nº de unidades" value="'+(registro ? registro.unidades : '')+'" style="flex:1 1 90px;padding:7px 9px;border:1px solid var(--card-line);border-radius:6px;font-size:.8rem;background:var(--card);color:var(--text);">'
       + '<button type="button" class="btn secondary" data-salvar-unidades="'+slug+'" data-condominio="'+escapeHtml(nome)+'" style="padding:6px 10px;font-size:.76rem;">Salvar</button>'
-      + '<button type="button" class="btn ghost" data-cancelar-unidades style="padding:6px 10px;font-size:.76rem;">✕</button>'
+      + '<button type="button" class="btn ghost" data-cancelar-unidades style="padding:6px 10px;font-size:.76rem;">' + FBIcons.svg('x',{size:13}) + '</button>'
       + '</div>';
   }
   var texto = registro ? '<b>'+registro.unidades+'</b> unidades' : '<span style="color:var(--muted);">unidades não definidas</span>';
-  return '<p class="sind" style="display:flex;align-items:center;gap:6px;">🏠 '+texto
+  return '<p class="sind" style="display:flex;align-items:center;gap:6px;">' + FBIcons.svg('home',{size:14}) + ' '+texto
     + (isAdminUser() ? '<button type="button" class="btn ghost" data-editar-unidades="'+slug+'" style="padding:2px 8px;font-size:.68rem;margin-left:auto;">editar</button>' : '')
     + '</p>';
 }
@@ -675,12 +667,12 @@ function viewCondoGrid(){
     + '<div class="grid g3">' + CONDOMINIOS.map(function(c,i){
         var slug = slugify(c.nome);
         return '<div class="condo-card">'
-          + '<div class="top-row"><div class="icon-sq" style="margin-bottom:0;">🏢</div><span class="badge ativo">ATIVO</span></div>'
+          + '<div class="top-row"><div class="icon-sq" style="margin-bottom:0;">' + FBIcons.svg('building',{size:20}) + '</div><span class="badge ativo">ATIVO</span></div>'
           + '<h3>'+c.nome+'</h3>'
           + '<p class="sind">Síndico(a): <b>'+c.sindico+'</b></p>'
           + unidadesBlocoCard(slug, c.nome)
-          + (c.nota ? '<p class="note">⚠ '+truncate(c.nota,90)+'</p>' : '')
-          + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>→</span></button>'
+          + (c.nota ? '<p class="note">' + FBIcons.svg('warning',{size:12}) + ' '+truncate(c.nota,90)+'</p>' : '')
+          + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>' + FBIcons.svg('chevron-right',{size:14}) + '</span></button>'
           + '</div>';
       }).join('') + '</div>';
 }
@@ -696,7 +688,7 @@ function viewCondoDetail(){
     {id:'historico', label:'Histórico de Notificações'},
     {id:'relatorios', label:'Relatórios Condominiais'}
   ];
-  var html = '<button class="back-link" data-back-condo>← Voltar para clientes</button>'
+  var html = '<button class="back-link" data-back-condo>' + FBIcons.svg('chevron-left',{size:14}) + ' Voltar para clientes</button>'
     + '<div class="kicker">Condomínio</div>'
     + '<h1 style="margin-bottom:4px;">'+c.nome+'</h1>'
     + '<p class="lead" style="margin-bottom:20px;">Síndico(a): '+c.sindico+'</p>'
@@ -737,7 +729,7 @@ function viewCondoRelatorios(c){
   return '<p class="lead" style="margin-bottom:18px;font-size:.85rem;">Relatórios de acompanhamento jurídico enviados ao condomínio, prontos para consulta, envio à administradora ou download.</p>'
     + '<div class="grid g3">' + relatorios.map(function(r){
         return '<div class="card" style="display:flex;flex-direction:column;">'
-          + '<div class="icon-sq">📄</div>'
+          + '<div class="icon-sq">' + FBIcons.svg('docstack',{size:20}) + '</div>'
           + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
           + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
           + '<p>'+r.desc+'</p>'
@@ -749,10 +741,10 @@ function viewCondoRelatorios(c){
 function relatorioButtons(r){
   var html = '<div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;">';
   if (r.imagem){
-    html += '<a href="'+r.imagem+'" download style="flex:1;text-align:center;background:var(--paper);color:var(--text);border:1px solid var(--card-line);border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">🖼 Imagem<br><span style="font-weight:400;font-size:.68rem;color:var(--muted);">sem capa</span></a>';
+    html += '<a href="'+r.imagem+'" download style="flex:1;text-align:center;background:var(--paper);color:var(--text);border:1px solid var(--card-line);border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">' + FBIcons.svg('camera',{size:14}) + ' Imagem<br><span style="font-weight:400;font-size:.68rem;color:var(--muted);">sem capa</span></a>';
   }
   if (r.pdf){
-    html += '<a href="'+r.pdf+'" download style="flex:1;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">📄 PDF<br><span style="font-weight:400;font-size:.68rem;opacity:.85;">com capa</span></a>';
+    html += '<a href="'+r.pdf+'" download style="flex:1;text-align:center;background:var(--red);color:#fff;border-radius:8px;padding:10px 6px;font-size:.8rem;font-weight:700;text-decoration:none;">' + FBIcons.svg('docstack',{size:14}) + ' PDF<br><span style="font-weight:400;font-size:.68rem;opacity:.85;">com capa</span></a>';
   }
   html += '</div>';
   return html;
@@ -795,11 +787,11 @@ function viewAlmahCondos(){
     + '<hr class="rule">'
     + '<div class="grid g2" style="align-items:start;">'
       + '<div class="almah-card">'
-        + '<div class="almah-head open"><h3>📁 Ocorrência Aberta</h3><p>Ocorrências em andamento</p></div>'
+        + '<div class="almah-head open"><h3>' + FBIcons.svg('folder',{size:15}) + ' Ocorrência Aberta</h3><p>Ocorrências em andamento</p></div>'
         + '<div class="almah-rows">' + ALMAH_ABERTA.map(almahRow).join('') + '</div>'
       + '</div>'
       + '<div class="almah-card">'
-        + '<div class="almah-head closed"><h3>✅ Ocorrência Encerrada</h3><p>Ocorrências finalizadas</p></div>'
+        + '<div class="almah-head closed"><h3>' + FBIcons.svg('checkcircle',{size:15}) + ' Ocorrência Encerrada</h3><p>Ocorrências finalizadas</p></div>'
         + '<div class="almah-rows">' + ALMAH_ENCERRADA.map(almahRow).join('') + '</div>'
       + '</div>'
     + '</div>'
@@ -820,8 +812,8 @@ function viewAlmahCondos(){
         }).join('')
     + '</div>'
 
-    + '<div class="warn gold" style="margin-top:16px;margin-bottom:20px;"><span class="ic">🔔</span><span><b>Lembrete importante:</b> mantenha as cores atualizadas conforme o andamento da ocorrência para garantir organização e agilidade no tratamento.</span></div>'
-    + '<a class="external-btn" href="https://app.almahcondos.com.br/" target="_blank" rel="noopener">🖥️ Acessar AlmahCondos</a>';
+    + '<div class="warn gold" style="margin-top:16px;margin-bottom:20px;"><span class="ic">' + FBIcons.svg('bell',{size:16}) + '</span><span><b>Lembrete importante:</b> mantenha as cores atualizadas conforme o andamento da ocorrência para garantir organização e agilidade no tratamento.</span></div>'
+    + '<a class="external-btn" href="https://app.almahcondos.com.br/" target="_blank" rel="noopener">' + FBIcons.svg('external-link',{size:15}) + ' Acessar AlmahCondos</a>';
 }
 
 function almahRow(c){
@@ -835,7 +827,7 @@ function viewAstrea(){
     + '<p class="lead">Plataforma de gestão jurídica utilizada pelo escritório para cadastro de casos, tarefas, prazos e comunicação interna.</p>'
     + '<hr class="rule">'
     + '<div class="grid g2" style="margin-bottom:24px;">'
-      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">⚖️</span> Como criar um caso</h2>'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">' + FBIcons.svg('scale',{size:16}) + '</span> Como criar um caso</h2>'
         + step(1,'Acesso','Acesse astrea.net com seu login e senha.')
         + step(2,'Novo Caso','No menu, clique em "Casos" → "+ Novo Caso".')
         + step(3,'Preenchimento','Título seguindo POP Nº 008, Tipo, Cliente/Parte, Responsável, Data de abertura.')
@@ -843,7 +835,7 @@ function viewAstrea(){
         + step(5,'Documentos','Anexe documentos seguindo a nomenclatura do POP Nº 008.')
         + step(6,'Salvar','O caso ficará disponível para toda a equipe.')
       + '</div>'
-      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">✅</span> Como criar uma tarefa</h2>'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">' + FBIcons.svg('checkcircle',{size:16}) + '</span> Como criar uma tarefa</h2>'
         + step(1,'Acesse o caso','Abra o caso ao qual uma tarefa pertence.')
         + step(2,'Nova Tarefa','Dentro do caso, clique em "Tarefas" → "+ Nova Tarefa".')
         + step(3,'Preenchimento','Título específico, Responsável, Prazo (ver SLA), Descrição e Prioridade.')
@@ -851,7 +843,7 @@ function viewAstrea(){
       + '</div>'
     + '</div>'
 
-    + '<h2 class="section-h"><span class="ic">⏱️</span> SLA — Prazos do escritório</h2>'
+    + '<h2 class="section-h"><span class="ic">' + FBIcons.svg('clock',{size:16}) + '</span> SLA — Prazos do escritório</h2>'
     + '<div class="box">'
       + '<table class="sla"><thead><tr><th>Atividade</th><th>Volume</th><th>Prazo</th></tr></thead><tbody>'
       + slaRow('Cadastro de ocorrência','Até 10 cond.','D+1')
@@ -869,7 +861,7 @@ function viewAstrea(){
       + slaRow('Notif./Contrato/Parecer complexo','—','D+12')
       + slaRow('Distribuição de ações','—','20 dias úteis')
       + '</tbody></table>'
-      + '<div class="warn gold" style="margin-top:14px;margin-bottom:0;"><span class="ic">⚠️</span><span>Os prazos iniciam apenas após o recebimento de toda a documentação necessária.</span></div>'
+      + '<div class="warn gold" style="margin-top:14px;margin-bottom:0;"><span class="ic">' + FBIcons.svg('warning',{size:16}) + '</span><span>Os prazos iniciam apenas após o recebimento de toda a documentação necessária.</span></div>'
     + '</div>'
 
     + '<h2 class="section-h">Cadastro de Ocorrências</h2>'
@@ -914,9 +906,9 @@ function viewBrcondos(){
         + '<li>Após aprovação, enviar via BRCondos ao condômino</li>'
         + '<li>Encerrar a ocorrência (se não houver prazo pendente)</li>'
       + '</ol>'
-      + '<div class="warn gold" style="margin-bottom:0;"><span class="ic">⚠️</span><span><b>Atenção — Sense Vertical Living:</b> esse condomínio usa modelo próprio de notificação. O registro de ocorrência já equivale à notificação verbal — não aplicar o padrão geral.</span></div>'
+      + '<div class="warn gold" style="margin-bottom:0;"><span class="ic">' + FBIcons.svg('warning',{size:16}) + '</span><span><b>Atenção — Sense Vertical Living:</b> esse condomínio usa modelo próprio de notificação. O registro de ocorrência já equivale à notificação verbal — não aplicar o padrão geral.</span></div>'
     + '</div>'
-    + '<a class="external-btn" href="https://brcondos.com.br" target="_blank" rel="noopener">🖥️ Acessar BRCondos</a>';
+    + '<a class="external-btn" href="https://brcondos.com.br" target="_blank" rel="noopener">' + FBIcons.svg('external-link',{size:15}) + ' Acessar BRCondos</a>';
 }
 
 function viewNotificacoes(){
@@ -939,7 +931,7 @@ function viewNotificacoes(){
         + '<li>Faz-se saber: Art. 14 II (fixo) → Art. 15 I (fixo) → artigos da conduta</li>'
         + '<li>Parágrafo dos fatos — "Conforme registro formal de ocorrência nº…"</li>'
         + '<li>Parágrafo Ressalta-se — importância da norma violada</li>'
-        + '<li>⚠️ Artigo específico da conduta — entre "Ressalta-se" e "Dessa forma"</li>'
+        + '<li>' + FBIcons.svg('warning',{size:13}) + ' Artigo específico da conduta — entre "Ressalta-se" e "Dessa forma"</li>'
         + '<li>Parágrafo "Dessa forma, a conduta verificada configura infração…"</li>'
         + '<li>NOTIFICA-SE — em negrito</li>'
         + '<li>DAS PENALIDADES — bloco (advertência ou multa)</li>'
@@ -972,7 +964,7 @@ function viewNotificacoes(){
         + '<span class="badge atencao" style="margin-bottom:6px;display:inline-block;">SE MULTA</span>'
         + '<p>Aplicação de <b>MULTA</b> com valor e percentual da taxa condominial. Fundamentar reincidência/contexto. Citar Arts. 123 e 136 do RI.</p>'
       + '</div>'
-      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">⚠️ Itens em negrito obrigatórios</h2><ul style="padding-left:18px;">'
+      + '<div class="box" style="margin-bottom:0;"><h2 class="section-h" style="font-size:1.05rem;">' + FBIcons.svg('warning',{size:16}) + ' Itens em negrito obrigatórios</h2><ul style="padding-left:18px;">'
         + '<li>Nome do condomínio (na abertura)</li>'
         + '<li>ADVERTÊNCIA ESCRITA ou MULTA</li>'
         + '<li>Valor da multa e valor por extenso</li>'
@@ -1212,7 +1204,7 @@ function cancelarEdicaoUnidades(){ unidadesState.editando = null; render(); }
 function salvarUnidades(slug, condominioNome){
   var el = document.getElementById('unid-input-'+slug);
   var n = el ? parseInt(el.value, 10) : NaN;
-  if (!n || n <= 0){ alert('Informe um número de unidades válido.'); return; }
+  if (!n || n <= 0){ FBModal.alert({ title: 'Valor inválido', body: 'Informe um número de unidades válido.' }); return; }
   var nome = currentProfile.displayName || currentProfile.email;
   db.collection('condoUnidades').doc(slug).set({
     condominio: condominioNome, unidades: n,
@@ -1222,7 +1214,7 @@ function salvarUnidades(slug, condominioNome){
     unidadesState.porSlug[slug] = { condominio: condominioNome, unidades: n };
     unidadesState.editando = null;
     render();
-  }).catch(function(e){ alert('Erro ao salvar: ' + e.message); });
+  }).catch(function(e){ FBModal.alert({ title: 'Erro ao salvar', body: e.message, danger: true }); });
 }
 
 /* ---------- calculadoras (pauta de assembleia + datas) ---------- */
@@ -1244,8 +1236,8 @@ function fmtBRL(n){ return 'R$ ' + (n||0).toFixed(2).replace('.',','); }
 
 function calcSubnav(active){
   return '<div class="condo-subnav" style="margin-bottom:20px;">'
-    + '<button type="button" class="'+(active==='assembleia'?'active':'')+'" data-calctab="assembleia">💰 Pauta de Assembleia</button>'
-    + '<button type="button" class="'+(active==='datas'?'active':'')+'" data-calctab="datas">📅 Calculadora de Datas</button>'
+    + '<button type="button" class="'+(active==='assembleia'?'active':'')+'" data-calctab="assembleia">' + FBIcons.svg('money',{size:14}) + ' Pauta de Assembleia</button>'
+    + '<button type="button" class="'+(active==='datas'?'active':'')+'" data-calctab="datas">' + FBIcons.svg('calendar',{size:14}) + ' Calculadora de Datas</button>'
     + '</div>';
 }
 
@@ -1282,7 +1274,7 @@ function viewCalcAssembleia(){
   if (a.condominio){
     unidadesInfo = registro
       ? '<div class="field-box"><div class="label">Nº de unidades cadastrado</div><div class="value">'+registro.unidades+'</div></div>'
-      : '<div style="grid-column:1/-1;"><div class="warn gold" style="margin-bottom:10px;"><span class="ic">🕒</span><span>Este condomínio ainda não tem número de unidades cadastrado na aba Clientes. Informe manualmente abaixo (só vale para este cálculo) ou cadastre lá para os próximos cálculos já virem prontos.</span></div>'
+      : '<div style="grid-column:1/-1;"><div class="warn gold" style="margin-bottom:10px;"><span class="ic">' + FBIcons.svg('clock',{size:16}) + '</span><span>Este condomínio ainda não tem número de unidades cadastrado na aba Clientes. Informe manualmente abaixo (só vale para este cálculo) ou cadastre lá para os próximos cálculos já virem prontos.</span></div>'
         + '<div style="max-width:260px;"><label>Unidades (manual, só para este cálculo)</label><input id="calc-unidades-manual" type="number" min="1" value="'+escapeHtml(a.unidadesOverride)+'"></div></div>';
   }
 
@@ -1293,7 +1285,7 @@ function viewCalcAssembleia(){
       + '<input type="text" id="item-desc-'+item.id+'" data-item-desc="'+item.id+'" placeholder="Descrição do item da pauta" value="'+escapeHtml(item.desc)+'" style="flex:2 1 200px;padding:8px 10px;border:1px solid var(--card-line);border-radius:6px;font-size:.82rem;background:var(--card);color:var(--text);">'
       + '<input type="text" id="item-valor-'+item.id+'" data-item-valor="'+item.id+'" placeholder="Valor total R$" value="'+escapeHtml(item.valor)+'" style="flex:1 1 120px;padding:8px 10px;border:1px solid var(--card-line);border-radius:6px;font-size:.82rem;background:var(--card);color:var(--text);">'
       + '<span id="item-calc-'+item.id+'" style="flex:1 1 140px;font-size:.8rem;color:var(--gold);">'+(unidadesEfetivas ? fmtBRL(valorNum/unidadesEfetivas)+' / unidade' : '—')+'</span>'
-      + '<button type="button" class="btn ghost" data-remove-item="'+item.id+'" style="padding:6px 10px;">✕</button>'
+      + '<button type="button" class="btn ghost" data-remove-item="'+item.id+'" style="padding:6px 10px;">' + FBIcons.svg('x',{size:13}) + '</button>'
       + '</div>';
   }).join('');
 
@@ -1523,7 +1515,7 @@ function ordenarPorData(itens){
 function consultarReincidencia(){
   var condominioSlug = slugify(gerarState.condSel || '');
   var torre = gerarState.draft.torre, apto = gerarState.draft.apto;
-  if (!torre || !apto){ alert('Preencha torre e apartamento primeiro.'); return; }
+  if (!torre || !apto){ FBModal.alert({ title: 'Campos obrigatórios', body: 'Preencha torre e apartamento primeiro.' }); return; }
   gerarState.reincidencia = { loading:true };
   render();
   Promise.all([
@@ -1619,11 +1611,11 @@ function gerarTextoDoModelo(){
 }
 
 function enviarNotificacao(){
-  if (!fbReady || !currentUser || !currentProfile){ alert('Faça login no Portal para enviar uma notificação.'); return; }
+  if (!fbReady || !currentUser || !currentProfile){ FBModal.alert({ title: 'Login necessário', body: 'Faça login no Portal para enviar uma notificação.' }); return; }
   updateDraft('ocorrencia');
   var condominio = gerarState.condSel || gv('gn-condominio'), torre = gerarState.draft.torre, apto = gerarState.draft.apto,
       ocorrencia = gerarState.draft.ocorrencia, tipoPenalidade = gerarState.tipoSel, texto = gerarState.draft.texto;
-  if (!condominio || !texto){ alert('Preencha ao menos o condomínio e o texto da notificação.'); return; }
+  if (!condominio || !texto){ FBModal.alert({ title: 'Campos obrigatórios', body: 'Preencha ao menos o condomínio e o texto da notificação.' }); return; }
   if (gerarState.submitting) return;
   gerarState.submitting = true;
   var nome = currentProfile.displayName || currentProfile.email;
@@ -1642,7 +1634,7 @@ function enviarNotificacao(){
       gerarState.submitting = false;
       resetGerarDraft();
       loadMinhasNotificacoes();
-    }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível reenviar: ' + e.message); });
+    }).catch(function(e){ gerarState.submitting = false; FBModal.alert({ title: 'Não foi possível reenviar', body: e.message, danger: true }); });
   } else {
     db.collection('notificacoesGeradas').add({
       condominio: condominio, condominioSlug: slugify(condominio),
@@ -1655,7 +1647,7 @@ function enviarNotificacao(){
       gerarState.submitting = false;
       resetGerarDraft();
       loadMinhasNotificacoes();
-    }).catch(function(e){ gerarState.submitting = false; alert('Não foi possível enviar: ' + e.message); });
+    }).catch(function(e){ gerarState.submitting = false; FBModal.alert({ title: 'Não foi possível enviar', body: e.message, danger: true }); });
   }
 }
 
@@ -1664,7 +1656,7 @@ function statusLabel(s){ return s === 'pendente' ? 'Aguardando aprovação' : s 
 function notifCardMinha(n){
   var editing = gerarState.editingId === n.id;
   var aberta = !!notifExpandida[n.id];
-  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">🔁 tentativa nº '+n.tentativa+'</span>' : '';
+  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">' + FBIcons.svg('refresh',{size:12}) + ' tentativa nº '+n.tentativa+'</span>' : '';
   var reason = (n.status === 'rejeitada' && n.motivoRejeicao)
     ? '<div class="nc-reason"><b>Motivo da rejeição'+(n.decididoPorNome ? ' ('+escapeHtml(n.decididoPorNome)+')' : '')+':</b> '+escapeHtml(n.motivoRejeicao)+'</div>'
     : '';
@@ -1674,7 +1666,7 @@ function notifCardMinha(n){
     : '';
   return '<div class="notif-card">'
     + '<div class="nc-top nc-top-toggle" onclick="toggleNotifExpandida(\''+n.id+'\')" style="cursor:pointer;">'
-      + '<h4><span class="nc-chevron'+(aberta?' open':'')+'">▸</span>'+escapeHtml(n.condominio)+' — Torre '+escapeHtml(n.torre)+', Apto '+escapeHtml(n.apto)+
+      + '<h4><span class="nc-chevron'+(aberta?' open':'')+'">' + FBIcons.svg('chevron-right',{size:12}) + '</span>'+escapeHtml(n.condominio)+' — Torre '+escapeHtml(n.torre)+', Apto '+escapeHtml(n.apto)+
         (n.criadoPorNome ? ' <span class="nc-autor">· enviada por '+escapeHtml(n.criadoPorNome)+'</span>' : '')+'</h4>'
     + '<span class="status-badge '+n.status+'">'+statusLabel(n.status)+'</span></div>'
     + (aberta
@@ -1694,12 +1686,12 @@ function renderReincidenciaResultado(){
     ? ' <span style="color:var(--muted);">(contagem reiniciada em '+escapeHtml(r.reset.resetAPartirDe.split('-').reverse().join('/'))+' por '+escapeHtml(r.reset.resetPorNome)+')</span>'
     : '';
   if (r.total === 0){
-    return '<div class="warn gold" style="margin-top:8px;margin-bottom:0;"><span class="ic">✅</span><span>Nenhuma ocorrência aprovada anterior para esta unidade.'+resetNota+'</span></div>';
+    return '<div class="warn gold" style="margin-top:8px;margin-bottom:0;"><span class="ic">' + FBIcons.svg('checkcircle',{size:16}) + '</span><span>Nenhuma ocorrência aprovada anterior para esta unidade.'+resetNota+'</span></div>';
   }
   var lista = r.itens.map(function(n){
     return '<li>'+formatDateTime(n.criadoEm)+' — '+escapeHtml(n.tipoPenalidade||'')+(n.ocorrencia ? ' (ocorrência #'+escapeHtml(n.ocorrencia)+')' : '')+'</li>';
   }).join('');
-  return '<div class="warn" style="margin-top:8px;margin-bottom:0;"><span class="ic">⚠️</span><span><b>Unidade reincidente — '+r.total+' ocorrência(s) aprovada(s) anteriormente.</b>'+resetNota
+  return '<div class="warn" style="margin-top:8px;margin-bottom:0;"><span class="ic">' + FBIcons.svg('warning',{size:16}) + '</span><span><b>Unidade reincidente — '+r.total+' ocorrência(s) aprovada(s) anteriormente.</b>'+resetNota
     + '<ul style="margin:6px 0 0;padding-left:18px;">'+lista+'</ul></span></div>';
 }
 
@@ -1730,7 +1722,7 @@ function viewGerarNotificacao(){
     : '';
 
   var semModeloAviso = (gerarState.categoriaSel && !catModelo)
-    ? '<div class="warn gold" style="grid-column:1/-1;margin-bottom:0;"><span class="ic">🕒</span><span>Ainda não temos modelo pronto para esta categoria neste condomínio — escreva o texto manualmente por enquanto. Assim que as convenções e regimentos chegarem, esta categoria passa a gerar o texto sozinha também.</span></div>'
+    ? '<div class="warn gold" style="grid-column:1/-1;margin-bottom:0;"><span class="ic">' + FBIcons.svg('clock',{size:16}) + '</span><span>Ainda não temos modelo pronto para esta categoria neste condomínio — escreva o texto manualmente por enquanto. Assim que as convenções e regimentos chegarem, esta categoria passa a gerar o texto sozinha também.</span></div>'
     : '';
 
   var fatosFields = catModelo
@@ -1741,11 +1733,11 @@ function viewGerarNotificacao(){
     : '';
 
   var gerarBtn = catModelo
-    ? '<button type="button" class="btn secondary" id="gn-gerar-texto" style="margin-bottom:12px;">🪄 Gerar texto do modelo</button>'
+    ? '<button type="button" class="btn secondary" id="gn-gerar-texto" style="margin-bottom:12px;">' + FBIcons.svg('sparkle',{size:14}) + ' Gerar texto do modelo</button>'
     : '';
 
   var reincidenciaField = '<div style="grid-column:1/-1;">'
-    + '<button type="button" class="btn ghost" id="gn-consultar-reincidencia">🔍 Consultar reincidência desta unidade</button>'
+    + '<button type="button" class="btn ghost" id="gn-consultar-reincidencia">' + FBIcons.svg('search',{size:14}) + ' Consultar reincidência desta unidade</button>'
     + renderReincidenciaResultado()
     + '</div>';
 
@@ -1850,12 +1842,14 @@ function carregarFilaAprovacao(){
 function setAprovFiltro(f){ aprovState.filter = f; render(); }
 
 function aprovarNotificacao(id){
-  if (!confirm('Aprovar esta notificação?')) return;
-  var nome = currentProfile.displayName || currentProfile.email;
-  db.collection('notificacoesGeradas').doc(id).update({
-    status:'aprovada', decididoPorUid: currentUser.uid, decididoPorNome: nome,
-    decididoEm: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(function(){ refreshAprovacao(); }).catch(function(e){ alert('Erro ao aprovar: ' + e.message); });
+  FBModal.confirm({ title: 'Aprovar esta notificação?', confirmLabel: 'Aprovar' }).then(function(ok){
+    if (!ok) return;
+    var nome = currentProfile.displayName || currentProfile.email;
+    db.collection('notificacoesGeradas').doc(id).update({
+      status:'aprovada', decididoPorUid: currentUser.uid, decididoPorNome: nome,
+      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){ refreshAprovacao(); FBModal.toast('Notificação aprovada.'); }).catch(function(e){ FBModal.alert({ title: 'Erro ao aprovar', body: e.message, danger: true }); });
+  });
 }
 
 function abrirRejeicao(id){ aprovState.rejectingId = id; render(); }
@@ -1864,7 +1858,7 @@ function cancelarRejeicao(){ aprovState.rejectingId = null; render(); }
 function confirmarRejeicao(id){
   var el = document.getElementById('rej-motivo-'+id);
   var motivo = el ? el.value.trim() : '';
-  if (!motivo){ alert('Escreva o motivo da rejeição.'); return; }
+  if (!motivo){ FBModal.alert({ title: 'Motivo obrigatório', body: 'Escreva o motivo da rejeição.' }); return; }
   var item = aprovState.itens.filter(function(n){ return n.id === id; })[0];
   var nome = currentProfile.displayName || currentProfile.email;
   db.collection('notificacoesGeradas').doc(id).update({
@@ -1875,7 +1869,7 @@ function confirmarRejeicao(id){
       tentativa: (item ? item.tentativa : 1) || 1, motivo: motivo, por: nome, em: new Date()
     })
   }).then(function(){ aprovState.rejectingId = null; refreshAprovacao(); })
-    .catch(function(e){ alert('Erro ao rejeitar: ' + e.message); });
+    .catch(function(e){ FBModal.alert({ title: 'Erro ao rejeitar', body: e.message, danger: true }); });
 }
 
 function salvarAprovador(slug, condominio){
@@ -1885,7 +1879,7 @@ function salvarAprovador(slug, condominio){
   db.collection('condoAprovadores').doc(slug).set({
     condominio: condominio, aprovadorUid: sel.value,
     aprovadorNome: opt.getAttribute('data-nome'), aprovadorEmail: opt.getAttribute('data-email')
-  }).then(function(){ refreshAprovacao(); }).catch(function(e){ alert('Erro ao salvar: ' + e.message); });
+  }).then(function(){ refreshAprovacao(); }).catch(function(e){ FBModal.alert({ title: 'Erro ao salvar', body: e.message, danger: true }); });
 }
 
 function toggleAssignMode(){ aprovState.assignMode = !aprovState.assignMode; render(); }
@@ -1899,7 +1893,7 @@ function condominiosConsultaveis(){
 
 function consultarUnidadeAprovador(){
   var condominio = gv('consulta-condominio'), torre = gv('consulta-torre'), apto = gv('consulta-apto');
-  if (!condominio || !torre || !apto){ alert('Preencha condomínio, torre e apartamento.'); return; }
+  if (!condominio || !torre || !apto){ FBModal.alert({ title: 'Campos obrigatórios', body: 'Preencha condomínio, torre e apartamento.' }); return; }
   aprovState.consulta.condominio = condominio; aprovState.consulta.torre = torre; aprovState.consulta.apto = apto;
   aprovState.consulta.resultado = { loading:true };
   render();
@@ -1924,7 +1918,7 @@ function cancelarZerar(){ aprovState.consulta.zerarAberto = false; render(); }
 
 function confirmarZerar(){
   var data = gv('consulta-zerar-data');
-  if (!data){ alert('Escolha a data.'); return; }
+  if (!data){ FBModal.alert({ title: 'Data obrigatória', body: 'Escolha a data.' }); return; }
   var c = aprovState.consulta;
   var slug = slugify(c.condominio);
   var nome = currentProfile.displayName || currentProfile.email;
@@ -1935,7 +1929,7 @@ function confirmarZerar(){
   }).then(function(){
     aprovState.consulta.zerarAberto = false;
     consultarUnidadeAprovador();
-  }).catch(function(e){ alert('Erro ao zerar: ' + e.message); });
+  }).catch(function(e){ FBModal.alert({ title: 'Erro ao zerar', body: e.message, danger: true }); });
 }
 
 function bindAprovacao(){
@@ -1975,7 +1969,7 @@ function bindAprovacao(){
 
 function notifCardAprovador(n){
   var rejecting = aprovState.rejectingId === n.id;
-  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">🔁 já rejeitada '+(n.tentativa-1)+'x antes</span>' : '';
+  var tentativaTag = n.tentativa > 1 ? '<span class="tentativa-tag">' + FBIcons.svg('refresh',{size:12}) + ' já rejeitada '+(n.tentativa-1)+'x antes</span>' : '';
   var reason = (n.status === 'rejeitada' && n.motivoRejeicao)
     ? '<div class="nc-reason"><b>Motivo:</b> '+escapeHtml(n.motivoRejeicao)+'</div>' : '';
   var decidido = (n.status !== 'pendente' && n.decididoPorNome)
@@ -1986,8 +1980,8 @@ function notifCardAprovador(n){
       ? ('<div style="margin-top:10px;"><textarea id="rej-motivo-'+n.id+'" rows="3" placeholder="Explique o que precisa ser corrigido…"></textarea>'
         + '<div class="nc-actions"><button type="button" class="btn" data-rejeitar-confirmar="'+n.id+'">Confirmar rejeição</button>'
         + '<button type="button" class="btn ghost" data-rejeitar-cancelar>Cancelar</button></div></div>')
-      : ('<div class="nc-actions"><button type="button" class="btn" data-aprovar="'+n.id+'">✓ Aprovar</button>'
-        + '<button type="button" class="btn secondary" data-rejeitar-abrir="'+n.id+'">✕ Rejeitar</button></div>');
+      : ('<div class="nc-actions"><button type="button" class="btn" data-aprovar="'+n.id+'">' + FBIcons.svg('check',{size:13}) + ' Aprovar</button>'
+        + '<button type="button" class="btn secondary" data-rejeitar-abrir="'+n.id+'">' + FBIcons.svg('x',{size:13}) + ' Rejeitar</button></div>');
   }
   return '<div class="notif-card">'
     + '<div class="nc-top"><h4>'+escapeHtml(n.condominio)+' — Torre '+escapeHtml(n.torre)+', Apto '+escapeHtml(n.apto)+'</h4>'
@@ -2027,7 +2021,7 @@ function renderConsultaResultado(){
 function viewConsultaUnidadePanel(){
   var opcoesCondo = condominiosConsultaveis();
   if (!opcoesCondo.length) return '';
-  var toggleLabel = aprovState.consultaAberta ? 'Fechar' : '🔎 Consultar ocorrências por unidade';
+  var toggleLabel = aprovState.consultaAberta ? 'Fechar' : (FBIcons.svg('search',{size:13}) + ' Consultar ocorrências por unidade');
   var body = '';
   if (aprovState.consultaAberta){
     var c = aprovState.consulta;
@@ -2049,7 +2043,7 @@ function viewConsultaUnidadePanel(){
 
 function viewAssignPanel(){
   if (!isAdminUser()) return '';
-  var toggleLabel = aprovState.assignMode ? 'Fechar' : '⚙ Atribuir aprovadores por condomínio';
+  var toggleLabel = aprovState.assignMode ? 'Fechar' : (FBIcons.svg('gear',{size:13}) + ' Atribuir aprovadores por condomínio');
   var body = '';
   if (aprovState.assignMode){
     if (!aprovState.allUsersLoaded){
@@ -2135,10 +2129,10 @@ function viewRelatoriosCondominiais(){
     + '<div class="grid g3">' + comReports.map(function(c){
         var relatorios = RELATORIOS[c.nome];
         return '<div class="relatorio-col">'
-          + '<h2 class="section-h" style="font-size:1rem;"><span class="ic">🏢</span> '+c.nome+'</h2>'
+          + '<h2 class="section-h" style="font-size:1rem;"><span class="ic">' + FBIcons.svg('building',{size:16}) + '</span> '+c.nome+'</h2>'
           + relatorios.map(function(r){
               return '<div class="card" style="display:flex;flex-direction:column;margin-bottom:14px;">'
-                + '<div class="icon-sq">📄</div>'
+                + '<div class="icon-sq">' + FBIcons.svg('docstack',{size:20}) + '</div>'
                 + '<span class="badge tag" style="margin-bottom:8px;display:inline-block;">'+r.periodo+'</span>'
                 + '<h3 style="font-size:.95rem;">'+r.titulo+'</h3>'
                 + '<p>'+r.desc+'</p>'
@@ -2152,10 +2146,10 @@ function viewRelatoriosCondominiais(){
 /* ---------- nomenclatura generator (POP nº 008/2023) ---------- */
 
 var NOM_TYPES = [
-  {id:'judicial', ic:'⚖️', label:'Judicial'},
-  {id:'administrativo', ic:'📄', label:'Administrativo'},
-  {id:'honorarios', ic:'📝', label:'Contrato de Honorários'},
-  {id:'notificacao', ic:'🏢', label:'Notificação Condominial'}
+  {id:'judicial', ic:'scale', label:'Judicial'},
+  {id:'administrativo', ic:'docstack', label:'Administrativo'},
+  {id:'honorarios', ic:'pencil', label:'Contrato de Honorários'},
+  {id:'notificacao', ic:'building', label:'Notificação Condominial'}
 ];
 var nomState = { tipo:'judicial' };
 
@@ -2166,13 +2160,13 @@ function viewNomenclatura(){
     + '<hr class="rule">'
     + '<div class="nom-types">' + NOM_TYPES.map(function(t){
         var active = t.id===nomState.tipo ? ' active' : '';
-        return '<button type="button" class="'+active+'" data-nom-type="'+t.id+'"><span class="ic">'+t.ic+'</span>'+t.label+'</button>';
+        return '<button type="button" class="'+active+'" data-nom-type="'+t.id+'"><span class="ic">'+FBIcons.svg(t.ic,{size:18})+'</span>'+t.label+'</button>';
       }).join('') + '</div>'
     + '<div class="grid g2">'
       + '<div class="box" style="margin-bottom:0;"><h3 style="margin:0 0 14px;font-size:1rem;">Preencha os campos</h3><div class="nom-form" id="nom-fields"></div></div>'
       + '<div class="box" style="margin-bottom:0;"><h3 style="margin:0 0 14px;font-size:1rem;">Resultado</h3>'
         + '<div class="nom-result" id="nom-result">—</div>'
-        + '<button class="copy-btn" id="nom-copy">📋 Copiar nome</button>'
+        + '<button class="copy-btn" id="nom-copy">' + FBIcons.svg('clipboard',{size:14}) + ' Copiar nome</button>'
       + '</div>'
     + '</div>';
 }
@@ -2277,7 +2271,7 @@ function updateNomResult(){
 function copyNomResult(){
   var txt = document.getElementById('nom-result').textContent;
   var btn = document.getElementById('nom-copy');
-  var done = function(){ var old = btn.innerHTML; btn.innerHTML = '✓ Copiado'; setTimeout(function(){ btn.innerHTML = old; }, 1400); };
+  var done = function(){ var old = btn.innerHTML; btn.innerHTML = FBIcons.svg('check',{size:14}) + ' Copiado'; setTimeout(function(){ btn.innerHTML = old; }, 1400); };
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(done).catch(function(){ fallbackCopy(txt, done); });
   } else {
@@ -2292,6 +2286,7 @@ function fallbackCopy(txt, cb){
   if(cb) cb();
 }
 
+document.getElementById('search-box-icon').innerHTML = FBIcons.svg('search', { size: 14 });
 render();
 </script>
 
