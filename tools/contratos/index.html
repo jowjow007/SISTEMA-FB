@@ -10,55 +10,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="../../firebase-config.js"></script>
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
+  /* Nomes antigos mantidos como apelidos dos tokens novos (assets/design-system.css) —
+     evita reescrever todo o CSS abaixo que já usa var(--paper) etc. */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --panel-3:#332524;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --ok:#4caf7d;
-    --err:#ffb4ae;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.20);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --panel-3:#e6dfd7;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
-    --ok:#2f8f5b;
-    --err:#9c2c20;
+    --ink:var(--bg);
+    --panel:var(--surface);
+    --panel-2:var(--surface-2);
+    --panel-3:var(--surface-3);
+    --paper:var(--text);
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --silver:var(--text-muted);
+    --line:var(--border);
+    --line-strong:var(--border-strong);
+    --err:var(--danger-text);
   }
 
   *{box-sizing:border-box;}
@@ -139,7 +109,7 @@
 
   .date-wrap{display:flex;gap:6px;align-items:stretch;}
   .date-wrap input{flex:1;min-width:0;}
-  .date-pick-btn{flex:0 0 auto;width:36px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--silver);cursor:pointer;font-size:.9rem;}
+  .date-pick-btn{flex:0 0 auto;width:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--silver);cursor:pointer;font-size:.9rem;}
   .date-pick-btn:hover{background:var(--panel-3);color:var(--paper);}
   .date-hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
   .parcelas-preview{font-size:.7rem;color:var(--silver);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.5;}
@@ -637,6 +607,12 @@
   </div>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script>
 /* ---------- utilidades ---------- */
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -771,8 +747,9 @@ function attachDatePicker(input){
   const btn=document.createElement('button');
   btn.type='button';
   btn.className='date-pick-btn';
-  btn.textContent='📅';
+  btn.innerHTML=FBIcons.svg('calendar',{size:15});
   btn.title='Escolher data no calendário';
+  btn.setAttribute('aria-label','Escolher data no calendário');
   wrap.appendChild(btn);
   btn.addEventListener('click',()=>{
     if(hidden.showPicker){ try{ hidden.showPicker(); }catch(e){ hidden.click(); } }
@@ -854,7 +831,7 @@ function renderEscopo(){
     const row=document.createElement('div');
     row.className='list-item';
     const letra=String.fromCharCode(97+idx)+')';
-    row.innerHTML=`<div class="letter">${letra}</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.innerHTML=`<div class="letter">${letra}</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;" aria-label="Remover item">✕</button>`;
     row.querySelector('textarea').addEventListener('input',e=>{ escopo[idx]=e.target.value; scheduleRender(); });
     row.querySelector('button').addEventListener('click',()=>{ escopo.splice(idx,1); renderEscopo(); scheduleRender(); });
     wrap.appendChild(row);
@@ -972,7 +949,7 @@ function renderPPEscopo(){
   ppEscopo.forEach((item,idx)=>{
     const row=document.createElement('div');
     row.className='list-item';
-    row.innerHTML=`<div class="letter">➢</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;">✕</button>`;
+    row.innerHTML=`<div class="letter">➢</div><textarea>${esc(item)}</textarea><button type="button" class="btn ghost" style="align-self:flex-start;" aria-label="Remover item">✕</button>`;
     row.querySelector('textarea').addEventListener('input',e=>{ ppEscopo[idx]=e.target.value; scheduleRender(); });
     row.querySelector('button').addEventListener('click',()=>{ ppEscopo.splice(idx,1); renderPPEscopo(); scheduleRender(); });
     wrap.appendChild(row);
