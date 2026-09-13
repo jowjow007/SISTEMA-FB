@@ -5,76 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestão — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
-  :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --gold:#d8b25a;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-
-    --pend-bg:rgba(216,178,90,0.16); --pend-text:#f0cf8a;
-    --appr-bg:rgba(76,175,109,0.16); --appr-text:#8fe3ab;
-    --rej-bg:rgba(184,54,46,0.16);   --rej-text:#ffb4ae;
-    --recv-bg:rgba(150,175,201,0.16); --recv-text:#bcd3e6;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
-
-    --pend-bg:rgba(216,178,90,0.20); --pend-text:#7a5b12;
-    --appr-bg:rgba(76,175,109,0.20); --appr-text:#1f6b3a;
-    --rej-bg:rgba(184,54,46,0.14);   --rej-text:#8a241d;
-    --recv-bg:rgba(120,150,180,0.20); --recv-text:#2c4f6b;
-  }
-
-  *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);overflow:hidden;transition:background-color .2s,color .2s}
+  html,body{height:100%;overflow:hidden;}
+  body{transition:background-color .2s,color .2s;}
   button{font-family:inherit;}
   a{color:inherit;}
 
   #shell{display:flex;flex-direction:column;height:100%;}
 
   nav.subtabs{
-    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    flex:0 0 auto;background:var(--surface);border-bottom:1px solid var(--border-strong);
     display:flex;gap:2px;overflow-x:auto;padding:0 14px;
   }
   nav.subtabs button{
     flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
-    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
+    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--text-muted);
     cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
   }
-  nav.subtabs button:hover{color:var(--paper);}
-  nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
+  nav.subtabs button:hover{color:var(--text);}
+  nav.subtabs button.active{color:var(--brand-strong);border-bottom-color:var(--brand-strong);}
 
   #panels{position:relative;flex:1 1 auto;min-height:0;}
   .panel{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
@@ -82,119 +33,61 @@
 
   .frame-toolbar{
     flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
-    padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
-    font-size:.76rem;color:var(--muted);
+    padding:7px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);
+    font-size:.76rem;color:var(--text-muted);
   }
-  .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
-  .frame-toolbar a:hover{color:#fff;}
+  .frame-toolbar a{color:var(--text-faint);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+  .frame-toolbar a:hover{color:var(--text);}
   iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
 
-  #gate{padding:80px 20px;text-align:center;color:var(--muted);}
+  #gate{padding:80px 20px;text-align:center;color:var(--text-muted);}
 
   /* ---- módulo genérico ---- */
   .mod-scroll{flex:1 1 auto;overflow-y:auto;padding:18px 24px 40px;}
   .mod-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
-  .mod-head h2{font-family:var(--font-display);font-weight:600;font-size:1.15rem;margin:0 0 3px;}
-  .mod-head p{margin:0;font-size:.8rem;color:var(--muted);}
+  .mod-head h2{margin:0 0 3px;font-size:1.15rem;}
+  .mod-head p{margin:0;font-size:.8rem;color:var(--text-muted);}
 
   .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
-  .stat-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:10px 16px;min-width:140px;}
+  .stat-card{padding:10px 16px;min-width:140px;}
   .stat-card .n{font-size:1.2rem;font-weight:700;font-family:var(--font-display);}
-  .stat-card .l{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .stat-card .l{font-size:.72rem;color:var(--text-muted);margin-top:2px;}
 
   .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
-  .toolbar input[type="text"],.toolbar select{
-    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
-    padding:8px 11px;color:var(--paper);font-size:.82rem;
-  }
-  .toolbar input[type="text"]{flex:1 1 220px;max-width:320px;}
+  .toolbar .input{flex:1 1 220px;max-width:320px;width:auto;}
+  .toolbar .select{width:auto;}
   .toolbar .spacer{flex:1 1 auto;}
 
-  .btn{background:var(--panel-2);color:var(--paper);border:1px solid var(--line-strong);border-radius:8px;
-    padding:9px 16px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;}
-  .btn:hover{border-color:var(--silver);}
-  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
-  .btn.primary:hover{background:var(--red-bright);}
-  .btn.danger{background:transparent;border-color:var(--rej-text);color:var(--rej-text);}
-  .btn.danger:hover{background:var(--rej-bg);}
-  .btn.small{padding:5px 10px;font-size:.74rem;}
-  .btn[disabled]{opacity:.5;cursor:not-allowed;}
-  .btn.toggle-on{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.is-active{background:var(--brand);border-color:var(--brand);color:var(--on-brand);}
 
-  .section-title{font-size:.9rem;font-weight:700;margin:22px 0 8px;color:var(--paper);}
+  .section-title{font-size:.9rem;font-weight:700;margin:22px 0 8px;color:var(--text);}
   .section-title.first{margin-top:0;}
 
-  table.data-table{width:100%;border-collapse:collapse;font-size:.82rem;background:var(--panel);border-radius:10px;overflow:hidden;}
-  table.data-table th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
-    padding:9px 12px;border-bottom:1px solid var(--line-strong);background:var(--panel-2);}
-  table.data-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
-  table.data-table tr:last-child td{border-bottom:none;}
-  table.data-table td.num{font-variant-numeric:tabular-nums;}
-  .table-wrap{overflow-x:auto;border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;}
-  .table-wrap table.data-table{border-radius:0;}
-  .empty-row{padding:30px 12px;text-align:center;color:var(--muted);font-size:.82rem;}
-
-  .pill{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.02em;border-radius:20px;padding:3px 10px;white-space:nowrap;}
-  .pill.pendente{background:var(--pend-bg);color:var(--pend-text);}
-  .pill.aprovado{background:var(--appr-bg);color:var(--appr-text);}
-  .pill.reprovado{background:var(--rej-bg);color:var(--rej-text);}
-  .pill.recebido{background:var(--recv-bg);color:var(--recv-text);}
-  .pill.ativo{background:var(--appr-bg);color:var(--appr-text);}
-  .pill.manutencao{background:var(--pend-bg);color:var(--pend-text);}
-  .pill.baixado{background:var(--rej-bg);color:var(--rej-text);}
-  .pill.emprestado{background:var(--recv-bg);color:var(--recv-text);}
+  .table td.num{font-variant-numeric:tabular-nums;}
 
   .actions-cell{display:flex;gap:6px;flex-wrap:wrap;}
 
-  .quick-add-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;margin-bottom:14px;}
-  .quick-add-row input[type="text"],.quick-add-row input[type="number"]{
-    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
-    padding:8px 11px;color:var(--paper);font-size:.84rem;
-  }
-  .quick-add-row input[type="text"].item-input{flex:1 1 220px;min-width:160px;}
-  .quick-add-row input[type="number"]{width:64px;flex:0 0 auto;}
-  .quick-add-row input.valor-input{flex:0 0 190px;}
+  .quick-add-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:10px 12px;margin-bottom:14px;}
+  .quick-add-row .input.item-input{flex:1 1 220px;min-width:160px;width:auto;}
+  .quick-add-row input[type="number"].input{width:64px;flex:0 0 auto;}
+  .quick-add-row .input.valor-input{flex:0 0 190px;width:auto;}
 
-  .lote-card{border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--panel);}
-  .lote-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;cursor:pointer;font-size:.84rem;}
-  .lote-head:hover{background:var(--panel-2);}
-  .lote-head .lh-nome{font-weight:600;}
-  .lote-head .lh-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
-  .lote-head .lh-right{display:flex;align-items:center;gap:12px;flex:0 0 auto;}
-  .lote-head .chevron{display:inline-block;transition:transform .15s;color:var(--muted);}
-  .lote-head .chevron.open{transform:rotate(180deg);}
-  .lote-body{border-top:1px solid var(--line);padding:8px 14px 12px;}
+  .accordion-header{cursor:pointer;}
+  .accordion-header .lh-nome{font-weight:600;}
+  .accordion-header .lh-meta{font-size:.72rem;color:var(--text-muted);margin-top:2px;}
+  .accordion-header .lh-right{display:flex;align-items:center;gap:12px;flex:0 0 auto;}
 
-  .inner-nav{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
-  .inner-nav button{background:var(--panel);border:1px solid var(--line-strong);border-radius:20px;
-    padding:7px 16px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;}
-  .inner-nav button.active{background:var(--red);border-color:var(--red);color:#fff;}
   .inner-view{display:none;}
   .inner-view.active{display:block;}
 
-  /* ---- modal ---- */
-  .modal-backdrop{position:fixed;inset:0;background:rgba(10,7,7,.6);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
-  .modal-backdrop.show{display:flex;}
-  .modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:22px 24px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;}
-  .modal h3{font-family:var(--font-display);font-weight:600;margin:0 0 14px;font-size:1.05rem;}
-  .field{margin-bottom:12px;}
-  .field label{display:block;font-size:.76rem;color:var(--muted);margin-bottom:5px;font-weight:600;}
-  .field input,.field select,.field textarea{
-    width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
-    padding:9px 11px;color:var(--paper);font-size:.85rem;font-family:inherit;
-  }
-  .field textarea{resize:vertical;min-height:60px;}
-  .field-row{display:flex;gap:10px;}
-  .field-row .field{flex:1;min-width:0;}
-  .moeda-row{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:0 11px;min-width:0;}
-  .moeda-row span{color:var(--muted);font-size:.85rem;flex:0 0 auto;}
+  /* ---- modais próprios (fora do FBModal) ---- */
+  .modal.modal-lg{max-width:600px;max-height:88vh;overflow-y:auto;}
+  .moeda-row{display:flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:0 11px;min-width:0;}
+  .moeda-row span{color:var(--text-muted);font-size:.85rem;flex:0 0 auto;}
   .moeda-row input{border:none;background:transparent;padding:9px 0;flex:1 1 0%;min-width:0;}
-  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
-  .msg-err{color:var(--rej-text);font-size:.8rem;margin-top:6px;display:none;}
-  .msg-ok{color:var(--appr-text);font-size:.8rem;margin-top:6px;display:none;}
+  .field-error{display:none;}
 
   @media(max-width:720px){
-    .field-row{flex-direction:column;}
     .mod-scroll{padding:14px 14px 34px;}
   }
 </style>
@@ -208,72 +101,74 @@
 
 <!-- Modal: novo/editar item de patrimônio -->
 <div class="modal-backdrop" id="pat-modal-backdrop">
-  <div class="modal">
-    <h3 id="pat-modal-titulo">Novo item</h3>
-    <div class="field">
-      <label>Nome / descrição *</label>
-      <input type="text" id="pat-nome" placeholder="Ex: Notebook Dell Latitude">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 class="modal-title" id="pat-modal-titulo">Novo item</h3></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Nome / descrição *</label>
+        <input type="text" class="input" id="pat-nome" placeholder="Ex: Notebook Dell Latitude">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoria</label>
+          <select class="select" id="pat-categoria">
+            <option value="Informática">Informática</option>
+            <option value="Mobiliário">Mobiliário</option>
+            <option value="Eletrônico/Eletrodoméstico">Eletrônico/Eletrodoméstico</option>
+            <option value="Veículo">Veículo</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select class="select" id="pat-status">
+            <option value="ativo">Ativo</option>
+            <option value="manutencao">Em manutenção</option>
+            <option value="emprestado">Emprestado</option>
+            <option value="baixado">Baixado / descartado</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Marca / modelo</label>
+          <input type="text" class="input" id="pat-marca" placeholder="Ex: Dell Latitude 5420">
+        </div>
+        <div class="field">
+          <label>Número de série</label>
+          <input type="text" class="input" id="pat-serie">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Local / setor</label>
+          <input type="text" class="input" id="pat-local" placeholder="Ex: Sala 2 — recepção">
+        </div>
+        <div class="field">
+          <label>Com quem está (responsável)</label>
+          <select class="select" id="pat-responsavel"><option value="">— Sem responsável / estoque —</option></select>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">Só aparece aqui quem já está cadastrado no Organograma.</div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Data de aquisição</label>
+          <input type="date" class="input" id="pat-data-aquisicao">
+        </div>
+        <div class="field">
+          <label>Valor (R$)</label>
+          <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="pat-valor" placeholder="0,00"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <textarea class="textarea" id="pat-obs"></textarea>
+      </div>
+      <div class="field-error" id="pat-err"></div>
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Categoria</label>
-        <select id="pat-categoria">
-          <option value="Informática">Informática</option>
-          <option value="Mobiliário">Mobiliário</option>
-          <option value="Eletrônico/Eletrodoméstico">Eletrônico/Eletrodoméstico</option>
-          <option value="Veículo">Veículo</option>
-          <option value="Outros">Outros</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Status</label>
-        <select id="pat-status">
-          <option value="ativo">Ativo</option>
-          <option value="manutencao">Em manutenção</option>
-          <option value="emprestado">Emprestado</option>
-          <option value="baixado">Baixado / descartado</option>
-        </select>
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Marca / modelo</label>
-        <input type="text" id="pat-marca" placeholder="Ex: Dell Latitude 5420">
-      </div>
-      <div class="field">
-        <label>Número de série</label>
-        <input type="text" id="pat-serie">
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Local / setor</label>
-        <input type="text" id="pat-local" placeholder="Ex: Sala 2 — recepção">
-      </div>
-      <div class="field">
-        <label>Com quem está (responsável)</label>
-        <select id="pat-responsavel"><option value="">— Sem responsável / estoque —</option></select>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Só aparece aqui quem já está cadastrado no Organograma.</div>
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Data de aquisição</label>
-        <input type="date" id="pat-data-aquisicao">
-      </div>
-      <div class="field">
-        <label>Valor (R$)</label>
-        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="pat-valor" placeholder="0,00"></div>
-      </div>
-    </div>
-    <div class="field">
-      <label>Observações</label>
-      <textarea id="pat-obs"></textarea>
-    </div>
-    <div class="msg-err" id="pat-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="pat-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="pat-salvar">Salvar</button>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="pat-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="pat-salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -281,69 +176,95 @@
 <!-- Modal: transferir responsável de um item de patrimônio -->
 <div class="modal-backdrop" id="pat-transf-backdrop">
   <div class="modal">
-    <h3>Transferir responsável</h3>
-    <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;" id="pat-transf-item-label"></p>
-    <div class="field">
-      <label>Novo responsável</label>
-      <select id="pat-transf-select"><option value="">— Sem responsável / estoque —</option></select>
+    <div class="modal-header"><h3 class="modal-title">Transferir responsável</h3></div>
+    <div class="modal-body">
+      <p style="margin-top:0;" id="pat-transf-item-label"></p>
+      <div class="field">
+        <label>Novo responsável</label>
+        <select class="select" id="pat-transf-select"><option value="">— Sem responsável / estoque —</option></select>
+      </div>
+      <div class="field-error" id="pat-transf-err"></div>
     </div>
-    <div class="msg-err" id="pat-transf-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="pat-transf-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="pat-transf-confirmar">Confirmar transferência</button>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="pat-transf-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="pat-transf-confirmar">Confirmar transferência</button>
     </div>
   </div>
 </div>
 
 <!-- Modal: quem enxerga o patrimônio inteiro x só o próprio -->
 <div class="modal-backdrop" id="pat-permissoes-backdrop">
-  <div class="modal">
-    <h3>Quem vê o patrimônio completo</h3>
-    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;">Desmarque alguém pra essa pessoa só enxergar os itens que estão com ela. Admin sempre vê tudo, por isso não aparece na lista.</p>
-    <div id="pat-permissoes-lista" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
-    <div class="msg-err" id="pat-permissoes-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="pat-permissoes-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="pat-permissoes-salvar">Salvar</button>
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 class="modal-title">Quem vê o patrimônio completo</h3></div>
+    <div class="modal-body">
+      <p style="margin-top:0;">Desmarque alguém pra essa pessoa só enxergar os itens que estão com ela. Admin sempre vê tudo, por isso não aparece na lista.</p>
+      <div id="pat-permissoes-lista" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
+      <div class="field-error" id="pat-permissoes-err"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="pat-permissoes-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="pat-permissoes-salvar">Salvar</button>
     </div>
   </div>
 </div>
 
 <!-- Modal: registrar chegada -->
 <div class="modal-backdrop" id="cp-cheg-backdrop">
-  <div class="modal">
-    <h3>Registrar chegada da compra</h3>
-    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;" id="cp-cheg-item-label"></p>
-    <div class="field-row">
-      <div class="field">
-        <label>Valor pago (R$)</label>
-        <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-c-valor" placeholder="0,00"></div>
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 class="modal-title">Registrar chegada da compra</h3></div>
+    <div class="modal-body">
+      <p style="margin-top:0;" id="cp-cheg-item-label"></p>
+      <div class="field-row">
+        <div class="field">
+          <label>Valor pago (R$)</label>
+          <div class="moeda-row"><span>R$</span><input type="text" inputmode="numeric" id="cp-c-valor" placeholder="0,00"></div>
+        </div>
+        <div class="field">
+          <label>Data de chegada</label>
+          <input type="date" class="input" id="cp-c-data">
+        </div>
       </div>
       <div class="field">
-        <label>Data de chegada</label>
-        <input type="date" id="cp-c-data">
+        <label>Fornecedor</label>
+        <input type="text" class="input" id="cp-c-fornecedor">
       </div>
+      <div class="field">
+        <label>Nota fiscal</label>
+        <input type="text" class="input" id="cp-c-nf">
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <textarea class="textarea" id="cp-c-obs"></textarea>
+      </div>
+      <div class="field-error" id="cp-c-err"></div>
     </div>
-    <div class="field">
-      <label>Fornecedor</label>
-      <input type="text" id="cp-c-fornecedor">
-    </div>
-    <div class="field">
-      <label>Nota fiscal</label>
-      <input type="text" id="cp-c-nf">
-    </div>
-    <div class="field">
-      <label>Observações</label>
-      <textarea id="cp-c-obs"></textarea>
-    </div>
-    <div class="msg-err" id="cp-c-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="cp-c-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="cp-c-salvar">Confirmar chegada</button>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="cp-c-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="cp-c-salvar">Confirmar chegada</button>
     </div>
   </div>
 </div>
 
+<!-- Modal: motivo da reprovação de um item de compra -->
+<div class="modal-backdrop" id="cp-rep-backdrop">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title">Reprovar item</h3></div>
+    <div class="modal-body">
+      <p style="margin-top:0;" id="cp-rep-item-label"></p>
+      <div class="field">
+        <label>Motivo (opcional)</label>
+        <textarea class="textarea" id="cp-rep-motivo" placeholder="Ex: fora do orçamento deste mês"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="cp-rep-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="cp-rep-confirmar">Reprovar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -467,7 +388,7 @@
       const toolbar = document.createElement('div');
       toolbar.className = 'frame-toolbar';
       toolbar.innerHTML = '<span>' + escapeHtml(t.label) + '</span>' +
-        '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ↗</a>';
+        '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ' + FBIcons.svg('external-link', {size:13}) + '</a>';
       const ifr = document.createElement('iframe');
       ifr.className = 'tool-frame';
       ifr.src = t.url;
@@ -509,6 +430,7 @@
   }
 
   const STATUS_PAT_LABEL = { ativo: 'Ativo', manutencao: 'Em manutenção', emprestado: 'Emprestado', baixado: 'Baixado / descartado' };
+  const STATUS_PAT_PILL = { ativo: 'pill-aprovado', manutencao: 'pill-pendente', emprestado: 'pill-recebido', baixado: 'pill-reprovado' };
 
   function initPatrimonio(){
     document.getElementById('pat-scroll').innerHTML =
@@ -519,23 +441,23 @@
             : 'Você só enxerga aqui os itens que estão com você — um admin restringiu sua visão ao seu próprio patrimônio.') +
         '</p></div>' +
         '<div class="actions-cell">' +
-          (souAdmin ? '<button type="button" class="btn small" id="pat-permissoes-btn">⚙ Quem vê tudo</button>' : '') +
-          '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
+          (souAdmin ? '<button type="button" class="btn btn-sm" id="pat-permissoes-btn">' + FBIcons.svg('settings', { size: 14 }) + ' Quem vê tudo</button>' : '') +
+          '<button type="button" class="btn btn-primary" id="pat-novo-btn">' + FBIcons.svg('plus', { size: 14 }) + ' Novo item</button>' +
         '</div>' +
       '</div>' +
       '<div class="stat-row" id="pat-stats"></div>' +
       '<div class="toolbar">' +
-        '<input type="text" id="pat-busca" placeholder="Buscar por nome, local, responsável…">' +
-        '<select id="pat-filtro-categoria"><option value="">Todas as categorias</option>' +
+        '<input type="text" class="input" id="pat-busca" placeholder="Buscar por nome, local, responsável…">' +
+        '<select class="select" id="pat-filtro-categoria"><option value="">Todas as categorias</option>' +
           ['Informática','Mobiliário','Eletrônico/Eletrodoméstico','Veículo','Outros'].map(function(c){ return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join('') +
         '</select>' +
-        '<select id="pat-filtro-status"><option value="">Todos os status</option>' +
+        '<select class="select" id="pat-filtro-status"><option value="">Todos os status</option>' +
           Object.keys(STATUS_PAT_LABEL).map(function(k){ return '<option value="' + k + '">' + STATUS_PAT_LABEL[k] + '</option>'; }).join('') +
         '</select>' +
         '<span class="spacer"></span>' +
-        (meuPatrimonioVerTudo ? '<button type="button" class="btn small" id="pat-toggle-meus">👤 Só o que está comigo</button>' : '') +
+        (meuPatrimonioVerTudo ? '<button type="button" class="btn btn-sm" id="pat-toggle-meus">' + FBIcons.svg('user', { size: 14 }) + ' Só o que está comigo</button>' : '') +
       '</div>' +
-      '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<div class="table-wrap"><table class="table"><thead><tr>' +
         '<th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th><th></th>' +
       '</tr></thead><tbody id="pat-tbody"></tbody></table></div>';
 
@@ -547,7 +469,7 @@
     const toggleMeusBtn = document.getElementById('pat-toggle-meus');
     if (toggleMeusBtn) toggleMeusBtn.addEventListener('click', function(){
       patFiltroSoMeu = !patFiltroSoMeu;
-      this.classList.toggle('toggle-on', patFiltroSoMeu);
+      this.classList.toggle('is-active', patFiltroSoMeu);
       renderPatrimonio();
     });
     const permissoesBtn = document.getElementById('pat-permissoes-btn');
@@ -599,8 +521,8 @@
     }
     tbody.innerHTML = filtrados.map(function(it){
       return '<tr>' +
-        '<td style="font-variant-numeric:tabular-nums;color:var(--muted);">' + escapeHtml(it.codigo || '—') + '</td>' +
-        '<td>' + escapeHtml(it.nome) + (it.marcaModelo ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</td>' +
+        '<td style="font-variant-numeric:tabular-nums;color:var(--text-muted);">' + escapeHtml(it.codigo || '—') + '</td>' +
+        '<td>' + escapeHtml(it.nome) + (it.marcaModelo ? '<br><span style="color:var(--text-muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</td>' +
         '<td>' + escapeHtml(it.categoria || '—') + '</td>' +
         '<td>' + escapeHtml(it.local || '—') + '</td>' +
         '<td>' + escapeHtml(it.responsavel || '—') + '</td>' +
@@ -609,7 +531,7 @@
         '<td class="actions-cell">' +
           '<button type="button" class="btn small" data-pat-etiqueta="' + it.id + '">Etiqueta</button>' +
           '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
-          (souAdmin ? '<button type="button" class="btn small" data-pat-transferir="' + it.id + '">🔄 Transferir</button>' : '') +
+          (souAdmin ? '<button type="button" class="btn small" data-pat-transferir="' + it.id + '">' + FBIcons.svg('refresh',{size:13}) + ' Transferir</button>' : '') +
           (souAdmin ? '<button type="button" class="btn small danger" data-pat-excluir="' + it.id + '">Excluir</button>' : '') +
         '</td>' +
       '</tr>';
@@ -628,8 +550,15 @@
       b.addEventListener('click', function(){
         const it = patItens.find(function(x){ return x.id === b.dataset.patExcluir; });
         if (!it) return;
-        if (!confirm('Excluir o item "' + it.nome + '" (' + it.codigo + ') do patrimônio? Essa ação não pode ser desfeita.')) return;
-        db.collection('patrimonio').doc(it.id).delete();
+        FBModal.confirm({
+          title: 'Excluir item do patrimônio?',
+          body: '"' + it.nome + '" (' + it.codigo + ') — essa ação não pode ser desfeita.',
+          danger: true,
+          confirmLabel: 'Excluir'
+        }).then(function(ok){
+          if (!ok) return;
+          db.collection('patrimonio').doc(it.id).delete().then(function(){ FBModal.toast('Item excluído.'); });
+        });
       });
     });
   }
@@ -664,9 +593,9 @@
     patValorInput.value = item ? numeroParaMoedaInput(item.valor) : '';
     document.getElementById('pat-obs').value = item ? (item.observacoes || '') : '';
     document.getElementById('pat-err').style.display = 'none';
-    patBackdrop.classList.add('show');
+    patBackdrop.classList.add('is-open');
   }
-  function fecharModalPatrimonio(){ patBackdrop.classList.remove('show'); patEditandoId = null; }
+  function fecharModalPatrimonio(){ patBackdrop.classList.remove('is-open'); patEditandoId = null; }
   document.getElementById('pat-cancelar').addEventListener('click', fecharModalPatrimonio);
   patBackdrop.addEventListener('click', function(e){ if (e.target === patBackdrop) fecharModalPatrimonio(); });
 
@@ -720,9 +649,9 @@
     document.getElementById('pat-transf-item-label').textContent = item.nome + ' (' + item.codigo + ') — hoje com: ' + (item.responsavel || 'sem responsável / estoque');
     document.getElementById('pat-transf-select').innerHTML = optionsResponsavel(item.responsavelUid);
     document.getElementById('pat-transf-err').style.display = 'none';
-    patTransfBackdrop.classList.add('show');
+    patTransfBackdrop.classList.add('is-open');
   }
-  function fecharModalTransferencia(){ patTransfBackdrop.classList.remove('show'); patTransferindoId = null; }
+  function fecharModalTransferencia(){ patTransfBackdrop.classList.remove('is-open'); patTransferindoId = null; }
   document.getElementById('pat-transf-cancelar').addEventListener('click', fecharModalTransferencia);
   patTransfBackdrop.addEventListener('click', function(e){ if (e.target === patTransfBackdrop) fecharModalTransferencia(); });
 
@@ -744,9 +673,9 @@
   const patPermissoesBackdrop = document.getElementById('pat-permissoes-backdrop');
 
   function abrirModalPermissoesPatrimonio(){
-    document.getElementById('pat-permissoes-lista').innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
+    document.getElementById('pat-permissoes-lista').innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">Carregando…</p>';
     document.getElementById('pat-permissoes-err').style.display = 'none';
-    patPermissoesBackdrop.classList.add('show');
+    patPermissoesBackdrop.classList.add('is-open');
     db.collection('users').get().then(function(snap){
       const usuarios = snap.docs
         .map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
@@ -755,18 +684,18 @@
       document.getElementById('pat-permissoes-lista').innerHTML = usuarios.length
         ? usuarios.map(function(u){
             const marcado = u.patrimonioVerTudo !== false;
-            return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.85rem;">' +
+            return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.85rem;">' +
               '<input type="checkbox" class="pat-perm-cb" data-uid="' + u.uid + '"' + (marcado ? ' checked' : '') + '>' +
               '<span>' + escapeHtml(u.displayName || u.email || u.uid) + '</span>' +
             '</label>';
           }).join('')
-        : '<p style="color:var(--muted);font-size:.85rem;">Nenhum outro colaborador cadastrado.</p>';
+        : '<p style="color:var(--text-muted);font-size:.85rem;">Nenhum outro colaborador cadastrado.</p>';
     }).catch(function(err){
       document.getElementById('pat-permissoes-err').textContent = 'Erro ao carregar colaboradores: ' + err.message;
       document.getElementById('pat-permissoes-err').style.display = 'block';
     });
   }
-  function fecharModalPermissoesPatrimonio(){ patPermissoesBackdrop.classList.remove('show'); }
+  function fecharModalPermissoesPatrimonio(){ patPermissoesBackdrop.classList.remove('is-open'); }
   document.getElementById('pat-permissoes-cancelar').addEventListener('click', fecharModalPermissoesPatrimonio);
   patPermissoesBackdrop.addEventListener('click', function(e){ if (e.target === patPermissoesBackdrop) fecharModalPermissoesPatrimonio(); });
 
@@ -789,7 +718,7 @@
   function imprimirEtiqueta(it){
     if (!it) return;
     const w = window.open('', '_blank', 'width=420,height=300');
-    if (!w) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
+    if (!w) { FBModal.alert({ title: 'Pop-up bloqueado', body: 'Permita pop-ups no navegador para imprimir a etiqueta.' }); return; }
     w.document.write(
       '<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta — ' + escapeHtml(it.codigo) + '</title>' +
       '<style>' +
@@ -842,14 +771,14 @@
         '<div class="msg-err" id="cp-nova-err">Preencha o nome da lista e o primeiro item.</div>' +
 
         '<div class="section-title">Suas listas em andamento</div>' +
-        '<p style="font-size:.78rem;color:var(--muted);margin:-6px 0 12px;">Fica salvo automaticamente a cada item — pode fechar e voltar depois. Só some daqui quando você enviar para aprovação (e aí não dá mais pra editar).</p>' +
+        '<p style="font-size:.78rem;color:var(--text-muted);margin:-6px 0 12px;">Fica salvo automaticamente a cada item — pode fechar e voltar depois. Só some daqui quando você enviar para aprovação (e aí não dá mais pra editar).</p>' +
         '<div id="cp-rascunhos-usuario"></div>' +
 
         '<div class="section-title">Listas de compras</div>' +
         '<div class="toolbar">' +
           '<span class="spacer"></span>' +
-          '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir lista aprovada</button>' +
-          '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir lista rejeitada</button>' +
+          '<button type="button" class="btn small" id="cp-print-aprovadas">' + FBIcons.svg('print',{size:13}) + ' Imprimir lista aprovada</button>' +
+          '<button type="button" class="btn small" id="cp-print-reprovadas">' + FBIcons.svg('print',{size:13}) + ' Imprimir lista rejeitada</button>' +
         '</div>' +
         '<div id="cp-listas-compras"></div>' +
       '</div>' +
@@ -974,7 +903,7 @@
     if (!container) return;
     const meus = cpItens.filter(function(x){ return x.status === 'rascunho' && x.solicitanteUid === meuUid; });
     if (!meus.length) {
-      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma lista em andamento. Crie uma acima.</div>';
+      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--border-strong);border-radius:10px;">Nenhuma lista em andamento. Crie uma acima.</div>';
       return;
     }
     const grupos = {};
@@ -1003,8 +932,8 @@
           '</div>' +
           '<div class="lh-right">' +
             '<span>' + formatBRL(g.totalEstimado) + '</span>' +
-            '<button type="button" class="btn small danger" data-rascunho-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">🗑 Excluir lista</button>' +
-            '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
+            '<button type="button" class="btn small danger" data-rascunho-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">' + FBIcons.svg('trash',{size:13}) + ' Excluir lista</button>' +
+            '<span class="chevron' + (aberto ? ' open' : '') + '">' + FBIcons.svg('chevron-down',{size:14}) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
@@ -1026,7 +955,7 @@
           '</div>' +
           '<div class="toolbar" style="margin-top:8px;">' +
             '<span class="spacer"></span>' +
-            '<button type="button" class="btn primary small" data-rascunho-enviar="' + g.loteId + '">📤 Enviar ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' para aprovação</button>' +
+            '<button type="button" class="btn primary small" data-rascunho-enviar="' + g.loteId + '">' + FBIcons.svg('send',{size:13}) + ' Enviar ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' para aprovação</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1084,11 +1013,18 @@
   }
 
   function excluirRascunhoCompleto(loteId, nomeLista, qtdItens){
-    if (!confirm('Excluir a lista "' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ')? Essa ação não pode ser desfeita.')) return;
-    const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
-    const batch = db.batch();
-    itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
-    batch.commit().catch(function(err){ alert('Erro ao excluir a lista: ' + err.message); });
+    FBModal.confirm({
+      title: 'Excluir esta lista?',
+      body: '"' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ') — essa ação não pode ser desfeita.',
+      danger: true,
+      confirmLabel: 'Excluir'
+    }).then(function(ok){
+      if (!ok) return;
+      const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
+      const batch = db.batch();
+      itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
+      batch.commit().catch(function(err){ FBModal.alert({ title: 'Erro ao excluir a lista', body: err.message, danger: true }); });
+    });
   }
 
   function adicionarItemAoRascunho(loteId){
@@ -1117,19 +1053,26 @@
       qtdInput.value = '1';
       valorInput.value = '';
       itemInput.focus();
-    }).catch(function(err){ alert('Erro ao adicionar item: ' + err.message); });
+    }).catch(function(err){ FBModal.alert({ title: 'Erro ao adicionar item', body: err.message, danger: true }); });
   }
 
   function enviarListaParaAprovacao(loteId){
     const itens = cpItens.filter(function(x){ return x.loteId === loteId && x.status === 'rascunho'; });
     if (!itens.length) return;
-    if (!confirm('Enviar esta lista (' + itens.length + ' ite' + (itens.length > 1 ? 'ns' : 'm') + ') para aprovação? Depois de enviada, não é mais possível editar.')) return;
-    const batch = db.batch();
-    const agora = firebase.firestore.FieldValue.serverTimestamp();
-    itens.forEach(function(it){
-      batch.update(db.collection('compras').doc(it.id), { status: 'pendente', dataEnvio: agora });
+    FBModal.confirm({
+      title: 'Enviar lista para aprovação?',
+      body: itens.length + ' ite' + (itens.length > 1 ? 'ns' : 'm') + ' — depois de enviada, não é mais possível editar.',
+      confirmLabel: 'Enviar'
+    }).then(function(ok){
+      if (!ok) return;
+      const batch = db.batch();
+      const agora = firebase.firestore.FieldValue.serverTimestamp();
+      itens.forEach(function(it){
+        batch.update(db.collection('compras').doc(it.id), { status: 'pendente', dataEnvio: agora });
+      });
+      batch.commit().then(function(){ FBModal.toast('Lista enviada para aprovação.'); })
+        .catch(function(err){ FBModal.alert({ title: 'Erro ao enviar a lista', body: err.message, danger: true }); });
     });
-    batch.commit().catch(function(err){ alert('Erro ao enviar a lista: ' + err.message); });
   }
 
   // Agrupa as solicitações JÁ ENVIADAS (pendentes, aprovadas, reprovadas,
@@ -1143,7 +1086,7 @@
     if (!container) return;
     const enviados = cpItens.filter(function(x){ return x.status !== 'rascunho'; });
     if (!enviados.length) {
-      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma lista enviada ainda.</div>';
+      container.innerHTML = '<div class="empty-row" style="border:1px solid var(--border-strong);border-radius:10px;">Nenhuma lista enviada ainda.</div>';
       return;
     }
     const grupos = {};
@@ -1185,8 +1128,8 @@
           '</div>' +
           '<div class="lh-right">' +
             '<span>' + formatBRL(g.totalEstimado) + '</span>' +
-            (souAdmin ? '<button type="button" class="btn small danger" data-lista-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">🗑 Excluir lista</button>' : '') +
-            '<span class="chevron' + (aberto ? ' open' : '') + '">▾</span>' +
+            (souAdmin ? '<button type="button" class="btn small danger" data-lista-excluir="' + g.loteId + '" data-lista-nome="' + escapeHtml(g.nome) + '" data-lista-qtd="' + g.itens.length + '">' + FBIcons.svg('trash',{size:13}) + ' Excluir lista</button>' : '') +
+            '<span class="chevron' + (aberto ? ' open' : '') + '">' + FBIcons.svg('chevron-down',{size:14}) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
@@ -1203,10 +1146,10 @@
                       '<button type="button" class="btn small danger" data-cp-reprovar="' + it.id + '">Reprovar</button>'
                     : '') +
                   (it.status === 'aprovado' && souAdmin
-                    ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">✓ Comprado</button>'
+                    ? '<button type="button" class="btn small primary" data-cp-chegou="' + it.id + '">' + FBIcons.svg('check',{size:13}) + ' Comprado</button>'
                     : '') +
                   (souAdmin
-                    ? '<button type="button" class="btn small danger" data-cp-excluir-item="' + it.id + '" data-item-nome="' + escapeHtml(it.item) + '">🗑 Excluir</button>'
+                    ? '<button type="button" class="btn small danger" data-cp-excluir-item="' + it.id + '" data-item-nome="' + escapeHtml(it.item) + '">' + FBIcons.svg('trash',{size:13}) + ' Excluir</button>'
                     : '') +
                 '</td>' +
               '</tr>';
@@ -1218,8 +1161,15 @@
 
     Array.prototype.forEach.call(container.querySelectorAll('[data-cp-excluir-item]'), function(b){
       b.addEventListener('click', function(){
-        if (!confirm('Excluir o item "' + b.dataset.itemNome + '" dessa lista? Essa ação não pode ser desfeita.')) return;
-        db.collection('compras').doc(b.dataset.cpExcluirItem).delete();
+        FBModal.confirm({
+          title: 'Excluir item da lista?',
+          body: '"' + b.dataset.itemNome + '" — essa ação não pode ser desfeita.',
+          danger: true,
+          confirmLabel: 'Excluir'
+        }).then(function(ok){
+          if (!ok) return;
+          db.collection('compras').doc(b.dataset.cpExcluirItem).delete().then(function(){ FBModal.toast('Item excluído.'); });
+        });
       });
     });
     Array.prototype.forEach.call(container.querySelectorAll('[data-lista-excluir]'), function(b){
@@ -1238,11 +1188,18 @@
   }
 
   function excluirListaCompleta(loteId, nomeLista, qtdItens){
-    if (!confirm('Excluir a lista "' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ')? Essa ação não pode ser desfeita.')) return;
-    const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
-    const batch = db.batch();
-    itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
-    batch.commit().catch(function(err){ alert('Erro ao excluir a lista: ' + err.message); });
+    FBModal.confirm({
+      title: 'Excluir esta lista?',
+      body: '"' + nomeLista + '" (' + qtdItens + ' ite' + (qtdItens > 1 ? 'ns' : 'm') + ') — essa ação não pode ser desfeita.',
+      danger: true,
+      confirmLabel: 'Excluir'
+    }).then(function(ok){
+      if (!ok) return;
+      const itens = cpItens.filter(function(x){ return (x.loteId || x.id) === loteId; });
+      const batch = db.batch();
+      itens.forEach(function(it){ batch.delete(db.collection('compras').doc(it.id)); });
+      batch.commit().catch(function(err){ FBModal.alert({ title: 'Erro ao excluir a lista', body: err.message, danger: true }); });
+    });
   }
 
   function renderCompras(){
@@ -1290,9 +1247,11 @@
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-cp-aprovar]'), function(b){
       b.addEventListener('click', function(){
-        if (!confirm('Aprovar esta solicitação de compra?')) return;
-        db.collection('compras').doc(b.dataset.cpAprovar).update({
-          status: 'aprovado', aprovadoPor: meuNome, dataAprovacao: firebase.firestore.FieldValue.serverTimestamp()
+        FBModal.confirm({ title: 'Aprovar esta solicitação de compra?', confirmLabel: 'Aprovar' }).then(function(ok){
+          if (!ok) return;
+          db.collection('compras').doc(b.dataset.cpAprovar).update({
+            status: 'aprovado', aprovadoPor: meuNome, dataAprovacao: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(function(){ FBModal.toast('Compra aprovada.'); });
         });
       });
     });
@@ -1329,7 +1288,7 @@
     }).join('') : '<tr><td colspan="7" style="text-align:center;color:#666;">Nenhum registro.</td></tr>';
 
     const w = window.open('', '_blank');
-    if (!w) { alert('Permita pop-ups para imprimir.'); return; }
+    if (!w) { FBModal.alert({ title: 'Pop-up bloqueado', body: 'Permita pop-ups no navegador para imprimir.' }); return; }
     w.document.write(
       '<!doctype html><html><head><meta charset="utf-8"><title>' + escapeHtml(titulo) + '</title>' +
       '<style>' +
@@ -1364,9 +1323,9 @@
     document.getElementById('cp-c-nf').value = '';
     document.getElementById('cp-c-obs').value = '';
     document.getElementById('cp-c-err').style.display = 'none';
-    cpChegBackdrop.classList.add('show');
+    cpChegBackdrop.classList.add('is-open');
   }
-  function fecharModalChegada(){ cpChegBackdrop.classList.remove('show'); cpChegandoId = null; }
+  function fecharModalChegada(){ cpChegBackdrop.classList.remove('is-open'); cpChegandoId = null; }
   document.getElementById('cp-c-cancelar').addEventListener('click', fecharModalChegada);
   cpChegBackdrop.addEventListener('click', function(e){ if (e.target === cpChegBackdrop) fecharModalChegada(); });
 

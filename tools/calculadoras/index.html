@@ -5,52 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Calculadoras — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --panel-3:#332524;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --ok:#4caf7d;
-    --err:#ffb4ae;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.20);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    /* Nomes antigos mantidos como apelidos dos tokens novos (assets/design-system.css) —
+       evita reescrever as ~200 linhas de CSS abaixo que já usam var(--paper) etc.
+       --font-display e --font-body já vêm do design-system.css (mesmos valores);
+       --font-mono não tem equivalente no design system, mantido local.
+       --silver não tem token específico no design system: mapeado para --text-muted
+       (era um tom um pouco mais claro que --muted no arquivo original — ver nota final). */
+    --ink:var(--bg);
+    --panel:var(--surface);
+    --panel-2:var(--surface-2);
+    --panel-3:var(--surface-3);
+    --paper:var(--text);
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --err:var(--danger);
+    --silver:var(--text-muted);
+    --line:var(--border);
+    --line-strong:var(--border-strong);
     --font-mono:"Consolas","SF Mono",Menlo,monospace;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --panel-3:#e6dfd7;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
-    --ok:#2f8f5b;
-    --err:#9c2c20;
   }
 
   *{box-sizing:border-box;}
@@ -78,7 +56,7 @@
   .panel{display:none;}
   .panel.active{display:block;}
 
-  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;margin-bottom:20px;}
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;margin-bottom:20px;box-shadow:var(--shadow-sm,none);}
   .card h2{font-family:var(--font-display);font-weight:600;font-size:1.05rem;margin:0 0 4px;color:var(--paper);}
   .card .desc{font-size:.78rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
 
@@ -95,11 +73,13 @@
   .field input[readonly]{color:var(--silver);background:var(--panel-3);}
 
   .btn{
+    display:inline-flex;align-items:center;gap:8px;
     padding:11px 20px;border-radius:8px;border:none;background:var(--red);
-    color:#fff;font-weight:600;font-size:.88rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;
+    color:var(--on-brand,#fff);font-weight:600;font-size:.88rem;letter-spacing:.02em;cursor:pointer;
+    transition:background .15s,box-shadow .15s;
   }
-  .btn:hover{background:var(--red-bright);}
-  .btn:disabled{opacity:.5;cursor:default;}
+  .btn:hover{background:var(--red-bright);box-shadow:var(--shadow-sm);}
+  .btn:disabled{opacity:.5;cursor:default;box-shadow:none;}
   .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
   .btn.secondary:hover{background:var(--panel-2);}
   .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
@@ -278,7 +258,7 @@
           <div class="stat"><div class="k">Total de juros</div><div class="v" id="price-out-juros">—</div></div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table">
             <thead><tr><th>Parcela</th><th>Data</th><th>Prestação</th><th>Juros</th><th>Amortização</th><th>Saldo devedor</th></tr></thead>
             <tbody id="price-table-body"></tbody>
           </table>
@@ -302,7 +282,7 @@
           <div class="calc-display" id="calc-display">0</div>
           <div class="calc-keys" id="calc-keys">
             <button data-k="ac" class="ck ck-op">AC</button>
-            <button data-k="bs" class="ck ck-op">⌫</button>
+            <button data-k="bs" class="ck ck-op" aria-label="Apagar último caractere">⌫</button>
             <button data-k="pct" class="ck ck-op">%</button>
             <button data-k="div" class="ck ck-op">÷</button>
 
@@ -321,14 +301,14 @@
             <button data-k="3" class="ck">3</button>
             <button data-k="add" class="ck ck-op">+</button>
 
-            <button data-k="sign" class="ck">±</button>
+            <button data-k="sign" class="ck" aria-label="Inverter sinal">±</button>
             <button data-k="0" class="ck">0</button>
             <button data-k="dot" class="ck">,</button>
             <button data-k="eq" class="ck ck-eq">=</button>
           </div>
           <div class="btn-row" style="margin-top:14px;">
             <input type="text" id="calc-guardar-label" placeholder="Rótulo (opcional)" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.82rem;">
-            <button class="btn secondary" id="calc-guardar-btn">💾 Guardar valor atual</button>
+            <button class="btn secondary" id="calc-guardar-btn">Guardar valor atual</button>
           </div>
           <div class="saved-values" id="saved-values"></div>
         </div>
@@ -351,6 +331,8 @@
   A tabela de amortização Price segue o mesmo princípio da "Calculadora do Cidadão" do Banco Central. A calculadora simples guarda histórico e valores salvos apenas neste navegador (não sincroniza entre computadores).
 </footer>
 
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script>
 (function(){
   "use strict";
@@ -409,6 +391,15 @@
   var priceResult = document.getElementById('price-result');
   var priceCsvBtn = document.getElementById('price-csv-btn');
   var ultimaTabela = null;
+
+  // ---------- ícones dos botões (assets/icons.js) — só troca o conteúdo visual,
+  // os IDs e os listeners de clique continuam os mesmos ----------
+  if (window.FBIcons) {
+    document.getElementById('price-calc-btn').innerHTML = FBIcons.svg('calculator', { size: 15 }) + ' Calcular';
+    priceCsvBtn.innerHTML = FBIcons.svg('download', { size: 14 }) + ' Baixar tabela (CSV)';
+    document.getElementById('calc-guardar-btn').innerHTML = FBIcons.svg('tag', { size: 14 }) + ' Guardar valor atual';
+    document.getElementById('calc-limpar-hist').innerHTML = FBIcons.svg('trash', { size: 13 }) + ' Limpar';
+  }
 
   [pvEl, iEl, nEl, pmtEl].forEach(function(el){ el.dataset.placeholder = el.placeholder; });
 

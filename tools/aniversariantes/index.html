@@ -5,46 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Aniversariantes — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <style>
+  /* Apelidos: nomes de variável antigos deste arquivo -> tokens do design system compartilhado */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --gold:#d8b25a;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    --ink: var(--bg);
+    --panel: var(--surface);
+    --panel-2: var(--surface-2);
+    --paper: var(--text);
+    --muted: var(--text-muted);
+    --silver: var(--text-muted);
+    --red: var(--brand);
+    --red-bright: var(--brand-strong);
+    --red-deep: var(--brand-deep);
+    --gold: var(--accent-strong);
+    --line: var(--border);
+    --line-strong: var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -58,7 +37,7 @@
   .mes-nav{display:flex;align-items:center;justify-content:center;gap:14px;}
   .mes-nav button{
     width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);background:var(--panel-2);
-    color:var(--paper);font-size:1rem;line-height:1;cursor:pointer;
+    color:var(--paper);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
   }
   .mes-nav button:hover{border-color:var(--gold);color:var(--gold);}
   header .sub{font-size:.82rem;color:var(--muted);margin:0;min-width:160px;}
@@ -76,61 +55,64 @@
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;}
 
-  .card{
+  /* Nome próprio (bday-card) para não colidir com o .card genérico do design system —
+     este é um cartão temático de aniversário, bem diferente do card de conteúdo padrão. */
+  .bday-card{
     position:relative;overflow:hidden;background:linear-gradient(160deg,var(--panel),var(--panel-2));
-    border:1px solid var(--line-strong);border-radius:18px;padding:26px 18px 22px;text-align:center;
+    border:1px solid var(--line-strong);border-radius:var(--r-xl);padding:26px 18px 22px;text-align:center;
+    box-shadow:var(--shadow-sm);
   }
-  .card .logo-watermark{
+  .bday-card .logo-watermark{
     position:absolute;top:50%;left:50%;width:220%;transform:translate(-50%,-50%) rotate(-8deg);
     opacity:.06;pointer-events:none;filter:grayscale(1) brightness(3);
   }
-  .card .confetti{position:absolute;border-radius:2px;opacity:.85;pointer-events:none;}
-  .card .corner-deco{position:absolute;font-size:1.3rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));pointer-events:none;z-index:1;}
+  .bday-card .confetti{position:absolute;border-radius:2px;opacity:.85;pointer-events:none;}
+  .bday-card .corner-deco{position:absolute;font-size:1.3rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));pointer-events:none;z-index:1;}
 
-  .card .bandeirinhas{
+  .bday-card .bandeirinhas{
     position:relative;z-index:2;display:flex;justify-content:center;gap:3px;height:16px;margin:-6px 0 12px;
   }
-  .card .bandeirinhas::before{
+  .bday-card .bandeirinhas::before{
     content:"";position:absolute;top:1px;left:8%;right:8%;height:1px;background:var(--line-strong);
   }
-  .card .bandeira{
+  .bday-card .bandeira{
     width:0;height:0;margin-top:2px;border-left:7px solid transparent;border-right:7px solid transparent;
     border-top:11px solid var(--bandeira-cor,var(--red));
   }
 
-  .card .avatar-wrap{position:relative;z-index:2;margin:0 auto 14px;width:96px;height:96px;}
-  .card .avatar{
+  .bday-card .avatar-wrap{position:relative;z-index:2;margin:0 auto 14px;width:96px;height:96px;}
+  .bday-card .avatar{
     width:96px;height:96px;border-radius:50%;background-size:cover;background-position:center;
     border:3px solid var(--gold);box-shadow:0 0 0 4px rgba(216,178,90,.18);background-color:var(--panel-2);
     display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:2.1rem;
     color:var(--gold);
   }
-  .card .party-icon{
+  .bday-card .party-icon{
     position:absolute;bottom:-4px;right:-4px;font-size:1.5rem;
     filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
   }
-  .card .party-hat{
+  .bday-card .party-hat{
     position:absolute;top:-22px;right:2px;transform:rotate(28deg);z-index:3;
     width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;
     border-bottom:30px solid var(--red-bright);filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));
   }
-  .card .party-hat::before{
+  .bday-card .party-hat::before{
     content:"";position:absolute;top:-34px;left:-6px;width:11px;height:11px;border-radius:50%;
     background:var(--gold);
   }
-  .card .party-hat::after{
+  .bday-card .party-hat::after{
     content:"";position:absolute;bottom:-1px;left:-16px;width:32px;height:4px;background:var(--gold);
     border-radius:2px;
   }
-  .card .nome{
+  .bday-card .nome{
     position:relative;z-index:4;background:var(--panel);display:inline-block;padding:0 4px;
     font-family:var(--font-display);font-weight:600;font-size:1.1rem;color:var(--paper);
     text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px;
   }
-  .card .data{position:relative;z-index:4;background:var(--panel);display:inline-block;padding:0 4px;font-size:.8rem;color:var(--gold);font-weight:600;letter-spacing:.02em;margin:0 0 10px;}
-  .card .mensagem{position:relative;z-index:4;font-size:.78rem;color:var(--muted);line-height:1.4;}
-  .card.hoje{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 12px 30px rgba(216,178,90,.15);}
-  .card.hoje .data{color:#fff;background:var(--red);display:inline-block;padding:2px 10px;border-radius:20px;}
+  .bday-card .data{position:relative;z-index:4;background:var(--panel);display:inline-block;padding:0 4px;font-size:.8rem;color:var(--gold);font-weight:600;letter-spacing:.02em;margin:0 0 10px;}
+  .bday-card .mensagem{position:relative;z-index:4;font-size:.78rem;color:var(--muted);line-height:1.4;}
+  .bday-card.hoje{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 12px 30px rgba(216,178,90,.15);}
+  .bday-card.hoje .data{color:#fff;background:var(--red);display:inline-block;padding:2px 10px;border-radius:20px;}
 
   footer{max-width:960px;margin:0 auto;padding:0 20px 40px;text-align:center;color:var(--muted);font-size:.72rem;}
 </style>
@@ -140,9 +122,9 @@
 <header>
   <h1 id="titulo">🎉 Aniversariantes do mês</h1>
   <div class="mes-nav">
-    <button type="button" id="mes-prev" aria-label="Mês anterior">‹</button>
+    <button type="button" id="mes-prev" aria-label="Mês anterior"></button>
     <p class="sub" id="mes-atual"></p>
-    <button type="button" id="mes-next" aria-label="Próximo mês">›</button>
+    <button type="button" id="mes-next" aria-label="Próximo mês"></button>
   </div>
   <button type="button" class="voltar-hoje" id="voltar-hoje">Voltar para o mês atual</button>
 </header>
@@ -189,6 +171,8 @@
     mesNext: document.getElementById('mes-next'),
     voltarHoje: document.getElementById('voltar-hoje'),
   };
+  els.mesPrev.innerHTML = FBIcons.svg('chevron-left', {size:16});
+  els.mesNext.innerHTML = FBIcons.svg('chevron-right', {size:16});
 
   const hoje = new Date();
   const mesAtual = hoje.getMonth() + 1;
@@ -262,7 +246,7 @@
       ? '<div class="avatar" style="background-image:url(' + p.photoBase64 + ')"></div>'
       : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
     const ehHoje = mesSelecionado === mesAtual && dia === diaHoje;
-    return '<div class="card' + (ehHoje ? ' hoje' : '') + '">' +
+    return '<div class="bday-card' + (ehHoje ? ' hoje' : '') + '">' +
       '<img class="logo-watermark" src="../../assets/logo-light.png" alt="">' +
       gerarConfetes(16) +
       '<span class="corner-deco" style="top:10px;left:10px;transform:rotate(-18deg);">🎁</span>' +

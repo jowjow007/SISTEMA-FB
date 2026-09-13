@@ -5,46 +5,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sistemas — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
+  /* Nomes antigos mantidos como apelidos dos tokens novos (assets/design-system.css) —
+     evita reescrever o CSS abaixo que já usa var(--paper) etc. */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --ink:var(--bg);
+    --panel:var(--surface);
+    --panel-2:var(--surface-2);
+    --paper:var(--text);
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --silver:var(--text-muted);
+    --line:var(--border);
+    --line-strong:var(--border-strong);
     --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
   }
 
   *{box-sizing:border-box;}
@@ -59,12 +37,13 @@
     display:flex;gap:2px;overflow-x:auto;padding:0 14px;
   }
   nav.subtabs button{
-    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;background:transparent;border:none;border-bottom:3px solid transparent;
     padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
     cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
   }
   nav.subtabs button:hover{color:var(--paper);}
   nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
+  nav.subtabs .tab-icon{flex:0 0 auto;opacity:.85;}
 
   #panels{position:relative;flex:1 1 auto;min-height:0;}
   .panel{position:absolute;inset:0;display:none;flex-direction:column;}
@@ -81,14 +60,9 @@
 
   .fallback{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:30px;overflow-y:auto;}
   .fallback .card{max-width:420px;text-align:center;background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:32px 28px;}
-  .fallback .ic{font-size:2.2rem;margin-bottom:14px;}
+  .fallback .ic{display:flex;justify-content:center;margin-bottom:14px;color:var(--muted);}
   .fallback h2{font-family:var(--font-display);font-size:1.15rem;margin:0 0 10px;color:var(--paper);}
   .fallback p{font-size:.85rem;color:var(--muted);line-height:1.55;margin:0 0 20px;}
-  .btn-open{
-    display:inline-flex;align-items:center;gap:8px;background:var(--red);color:#fff;border:none;border-radius:8px;
-    padding:11px 20px;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;
-  }
-  .btn-open:hover{background:var(--red-bright);}
 
   .links-view{flex:1 1 auto;overflow-y:auto;padding:26px 26px 40px;}
   .links-view .lead{font-size:.83rem;color:var(--muted);max-width:640px;line-height:1.55;margin:0 0 20px;}
@@ -138,7 +112,7 @@
   .nomenclatura-view .nom-types{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
   .nomenclatura-view .nom-types button{flex:1 1 160px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:16px 10px;
     text-align:center;font-family:var(--font-body);font-size:.83rem;font-weight:600;color:var(--paper);cursor:pointer;}
-  .nomenclatura-view .nom-types button .ic{display:block;font-size:1.2rem;margin-bottom:6px;}
+  .nomenclatura-view .nom-types button .ic{display:flex;justify-content:center;margin-bottom:6px;}
   .nomenclatura-view .nom-types button.active{background:var(--red);border-color:var(--red);color:#fff;}
   .nomenclatura-view .nom-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .nomenclatura-view .nom-form label{display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
@@ -146,8 +120,7 @@
     font-family:var(--font-body);background:var(--panel);color:var(--paper);}
   .nomenclatura-view .nom-result{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:16px;font-family:var(--font-mono);
     font-size:.85rem;color:var(--paper);min-height:70px;word-break:break-word;line-height:1.5;}
-  .nomenclatura-view .copy-btn{margin-top:14px;background:var(--red);color:#fff;border:none;border-radius:8px;padding:11px 16px;font-weight:700;
-    font-size:.85rem;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);}
+  .nomenclatura-view .copy-btn{margin-top:14px;}
   .nomenclatura-view .copy-btn:active{background:var(--red-deep);}
 
   @media(max-width:640px){
@@ -163,6 +136,8 @@
   <div id="panels"></div>
 </div>
 
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script>
 (function(){
   "use strict";
@@ -170,16 +145,16 @@
   var CONTACTS = [{"nome":"01ª Delegacia de Policia Civil Uberaba","orgao":"","emails":["1dpc.uberaba@pcivil.mg.gov.br"],"telefone":"","obs":""},{"nome":"05VARA-UBI/MG: Secretaria da 05ª Vara Federal","orgao":"","emails":["05vara.ubi@trf6.jus.br"],"telefone":"","obs":""},{"nome":"10ª Vara Cível - Uberlândia","orgao":"","emails":["ula10civel@tjmg.jus.br"],"telefone":"3432288330","obs":""},{"nome":"","orgao":"","emails":["17bpmboletimdeocorrencia@gmail.com"],"telefone":"","obs":""},{"nome":"1ª Vara Cível - Uberlândia","orgao":"","emails":["ula1civel@tjmg.jus.br"],"telefone":"34 3228-8321","obs":""},{"nome":"1ª Vara Criminal TJMG Uberlândia - MG","orgao":"","emails":["ula1criminal@tjmg.jus.br"],"telefone":"34 3228-8331","obs":""},{"nome":"1ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula1familia@tjmg.jus.br"],"telefone":"34 3228-8372","obs":""},{"nome":"1ª Vara de Fazenda Pública e Autarquias - Uberlândia","orgao":"","emails":["ula1fazpublica@tjmg.jus.br"],"telefone":"34 3228-0277","obs":""},{"nome":"","orgao":"","emails":["1dpcuberaba@pcivil.mg.gov.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["1riudi@1riudi.com.br"],"telefone":"","obs":""},{"nome":"2° Oficial de Registro de Imóveis de São José do Rio Preto/SP","orgao":"","emails":["contato@2ririopreto.com.br"],"telefone":"","obs":""},{"nome":"2ª Vara Cível - Uberlândia","orgao":"","emails":["ula2civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8322","obs":""},{"nome":"2ª Vara Criminal - Uberlândia","orgao":"","emails":["ula2criminal@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8332","obs":""},{"nome":"2ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula2familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"2ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula2familia@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8373","obs":""},{"nome":"2ª Vara de Fazenda Pública e Autarquias - Uberlândia","orgao":"","emails":["ula2fazpublica@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8352","obs":""},{"nome":"3ª Vara Cível - Uberlândia","orgao":"","emails":["ula3civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8323","obs":""},{"nome":"3ª Vara Cível - Uberlândia","orgao":"","emails":["ula3civel@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"3ª Vara Criminal - Uberlândia","orgao":"","emails":["ula3criminal@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8388","obs":""},{"nome":"3ª Vara da Fazenda Pública e Autarquias - Uberlândia","orgao":"","emails":["ula3fazpublica@tjmg.jus.br"],"telefone":"(34) 3228-0243","obs":""},{"nome":"3ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula3familia@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8374","obs":""},{"nome":"3ª Vara de Família e Sucessões de Uberlândia - Secretaria","orgao":"","emails":["ula3familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"4ª Vara Cível - Uberlândia","orgao":"","emails":["ula4civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8324","obs":""},{"nome":"4ª Vara Criminal - Uberlândia","orgao":"","emails":["ula4criminal@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8385","obs":""},{"nome":"4ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula4familia@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8375","obs":""},{"nome":"5 JD Juizado Especial Cível Edilene Conciliação","orgao":"","emails":[],"telefone":"3228-8316 ::: 34 3228-8316","obs":""},{"nome":"5ª Vara Cível - Uberlândia","orgao":"","emails":["ula5civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8325","obs":""},{"nome":"5ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula5familia@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8395","obs":""},{"nome":"5ª Vara de Família e Sucessões - Uberlândia","orgao":"","emails":["ula5familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"6ª Vara Cível - Uberlândia","orgao":"","emails":["ula6civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8326","obs":""},{"nome":"","orgao":"","emails":["6dpc.uberlandia@policiacivil.mg.gov.br"],"telefone":"","obs":""},{"nome":"7ª Vara Cível - Uberlândia","orgao":"","emails":["ula7civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8327","obs":""},{"nome":"7depol. uberlandia","orgao":"","emails":["7depol.uberlandia@policiacivil.mg.gov.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["7depol.uberlandia@políciacivil.mg.gov.br"],"telefone":"","obs":""},{"nome":"8ª Vara Cível - Uberlândia","orgao":"","emails":["ula8civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8328","obs":""},{"nome":"9ª Câmara Cível TJMG","orgao":"TJMG 2ª Instância","emails":["caciv9@tjmg.jus.br"],"telefone":"31 3254-3209","obs":""},{"nome":"9ª Vara Cível - Uberlândia","orgao":"","emails":["ula9civel@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8329","obs":""},{"nome":"","orgao":"","emails":["ademarjfadv@gmail.com"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["administracao@goiania.go.gov.br"],"telefone":"","obs":""},{"nome":"afbetim","orgao":"","emails":["afbetim@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"afbetimitcd","orgao":"","emails":["afbetimitcd@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"afcurvelo","orgao":"","emails":["afcurvelo@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["afuberlandia@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"afuberlandiacdt","orgao":"","emails":["afuberlandiacdt@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["afuberlandiaparcelamento@fazenda.mg.gov.br"],"telefone":"","obs":""},{"nome":"Averbação Registro Civil Uberlândia","orgao":"","emails":["averbacao@registrociviludi.com.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["caciv20@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["caciv9@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["camaracivel6@tjgo.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["camaracivel7@tjgo.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["carjus.civ@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["carjus.civesp@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"Cartório 1° Ofício De Registro De Imóveis Uberlândia","orgao":"","emails":[],"telefone":"34 99881-5500","obs":""},{"nome":"Cartorio 13ª Câmara Cível","orgao":"","emails":["caciv13@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"Cartório 2° Ofício de Notas Setor Procuração","orgao":"","emails":["proc2notas@hotmail.com"],"telefone":"","obs":""},{"nome":"Cartório 2°. Ofício Victor Hugo Bianchini Pizarro","orgao":"","emails":["segundonotasudi@hotmail.com"],"telefone":"","obs":""},{"nome":"Cartorio 8ª Câmara Cível","orgao":"","emails":["caciv8@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"Cartório de Martinésia -","orgao":"","emails":["cartoriomarti@hotmail.com"],"telefone":"","obs":""},{"nome":"Cartório de RC do 3º Subd. de BH/MG","orgao":"","emails":["contato@registrocivil3bh.com.br"],"telefone":"","obs":""},{"nome":"Cartório de Registro Civil das Pessoas Naturais de Unaí-MG","orgao":"","emails":["ccivilunai@uol.com.br"],"telefone":"","obs":""},{"nome":"Cartório DE REGISTRO CIVIL DE POMPEIA","orgao":"","emails":["registrocivilpompeia@bol.com.br"],"telefone":"","obs":""},{"nome":"Cartório de Registro Civil e Notas da Sede da Comarca de Catalão","orgao":"","emails":["cartorio@cartoriocatalao.com.br"],"telefone":"","obs":""},{"nome":"Cartório de Registro de Imóveis de Igarapé - MG","orgao":"","emails":["riigarape@gmail.com"],"telefone":"","obs":""},{"nome":"CARTORIO DE REGISTRO DE Imóveis DE Igarapé/MG","orgao":"","emails":["criigarapend@gmail.com"],"telefone":"","obs":""},{"nome":"Cartório Mascote","orgao":"","emails":["cartoriomascote@gmail.com"],"telefone":"","obs":""},{"nome":"Cartório Primeiro Ofício de Notas","orgao":"","emails":["cartorio1oficiodenotas@gmail.com"],"telefone":"","obs":""},{"nome":"cartorio segundo oficio","orgao":"","emails":["balcao2notas@gmail.com"],"telefone":"","obs":""},{"nome":"Cartório Tapuirama","orgao":"","emails":["cartorio.tapui@hotmail.com"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["cartorio@cartoriotriginelli.com.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["cartorioarataca@gmail.com"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["cassia@somaplace.com.br"],"telefone":"","obs":""},{"nome":"CBMMG 5BBM Companhia de Prevencao e Vistoria","orgao":"","emails":["5bbm.ciapv@bombeiros.mg.gov.br"],"telefone":"","obs":""},{"nome":"cejuscula. secretaria Uberlândia - CEJUSC - Secretaria","orgao":"","emails":["cejuscula.secretaria@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"cem3criminal","orgao":"","emails":["cem3criminal@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"Contadoria TJGO  7ª Camara Cível","orgao":"","emails":[],"telefone":"62 3216-2931","obs":""},{"nome":"CRI 1 Marília - SP","orgao":"","emails":[],"telefone":"+551434334164","obs":""},{"nome":"DEPOL PIRACICABA SP","orgao":"Divisão Especializada de Investigações Criminais - DEIC","emails":[],"telefone":"(19) 3421-6169","obs":""},{"nome":"diretoria de Aprovacao de Projetos","orgao":"","emails":["dapaanalise@uberlandia.mg.gov.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["diretoria.cemaac@acsp.com.br"],"telefone":"","obs":""},{"nome":"Gab. Dolzany da Costa","orgao":"","emails":["gab.dolzany.dacosta@trf6.jus.br"],"telefone":"","obs":""},{"nome":"Gab. ULA 2º Cível","orgao":"","emails":["gab.ula2civel@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.doraci@tjgo.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.frmontefusco@tjgo.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.josemarcosvieira@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.leonardoberaldo@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.mhcbrant@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.tiagodecarvalho@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.ula2familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.ula3familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.ula5familia@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab.ula8civel@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab5varacriminal@tjgo.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["gab9civel@gmail.com"],"telefone":"","obs":""},{"nome":"GABINETE - DESEMBARGADOR ANDRADE NETO","orgao":"","emails":["gabaoaneto@tjsp.jus.br"],"telefone":"","obs":""},{"nome":"GABINETE - DESEMBARGADOR JOSE APARICIO COELHO PRADO NETO","orgao":"","emails":["gabjacpneto@tjsp.jus.br"],"telefone":"","obs":""},{"nome":"Gabinete Desembargador Luiz Artur Rocha Hilário","orgao":"","emails":["gab.luizartur@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"Gabinete Desembargador Pedro Bernardes de Oliveira","orgao":"","emails":["gab.pedrobernardes@tjmg.jus.br"],"telefone":"","obs":""},{"nome":"","orgao":"","emails":["itajai.criminal1@tjsc.jus.br"],"telefone":"","obs":""},{"nome":"Ivan","orgao":"","emails":["ivan@coppa.com.br"],"telefone":"","obs":""},{"nome":"IVETE - COPPA","orgao":"","emails":["ivete@coppa.com.br"],"telefone":"","obs":""},{"nome":"MPMG Uberlândia","orgao":"","emails":[],"telefone":"34 3255-0050","obs":""},{"nome":"OAB Sala de Apoio da 1ª Delegacia de Polícia Civil","orgao":"OAB","emails":[],"telefone":"3212-9873 ::: 34 3212-9873","obs":""},{"nome":"TJGO - 7ª Câmara Cível","orgao":"","emails":[],"telefone":"62 3216-2371","obs":"Falei com o Sr. Pedro"},{"nome":"TJMG 2 Informação PROCESSUAL","orgao":"TJMG 2ª Instância","emails":[],"telefone":"31 3254-3380","obs":"TELEFONISTA 31 3237-6100 | gabinete 2º Núcleo DE Justiça 4.0 - Cível ESPECIALIZADO 31 3219-5520"},{"nome":"TJMG gabinete 2º Núcleo DE Justiça 4.0 - Cível ESPECIALIZADO 31 3219-5520","orgao":"","emails":[],"telefone":"31 3219-5520","obs":""},{"nome":"TURMA RECURSAL - TJMG Uberlândia","orgao":"","emails":[],"telefone":"3228-8360 ::: 3228-0257","obs":""},{"nome":"Vagner - Contador  Molas","orgao":"","emails":[],"telefone":"34 99717-555","obs":""},{"nome":"Vara da Infância e da Juventude - Uberlândia","orgao":"","emails":["ulajij@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8334","obs":""},{"nome":"Vara das Garantias - Uberlândia","orgao":"","emails":["ula.garantias@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8333","obs":""},{"nome":"Vara de Execuções Penais - Uberlândia","orgao":"","emails":["ulavec@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8350","obs":""},{"nome":"Vara de Violência Doméstica - Uberlândia","orgao":"","emails":["ulavid@tjmg.jus.br"],"telefone":"(34) 3228-8300 ramal 8339","obs":""}];
 
   var SUBTABS = [
-    { id:'astrea',     label:'ASTREA',     type:'iframe', url:'https://app.astrea.net.br/' },
-    { id:'email',      label:'E-mail',     type:'iframe', url:'../gmail/index.html' },
-    { id:'digisac',    label:'Digisac',    type:'iframe', url:'https://fonsecaebragaadv.digisac.me/' },
-    { id:'zapsign',    label:'ZapSign',    type:'iframe', url:'https://app2.zapsign.com.br/access/sign-in' },
+    { id:'astrea',     label:'ASTREA',     type:'iframe', url:'https://app.astrea.net.br/', icon:'monitor' },
+    { id:'email',      label:'E-mail',     type:'iframe', url:'../gmail/index.html', icon:'envelope' },
+    { id:'digisac',    label:'Digisac',    type:'iframe', url:'https://fonsecaebragaadv.digisac.me/', icon:'chat' },
+    { id:'zapsign',    label:'ZapSign',    type:'iframe', url:'https://app2.zapsign.com.br/access/sign-in', icon:'contract' },
     { id:'agenda',     label:'Agenda',     type:'blocked', url:'https://calendar.google.com/calendar/u/0/r?pli=1',
-      icon:'📅', note:'O Google Calendar não permite ser exibido dentro de outra página (bloqueio de segurança do próprio Google). Use o botão abaixo para abrir em uma nova aba.' },
+      icon:'calendar', note:'O Google Calendar não permite ser exibido dentro de outra página (bloqueio de segurança do próprio Google). Use o botão abaixo para abrir em uma nova aba.' },
     { id:'brcondos',   label:'BRCondos',   type:'blocked', url:'https://ssl.brcondos.com.br/',
-      icon:'🏢', note:'O BRCondos não permite ser exibido dentro de outra página (bloqueio de segurança do próprio sistema). Use o botão abaixo para abrir em uma nova aba.' },
-    { id:'almahcondo', label:'AlmahCondo', type:'iframe', url:'https://app.almahcondos.com.br/principal.aspx' },
-    { id:'tribunais',  label:'Tribunais',  type:'links', links:[
+      icon:'building', note:'O BRCondos não permite ser exibido dentro de outra página (bloqueio de segurança do próprio sistema). Use o botão abaixo para abrir em uma nova aba.' },
+    { id:'almahcondo', label:'AlmahCondo', type:'iframe', url:'https://app.almahcondos.com.br/principal.aspx', icon:'building' },
+    { id:'tribunais',  label:'Tribunais',  type:'links', icon:'grid', links:[
         { nome:'PJE / TJMG', url:'https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?response_type=code&client_id=pje-tjmg-1g&redirect_uri=https%3A%2F%2Fpje.tjmg.jus.br%2Fpje%2Flogin.seam&state=a11f4ff2-bf58-4d4b-9e0f-065884641cbb&login=true&scope=openid' },
         { nome:'PJE Turma Recursal', url:'https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?response_type=code&client_id=pje-tjmg-2g&redirect_uri=https%3A%2F%2Fpjerecursal.tjmg.jus.br%2Fpje%2Flogin.seam&state=37c10bd9-8b9e-407f-85ec-93761f767076&login=true&scope=openid' },
         { nome:'EPROC TJ/MG', url:'https://eproc1g.tjmg.jus.br/eproc/controlador.php?acao=painel_adv_listar&acao_origem=principal&hash=0ce132f53a2106d17cee21f3423eef29' },
@@ -188,8 +163,8 @@
         { nome:'EPROC/TJSP', url:'https://sso.tjsp.jus.br/realms/eproc/protocol/openid-connect/auth?kc_idp_hint=tjsp&eproc_client_id=eproc1g.tjsp.jus.br&response_type=code&redirect_uri=https%3A%2F%2Feproc1g.tjsp.jus.br%2Feproc%2Fexterno_controlador.php%3Facao%3DSSO%2Fcallback&client_id=eproc1g.tjsp.jus.br&nonce=a199e0046245b1977d304e9af1ccdef2&state=df699c1796c8e6e7d59d4545fa1fafbe&scope=profile+openid' },
         { nome:'JPE/TJMG', url:'https://pe.tjmg.jus.br/rupe/portaljus/intranet/principal.rupe' }
       ] },
-    { id:'contatos', label:'Contatos Úteis', type:'contacts' },
-    { id:'nomenclatura', label:'Nomenclatura', type:'nomenclatura' }
+    { id:'contatos', label:'Contatos Úteis', type:'contacts', icon:'team' },
+    { id:'nomenclatura', label:'Nomenclatura', type:'nomenclatura', icon:'tag' }
   ];
 
   var nav = document.getElementById('subtabs-nav');
@@ -205,10 +180,10 @@
   /* ---------- nomenclatura generator (POP nº 008/2023) — copiado de tools/condominios ---------- */
 
   var NOM_TYPES = [
-    {id:'judicial', ic:'⚖️', label:'Judicial'},
-    {id:'administrativo', ic:'📄', label:'Administrativo'},
-    {id:'honorarios', ic:'📝', label:'Contrato de Honorários'},
-    {id:'notificacao', ic:'🏢', label:'Notificação Condominial'}
+    {id:'judicial', ic:'contract', label:'Judicial'},
+    {id:'administrativo', ic:'docstack', label:'Administrativo'},
+    {id:'honorarios', ic:'money', label:'Contrato de Honorários'},
+    {id:'notificacao', ic:'building', label:'Notificação Condominial'}
   ];
   var nomState = { tipo:'judicial' };
 

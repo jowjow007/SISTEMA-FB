@@ -5,46 +5,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Organograma — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
 <style>
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --gold:#d8b25a;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    /* Apelidos para os tokens do design system compartilhado (assets/design-system.css) —
+       mantém os nomes de variável já usados neste arquivo, sem duplicar paleta/tema. */
+    --ink:var(--bg);
+    --panel:var(--surface);
+    --panel-2:var(--surface-2);
+    --paper:var(--text);
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --gold:var(--accent);
+    --silver:var(--text-muted);
+    --line:var(--border);
+    --line-strong:var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -60,15 +38,20 @@
     display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px;
   }
   .btn{
+    display:inline-flex;align-items:center;gap:7px;
     padding:8px 16px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);
     color:var(--paper);font-size:.82rem;cursor:pointer;font-weight:600;
+    transition:border-color .15s,color .15s,background-color .15s,transform .1s;
   }
   .btn:hover{border-color:var(--gold);color:var(--gold);}
+  .btn:active{transform:translateY(1px);}
   .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
   .btn.primary:hover{background:var(--red-bright);border-color:var(--red-bright);color:#fff;}
-  .btn.small{padding:5px 12px;font-size:.72rem;}
+  .btn.small{padding:5px 12px;font-size:.72rem;gap:5px;}
   .btn.danger-outline{color:var(--red-bright);}
   .btn.danger-outline:hover{border-color:var(--red-bright);}
+  .btn-ico{display:inline-flex;flex:0 0 auto;}
+  .hdr-icon{display:inline-flex;vertical-align:-4px;color:var(--gold);margin-right:4px;}
   .sync-hint{
     display:none;max-width:960px;margin:14px auto 0;padding:10px 16px;border-radius:10px;
     background:rgba(216,178,90,.10);border:1px solid rgba(216,178,90,.35);color:var(--gold);
@@ -78,21 +61,27 @@
   main{max-width:1100px;margin:0 auto;padding:26px 20px 60px;}
   #gate{padding:80px 20px;text-align:center;color:var(--muted);}
   #empty{padding:80px 20px;text-align:center;color:var(--muted);font-size:.92rem;max-width:480px;margin:0 auto;}
-  #empty .big{font-size:2.2rem;margin-bottom:10px;}
+  #empty .big{display:flex;justify-content:center;color:var(--gold);opacity:.75;margin-bottom:14px;}
 
   .depto-section{margin-bottom:34px;}
   .depto-title{
     display:flex;align-items:baseline;gap:10px;font-family:var(--font-display);font-size:1.15rem;
     color:var(--gold);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line-strong);
   }
-  .depto-title .count{font-family:var(--font-body);font-size:.72rem;color:var(--muted);font-weight:600;}
+  .depto-title .count{
+    font-family:var(--font-body);font-size:.68rem;font-weight:700;letter-spacing:.02em;
+    color:var(--gold);background:rgba(216,178,90,.12);border:1px solid rgba(216,178,90,.28);
+    padding:3px 10px;border-radius:999px;
+  }
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;}
 
   .card{
     background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line-strong);
     border-radius:16px;padding:18px 18px 16px;position:relative;
+    box-shadow:var(--shadow-sm);transition:box-shadow .15s,transform .15s;
   }
+  .card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
   .card .head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
   .avatar{
     width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;
@@ -113,15 +102,19 @@
   .modal-backdrop.show{display:flex;}
   .modal-box{
     background:var(--panel);border:1px solid var(--line-strong);border-radius:16px;padding:24px;
-    width:100%;max-width:480px;max-height:88vh;overflow:auto;
+    width:100%;max-width:480px;max-height:88vh;overflow:auto;box-shadow:var(--shadow-lg);
   }
   .modal-box h3{font-family:var(--font-display);margin:0 0 4px;color:var(--paper);}
   .modal-box .sub{font-size:.8rem;color:var(--muted);margin:0 0 16px;}
   .field{margin-bottom:14px;}
-  .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:5px;}
+  .field label{display:block;font-size:.72rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
   .field input,.field select{
     width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-family:var(--font-body);font-size:.88rem;
+    transition:border-color .15s,background-color .15s;
+  }
+  .field input:focus,.field select:focus,.field-row input:focus,.field-row select:focus{
+    outline:none;border-color:var(--gold);background:var(--panel);
   }
   .field-row{display:flex;gap:8px;}
   .field-row > div{flex:1;}
@@ -145,11 +138,11 @@
 <body>
 
 <header>
-  <h1>🗂️ Organograma</h1>
+  <h1><span class="hdr-icon" id="hdr-icon" aria-hidden="true"></span>Organograma</h1>
   <p class="sub">Quadro de colaboradores por departamento.</p>
   <div class="admin-bar" id="admin-bar" style="display:none;">
-    <button type="button" class="btn primary" id="btn-add">+ Adicionar colaborador</button>
-    <button type="button" class="btn" id="btn-sync">🔄 Sincronizar com cadastros</button>
+    <button type="button" class="btn primary" id="btn-add"><span class="btn-ico" id="btn-add-ico" aria-hidden="true"></span>Adicionar colaborador</button>
+    <button type="button" class="btn" id="btn-sync"><span class="btn-ico" id="btn-sync-ico" aria-hidden="true"></span><span id="btn-sync-label">Sincronizar com cadastros</span></button>
   </div>
 </header>
 
@@ -158,7 +151,7 @@
 <main>
   <div id="gate" style="display:none;"></div>
   <div id="empty" style="display:none;">
-    <div class="big">🗂️</div>
+    <div class="big" id="empty-icon" aria-hidden="true"></div>
     <span id="empty-texto"></span>
   </div>
   <div id="secoes"></div>
@@ -278,9 +271,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="../../firebase-config.js"></script>
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <script>
 (function(){
   "use strict";
+
+  // Ícones de interface (substitui emoji cru) — FBIcons é a fonte única de ícone do Portal.
+  document.getElementById('hdr-icon').innerHTML = FBIcons.svg('team', { size: 22 });
+  document.getElementById('empty-icon').innerHTML = FBIcons.svg('team', { size: 34 });
+  document.getElementById('btn-add-ico').innerHTML = FBIcons.svg('plus', { size: 14 });
+  document.getElementById('btn-sync-ico').innerHTML = FBIcons.svg('refresh', { size: 14 });
 
   if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
     document.getElementById('gate').style.display = 'block';
@@ -300,6 +301,8 @@
     adminBar: document.getElementById('admin-bar'),
     btnAdd: document.getElementById('btn-add'),
     btnSync: document.getElementById('btn-sync'),
+    btnSyncIco: document.getElementById('btn-sync-ico'),
+    btnSyncLabel: document.getElementById('btn-sync-label'),
     syncHint: document.getElementById('sync-hint'),
     editBackdrop: document.getElementById('edit-backdrop'),
     editTitulo: document.getElementById('edit-titulo'),
@@ -501,8 +504,8 @@
 
     const rodapeAdmin = souAdmin
       ? '<div class="foot">' +
-          '<button type="button" class="btn small" onclick="window.__orgEditar(\'' + p.uid + '\')">Editar</button>' +
-          '<button type="button" class="btn small danger-outline" onclick="window.__orgRemover(\'' + p.uid + '\',\'' + escapeHtml(p.displayName || '') + '\')">Remover</button>' +
+          '<button type="button" class="btn small" onclick="window.__orgEditar(\'' + p.uid + '\')">' + FBIcons.svg('pencil', { size: 13 }) + 'Editar</button>' +
+          '<button type="button" class="btn small danger-outline" onclick="window.__orgRemover(\'' + p.uid + '\',\'' + escapeHtml(p.displayName || '') + '\')">' + FBIcons.svg('trash', { size: 13 }) + 'Remover</button>' +
         '</div>'
       : '';
 
@@ -587,7 +590,7 @@
   function abrirModalAdicionar(){
     const disponiveis = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid]; });
     if (disponiveis.length === 0) {
-      alert('Todos os colaboradores cadastrados já estão no organograma.');
+      FBModal.alert({ title: 'Nada para adicionar', body: 'Todos os colaboradores cadastrados já estão no organograma.' });
       return;
     }
     editandoUid = null;
@@ -628,17 +631,22 @@
     const uid = editandoUid || els.editSelectUid.value;
     if (!uid) return;
 
-    const nome = els.editNome.value.trim();
-    const sobrenome = els.editSobrenome.value.trim();
-    const nomeCompleto = (nome + ' ' + sobrenome).trim();
-
     const novoPapel = els.editPapel.value;
     if (novoPapel !== editandoPapelOriginal) {
       const msg = novoPapel === 'admin'
         ? 'Tornar esta pessoa administradora? Ela passará a ter acesso total ao painel de Administração.'
         : 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.';
-      if (!confirm(msg)) return;
+      FBModal.confirm({ title: 'Confirmar alteração de cargo', body: msg, danger: true })
+        .then(function(ok){ if (ok) salvarOrganogramaUid(uid, novoPapel); });
+      return;
     }
+    salvarOrganogramaUid(uid, novoPapel);
+  });
+
+  function salvarOrganogramaUid(uid, novoPapel){
+    const nome = els.editNome.value.trim();
+    const sobrenome = els.editSobrenome.value.trim();
+    const nomeCompleto = (nome + ' ' + sobrenome).trim();
 
     const rgNumero = els.editRg.value.trim();
     const rgOrgao = els.editRgOrgao.value.trim();
@@ -690,28 +698,44 @@
       db.collection('organograma').doc(uid).set(organogramaPatch, { merge: true })
     ]).then(function(){
       fecharModal();
+      FBModal.toast('Dados salvos.');
     }).catch(function(err){
       els.editErr.textContent = 'Erro ao salvar: ' + err.message;
       els.editErr.style.display = 'block';
     }).finally(function(){
       els.editSalvar.disabled = false;
     });
-  });
+  }
 
   window.__orgRemover = function(uid, nome){
-    if (!confirm('Remover ' + (nome || 'este colaborador') + ' do organograma?\n(Isso só tira o bloco desta tela — não altera o cadastro nem o acesso da pessoa ao portal.)')) return;
-    db.collection('organograma').doc(uid).delete();
+    FBModal.confirm({
+      title: 'Remover do organograma?',
+      body: (nome || 'Este colaborador') + ' — isso só tira o bloco desta tela, não altera o cadastro nem o acesso da pessoa ao portal.',
+      danger: true,
+      confirmLabel: 'Remover'
+    }).then(function(ok){
+      if (!ok) return;
+      db.collection('organograma').doc(uid).delete().then(function(){ FBModal.toast('Removido do organograma.'); });
+    });
   };
 
   // ---------- Sincronizar com cadastros ----------
+  els.btnSyncIco.innerHTML = FBIcons.svg('refresh', { size: 15 });
+
   els.btnSync.addEventListener('click', function(){
     if (!usersCarregado) return;
     const uidsUsers = Object.keys(usersMap);
-    if (uidsUsers.length === 0) { alert('Nenhum colaborador cadastrado ainda.'); return; }
-    if (!confirm('Isso vai atualizar o organograma com os dados de departamento, data de ingresso e remuneração já cadastrados para todos os ' + uidsUsers.length + ' colaboradores. Continuar?')) return;
+    if (uidsUsers.length === 0) { FBModal.alert({ title: 'Nada para sincronizar', body: 'Nenhum colaborador cadastrado ainda.' }); return; }
+    FBModal.confirm({
+      title: 'Sincronizar organograma?',
+      body: 'Isso vai atualizar o organograma com os dados de departamento, data de ingresso e remuneração já cadastrados para todos os ' + uidsUsers.length + ' colaboradores.',
+      confirmLabel: 'Sincronizar'
+    }).then(function(ok){ if (ok) executarSyncOrganograma(uidsUsers); });
+  });
 
+  function executarSyncOrganograma(uidsUsers){
     els.btnSync.disabled = true;
-    els.btnSync.textContent = 'Sincronizando...';
+    els.btnSyncLabel.textContent = 'Sincronizando...';
 
     const lotes = [];
     let batch = db.batch();
@@ -737,16 +761,16 @@
 
     lotes.reduce(function(p, b){ return p.then(function(){ return b.commit(); }); }, Promise.resolve())
       .then(function(){
-        alert('Organograma sincronizado.');
+        FBModal.toast('Organograma sincronizado.');
       })
       .catch(function(err){
-        alert('Erro ao sincronizar: ' + err.message);
+        FBModal.alert({ title: 'Erro ao sincronizar', body: err.message, danger: true });
       })
       .finally(function(){
         els.btnSync.disabled = false;
-        els.btnSync.textContent = '🔄 Sincronizar com cadastros';
+        els.btnSyncLabel.textContent = 'Sincronizar com cadastros';
       });
-  });
+  }
 
   // ---------- Auth / carregamento ----------
   auth.onAuthStateChanged(function(user){

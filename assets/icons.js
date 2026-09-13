@@ -59,6 +59,8 @@
     'chevron-right': '<path d="m9 6 6 6-6 6"/>',
     search: '<circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.4-4.4"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+    scale: '<path d="M12 3.5v16"/><path d="M5 7h14"/><path d="M5 7 2.6 12.3a2.6 2.6 0 0 0 4.8 0Z"/><path d="M19 7 16.6 12.3a2.6 2.6 0 0 0 4.8 0Z"/><path d="M8.5 20.5h7"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
     money: '<rect x="2.5" y="6.5" width="19" height="11" rx="1.8"/><circle cx="12" cy="12" r="2.6"/><path d="M6 6.5v11M18 6.5v11" opacity=".5"/>',
     upload: '<path d="M12 15.5V4M8 8l4-4 4 4"/><path d="M4.5 16v2.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V16"/>',
     download: '<path d="M12 4v11.5M8 12l4 4 4-4"/><path d="M4.5 16v2.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V16"/>',

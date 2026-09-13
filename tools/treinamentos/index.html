@@ -5,45 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Treinamentos — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <style>
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    --ink:var(--bg);
+    --panel:var(--surface);
+    --panel-2:var(--surface-2);
+    --paper:var(--text);
+    --muted:var(--text-muted);
+    --red:var(--brand);
+    --red-bright:var(--brand-strong);
+    --red-deep:var(--brand-deep);
+    --silver:var(--text-muted);
+    --line:var(--border);
+    --line-strong:var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -53,17 +31,10 @@
 
   #shell{display:flex;flex-direction:column;height:100%;}
 
-  nav.subtabs{
-    flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line-strong);
-    display:flex;gap:2px;overflow-x:auto;padding:0 14px;
+  nav.subtabs.tabs{
+    flex:0 0 auto;background:var(--panel);border-bottom-color:var(--line-strong);
+    margin-bottom:0;padding:0 14px;
   }
-  nav.subtabs button{
-    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
-    padding:12px 14px;font-size:.82rem;font-weight:600;color:var(--muted);
-    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
-  }
-  nav.subtabs button:hover{color:var(--paper);}
-  nav.subtabs button.active{color:var(--red-bright);border-bottom-color:var(--red-bright);}
 
   #panels{position:relative;flex:1 1 auto;min-height:0;}
   .panel{position:absolute;inset:0;display:none;flex-direction:column;}
@@ -74,21 +45,14 @@
     padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
     font-size:.76rem;color:var(--muted);
   }
-  .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
-  .frame-toolbar a:hover{color:#fff;}
   iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
 
   .training-toolbar{
     flex:0 0 auto;padding:14px 26px;border-bottom:1px solid var(--line-strong);
     display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   }
-  .training-search{
-    flex:1 1 260px;max-width:420px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
-    padding:9px 12px;color:var(--paper);font-size:.85rem;
-  }
-  .training-search::placeholder{color:var(--muted);}
+  .training-search{flex:1 1 260px;max-width:420px;}
   .training-count{font-size:.78rem;color:var(--muted);white-space:nowrap;}
-  .training-empty{padding:60px 20px;text-align:center;color:var(--muted);font-size:.85rem;max-width:440px;margin:0 auto;line-height:1.6;}
 
   /* ---- vídeos ---- */
   .videos-view{flex:1 1 auto;overflow-y:auto;}
@@ -100,15 +64,15 @@
   .video-card:hover{border-color:var(--red);transform:translateY(-1px);}
   .video-thumb{position:relative;aspect-ratio:16/9;background:var(--panel-2);overflow:hidden;}
   .video-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .video-thumb-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;}
+  .video-thumb-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);}
   .video-thumb .play-badge{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;
     background:rgba(20,14,13,.25);
   }
   .video-body{padding:12px 14px 14px;}
   .video-body .badge{
-    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
-    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:var(--brand-strong);
+    background:var(--brand-wash);border:1px solid transparent;border-radius:var(--r-full);
     padding:2px 9px;margin-bottom:6px;
   }
   .video-body h3{font-family:var(--font-display);font-weight:600;font-size:.92rem;margin:0 0 4px;color:var(--paper);line-height:1.28;}
@@ -119,12 +83,12 @@
     z-index:50;padding:26px;
   }
   .video-modal.open{display:flex;}
-  .video-modal-inner{width:100%;max-width:920px;}
-  .video-modal-close{
-    display:block;margin:0 0 10px auto;background:var(--panel);color:var(--paper);border:1px solid var(--line-strong);
-    border-radius:8px;padding:7px 12px;font-size:.85rem;cursor:pointer;
+  .video-modal-inner{
+    width:100%;max-width:920px;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:var(--r-lg);padding:14px;box-shadow:var(--shadow-lg);
   }
-  .video-modal-frame{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
+  .video-modal-close{display:block;margin:0 0 10px auto;}
+  .video-modal-frame{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:var(--r-md);overflow:hidden;}
   .video-modal-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
 
   /* ---- documentos ---- */
@@ -136,8 +100,8 @@
   }
   .doc-card:hover{background:var(--panel-2);border-color:var(--red);transform:translateY(-1px);}
   .doc-card .badge{
-    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
-    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:var(--brand-strong);
+    background:var(--brand-wash);border:1px solid transparent;border-radius:var(--r-full);
     padding:2px 9px;margin-bottom:6px;
   }
   .doc-card h3{font-family:var(--font-display);font-weight:600;font-size:.92rem;margin:0 0 4px;color:var(--paper);line-height:1.28;}
@@ -158,7 +122,7 @@
 
 <div class="video-modal" id="video-modal">
   <div class="video-modal-inner">
-    <button class="video-modal-close" id="video-modal-close" type="button">✕ Fechar</button>
+    <button class="btn btn-secondary video-modal-close" id="video-modal-close" type="button" aria-label="Fechar vídeo"></button>
     <div class="video-modal-frame"><iframe id="video-modal-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
   </div>
 </div>
@@ -183,6 +147,8 @@
   var nav = document.getElementById('subtabs-nav');
   var panelsEl = document.getElementById('panels');
   var iframes = {};
+
+  document.getElementById('video-modal-close').innerHTML = FBIcons.svg('x', { size: 16 }) + ' Fechar';
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
@@ -220,9 +186,9 @@
 
   function renderVideoCard(v, idx){
     var thumb = videoThumbSrc(v.url);
-    var thumbHtml = thumb ? '<img src="' + thumb + '" alt="">' : '<div class="video-thumb-fallback">🎬</div>';
+    var thumbHtml = thumb ? '<img src="' + thumb + '" alt="">' : '<div class="video-thumb-fallback">' + FBIcons.svg('monitor', { size: 34 }) + '</div>';
     return '<div class="video-card" data-video-idx="' + idx + '">' +
-      '<div class="video-thumb">' + thumbHtml + '<span class="play-badge">▶</span></div>' +
+      '<div class="video-thumb">' + thumbHtml + '<span class="play-badge" aria-hidden="true">▶</span></div>' +
       '<div class="video-body">' +
         (v.categoria ? '<span class="badge">' + escapeHtml(v.categoria) + '</span>' : '') +
         '<h3>' + escapeHtml(v.titulo) + '</h3>' +

@@ -4,45 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POPs — Procedimentos Operacionais Padrão — Fonseca e Braga</title>
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <style>
+  /* Apelidos: nomes de variável antigos deste arquivo -> tokens do design system compartilhado */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.20);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    --ink: var(--bg);
+    --panel: var(--surface);
+    --panel-2: var(--surface-2);
+    --paper: var(--text);
+    --muted: var(--text-muted);
+    --silver: var(--text-muted);
+    --red: var(--brand);
+    --red-bright: var(--brand-strong);
+    --red-deep: var(--brand-deep);
+    --line: var(--border);
+    --line-strong: var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -64,8 +43,8 @@
   .hub-wrap{display:flex;flex-direction:column;align-items:center;}
   .hub{
     background:linear-gradient(160deg,var(--red-deep),var(--red-bright));
-    border:1px solid var(--red-bright);border-radius:14px;
-    padding:16px 30px;text-align:center;box-shadow:0 10px 30px rgba(184,54,46,.25);
+    border:1px solid var(--red-bright);border-radius:var(--r-lg);
+    padding:16px 30px;text-align:center;box-shadow:var(--shadow-md);
     min-width:280px;
   }
   .hub .kicker{font-size:.68rem;letter-spacing:.12em;color:#ffd9d5;text-transform:uppercase;font-weight:700;}
@@ -88,10 +67,10 @@
   }
 
   .category-head{
-    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:var(--r-md);
     padding:10px 12px;text-align:center;
   }
-  .category-head .icon{font-size:1.1rem;line-height:1;margin-bottom:4px;}
+  .category-head .icon{display:flex;align-items:center;justify-content:center;color:var(--red-bright);margin-bottom:6px;}
   .category-head h3{
     font-family:var(--font-display);font-size:.86rem;letter-spacing:.02em;margin:0;color:var(--silver);
     text-transform:uppercase;font-weight:600;
@@ -101,7 +80,7 @@
   .pop-stack .spine{width:2px;height:22px;background:var(--line-strong);margin:0 auto;}
 
   .pop-card{
-    display:block;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+    display:block;background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r-lg);
     padding:12px 14px;margin-top:0;transition:background .15s,border-color .15s,transform .15s;
     position:relative;
   }
@@ -110,10 +89,10 @@
     content:'';position:absolute;top:-22px;left:50%;width:2px;height:22px;background:var(--line-strong);
     transform:translateX(-50%);
   }
-  .pop-card:hover{background:var(--panel-2);border-color:var(--red);transform:translateY(-1px);}
+  .pop-card:hover{background:var(--panel-2);border-color:var(--red);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
   .pop-card .badge{
-    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:#ffb4ae;
-    background:rgba(184,54,46,.18);border:1px solid rgba(184,54,46,.4);border-radius:20px;
+    display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;color:var(--red-bright);
+    background:var(--brand-wash);border:1px solid var(--red);border-radius:var(--r-full);
     padding:2px 9px;margin-bottom:6px;
   }
   .pop-card h4{
@@ -165,7 +144,7 @@
 
     <div class="category-col">
       <div class="category-head">
-        <div class="icon">🗂️</div>
+        <div class="icon" id="icon-atendimento" aria-hidden="true"></div>
         <h3>Atendimento&nbsp;&amp;&nbsp;Rotina</h3>
       </div>
       <div class="pop-stack">
@@ -191,7 +170,7 @@
 
     <div class="category-col">
       <div class="category-head">
-        <div class="icon">⚖️</div>
+        <div class="icon" id="icon-processual" aria-hidden="true"></div>
         <h3>Processual&nbsp;&amp;&nbsp;Prazos</h3>
       </div>
       <div class="pop-stack">
@@ -225,7 +204,7 @@
 
     <div class="category-col">
       <div class="category-head">
-        <div class="icon">📄</div>
+        <div class="icon" id="icon-documentos" aria-hidden="true"></div>
         <h3>Documentos&nbsp;&amp;&nbsp;Petições</h3>
       </div>
       <div class="pop-stack">
@@ -251,7 +230,7 @@
 
     <div class="category-col">
       <div class="category-head">
-        <div class="icon">🔎</div>
+        <div class="icon" id="icon-paralegal" aria-hidden="true"></div>
         <h3>Paralegal</h3>
       </div>
       <div class="pop-stack">
@@ -271,6 +250,21 @@
 </main>
 
 <footer class="note">Fonseca e Braga — Sociedade de Advogados · Documentos internos, uso restrito da equipe.</footer>
+
+<script>
+(function(){
+  "use strict";
+  // Ícones das categorias (antes emoji cru) — sistema único de ícones do portal.
+  document.getElementById('icon-atendimento').innerHTML = FBIcons.svg('folder', {size:20});
+  document.getElementById('icon-processual').innerHTML = FBIcons.svg('calendar', {size:20});
+  document.getElementById('icon-documentos').innerHTML = FBIcons.svg('docstack', {size:20});
+  document.getElementById('icon-paralegal').innerHTML = FBIcons.svg('search', {size:20});
+  // "Abrir PDF" — mesmo ícone de seta em todos os cards, agora vindo do sistema único de ícones.
+  document.querySelectorAll('.open-hint svg').forEach(function(svg){
+    svg.outerHTML = FBIcons.svg('external-link', {size:11});
+  });
+})();
+</script>
 
 </body>
 </html>
