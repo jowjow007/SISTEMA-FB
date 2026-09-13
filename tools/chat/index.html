@@ -5,49 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Chat Interno — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('fb-portal-theme');
-    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
-  }catch(e){}
-  window.addEventListener('storage', function(e){
-    if(e.key === 'fb-portal-theme'){
-      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
-      else document.documentElement.removeAttribute('data-theme');
-    }
-  });
-})();
-</script>
+<script src="../../assets/theme-init.js"></script>
+<link rel="stylesheet" href="../../assets/design-system.css">
+<script src="../../assets/icons.js"></script>
+<script src="../../assets/modal.js"></script>
 <style>
+  /* Apelidos: nomes de variável antigos deste arquivo -> tokens do design system compartilhado */
   :root{
-    --ink:#161010;
-    --panel:#211918;
-    --panel-2:#2a1f1e;
-    --panel-3:#332726;
-    --paper:#ece6e1;
-    --muted:#9c908b;
-    --red:#b8362e;
-    --red-bright:#c9463c;
-    --red-deep:#5c1a16;
-    --green:#4c9a6a;
-    --gold:#d8b25a;
-    --silver:#a9adb2;
-    --line:rgba(236,230,225,0.10);
-    --line-strong:rgba(236,230,225,0.18);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root[data-theme="light"]{
-    --ink:#f3efe9;
-    --panel:#ffffff;
-    --panel-2:#f1ece6;
-    --panel-3:#e6dfd7;
-    --paper:#241c1b;
-    --muted:#7d716b;
-    --silver:#756f6c;
-    --line:rgba(36,28,27,0.10);
-    --line-strong:rgba(36,28,27,0.16);
+    --ink: var(--bg);
+    --panel: var(--surface);
+    --panel-2: var(--surface-2);
+    --panel-3: var(--surface-3);
+    --paper: var(--text);
+    --muted: var(--text-muted);
+    --red: var(--brand);
+    --red-bright: var(--brand-strong);
+    --red-deep: var(--brand-deep);
+    --green: var(--ok);
+    --gold: var(--accent);
+    --silver: var(--text-muted);
+    --line: var(--border);
+    --line-strong: var(--border-strong);
   }
 
   *{box-sizing:border-box;}
@@ -78,13 +56,13 @@
   .tag-filter-row .tag-chip.active{opacity:1;}
   .icon-btn{
     flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--red);background:var(--red-deep);
-    color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    color:var(--on-brand);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
     transition:background .15s;position:relative;
   }
   .icon-btn:hover{background:var(--red);}
   .icon-btn#btn-notif.muted{background:var(--panel-3);border-color:var(--line-strong);opacity:.6;}
   .icon-btn#btn-nova-conversa{background:none;border-color:transparent;color:var(--red-bright);}
-  .icon-btn#btn-nova-conversa:hover{background:#fff;border-color:#fff;}
+  .icon-btn#btn-nova-conversa:hover{background:var(--on-brand);border-color:var(--on-brand);}
   .icon-btn#btn-nova-conversa img{width:22px;height:22px;object-fit:contain;display:block;}
 
   .conv-list{flex:1;overflow-y:auto;}
@@ -115,7 +93,7 @@
   }
   .pin-mark{color:var(--gold);flex:0 0 auto;display:inline-flex;}
   .unread-badge{
-    background:var(--red);color:#fff;font-size:.65rem;font-weight:700;border-radius:20px;padding:1px 7px;
+    background:var(--red);color:var(--on-brand);font-size:.65rem;font-weight:700;border-radius:20px;padding:1px 7px;
     flex:0 0 auto;
   }
   .conv-meta-col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto;}
@@ -142,7 +120,7 @@
   .small-link-btn svg{flex:0 0 auto;}
   .small-link-btn:hover{color:var(--paper);border-color:var(--silver);}
   .small-link-btn.on{color:var(--gold);border-color:rgba(216,178,90,.5);}
-  .small-link-btn.danger{color:#ffb4ae;border-color:rgba(184,54,46,.4);}
+  .small-link-btn.danger{color:var(--danger-text);border-color:rgba(184,54,46,.4);}
   .small-link-btn.danger:hover{background:rgba(184,54,46,.12);border-color:rgba(184,54,46,.6);}
   .archive-toggle{margin-top:10px;}
 
@@ -221,21 +199,19 @@
   .composer-row textarea:focus{border-color:var(--red);}
   .send-btn{
     flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--red);background:var(--red-deep);
-    color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    color:var(--on-brand);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
   }
   .send-btn:hover{background:var(--red);}
   .send-btn:disabled{opacity:.4;cursor:not-allowed;}
   .media-hint{font-size:.65rem;color:var(--muted);margin-top:6px;}
 
-  /* ---------- modals ---------- */
-  .modal-backdrop{
-    position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;
-    z-index:60;padding:20px;
-  }
-  .modal-backdrop.open{display:flex;}
+  /* ---------- modals ----------
+     Caixa/animação/cores de .modal-backdrop e .modal vêm do design system
+     (assets/design-system.css), que usa a classe de estado "is-open". Aqui só
+     completamos o layout específico deste app (conteúdo direto dentro de .modal,
+     sem os wrappers .modal-header/.modal-body/.modal-footer). */
   .modal{
-    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;max-width:420px;
-    width:100%;max-height:82vh;display:flex;flex-direction:column;
+    padding:18px;max-width:420px;max-height:82vh;display:flex;flex-direction:column;
   }
   .modal h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
   .modal p.hint{margin:0 0 10px;font-size:.78rem;color:var(--muted);}
@@ -252,15 +228,7 @@
   .picker-item .sub{font-size:.68rem;color:var(--muted);}
   .picker-item input[type=checkbox]{flex:0 0 auto;}
   .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
-  .modal .err{color:#ffb4ae;font-size:.75rem;min-height:1.1em;margin:0 0 8px;}
-  .btn{
-    border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
-    padding:7px 16px;font-size:.8rem;font-weight:600;cursor:pointer;
-  }
-  .btn:hover{background:var(--red);}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
-  .btn.ghost{background:transparent;border-color:var(--line-strong);color:var(--paper);}
-  .btn.ghost:hover{border-color:var(--silver);}
+  .modal .err{color:var(--danger-text);font-size:.75rem;min-height:1.1em;margin:0 0 8px;}
 
   .tag-catalog-list{max-height:260px;overflow-y:auto;margin:4px 0 12px;border-top:1px solid var(--line);}
   .tag-cat-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);}
@@ -303,8 +271,8 @@
       <h1>Chat Interno</h1>
       <div class="search-row">
         <input type="text" id="busca-conversas" placeholder="Buscar por nome ou etiqueta...">
-        <button class="icon-btn" id="btn-notif" title="Ativar notificações"></button>
-        <button class="icon-btn" id="btn-nova-conversa" title="Nova conversa"></button>
+        <button class="icon-btn" id="btn-notif" title="Ativar notificações" aria-label="Ativar notificações"></button>
+        <button class="icon-btn" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
       </div>
       <div class="tag-filter-row" id="tag-filter-row"></div>
       <button class="small-link-btn archive-toggle" id="btn-ver-arquivadas"></button>
@@ -320,7 +288,7 @@
 
     <div id="thread-active" style="display:none;flex:1;flex-direction:column;min-height:0;">
       <div class="thread-head">
-        <button class="back-btn" id="btn-voltar"></button>
+        <button class="back-btn" id="btn-voltar" aria-label="Voltar"></button>
         <div>
           <div class="thread-title" id="thread-title">—</div>
           <div class="thread-sub" id="thread-sub"></div>
@@ -340,7 +308,7 @@
             <div class="autor" id="reply-autor"></div>
             <div class="resumo" id="reply-resumo"></div>
           </div>
-          <button id="btn-cancelar-resposta" title="Cancelar resposta">×</button>
+          <button id="btn-cancelar-resposta" title="Cancelar resposta" aria-label="Cancelar resposta">×</button>
         </div>
         <div class="photo-preview-row" id="photo-preview-row">
           <img id="photo-preview-img" src="">
@@ -355,23 +323,23 @@
           <button id="btn-remover-doc">Remover</button>
         </div>
         <div class="composer-row">
-          <button class="icon-btn" id="btn-anexar" title="Anexar foto">
+          <button class="icon-btn" id="btn-anexar" title="Anexar foto" aria-label="Anexar foto">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
               <circle cx="12" cy="13" r="4"></circle>
             </svg>
           </button>
           <input type="file" id="foto-input" accept="image/*" hidden>
-          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documento">
+          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documento" aria-label="Anexar documento">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
             </svg>
           </button>
           <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.odt,.ods" hidden>
-          <button class="icon-btn" id="btn-emoji" title="Emoji"></button>
+          <button class="icon-btn" id="btn-emoji" title="Emoji" aria-label="Inserir emoji"></button>
           <div class="emoji-popover" id="emoji-popover"></div>
           <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
-          <button class="send-btn" id="btn-enviar" title="Enviar"></button>
+          <button class="send-btn" id="btn-enviar" title="Enviar" aria-label="Enviar"></button>
         </div>
         <div class="media-hint">Suporta texto, fotos e documentos (até 500 KB). Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
       </div>
@@ -389,15 +357,15 @@
       <div class="avatar group" id="picker-foto-grupo-preview"></div>
       <div>
         <input type="file" id="picker-foto-grupo-input" accept="image/*" hidden>
-        <button type="button" class="btn ghost" id="picker-foto-grupo-btn">Foto do grupo</button>
+        <button type="button" class="btn btn-secondary" id="picker-foto-grupo-btn">Foto do grupo</button>
       </div>
     </div>
     <input type="text" id="picker-busca" placeholder="Buscar colaborador...">
     <div class="picker-list" id="picker-list"></div>
     <div class="err" id="picker-err"></div>
     <div class="modal-foot">
-      <button class="btn ghost" id="picker-cancelar">Cancelar</button>
-      <button class="btn" id="picker-confirmar" style="display:none;">Iniciar</button>
+      <button class="btn btn-secondary" id="picker-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="picker-confirmar" style="display:none;">Iniciar</button>
     </div>
   </div>
 </div>
@@ -415,9 +383,9 @@
       <div class="err" id="tag-form-err"></div>
     </div>
     <div class="modal-foot">
-      <button class="btn ghost" id="tag-form-cancelar" style="display:none;">Cancelar edição</button>
-      <button class="btn ghost" id="tags-fechar">Fechar</button>
-      <button class="btn" id="tag-form-salvar">Criar etiqueta</button>
+      <button class="btn btn-secondary" id="tag-form-cancelar" style="display:none;">Cancelar edição</button>
+      <button class="btn btn-secondary" id="tags-fechar">Fechar</button>
+      <button class="btn btn-primary" id="tag-form-salvar">Criar etiqueta</button>
     </div>
   </div>
 </div>
@@ -430,14 +398,14 @@
       <div class="avatar group" id="grupo-foto-preview"></div>
       <div>
         <input type="file" id="grupo-foto-input" accept="image/*" hidden>
-        <button type="button" class="btn ghost" id="grupo-foto-btn">Trocar foto</button>
+        <button type="button" class="btn btn-secondary" id="grupo-foto-btn">Trocar foto</button>
       </div>
     </div>
     <input type="text" id="grupo-nome-input" placeholder="Nome do grupo" maxlength="80">
     <div class="err" id="grupo-form-err"></div>
     <div class="modal-foot">
-      <button class="btn ghost" id="grupo-fechar">Cancelar</button>
-      <button class="btn" id="grupo-salvar">Salvar</button>
+      <button class="btn btn-secondary" id="grupo-fechar">Cancelar</button>
+      <button class="btn btn-primary" id="grupo-salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -842,7 +810,7 @@
       out += avatarConversaHtml(c);
       out += '<div class="conv-body">';
       out += '<div class="conv-top-line">';
-      if (fixada) out += '<span class="pin-mark">★</span>';
+      if (fixada) out += '<span class="pin-mark">' + FBIcons.svg('star',{size:12}) + '</span>';
       out += '<span class="conv-name">' + escapeHtml(tituloConversa(c)) + '</span>';
       out += '</div>';
       out += '<div class="conv-preview' + (naoLidas > 0 ? ' unread' : '') + '">' + escapeHtml(preview) + '</div>';
@@ -1069,7 +1037,7 @@
       els.photoPreviewImg.src = dataUrl;
       els.photoPreviewRow.classList.add('show');
     }).catch(function(err){
-      alert(err.message || 'Não foi possível processar a imagem.');
+      FBModal.alert({ title: 'Erro na imagem', body: err.message || 'Não foi possível processar a imagem.', danger: true });
       els.fotoInput.value = '';
     });
   });
@@ -1115,7 +1083,7 @@
       els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
       els.docPreviewRow.classList.add('show');
     }).catch(function(err){
-      alert(err.message || 'Não foi possível anexar o documento.');
+      FBModal.alert({ title: 'Erro no anexo', body: err.message || 'Não foi possível anexar o documento.', danger: true });
       els.docInput.value = '';
     });
   });
@@ -1234,7 +1202,7 @@
       limparComposerDoc();
       cancelarResposta();
     }).catch(function(e){
-      alert('Não foi possível enviar: ' + e.message);
+      FBModal.alert({ title: 'Não foi possível enviar', body: e.message, danger: true });
     }).finally(function(){
       els.btnEnviar.disabled = false;
     });
@@ -1246,7 +1214,7 @@
     if (!activeId) return;
     var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
     db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
-      .set({ fixada: !atual }, { merge: true }).catch(function(e){ alert('Erro: ' + e.message); });
+      .set({ fixada: !atual }, { merge: true }).catch(function(e){ FBModal.alert({ title: 'Erro', body: e.message, danger: true }); });
   });
 
   // ---------------- arquivar / excluir ----------------
@@ -1259,7 +1227,7 @@
       .then(function(){
         if (!atual) voltarParaListaVazia();
       })
-      .catch(function(e){ alert('Erro: ' + e.message); });
+      .catch(function(e){ FBModal.alert({ title: 'Erro', body: e.message, danger: true }); });
   });
 
   function voltarParaListaVazia(){
@@ -1272,15 +1240,21 @@
 
   els.btnExcluirConversa.addEventListener('click', function(){
     if (!activeId) return;
-    var ok = confirm('Excluir esta conversa da sua lista?\n\nEla continua existindo para a outra pessoa (ou para o grupo) — isso só tira ela da SUA lista. Se chegar mensagem nova aqui, a conversa volta a aparecer para você.');
-    if (!ok) return;
     var id = activeId;
-    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
-      .set({ excluidaAte: FV.serverTimestamp(), arquivada: false }, { merge: true })
-      .then(function(){
-        if (activeId === id) voltarParaListaVazia();
-      })
-      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
+    FBModal.confirm({
+      title: 'Excluir esta conversa da sua lista?',
+      body: 'Ela continua existindo para a outra pessoa (ou para o grupo) — isso só tira ela da SUA lista. Se chegar mensagem nova aqui, a conversa volta a aparecer para você.',
+      danger: true,
+      confirmLabel: 'Excluir'
+    }).then(function(ok){
+      if (!ok) return;
+      db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+        .set({ excluidaAte: FV.serverTimestamp(), arquivada: false }, { merge: true })
+        .then(function(){
+          if (activeId === id) voltarParaListaVazia();
+        })
+        .catch(function(e){ FBModal.alert({ title: 'Não foi possível excluir', body: e.message, danger: true }); });
+    });
   });
 
   // ---------------- editar grupo ----------------
@@ -1311,7 +1285,7 @@
       els.grupoFotoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
       els.grupoFotoPreview.innerHTML = '';
     }).catch(function(){
-      alert('Não foi possível processar a imagem.');
+      FBModal.alert({ title: 'Erro na imagem', body: 'Não foi possível processar a imagem.', danger: true });
     });
   });
   els.grupoSalvar.addEventListener('click', function(){
@@ -1409,8 +1383,12 @@
       btn.addEventListener('click', function(){
         var id = btn.getAttribute('data-excluir');
         var t = catalogoEtiquetas[id];
-        if (!confirm('Excluir a etiqueta "' + (t ? t.nome : '') + '"? Ela será removida de todas as suas conversas.')) return;
-        excluirEtiquetaCatalogo(id);
+        FBModal.confirm({
+          title: 'Excluir esta etiqueta?',
+          body: '"' + (t ? t.nome : '') + '" será removida de todas as suas conversas.',
+          danger: true,
+          confirmLabel: 'Excluir'
+        }).then(function(ok){ if (ok) excluirEtiquetaCatalogo(id); });
       });
     });
   }
@@ -1429,7 +1407,7 @@
         delete tagFilterSelected[tagId];
         if (editingTagId === tagId) resetFormularioEtiqueta();
       })
-      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
+      .catch(function(e){ FBModal.alert({ title: 'Não foi possível excluir', body: e.message, danger: true }); });
   }
 
   els.tagFormCancelar.addEventListener('click', resetFormularioEtiqueta);
@@ -1547,7 +1525,7 @@
       els.pickerFotoGrupoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
       els.pickerFotoGrupoPreview.innerHTML = '';
     }).catch(function(){
-      alert('Não foi possível processar a imagem.');
+      FBModal.alert({ title: 'Erro na imagem', body: 'Não foi possível processar a imagem.', danger: true });
     });
   });
 
@@ -1567,7 +1545,7 @@
       localStorage.setItem('fb-chat-notif', ligado ? 'off' : 'on');
       atualizarBotaoNotif();
     } else if (Notification.permission === 'denied') {
-      alert('As notificações estão bloqueadas nas configurações do navegador/celular para este site. Permita notificações para o Portal Fonseca e Braga e recarregue a página.');
+      FBModal.alert({ title: 'Notificações bloqueadas', body: 'Estão bloqueadas nas configurações do navegador/celular para este site. Permita notificações para o Portal Fonseca e Braga e recarregue a página.' });
     } else {
       Notification.requestPermission().then(function(perm){
         if (perm === 'granted') localStorage.setItem('fb-chat-notif', 'on');
@@ -1699,7 +1677,7 @@
     var preview = resumoMensagem(forwardMsg);
     postMessageTo(conversaId, msgData, preview).then(function(){
       fecharPicker();
-    }).catch(function(e){ alert('Não foi possível encaminhar: ' + e.message); });
+    }).catch(function(e){ FBModal.alert({ title: 'Não foi possível encaminhar', body: e.message, danger: true }); });
   }
 
   els.pickerConfirmar.addEventListener('click', function(){
