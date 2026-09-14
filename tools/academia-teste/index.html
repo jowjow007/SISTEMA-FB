@@ -1,0 +1,1819 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Academia FB — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --wine:#782F46;
+    --wine-deep:#542336;
+    --wine-light:#9B405D;
+    --gold:#C59D60;
+    --gold-deep:#B48640;
+    --green:#287254;
+    --red:#B33B4B;
+    --ink:#F5F6F8;
+
+    --bg:#1c1d27;
+    --bg-elev:#252736;
+    --panel:#2b2d3d;
+    --panel-2:#333549;
+    --border:rgba(245,246,248,.09);
+    --border-strong:rgba(245,246,248,.16);
+    --text:#F5F6F8;
+    --muted:#9a9fb2;
+    --primary:#c0587a;
+    --primary-deep:var(--wine);
+    --accent:var(--gold);
+    --success:#3fa27c;
+    --danger:#d4707d;
+    --shadow:0 8px 28px rgba(0,0,0,.35);
+
+    --font-display:Georgia,"Palatino Linotype",Palatino,"Iowan Old Style","Times New Roman",serif;
+    --font-body:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --radius:14px;
+  }
+  :root[data-theme="light"]{
+    --bg:#F5F6F8;
+    --bg-elev:#FFFFFF;
+    --panel:#FFFFFF;
+    --panel-2:#F5F6F8;
+    --border:#E5E7ED;
+    --border-strong:#d7d9e4;
+    --text:#252736;
+    --muted:#73798A;
+    --primary:var(--wine);
+    --primary-deep:var(--wine-deep);
+    --accent:var(--gold-deep);
+    --success:var(--green);
+    --danger:var(--red);
+    --shadow:0 6px 20px rgba(37,39,54,.08);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;}
+  a{color:inherit;}
+  button{font-family:inherit;}
+  h1,h2,h3,h4{font-family:var(--font-display);margin:0;font-weight:600;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
+  ::selection{background:var(--wine-light);color:#fff;}
+  svg.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
+
+  #gate{display:none;padding:40px;text-align:center;color:var(--muted);font-size:.95rem;}
+
+  /* ---------- Login demo ---------- */
+  #login-screen{
+    height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;
+    background:radial-gradient(circle at 20% 15%, rgba(120,47,70,.35), transparent 55%),
+               radial-gradient(circle at 85% 80%, rgba(197,157,96,.20), transparent 50%), var(--bg);
+    padding:24px;overflow-y:auto;
+  }
+  .login-box{max-width:760px;width:100%;text-align:center;}
+  .login-brand{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:26px;}
+  .login-brand .mark{
+    width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--wine),var(--wine-light));color:#fff;font-family:var(--font-display);
+    font-weight:700;font-size:1.4rem;box-shadow:var(--shadow);
+  }
+  .login-brand h1{font-size:1.6rem;color:var(--text);}
+  .login-brand p{margin:2px 0 0;color:var(--muted);font-size:.85rem;font-style:italic;}
+  .login-note{
+    background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;padding:12px 16px;
+    font-size:.78rem;color:var(--muted);margin-bottom:22px;text-align:left;line-height:1.5;
+  }
+  .login-note b{color:var(--text);}
+  .login-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+  .login-card{
+    background:var(--panel);border:1px solid var(--border-strong);border-radius:var(--radius);padding:18px 16px;
+    cursor:pointer;text-align:left;transition:border-color .15s,transform .15s;
+  }
+  .login-card:hover{border-color:var(--primary);transform:translateY(-2px);}
+  .login-avatar{
+    width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:700;font-family:var(--font-display);font-size:1rem;margin-bottom:10px;
+  }
+  .login-card h3{font-size:.92rem;color:var(--text);}
+  .login-card .papel{font-size:.72rem;color:var(--accent);font-weight:600;margin:3px 0 6px;text-transform:uppercase;letter-spacing:.03em;}
+  .login-card .cargo{font-size:.76rem;color:var(--muted);line-height:1.4;}
+
+  /* ---------- App shell ---------- */
+  #app-shell{display:none;height:100%;}
+  #app-shell.on{display:flex;}
+  #sidebar{
+    width:250px;flex:0 0 auto;background:var(--bg-elev);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;transition:transform .2s;
+  }
+  .side-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;border-bottom:1px solid var(--border);}
+  .side-brand .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--wine),var(--wine-light));
+    color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;flex:0 0 auto;}
+  .side-brand strong{font-family:var(--font-display);font-size:1rem;display:block;}
+  .side-brand span{font-size:.68rem;color:var(--muted);}
+  nav.side-nav{flex:1 1 auto;overflow-y:auto;padding:10px;}
+  nav.side-nav .grupo-titulo{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:14px 10px 6px;}
+  nav.side-nav button{
+    width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:transparent;border:none;
+    color:var(--muted);padding:9px 10px;border-radius:9px;font-size:.85rem;cursor:pointer;margin-bottom:2px;
+  }
+  nav.side-nav button:hover{background:var(--panel);color:var(--text);}
+  nav.side-nav button.active{background:var(--panel-2);color:var(--primary);font-weight:700;}
+  nav.side-nav button.active svg.ic{stroke:var(--primary);}
+  .side-foot{padding:12px;border-top:1px solid var(--border);}
+  .btn-reset-demo{width:100%;background:transparent;border:1px dashed var(--border-strong);color:var(--muted);
+    border-radius:9px;padding:8px;font-size:.72rem;cursor:pointer;}
+  .btn-reset-demo:hover{border-color:var(--danger);color:var(--danger);}
+
+  #drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;}
+  #drawer-overlay.on{display:block;}
+
+  #main-col{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;}
+  #topbar{
+    flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);
+    background:var(--bg-elev);
+  }
+  #btn-menu{display:none;background:transparent;border:none;color:var(--text);cursor:pointer;padding:6px;}
+  .busca-wrap{flex:1 1 auto;max-width:420px;position:relative;}
+  .busca-wrap svg.ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);}
+  #global-search{
+    width:100%;background:var(--panel);border:1px solid var(--border-strong);border-radius:9px;color:var(--text);
+    padding:8px 10px 8px 34px;font-size:.83rem;
+  }
+  #global-search::placeholder{color:var(--muted);}
+  .kbd-hint{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:.65rem;color:var(--muted);
+    border:1px solid var(--border-strong);border-radius:5px;padding:1px 5px;}
+  .topbar-user{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .topbar-user .info{text-align:right;line-height:1.25;}
+  .topbar-user .info b{font-size:.8rem;display:block;}
+  .topbar-user .info span{font-size:.68rem;color:var(--muted);}
+  .avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-family:var(--font-display);flex:0 0 auto;}
+  .topbar-user .avatar{width:34px;height:34px;}
+  #btn-sair{background:transparent;border:1px solid var(--border-strong);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:.75rem;cursor:pointer;}
+  #btn-sair:hover{color:var(--danger);border-color:var(--danger);}
+
+  .demo-banner{flex:0 0 auto;background:linear-gradient(90deg,rgba(197,157,96,.18),transparent);
+    border-bottom:1px solid var(--border);padding:6px 20px;font-size:.7rem;color:var(--accent);display:flex;gap:8px;align-items:center;}
+
+  #content{flex:1 1 auto;overflow-y:auto;padding:26px 30px 60px;}
+  .content-inner{max-width:1180px;margin:0 auto;}
+
+  /* generic pieces */
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:22px;}
+  .page-head h2{font-size:1.5rem;}
+  .page-head p{color:var(--muted);font-size:.85rem;margin-top:4px;max-width:640px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
+  .grid{display:grid;gap:16px;}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr);}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:900px){.grid.cols-3,.grid.cols-2{grid-template-columns:1fr;}}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;letter-spacing:.02em;
+    padding:3px 9px;border-radius:20px;text-transform:uppercase;}
+  .badge.verde{background:rgba(40,114,84,.18);color:var(--success);border:1px solid rgba(40,114,84,.4);}
+  .badge.amarelo{background:rgba(197,157,96,.2);color:var(--gold);border:1px solid rgba(197,157,96,.45);}
+  .badge.vermelho{background:rgba(179,59,75,.18);color:var(--danger);border:1px solid rgba(179,59,75,.4);}
+  .badge.neutro{background:var(--panel-2);color:var(--muted);border:1px solid var(--border-strong);}
+  .btn{background:var(--panel-2);border:1px solid var(--border-strong);color:var(--text);border-radius:9px;
+    padding:9px 14px;font-size:.82rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .btn:hover{border-color:var(--primary);}
+  .btn.primary{background:linear-gradient(135deg,var(--wine),var(--wine-light));border-color:transparent;color:#fff;}
+  .btn.primary:hover{filter:brightness(1.08);}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--muted);}
+  .btn.ghost:hover{color:var(--text);}
+  .btn.sm{padding:6px 10px;font-size:.74rem;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .progress-bar{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;}
+  .progress-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--wine),var(--gold));border-radius:6px;}
+  .empty{text-align:center;color:var(--muted);font-size:.85rem;padding:50px 20px;line-height:1.6;}
+
+  /* jornada */
+  .jornada-hero{background:linear-gradient(135deg,var(--wine-deep),var(--wine));border-radius:var(--radius);padding:26px;color:#fff;
+    display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:22px;}
+  .jornada-hero h2{color:#fff;font-size:1.4rem;}
+  .jornada-hero .nivel-tag{font-size:.75rem;opacity:.85;margin-top:4px;}
+  .jornada-hero .xp-track{width:260px;}
+  .jornada-hero .xp-track .progress-bar{background:rgba(255,255,255,.25);}
+  .jornada-hero .xp-track .progress-bar>i{background:var(--gold);}
+  .jornada-hero .xp-track small{display:block;margin-top:5px;font-size:.7rem;opacity:.9;}
+  .stat-pill{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.14);border-radius:20px;padding:6px 12px;font-size:.76rem;font-weight:600;}
+  .foco-card{border-left:4px solid var(--primary);cursor:pointer;transition:transform .15s;}
+  .foco-card:hover{transform:translateY(-2px);}
+  .foco-card .tipo{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;}
+  .foco-card h4{margin:6px 0;font-size:.98rem;}
+  .foco-card p{font-size:.78rem;color:var(--muted);margin:0;line-height:1.5;}
+  .trilha-mini{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .trilha-mini:last-child{border-bottom:none;}
+  .trilha-mini .dot{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;}
+  .trilha-mini .info{flex:1 1 auto;min-width:0;}
+  .trilha-mini .info b{font-size:.84rem;}
+  .trilha-mini .progress-bar{margin-top:5px;}
+
+  /* trilhas / missoes */
+  .trilha-card{cursor:pointer;}
+  .trilha-card .dot{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:12px;}
+  .trilha-card h3{font-size:1.02rem;margin-bottom:4px;}
+  .trilha-card p{font-size:.78rem;color:var(--muted);margin:0 0 12px;line-height:1.5;}
+  .missao-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+  .missao-row:last-child{border-bottom:none;}
+  .missao-row:hover .missao-titulo{color:var(--primary);}
+  .missao-status-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .missao-status-ic.ok{background:rgba(63,162,124,.18);color:var(--success);}
+  .missao-status-ic.pendente{background:var(--panel-2);color:var(--muted);}
+  .missao-body{flex:1 1 auto;min-width:0;}
+  .missao-titulo{font-size:.88rem;font-weight:600;}
+  .missao-meta{font-size:.72rem;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;}
+  .tipo-chip{font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:5px;
+    background:var(--panel-2);color:var(--accent);}
+
+  /* mission player */
+  .missao-layout{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;}
+  @media(max-width:900px){.missao-layout{grid-template-columns:1fr;}}
+  .missao-main .npc-line{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start;}
+  .npc-line .avatar{width:40px;height:40px;font-size:.85rem;}
+  .npc-line .bubble{background:var(--panel-2);border-radius:0 12px 12px 12px;padding:12px 14px;font-size:.86rem;line-height:1.55;flex:1 1 auto;}
+  .npc-line .bubble b{display:block;font-size:.72rem;color:var(--accent);margin-bottom:3px;text-transform:uppercase;letter-spacing:.03em;}
+  .opcoes-lista{display:flex;flex-direction:column;gap:9px;margin-top:14px;}
+  .opcao-btn{text-align:left;background:var(--panel);border:1px solid var(--border-strong);border-radius:11px;padding:12px 14px;
+    font-size:.85rem;color:var(--text);cursor:pointer;line-height:1.45;}
+  .opcao-btn:hover{border-color:var(--primary);}
+  .opcao-btn.escolhida.correta{border-color:var(--success);background:rgba(63,162,124,.1);}
+  .opcao-btn.escolhida.incorreta{border-color:var(--danger);background:rgba(212,112,125,.1);}
+  .opcao-btn:disabled{cursor:default;}
+  .consequencia{margin-top:16px;border-radius:12px;padding:16px;border:1px solid var(--border-strong);background:var(--panel-2);}
+  .consequencia h4{font-size:.82rem;margin-bottom:8px;}
+  .consequencia .linha{font-size:.8rem;line-height:1.55;margin-bottom:6px;}
+  .consequencia .linha b{color:var(--text);}
+  .consequencia.correta{border-left:4px solid var(--success);}
+  .consequencia.incorreta{border-left:4px solid var(--danger);}
+  .sidebar-missao .item{padding:11px 0;border-bottom:1px solid var(--border);font-size:.78rem;}
+  .sidebar-missao .item:last-child{border-bottom:none;}
+  .sidebar-missao .item b{display:block;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+  .comp-tag{display:inline-block;background:var(--panel-2);border-radius:6px;padding:2px 7px;font-size:.7rem;margin:2px 4px 0 0;}
+
+  .ordenar-item{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border-strong);
+    border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:.84rem;}
+  .ordenar-item .num{width:22px;height:22px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex:0 0 auto;}
+  .ordenar-item .btns{margin-left:auto;display:flex;gap:4px;}
+  .ordenar-item.certo{border-color:var(--success);}
+  .ordenar-item.errado{border-color:var(--danger);}
+
+  .flash-card{background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;padding:22px;min-height:130px;
+    display:flex;align-items:center;justify-content:center;text-align:center;font-size:.95rem;cursor:pointer;line-height:1.5;}
+  .flash-card .face-b{color:var(--muted);font-size:.82rem;}
+
+  .video-scene{background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;padding:22px;margin-bottom:14px;}
+  .video-scene .rotulo{font-size:.68rem;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:8px;}
+
+  /* biblioteca */
+  .mat-card{cursor:pointer;}
+  .mat-card .tipo-chip{margin-bottom:8px;}
+  .mat-card h4{font-size:.9rem;margin-bottom:6px;}
+  .mat-card p{font-size:.78rem;color:var(--muted);margin:0;line-height:1.5;}
+
+  /* ranking */
+  .rank-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .rank-tabs button{background:var(--panel);border:1px solid var(--border-strong);color:var(--muted);border-radius:20px;
+    padding:6px 14px;font-size:.78rem;cursor:pointer;}
+  .rank-tabs button.active{background:var(--primary);color:#fff;border-color:transparent;}
+  .rank-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-row .pos{width:24px;text-align:center;font-weight:700;color:var(--muted);font-size:.85rem;}
+  .rank-row.voce{background:rgba(197,157,96,.08);border-radius:10px;padding-left:8px;}
+  .rank-row .nome{flex:1 1 auto;font-size:.85rem;font-weight:600;}
+  .rank-row .xp{font-size:.78rem;color:var(--accent);font-weight:700;}
+
+  /* conquistas / loja */
+  .badge-card{text-align:center;opacity:.4;}
+  .badge-card.conquistada{opacity:1;}
+  .badge-card .ic-wrap{width:52px;height:52px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;
+    justify-content:center;margin:0 auto 10px;color:var(--accent);}
+  .badge-card.conquistada .ic-wrap{background:linear-gradient(135deg,var(--wine),var(--gold));color:#fff;}
+  .badge-card h4{font-size:.82rem;margin-bottom:4px;}
+  .badge-card p{font-size:.72rem;color:var(--muted);margin:0;line-height:1.4;}
+  .loja-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);}
+  .loja-item:last-child{border-bottom:none;}
+
+  /* gestao */
+  table.tabela{width:100%;border-collapse:collapse;font-size:.8rem;}
+  table.tabela th{text-align:left;color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.03em;padding:8px 10px;border-bottom:1px solid var(--border-strong);}
+  table.tabela td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .risco-dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .risco-dot.verde{background:var(--success);}
+  .risco-dot.amarelo{background:var(--gold);}
+  .risco-dot.vermelho{background:var(--danger);}
+  .tabs-h{display:flex;gap:4px;border-bottom:1px solid var(--border-strong);margin-bottom:18px;}
+  .tabs-h button{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--muted);
+    padding:9px 14px;font-size:.82rem;font-weight:600;cursor:pointer;}
+  .tabs-h button.active{color:var(--primary);border-color:var(--primary);}
+
+  /* editor */
+  .conteudo-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+  .conteudo-row:last-child{border-bottom:none;}
+  .conteudo-row .info{flex:1 1 auto;}
+  .conteudo-row .info b{font-size:.85rem;}
+  .conteudo-row .info .meta{font-size:.72rem;color:var(--muted);margin-top:3px;}
+  .form-field{margin-bottom:14px;}
+  .form-field label{display:block;font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:5px;}
+  .form-field input, .form-field select, .form-field textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:8px;color:var(--text);
+    padding:9px 11px;font-size:.85rem;font-family:inherit;
+  }
+  .form-field textarea{min-height:80px;resize:vertical;}
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+  .modal-back.on{display:flex;}
+  .modal-box{background:var(--bg-elev);border-radius:var(--radius);max-width:640px;width:100%;max-height:88vh;overflow-y:auto;
+    padding:24px;border:1px solid var(--border-strong);box-shadow:var(--shadow);}
+  .modal-box h3{margin-bottom:16px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
+  #search-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-start;justify-content:center;
+    padding-top:10vh;z-index:70;}
+  #search-modal.on{display:flex;}
+  .search-box{background:var(--bg-elev);border-radius:14px;width:100%;max-width:560px;border:1px solid var(--border-strong);
+    box-shadow:var(--shadow);overflow:hidden;}
+  .search-box input{width:100%;border:none;background:transparent;color:var(--text);padding:16px 18px;font-size:1rem;border-bottom:1px solid var(--border);}
+  .search-results{max-height:50vh;overflow-y:auto;}
+  .search-results .res{padding:12px 18px;cursor:pointer;border-bottom:1px solid var(--border);}
+  .search-results .res:hover, .search-results .res.sel{background:var(--panel-2);}
+  .search-results .res small{display:block;color:var(--muted);font-size:.7rem;margin-top:2px;}
+
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--bg-elev);border:1px solid var(--border-strong);
+    color:var(--text);padding:11px 18px;border-radius:10px;font-size:.82rem;box-shadow:var(--shadow);z-index:80;display:none;}
+  #toast.on{display:block;}
+
+  @media(max-width:860px){
+    #btn-menu{display:flex;}
+    #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);}
+    #sidebar.on{transform:translateX(0);}
+    #content{padding:18px;}
+    .jornada-hero{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate"></div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-brand">
+      <div class="mark">FB</div>
+      <h1>Academia FB</h1>
+      <p>Treinamento que transforma procedimento em excelência.</p>
+    </div>
+    <div class="login-note">
+      <b>Aba de teste — modo de demonstração.</b> Esta versão ainda não está conectada ao banco de dados real do Portal
+      nem publicada para os colaboradores. Escolha um usuário fictício abaixo para navegar pela plataforma; todo o
+      progresso é salvo apenas neste navegador, para avaliação.
+    </div>
+    <div class="login-grid" id="login-grid"></div>
+  </div>
+</div>
+
+<div id="app-shell">
+  <div id="drawer-overlay"></div>
+  <aside id="sidebar">
+    <div class="side-brand">
+      <div class="mark">FB</div>
+      <div><strong>Academia FB</strong><span>Fonseca e Braga</span></div>
+    </div>
+    <nav class="side-nav" id="side-nav"></nav>
+    <div class="side-foot">
+      <button class="btn-reset-demo" id="btn-reset-demo">Reiniciar dados de demonstração</button>
+    </div>
+  </aside>
+
+  <div id="main-col">
+    <div class="demo-banner">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86l-8.16 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.87-3.14l-8.16-14a2 2 0 0 0-3.42 0z"/></svg>
+      Modo demonstração — dados fictícios, sem conexão com o banco de dados de produção.
+    </div>
+    <header id="topbar">
+      <button id="btn-menu" aria-label="Abrir menu">
+        <svg class="ic" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="busca-wrap">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="global-search" placeholder="Buscar missões, trilhas, materiais…" readonly>
+        <span class="kbd-hint">Ctrl+K</span>
+      </div>
+      <div class="topbar-user">
+        <div class="info"><b id="tb-nome"></b><span id="tb-papel"></span></div>
+        <div class="avatar" id="tb-avatar"></div>
+        <button id="btn-sair">Sair</button>
+      </div>
+    </header>
+    <main id="content"><div class="content-inner" id="content-inner"></div></main>
+  </div>
+</div>
+
+<div id="search-modal">
+  <div class="search-box">
+    <input id="search-input" placeholder="Digite para buscar em toda a Academia FB…">
+    <div class="search-results" id="search-results"></div>
+  </div>
+</div>
+
+<div class="modal-back" id="modal-back">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+
+/* ============================= ÍCONES SVG (linha, sem emoji) ============================= */
+const ICONS = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+  trilha:'<path d="M4 4v16"/><path d="M4 6h11l-2 3 2 3H4"/>',
+  missao:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/>',
+  biblioteca:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  ranking:'<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3a4 4 0 0 1-3 6"/><path d="M7 5H4a4 4 0 0 0 3 6"/>',
+  conquista:'<circle cx="12" cy="8" r="5"/><path d="M8.5 12.5L7 22l5-3 5 3-1.5-9.5"/>',
+  loja:'<path d="M6 8h12l1 12H5z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  certificado:'<circle cx="12" cy="8" r="5"/><path d="M9 12.5L7.5 22 12 19l4.5 3L15 12.5"/>',
+  perfil:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
+  gestao:'<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8 12h8M8 16h5"/>',
+  editor:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  config:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/>',
+  relogio:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  escudo:'<path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/>',
+  documento:'<path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/><path d="M9 13h6M9 17h6"/>',
+  fone:'<path d="M22 16.9v2a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 1h2a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7 8.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z"/>',
+  predio:'<path d="M4 21V7l8-4 8 4v14z"/><path d="M9 21v-6h6v6"/><path d="M9 11h.01M15 11h.01M9 15h.01M15 15h.01"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  seta_dir:'<path d="M9 6l6 6-6 6"/>',
+  cima:'<path d="M18 15l-6-6-6 6"/>',
+  baixo:'<path d="M6 9l6 6 6-6"/>',
+  alerta:'<path d="M12 9v4M12 17h.01M10.29 3.86l-8.16 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.87-3.14l-8.16-14a2 2 0 0 0-3.42 0z"/>',
+  raio:'<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
+  moeda:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5c0-1.5 1.3-2 3-2s3 .8 3 2-1.3 1.7-3 2-3 .7-3 2 1.3 2 3 2 3-.5 3-2"/>',
+  coroa:'<path d="M3 18h18l-1.5-9-4 3-2.5-5-2.5 5-4-3z"/>',
+  play:'<circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z"/>',
+  bloco:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
+  duplicar:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+};
+function ic(name, extra){ return '<svg class="ic'+(extra?(' '+extra):'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[name]||'')+'</svg>'; }
+
+/* ============================= DADOS BASE ============================= */
+const DEMO_USERS = [
+  {id:'jonathan', nome:'Jonathan Fonseca', papel:'administrador', cargo:'Sócio-Administrador', depto:'Direção', cor:'#782F46'},
+  {id:'micaela',  nome:'Dra. Micaela',     papel:'gestor',        cargo:'Gestora de Equipe',    depto:'Contencioso Cível', cor:'#9B405D'},
+  {id:'yasmin',   nome:'Dra. Yasmin',      papel:'colaborador',   cargo:'Advogada',             depto:'Contencioso Cível', cor:'#287254'},
+  {id:'akira',    nome:'Akira',            papel:'colaborador',   cargo:'Estagiário',           depto:'Rotina Processual', cor:'#C59D60'},
+  {id:'erika',    nome:'Dra. Erika',       papel:'autor',         cargo:'Autora de Conteúdo / Compliance', depto:'Compliance', cor:'#B33B4B'},
+];
+
+const NPCS = {
+  helena:     {nome:'Dra. Helena', papel:'Sócia Fundadora',        cor:'#782F46', frase:'Excelência é rotina bem feita, repetida com atenção.'},
+  marina:     {nome:'Marina',      papel:'Recepção e Atendimento', cor:'#9B405D', frase:'O primeiro contato define a confiança de todo o processo.'},
+  rafael:     {nome:'Rafael',      papel:'Advogado Pleno',         cor:'#287254', frase:'Prazo perdido não se recupera — organização é proteção ao cliente.'},
+  camila:     {nome:'Camila',      papel:'Administrativo/Financeiro', cor:'#B48640', frase:'Todo processo tem um custo — cuide dele como se fosse seu.'},
+  caio:       {nome:'Caio',        papel:'Estagiário',             cor:'#C59D60', frase:'Errei, aprendi, e a Academia me mostrou onde rever.'},
+  assistente: {nome:'Assistente FB', papel:'Guia da Academia',     cor:'#73798A', frase:'Estou aqui para te acompanhar em cada missão.'},
+};
+
+const TRILHAS = [
+  {id:'atendimento',   nome:'Atendimento ao Cliente e Comunicação', icone:'fone',      cor:'#9B405D', subtemas:['Recepção e primeiro contato','Tom de voz e linguagem','Gestão de expectativas','Reclamações e crises']},
+  {id:'prazos',        nome:'Prazos e Rotina Processual',           icone:'relogio',   cor:'#287254', subtemas:['Intimações e prazos','Contagem em dias úteis','Protocolo e distribuição','Agenda e audiências']},
+  {id:'etica',         nome:'Sigilo, Ética e Compliance',           icone:'escudo',    cor:'#782F46', subtemas:['Sigilo profissional','LGPD no dia a dia','Conflito de interesses','Código de Ética da OAB']},
+  {id:'documentos',    nome:'Documentos e Redação Jurídica',        icone:'documento', cor:'#C59D60', subtemas:['Estrutura de peças','Revisão e formatação','Modelos e minutas','Erros comuns']},
+  {id:'institucional', nome:'Cultura e Organização do Escritório',  icone:'predio',    cor:'#B48640', subtemas:['História e valores do FB','Organograma e fluxos','Ferramentas do Portal','Boas práticas internas']},
+];
+
+const LEVELS = [
+  {min:0,    nome:'Início de Jornada'},
+  {min:100,  nome:'Operador em Formação'},
+  {min:250,  nome:'Profissional Confiável'},
+  {min:500,  nome:'Especialista de Rotina'},
+  {min:900,  nome:'Referência Técnica'},
+  {min:1400, nome:'Guardião de Qualidade'},
+  {min:2000, nome:'Mestre FB'},
+];
+function nivelInfo(xp){
+  let idx = 0;
+  for(let i=0;i<LEVELS.length;i++){ if(xp>=LEVELS[i].min) idx=i; }
+  const atual = LEVELS[idx], prox = LEVELS[idx+1] || null;
+  const pct = prox ? Math.round(((xp-atual.min)/(prox.min-atual.min))*100) : 100;
+  return {nome:atual.nome, indice:idx+1, proxNome:prox?prox.nome:null, faltam:prox?(prox.min-xp):0, pct:Math.max(4,pct)};
+}
+
+const BADGES = [
+  {id:'primeiro-passo',      nome:'Primeiro Passo',       desc:'Concluiu a primeira missão da Academia FB.', icone:'check'},
+  {id:'sequencia-ferro',     nome:'Sequência de Ferro',   desc:'Manteve 4 semanas seguidas de atividade.', icone:'raio'},
+  {id:'guardiao-prazo',      nome:'Guardião do Prazo',    desc:'Concluiu toda a trilha de Prazos e Rotina Processual.', icone:'relogio'},
+  {id:'voz-cliente',         nome:'Voz do Cliente',       desc:'Concluiu toda a trilha de Atendimento ao Cliente.', icone:'fone'},
+  {id:'sigilo-absoluto',     nome:'Sigilo Absoluto',      desc:'Concluiu toda a trilha de Sigilo, Ética e Compliance.', icone:'escudo'},
+  {id:'redator-afiado',      nome:'Redator Afiado',       desc:'Concluiu toda a trilha de Documentos e Redação Jurídica.', icone:'documento'},
+  {id:'alma-da-casa',        nome:'Alma da Casa',         desc:'Concluiu a trilha institucional do escritório.', icone:'predio'},
+  {id:'pontuacao-perfeita',  nome:'Pontuação Perfeita',   desc:'Obteve 100% em uma missão de cenário ramificado.', icone:'conquista'},
+  {id:'mentor-em-formacao',  nome:'Mentor em Formação',   desc:'Atribuiu uma trilha a um colega (gestor/admin).', icone:'gestao'},
+  {id:'mestre-fb',           nome:'Mestre FB',            desc:'Alcançou o nível máximo da Academia FB.', icone:'coroa'},
+];
+
+const MATERIAIS = [
+  {id:'mat1', trilha:'atendimento', tipo:'checklist', titulo:'Checklist de Atendimento Telefônico', resumo:'Passo a passo para receber, registrar e encaminhar chamadas de clientes com consistência.'},
+  {id:'mat2', trilha:'prazos', tipo:'artigo', titulo:'Como contar prazos em dias úteis (CPC art. 219)', resumo:'Explicação prática de como contar prazos processuais em dias úteis, com exemplos do dia a dia do escritório.'},
+  {id:'mat3', trilha:'etica', tipo:'artigo', titulo:'Sigilo profissional no uso do WhatsApp e e-mail', resumo:'Boas práticas para não expor dados de clientes em canais informais de comunicação.'},
+  {id:'mat4', trilha:'documentos', tipo:'modelo', titulo:'Modelo de checklist de revisão de petição', resumo:'Itens obrigatórios a revisar antes de protocolar qualquer peça: partes, valor da causa, pedidos, anexos.'},
+  {id:'mat5', trilha:'institucional', tipo:'artigo', titulo:'Como o Portal Fonseca e Braga está organizado', resumo:'Visão geral das abas do Portal e onde encontrar cada rotina do escritório.'},
+  {id:'mat6', trilha:'etica', tipo:'checklist', titulo:'Checklist de conflito de interesses (EAOAB art. 17)', resumo:'Perguntas a fazer antes de aceitar um novo caso para verificar conflito com clientes atuais.'},
+  {id:'mat7', trilha:'prazos', tipo:'modelo', titulo:'Modelo de agenda de audiência (D-7 / D-1)', resumo:'Roteiro de preparação com etapas a cumprir antes de cada audiência.'},
+  {id:'mat8', trilha:'atendimento', tipo:'artigo', titulo:'Gestão de expectativas: o que dizer e o que evitar', resumo:'Frases recomendadas e frases a evitar ao explicar andamento de processo a um cliente ansioso.'},
+];
+
+/* ============================= MISSÕES ============================= */
+const MISSOES = [
+  {
+    id:'m1', tipo:'cenario', trilha:'atendimento', titulo:'O Cliente Insatisfeito ao Telefone',
+    risco:'medio', obrigatorio:true, tempoMin:8, personagem:'marina', xp:40, creditos:15,
+    competencias:['Comunicação empática','Gestão de expectativas'],
+    materiais:['mat1','mat8'],
+    resumo:'Um cliente liga alterado porque não recebeu retorno sobre o andamento do processo há duas semanas. Marina precisa decidir como conduzir a ligação.',
+    passos:[
+      {situacao:'O cliente diz, em tom elevado: "Ninguém me avisa de nada! Vocês esqueceram do meu processo?" Como você inicia a resposta?',
+        opcoes:[
+          {texto:'Pedir desculpas e transferir imediatamente para o advogado, sem ouvir mais nada.', correta:false, pontos:0,
+            feedback:{resultado:'O cliente continua sem nenhuma resposta imediata e sente que "empurraram" o problema.', risco:'Perda de confiança e possível reclamação formal ao sócio responsável.', correto:'Ouça o cliente por completo, valide a frustração e verifique o que já pode ser esclarecido antes de encaminhar.', fonte:'Checklist de Atendimento Telefônico, item 2'}},
+          {texto:'Dizer com calma: "Entendo sua preocupação. Vou verificar agora o andamento e te explicar exatamente onde o processo está."', correta:true, pontos:10,
+            feedback:{resultado:'O cliente se acalma ao perceber que está sendo ouvido e que haverá uma resposta concreta.', risco:'Nenhum — conduta alinhada ao protocolo de atendimento.', correto:'Validar a emoção do cliente antes de resolver o problema técnico evita que a ligação escale.', fonte:'Checklist de Atendimento Telefônico, item 1'}},
+          {texto:'Explicar que o escritório está com muitos processos e pedir paciência.', correta:false, pontos:2,
+            feedback:{resultado:'O cliente entende que o problema dele não é prioridade.', risco:'Cliente pode considerar buscar outro escritório.', correto:'Nunca use o volume de trabalho do escritório como justificativa para a falta de retorno ao cliente.', fonte:'Gestão de expectativas: o que dizer e o que evitar'}},
+        ]},
+      {situacao:'Você consulta o sistema e vê que o processo está aguardando uma perícia agendada pelo fórum, sem previsão exata. O que você diz ao cliente?',
+        opcoes:[
+          {texto:'"Está tudo certo, não se preocupe, logo sai." (sem detalhar o motivo real)', correta:false, pontos:0,
+            feedback:{resultado:'O cliente sente que a resposta é genérica e não confia nela.', risco:'Se demorar mais, o cliente vai considerar que foi enganado.', correto:'Seja específico: diga a fase exata em que o processo está e o que depende de terceiros (como o fórum).', fonte:'Gestão de expectativas: o que dizer e o que evitar'}},
+          {texto:'Explicar que o processo aguarda perícia marcada pelo fórum, que esse prazo não depende do escritório, e informar que a equipe vai avisar assim que houver data.', correta:true, pontos:10,
+            feedback:{resultado:'O cliente entende a causa real da demora e sente que está sendo informado com transparência.', risco:'Nenhum — conduta transparente reduz novas ligações de cobrança.', correto:'Sempre explique o que está fora do controle do escritório, sem transferir a responsabilidade de forma vaga.', fonte:'Checklist de Atendimento Telefônico, item 3'}},
+        ]},
+      {situacao:'O cliente pergunta se pode falar diretamente com a Dra. Helena. Você não sabe se ela está disponível agora. Como agir?',
+        opcoes:[
+          {texto:'Dizer que ela nunca atende clientes diretamente.', correta:false, pontos:0,
+            feedback:{resultado:'O cliente sente que está sendo barrado sem motivo.', risco:'Impressão de que o escritório é hierárquico e pouco acessível.', correto:'Verifique a agenda antes de negar; se não for possível agora, ofereça um horário de retorno.', fonte:'Checklist de Atendimento Telefônico, item 4'}},
+          {texto:'Registrar o pedido, verificar a agenda da Dra. Helena e retornar ao cliente com um horário confirmado de contato.', correta:true, pontos:10,
+            feedback:{resultado:'O cliente recebe um compromisso concreto de retorno.', risco:'Nenhum — segue o protocolo de escalonamento do atendimento.', correto:'Encaminhar com um horário definido é mais eficaz do que prometer "assim que possível".', fonte:'Checklist de Atendimento Telefônico, item 4'}},
+        ]},
+    ],
+  },
+  {
+    id:'m2', tipo:'diagnostico', trilha:'documentos', titulo:'Onde Está o Erro na Petição?',
+    risco:'alto', obrigatorio:true, tempoMin:6, personagem:'rafael', xp:35, creditos:12,
+    competencias:['Revisão técnica','Atenção a detalhes'],
+    materiais:['mat4'],
+    resumo:'Rafael pede para você revisar o início de uma petição inicial antes do protocolo. Encontre o erro que pode gerar indeferimento.',
+    trecho:'"EXCELENTÍSSIMO SENHOR DOUTOR JUIZ DE DIREITO DA VARA CÍVEL...\nRequerente: João da Silva\nRequerido: [não informado]\nValor da causa: R$ 5.000,00\n\nOs fatos: o requerido deixou de pagar o débito combinado..."',
+    opcoes:[
+      {texto:'O valor da causa está errado.', correta:false, feedback:'O valor pode estar correto para o caso descrito; não há dado suficiente para afirmar isso.'},
+      {texto:'Falta a qualificação completa do réu (requerido não identificado).', correta:true, feedback:'Correto. A petição inicial exige a qualificação das partes (CPC art. 319, II). Sem isso, a petição pode ser indeferida ou determinada emenda.'},
+      {texto:'O tratamento "Excelentíssimo" está incorreto.', correta:false, feedback:'O vocativo está correto para petições dirigidas ao juízo.'},
+      {texto:'Não há erro nesse trecho.', correta:false, feedback:'Há sim um erro relevante: a ausência da qualificação do requerido.'},
+    ],
+  },
+  {
+    id:'m3', tipo:'ordenacao', trilha:'prazos', titulo:'Monte o Fluxo de Recebimento de Intimação',
+    risco:'alto', obrigatorio:true, tempoMin:6, personagem:'rafael', xp:35, creditos:12,
+    competencias:['Organização processual','Cumprimento de prazos'],
+    materiais:['mat2'],
+    resumo:'Coloque em ordem correta os passos que devem ser seguidos assim que uma intimação chega ao escritório.',
+    ordemCorreta:[
+      'Ler a intimação por completo e identificar o ato exigido',
+      'Calcular a data fatal considerando dias úteis (CPC art. 219)',
+      'Registrar o prazo na agenda do escritório com alerta prévio',
+      'Comunicar o advogado responsável pelo processo',
+      'Preparar a manifestação ou peça exigida dentro do prazo',
+    ],
+    feedbackFinal:{correto:'Essa ordem garante que nenhum prazo seja calculado ou perdido por falta de comunicação interna.', fonte:'Modelo de agenda de audiência (D-7/D-1)'},
+  },
+  {
+    id:'m4', tipo:'documento', trilha:'atendimento', titulo:'Qual Documento Enviar ao Cliente?',
+    risco:'baixo', obrigatorio:false, tempoMin:5, personagem:'camila', xp:25, creditos:10,
+    competencias:['Conhecimento de rotina','Atendimento'],
+    materiais:['mat1'],
+    resumo:'Um cliente pede, por e-mail, uma cópia da sentença do processo dele, já publicada. Qual documento você deve providenciar?',
+    opcoes:[
+      {texto:'Um relatório informal escrito por você, resumindo a decisão.', correta:false, feedback:'Um resumo informal não substitui o documento oficial que o cliente tem direito de receber.'},
+      {texto:'A cópia da sentença extraída diretamente do sistema/processo eletrônico.', correta:true, feedback:'Correto. O cliente tem direito à cópia oficial do documento processual; um resumo não é suficiente.'},
+      {texto:'A procuração assinada pelo cliente.', correta:false, feedback:'A procuração não tem relação com o pedido do cliente.'},
+      {texto:'Nenhum documento — basta explicar por telefone.', correta:false, feedback:'O cliente pediu explicitamente uma cópia; a explicação verbal não atende ao pedido.'},
+    ],
+  },
+  {
+    id:'m5', tipo:'prazo', trilha:'prazos', titulo:'Contando os Dias Úteis',
+    risco:'alto', obrigatorio:true, tempoMin:7, personagem:'rafael', xp:35, creditos:12,
+    competencias:['Contagem de prazos','Cumprimento de prazos'],
+    materiais:['mat2'],
+    resumo:'Uma intimação foi disponibilizada eletronicamente numa sexta-feira. O prazo é de 15 dias úteis. Considerando apenas sábados e domingos como não úteis (este treinamento não computa feriados forenses específicos), a partir de qual dia a contagem começa e quantos dias corridos ela normalmente ocupará?',
+    contexto:'Disponibilização: sexta-feira. Prazo: 15 dias úteis. Regra: considerar apenas sábados/domingos como dias não úteis, sem feriados neste exercício.',
+    opcoes:[
+      {texto:'A contagem começa no mesmo dia da disponibilização e ocupa exatamente 15 dias corridos.', correta:false, feedback:'A contagem só começa no primeiro dia útil seguinte à publicação (CPC art. 224, §2º), nunca no próprio dia.'},
+      {texto:'A contagem começa no primeiro dia útil seguinte à disponibilização e, por pular fins de semana, ocupará mais de 15 dias corridos no calendário.', correta:true, feedback:'Correto. O prazo em dias úteis começa a correr no primeiro dia útil seguinte e, como pula sábados e domingos, o prazo final cai bem depois do 15º dia corrido.'},
+      {texto:'A contagem é sempre em dias corridos, independentemente do que diz a intimação.', correta:false, feedback:'Desde a reforma do CPC de 2015, prazos processuais contam-se em dias úteis, salvo exceções legais.'},
+    ],
+  },
+  {
+    id:'m6', tipo:'revisao', trilha:'etica', titulo:'Revisão Relâmpago: Sigilo e LGPD',
+    risco:'medio', obrigatorio:false, tempoMin:5, personagem:'erika_npc', xp:20, creditos:8,
+    competencias:['Sigilo profissional','LGPD'],
+    materiais:['mat3','mat6'],
+    resumo:'Revisão rápida de conceitos essenciais de sigilo profissional e LGPD para o dia a dia do escritório.',
+    flashcards:[
+      {frente:'Posso comentar detalhes de um caso em grupos de família no WhatsApp?', verso:'Não. Isso viola o sigilo profissional (EAOAB) e pode configurar vazamento de dados pessoais sob a LGPD.'},
+      {frente:'Um estagiário pode acessar qualquer pasta de cliente, mesmo sem estar atuando nela?', verso:'Não. O acesso deve ser restrito a quem efetivamente trabalha no caso, por sigilo e por boas práticas de LGPD.'},
+      {frente:'Documentos de clientes podem ser enviados por e-mail pessoal para "adiantar o trabalho em casa"?', verso:'Não. Apenas canais e contas institucionais do escritório devem ser usados para dados de clientes.'},
+    ],
+    perguntasRapidas:[
+      {texto:'Enviar um documento de cliente para o e-mail pessoal é uma prática segura.', correta:false},
+      {texto:'O sigilo profissional se aplica mesmo após o fim do contrato com o cliente.', correta:true},
+      {texto:'Comentar um caso com um colega de outro departamento, sem necessidade, é aceitável.', correta:false},
+    ],
+  },
+  {
+    id:'m7', tipo:'video', trilha:'institucional', titulo:'Um Dia na Recepção',
+    risco:'baixo', obrigatorio:false, tempoMin:6, personagem:'marina', xp:25, creditos:10,
+    competencias:['Cultura institucional','Atendimento'],
+    materiais:['mat5'],
+    resumo:'Uma narrativa interativa (em formato de roteiro, sem vídeo real ainda disponível) acompanhando Marina em um dia comum na recepção do escritório.',
+    cenas:[
+      {rotulo:'Cena 1 — Chegada', texto:'Marina chega às 8h e revisa a agenda de audiências e visitas do dia antes de abrir o balcão de atendimento.'},
+      {rotulo:'Cena 2 — Primeira visita', texto:'Um cliente chega sem horário marcado, pedindo para falar "com qualquer advogado disponível".',
+        pergunta:{texto:'O que Marina deve fazer primeiro?', opcoes:[
+          {texto:'Recusar o atendimento por falta de agendamento.', correta:false, feedback:'O escritório sempre acolhe o cliente e verifica a possibilidade de encaixe, mesmo sem agendamento prévio.'},
+          {texto:'Acolher o cliente, verificar o motivo da visita e checar a disponibilidade da equipe.', correta:true, feedback:'Correto. Acolher e entender a urgência antes de decidir o encaminhamento é a prática institucional do FB.'},
+        ]}},
+      {rotulo:'Cena 3 — Encerramento do dia', texto:'Antes de sair, Marina atualiza o registro de visitas e confirma as audiências do dia seguinte com a equipe.'},
+    ],
+  },
+  {
+    id:'m8', tipo:'cenario', trilha:'documentos', titulo:'A Decisão da Dra. Helena',
+    risco:'alto', obrigatorio:true, tempoMin:9, personagem:'helena', xp:50, creditos:20,
+    competencias:['Ética profissional','Revisão técnica','Tomada de decisão'],
+    materiais:['mat4','mat6'],
+    resumo:'A Dra. Helena percebe, na véspera do protocolo, que uma peça foi montada usando um modelo desatualizado e pede sua ajuda para decidir o que fazer.',
+    passos:[
+      {situacao:'A peça está tecnicamente correta, mas cita um dispositivo legal já revogado. O prazo de protocolo vence amanhã. O que fazer?',
+        opcoes:[
+          {texto:'Protocolar assim mesmo, já que "provavelmente ninguém vai notar".', correta:false, pontos:0,
+            feedback:{resultado:'A peça é protocolada com um fundamento legal inválido.', risco:'Risco de indeferimento do pedido e de responsabilização por falha técnica.', correto:'Nunca protocole uma peça com fundamento sabidamente desatualizado; corrigir antes é sempre mais seguro que assumir o risco.', fonte:'Modelo de checklist de revisão de petição'}},
+          {texto:'Avisar imediatamente a Dra. Helena e propor corrigir o dispositivo antes do protocolo, mesmo que isso exija trabalhar até mais tarde.', correta:true, pontos:15,
+            feedback:{resultado:'A peça é corrigida a tempo e protocolada com segurança.', risco:'Nenhum — o problema foi identificado e resolvido antes de gerar dano ao cliente.', correto:'Transparência imediata sobre um erro identificado é sempre a conduta esperada, mesmo sob pressão de prazo.', fonte:'Checklist de conflito de interesses / cultura de transparência do FB'}},
+        ]},
+      {situacao:'A Dra. Helena elogia por você ter percebido o erro e pergunta como o modelo desatualizado chegou a ser usado. Como você responde?',
+        opcoes:[
+          {texto:'Culpar quem elaborou o modelo original.', correta:false, pontos:0,
+            feedback:{resultado:'A conversa se torna defensiva, sem melhorar o processo.', risco:'Cultura de medo desestimula reportar erros no futuro.', correto:'Foque em identificar a causa (modelo desatualizado na biblioteca) e não em atribuir culpa.', fonte:'Cultura e valores do FB'}},
+          {texto:'Sugerir que o modelo seja atualizado na Biblioteca de Conhecimento para evitar o mesmo erro no futuro.', correta:true, pontos:15,
+            feedback:{resultado:'O modelo é corrigido na biblioteca e o erro não se repete com outros colegas.', risco:'Nenhum — a resposta melhora o processo institucional.', correto:'Erros pontuais devem virar melhoria de processo, não apenas correção isolada.', fonte:'Cultura e valores do FB'}},
+        ]},
+    ],
+  },
+];
+
+/* ============================= ESTADO / ARMAZENAMENTO LOCAL ============================= */
+/* Modo demonstração: sem Firestore ainda. Os nomes abaixo espelham as coleções
+   que serão usadas quando a Academia FB for conectada ao banco real:
+   academiaConteudo, academiaTrilhas, academiaMissoes, academiaProgresso,
+   academiaTentativas, academiaConquistas, academiaCertificados,
+   academiaAtribuicoes, academiaMateriais, academiaPerfilPublico, academiaConfiguracoes */
+const LS_KEY = 'academiaFB_demo_v1';
+
+function estadoPadrao(){
+  const usuarios = {};
+  DEMO_USERS.forEach(function(u){
+    usuarios[u.id] = {xp:0, creditos:0, streakSemanas:0, ultimaSemanaAtiva:null, badges:[], cosmeticoAtivo:null,
+      comprados:[], progresso:{}, certificadosEmitidos:[]};
+  });
+  // progresso semeado para tornar ranking/gestão realistas
+  function completar(uid, missaoId, pontos){
+    const m = MISSOES.find(function(x){return x.id===missaoId;});
+    const max = maxPontosMissao(m);
+    usuarios[uid].progresso[missaoId] = {status:'concluida', pontuacao:pontos, pontuacaoMax:max, tentativas:1, concluidaEm:Date.now()-Math.floor(Math.random()*10)*86400000};
+    usuarios[uid].xp += m.xp;
+    usuarios[uid].creditos += m.creditos;
+  }
+  completar('yasmin','m1',20); completar('yasmin','m2',null); usuarios.yasmin.progresso.m2={status:'concluida',pontuacao:1,pontuacaoMax:1,tentativas:1,concluidaEm:Date.now()-5*86400000};
+  completar('yasmin','m3',null); usuarios.yasmin.progresso.m3={status:'concluida',pontuacao:5,pontuacaoMax:5,tentativas:1,concluidaEm:Date.now()-4*86400000};
+  completar('yasmin','m5',null); usuarios.yasmin.progresso.m5={status:'concluida',pontuacao:1,pontuacaoMax:1,tentativas:2,concluidaEm:Date.now()-2*86400000};
+  usuarios.yasmin.streakSemanas = 3;
+  usuarios.yasmin.badges = ['primeiro-passo'];
+
+  completar('akira','m4',null); usuarios.akira.progresso.m4={status:'concluida',pontuacao:1,pontuacaoMax:1,tentativas:1,concluidaEm:Date.now()-1*86400000};
+  usuarios.akira.streakSemanas = 1;
+  usuarios.akira.badges = ['primeiro-passo'];
+
+  completar('micaela','m1',30);
+  completar('micaela','m6',null); usuarios.micaela.progresso.m6={status:'concluida',pontuacao:3,pontuacaoMax:3,tentativas:1,concluidaEm:Date.now()-8*86400000};
+  usuarios.micaela.streakSemanas = 2;
+  usuarios.micaela.badges = ['primeiro-passo'];
+
+  usuarios.jonathan.streakSemanas = 0;
+  usuarios.erika.streakSemanas = 0;
+
+  return {
+    usuarios: usuarios,
+    conteudo: {missoes: JSON.parse(JSON.stringify(MISSOES))},
+    atribuicoes: [
+      {id:'a1', trilhaId:'etica', paraUid:'akira', deUid:'micaela', prazo: Date.now()+7*86400000, criadoEm: Date.now()-2*86400000},
+    ],
+    configuracoes: {notaMinimaAprovacao:70},
+  };
+}
+function maxPontosMissao(m){
+  if(m.tipo==='cenario') return m.passos.reduce(function(s,p){ return s + Math.max.apply(null, p.opcoes.map(function(o){return o.pontos;})); },0);
+  if(m.tipo==='diagnostico'||m.tipo==='documento'||m.tipo==='prazo') return 1;
+  if(m.tipo==='ordenacao') return m.ordemCorreta.length;
+  if(m.tipo==='revisao') return m.perguntasRapidas.length;
+  if(m.tipo==='video') return m.cenas.filter(function(c){return c.pergunta;}).length || 1;
+  return 1;
+}
+
+let DB = null;
+function carregarDB(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw) { DB = JSON.parse(raw); return; }
+  }catch(e){}
+  DB = estadoPadrao();
+  salvarDB();
+}
+function salvarDB(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){}
+}
+function resetarDemo(){
+  DB = estadoPadrao();
+  salvarDB();
+  toast('Dados de demonstração reiniciados.');
+  location.hash = '#/jornada';
+  render();
+}
+
+/* ============================= SESSÃO ============================= */
+let SESSAO = null; // {uid}
+function usuarioAtual(){ return DEMO_USERS.find(function(u){return u.id===SESSAO.uid;}); }
+function estadoAtual(){ return DB.usuarios[SESSAO.uid]; }
+
+function primeiroNome(nome){
+  return nome.replace(/^Dra?\.\s*/,'').split(' ')[0];
+}
+function iniciais(nome){
+  return nome.replace(/^Dra?\.\s*/,'').split(' ').slice(0,2).map(function(p){return p[0];}).join('').toUpperCase();
+}
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ el.classList.remove('on'); }, 3200);
+}
+
+function semanaISO(ts){
+  const d = new Date(ts);
+  const onejan = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil((((d-onejan)/86400000) + onejan.getDay()+1)/7);
+  return d.getFullYear()+'-W'+week;
+}
+
+/* ============================= LÓGICA DE GAMIFICAÇÃO ============================= */
+function registrarConclusao(uid, missaoId, pontuacao, pontuacaoMax){
+  const est = DB.usuarios[uid];
+  const m = MISSOES.find(function(x){return x.id===missaoId;});
+  const jaConcluida = est.progresso[missaoId] && est.progresso[missaoId].status==='concluida';
+  const tentativasAnteriores = (est.progresso[missaoId]&&est.progresso[missaoId].tentativas) || 0;
+
+  est.progresso[missaoId] = {
+    status:'concluida', pontuacao:pontuacao, pontuacaoMax:pontuacaoMax,
+    tentativas: tentativasAnteriores+1, concluidaEm: Date.now(),
+  };
+
+  if(!jaConcluida){
+    est.xp += m.xp;
+    est.creditos += m.creditos;
+  }
+
+  // streak semanal (não pune férias — só soma quando muda de semana ativa)
+  const semanaAtual = semanaISO(Date.now());
+  if(est.ultimaSemanaAtiva !== semanaAtual){
+    est.streakSemanas = (est.ultimaSemanaAtiva ? est.streakSemanas+1 : 1);
+    est.ultimaSemanaAtiva = semanaAtual;
+  }
+
+  // badges
+  const novos = [];
+  function dar(id){ if(est.badges.indexOf(id)===-1){ est.badges.push(id); novos.push(id); } }
+  if(Object.keys(est.progresso).filter(function(k){return est.progresso[k].status==='concluida';}).length===1) dar('primeiro-passo');
+  if(est.streakSemanas>=4) dar('sequencia-ferro');
+  if(pontuacaoMax>0 && pontuacao===pontuacaoMax && m.tipo==='cenario') dar('pontuacao-perfeita');
+  if(nivelInfo(est.xp).nome==='Mestre FB') dar('mestre-fb');
+  TRILHAS.forEach(function(t){
+    const missoesTrilha = MISSOES.filter(function(x){return x.trilha===t.id;});
+    const todasFeitas = missoesTrilha.length>0 && missoesTrilha.every(function(x){ return est.progresso[x.id] && est.progresso[x.id].status==='concluida'; });
+    if(todasFeitas){
+      if(t.id==='prazos') dar('guardiao-prazo');
+      if(t.id==='atendimento') dar('voz-cliente');
+      if(t.id==='etica') dar('sigilo-absoluto');
+      if(t.id==='documentos') dar('redator-afiado');
+      if(t.id==='institucional') dar('alma-da-casa');
+    }
+  });
+
+  salvarDB();
+  return novos;
+}
+
+function progressoTrilha(uid, trilhaId){
+  const missoes = MISSOES.filter(function(m){return m.trilha===trilhaId;});
+  const est = DB.usuarios[uid];
+  const feitas = missoes.filter(function(m){ return est.progresso[m.id] && est.progresso[m.id].status==='concluida'; });
+  return {total:missoes.length, feitas:feitas.length, pct: missoes.length? Math.round(feitas.length/missoes.length*100):0};
+}
+
+function mediaPontuacao(uid, trilhaId){
+  const missoes = MISSOES.filter(function(m){return m.trilha===trilhaId;});
+  const est = DB.usuarios[uid];
+  let somaPct=0, n=0;
+  missoes.forEach(function(m){
+    const p = est.progresso[m.id];
+    if(p && p.status==='concluida' && p.pontuacaoMax>0){ somaPct += (p.pontuacao/p.pontuacaoMax)*100; n++; }
+  });
+  return n? Math.round(somaPct/n) : null;
+}
+
+/* ============================= ROTEADOR ============================= */
+const ROTAS = [
+  {path:'jornada',      nome:'Minha Jornada',            icone:'home',        grupo:'principal'},
+  {path:'trilhas',      nome:'Trilhas',                  icone:'trilha',      grupo:'principal'},
+  {path:'missoes',      nome:'Todas as Missões',         icone:'missao',      grupo:'principal'},
+  {path:'biblioteca',   nome:'Biblioteca de Conhecimento', icone:'biblioteca', grupo:'principal'},
+  {path:'ranking',      nome:'Ranking',                  icone:'ranking',     grupo:'reconhecimento'},
+  {path:'conquistas',   nome:'Conquistas',                icone:'conquista',   grupo:'reconhecimento'},
+  {path:'loja',         nome:'Loja de Créditos FB',       icone:'loja',        grupo:'reconhecimento'},
+  {path:'certificados', nome:'Certificados',              icone:'certificado', grupo:'reconhecimento'},
+  {path:'perfil',       nome:'Meu Perfil',                icone:'perfil',      grupo:'conta'},
+  {path:'gestao',       nome:'Painel de Gestão',          icone:'gestao',      grupo:'conta', papeis:['gestor','administrador']},
+  {path:'editor',       nome:'Editor de Conteúdo',        icone:'editor',      grupo:'conta', papeis:['autor','administrador']},
+  {path:'config',       nome:'Configurações',              icone:'config',      grupo:'conta', papeis:['administrador']},
+];
+
+function rotasVisiveis(){
+  const papel = usuarioAtual().papel;
+  return ROTAS.filter(function(r){ return !r.papeis || r.papeis.indexOf(papel)!==-1; });
+}
+
+function montarSidebar(){
+  const nav = document.getElementById('side-nav');
+  let html = '';
+  let grupoAtual = null;
+  const nomesGrupo = {principal:'Treinamento', reconhecimento:'Reconhecimento', conta:'Conta e Gestão'};
+  rotasVisiveis().forEach(function(r){
+    if(r.grupo !== grupoAtual){ html += '<div class="grupo-titulo">'+nomesGrupo[r.grupo]+'</div>'; grupoAtual=r.grupo; }
+    html += '<button data-rota="'+r.path+'">'+ic(r.icone)+'<span>'+r.nome+'</span></button>';
+  });
+  nav.innerHTML = html;
+  Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+    b.addEventListener('click', function(){ location.hash = '#/'+b.getAttribute('data-rota'); fecharDrawer(); });
+  });
+}
+
+function rotaAtual(){
+  const h = location.hash.replace(/^#\//,'');
+  return h || 'jornada';
+}
+
+function render(){
+  const rota = rotaAtual();
+  const partes = rota.split('/');
+  const base = partes[0];
+
+  Array.prototype.forEach.call(document.querySelectorAll('#side-nav button'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-rota')===base);
+  });
+
+  const permitido = (base==='trilha' || base==='missao') || rotasVisiveis().some(function(r){return r.path===base;});
+  const el = document.getElementById('content-inner');
+  if(!permitido){ el.innerHTML = '<div class="empty">Esta área não está disponível para o seu perfil de acesso.</div>'; return; }
+
+  const map = {
+    jornada: renderJornada, trilhas: renderTrilhas, missoes: renderTodasMissoes,
+    biblioteca: renderBiblioteca, ranking: renderRanking, conquistas: renderConquistas,
+    loja: renderLoja, certificados: renderCertificados, perfil: renderPerfil,
+    gestao: renderGestao, editor: renderEditor, config: renderConfig,
+  };
+  if(base==='trilha' ) return renderTrilhaDetalhe(partes[1]);
+  if(base==='missao') return renderMissaoPlayer(partes[1]);
+  (map[base]||renderJornada)(partes.slice(1));
+}
+window.addEventListener('hashchange', render);
+
+/* ============================= PÁGINAS ============================= */
+function renderJornada(){
+  const est = estadoAtual(); const u = usuarioAtual();
+  const nv = nivelInfo(est.xp);
+  const pendentesObrigatorias = MISSOES.filter(function(m){ return m.obrigatorio && (!est.progresso[m.id] || est.progresso[m.id].status!=='concluida'); });
+  const proxima = pendentesObrigatorias[0];
+
+  let trilhaMenorProgresso = null, menorPct = 101;
+  TRILHAS.forEach(function(t){ const p = progressoTrilha(SESSAO.uid, t.id); if(p.pct<menorPct){ menorPct=p.pct; trilhaMenorProgresso=t; } });
+
+  const concluidas = Object.keys(est.progresso).filter(function(k){return est.progresso[k].status==='concluida';});
+  let revisaoSugerida = null;
+  if(concluidas.length){
+    const maisAntiga = concluidas.map(function(id){return {id:id, ts:est.progresso[id].concluidaEm};}).sort(function(a,b){return a.ts-b.ts;})[0];
+    revisaoSugerida = MISSOES.find(function(m){return m.id===maisAntiga.id;});
+  }
+
+  let html = '<div class="jornada-hero"><div>'+
+    '<div class="nivel-tag">Nível '+nv.indice+' de '+LEVELS.length+'</div>'+
+    '<h2>Olá, '+primeiroNome(u.nome)+'. Você está em: '+nv.nome+'</h2>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">'+
+      '<div class="stat-pill">'+ic('moeda')+' '+est.creditos+' Créditos FB</div>'+
+      '<div class="stat-pill">'+ic('raio')+' '+est.streakSemanas+' semana(s) seguidas</div>'+
+      '<div class="stat-pill">'+ic('conquista')+' '+est.badges.length+' conquistas</div>'+
+    '</div></div>'+
+    '<div class="xp-track"><div class="progress-bar"><i style="width:'+nv.pct+'%"></i></div>'+
+    '<small>'+est.xp+' XP'+(nv.proxNome? (' · faltam '+nv.faltam+' XP para '+nv.proxNome) : ' · nível máximo alcançado')+'</small></div>'+
+    '</div>';
+
+  html += '<h3 style="margin-bottom:12px;">Seu foco hoje</h3><div class="grid cols-3" style="margin-bottom:26px;">';
+  html += focoCard('Próxima obrigatória', proxima, 'Continue de onde parou nas trilhas obrigatórias.');
+  if(trilhaMenorProgresso){
+    const missaoDaTrilha = MISSOES.find(function(m){ return m.trilha===trilhaMenorProgresso.id && (!est.progresso[m.id]||est.progresso[m.id].status!=='concluida'); });
+    html += '<div class="card foco-card" style="border-left-color:'+trilhaMenorProgresso.cor+'" '+(missaoDaTrilha?('onclick="location.hash=\'#/missao/'+missaoDaTrilha.id+'\'"'):('onclick="location.hash=\'#/trilha/'+trilhaMenorProgresso.id+'\'"'))+'>'+
+      '<div class="tipo">Trilha em atraso</div><h4>'+trilhaMenorProgresso.nome+'</h4>'+
+      '<p>'+menorPct+'% concluído — vale a pena avançar aqui.</p></div>';
+  } else html += '<div class="card foco-card"><div class="tipo">Trilhas</div><h4>Tudo em dia</h4><p>Nenhuma trilha atrasada no momento.</p></div>';
+  html += focoCard('Revisão sugerida', revisaoSugerida, 'Reforce um conteúdo que você já concluiu há algum tempo.');
+  html += '</div>';
+
+  html += '<div class="grid cols-2">';
+  html += '<div class="card"><h3 style="margin-bottom:10px;">Progresso por trilha</h3>';
+  TRILHAS.forEach(function(t){
+    const p = progressoTrilha(SESSAO.uid, t.id);
+    html += '<div class="trilha-mini" style="cursor:pointer" onclick="location.hash=\'#/trilha/'+t.id+'\'">'+
+      '<div class="dot" style="background:'+t.cor+'">'+ic(t.icone)+'</div>'+
+      '<div class="info"><b>'+t.nome+'</b><div class="progress-bar"><i style="width:'+p.pct+'%"></i></div></div>'+
+      '<div style="font-size:.76rem;color:var(--muted);">'+p.feitas+'/'+p.total+'</div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="card"><h3 style="margin-bottom:10px;">Assistente FB</h3>'+
+    '<div class="npc-line"><div class="avatar" style="background:'+NPCS.assistente.cor+'">'+iniciais(NPCS.assistente.nome)+'</div>'+
+    '<div class="bubble"><b>'+NPCS.assistente.nome+'</b>'+dicaDoDia()+'</div></div>'+
+    '<button class="btn" style="margin-top:10px" onclick="location.hash=\'#/ranking\'">'+ic('ranking')+' Ver ranking da semana</button>'+
+    '</div>';
+  html += '</div>';
+
+  document.getElementById('content-inner').innerHTML = html;
+}
+function dicaDoDia(){
+  const dicas = [
+    'Lembre-se: missões de cenário valoram mais a decisão certa do que a resposta rápida.',
+    'Sua sequência semanal não quebra se você tirar alguns dias de descanso — ela conta por semana, não por dia.',
+    'Visite a Biblioteca de Conhecimento sempre que errar uma missão: lá tem o material que explica o porquê.',
+    'Créditos FB não afetam seu nível — eles servem para personalizar seu perfil na Loja.',
+  ];
+  return dicas[Math.floor(Date.now()/86400000) % dicas.length];
+}
+function focoCard(rotulo, m, vazio){
+  if(!m) return '<div class="card foco-card"><div class="tipo">'+rotulo+'</div><h4>Nada por aqui</h4><p>'+vazio+'</p></div>';
+  return '<div class="card foco-card" onclick="location.hash=\'#/missao/'+m.id+'\'">'+
+    '<div class="tipo">'+rotulo+'</div><h4>'+m.titulo+'</h4><p>'+(m.resumo||'').slice(0,100)+(m.resumo&&m.resumo.length>100?'…':'')+'</p>'+
+    '<div class="missao-meta" style="margin-top:8px;"><span class="tipo-chip">'+rotuloTipo(m.tipo)+'</span><span>'+m.tempoMin+' min</span></div></div>';
+}
+
+function rotuloTipo(t){
+  return {cenario:'Cenário', diagnostico:'Diagnóstico', ordenacao:'Ordenação', documento:'Escolha de Documento',
+    prazo:'Simulação de Prazo', revisao:'Revisão Rápida', video:'Narrativa Interativa'}[t] || t;
+}
+
+function renderTrilhas(){
+  let html = '<div class="page-head"><div><h2>Trilhas de Aprendizagem</h2><p>Cada trilha reúne missões sobre um tema essencial da rotina do escritório.</p></div></div>';
+  html += '<div class="grid cols-3">';
+  TRILHAS.forEach(function(t){
+    const p = progressoTrilha(SESSAO.uid, t.id);
+    html += '<div class="card trilha-card" onclick="location.hash=\'#/trilha/'+t.id+'\'">'+
+      '<div class="dot" style="background:'+t.cor+'">'+ic(t.icone)+'</div>'+
+      '<h3>'+t.nome+'</h3><p>'+t.subtemas.join(' · ')+'</p>'+
+      '<div class="progress-bar"><i style="width:'+p.pct+'%"></i></div>'+
+      '<div style="font-size:.75rem;color:var(--muted);margin-top:6px;">'+p.feitas+' de '+p.total+' missões concluídas</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+
+function renderTrilhaDetalhe(id){
+  const t = TRILHAS.find(function(x){return x.id===id;});
+  if(!t){ document.getElementById('content-inner').innerHTML = '<div class="empty">Trilha não encontrada.</div>'; return; }
+  const est = estadoAtual();
+  const missoes = MISSOES.filter(function(m){return m.trilha===id;});
+  const p = progressoTrilha(SESSAO.uid, id);
+  const media = mediaPontuacao(SESSAO.uid, id);
+
+  let html = '<button class="btn ghost sm" onclick="location.hash=\'#/trilhas\'">'+ic('seta_dir','')+' Voltar</button>';
+  html += '<div class="page-head" style="margin-top:10px;"><div><h2>'+t.nome+'</h2><p>Subtemas: '+t.subtemas.join(', ')+'</p></div>'+
+    '<div class="card" style="min-width:200px;"><div class="progress-bar"><i style="width:'+p.pct+'%"></i></div>'+
+    '<div style="font-size:.76rem;color:var(--muted);margin-top:6px;">'+p.feitas+'/'+p.total+' concluídas'+(media!==null?(' · média '+media+'%'):'')+'</div></div></div>';
+
+  html += '<div class="card">';
+  missoes.forEach(function(m){
+    const prog = est.progresso[m.id];
+    const concluida = prog && prog.status==='concluida';
+    html += '<div class="missao-row" onclick="location.hash=\'#/missao/'+m.id+'\'">'+
+      '<div class="missao-status-ic '+(concluida?'ok':'pendente')+'">'+ic(concluida?'check':'missao')+'</div>'+
+      '<div class="missao-body"><div class="missao-titulo">'+m.titulo+(m.obrigatorio?' <span style="color:var(--danger);font-size:.7rem;">• obrigatória</span>':'')+'</div>'+
+      '<div class="missao-meta"><span class="tipo-chip">'+rotuloTipo(m.tipo)+'</span><span>'+m.tempoMin+' min</span>'+
+      (concluida? ('<span>Pontuação: '+prog.pontuacao+'/'+prog.pontuacaoMax+'</span>') : '<span>Não iniciada</span>')+'</div></div>'+
+      ic('seta_dir')+'</div>';
+  });
+  if(!missoes.length) html += '<div class="empty">Nenhuma missão publicada nesta trilha ainda.</div>';
+  html += '</div>';
+
+  const cert = certificadoElegivel(id);
+  if(cert.elegivel){
+    html += '<div class="card" style="margin-top:16px;border-left:4px solid var(--success);">'+
+      '<h3 style="margin-bottom:6px;">Trilha concluída!</h3><p style="color:var(--muted);font-size:.85rem;">Você atingiu '+cert.media+'% de aproveitamento — acima do mínimo de '+DB.configuracoes.notaMinimaAprovacao+'% exigido.</p>'+
+      '<button class="btn primary" style="margin-top:10px" onclick="emitirCertificado(\''+id+'\')">'+ic('certificado')+' Emitir certificado</button></div>';
+  }
+
+  document.getElementById('content-inner').innerHTML = html;
+}
+
+function certificadoElegivel(trilhaId){
+  const p = progressoTrilha(SESSAO.uid, trilhaId);
+  const media = mediaPontuacao(SESSAO.uid, trilhaId);
+  const min = DB.configuracoes.notaMinimaAprovacao;
+  return {elegivel: p.pct===100 && media!==null && media>=min, media: media};
+}
+
+function renderTodasMissoes(){
+  const est = estadoAtual();
+  let html = '<div class="page-head"><div><h2>Todas as Missões</h2><p>Visão completa de todas as missões disponíveis, por trilha.</p></div></div>';
+  html += '<div class="card">';
+  MISSOES.forEach(function(m){
+    const prog = est.progresso[m.id];
+    const concluida = prog && prog.status==='concluida';
+    const trilha = TRILHAS.find(function(t){return t.id===m.trilha;});
+    html += '<div class="missao-row" onclick="location.hash=\'#/missao/'+m.id+'\'">'+
+      '<div class="missao-status-ic '+(concluida?'ok':'pendente')+'">'+ic(concluida?'check':'missao')+'</div>'+
+      '<div class="missao-body"><div class="missao-titulo">'+m.titulo+'</div>'+
+      '<div class="missao-meta"><span class="tipo-chip">'+rotuloTipo(m.tipo)+'</span><span>'+(trilha?trilha.nome:'')+'</span><span>'+m.tempoMin+' min</span></div></div>'+
+      ic('seta_dir')+'</div>';
+  });
+  html += '</div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+
+/* ---------- Motor de missões ---------- */
+let ESTADO_MISSAO = null; // estado volátil da missão em andamento
+
+function renderMissaoPlayer(id){
+  const m = MISSOES.find(function(x){return x.id===id;});
+  if(!m){ document.getElementById('content-inner').innerHTML = '<div class="empty">Missão não encontrada.</div>'; return; }
+  ESTADO_MISSAO = {missao:m, passo:0, pontos:0, respostas:[], finalizado:false};
+  desenharMissao();
+}
+
+window.addEventListener('beforeunload', function(e){
+  if(ESTADO_MISSAO && !ESTADO_MISSAO.finalizado && ESTADO_MISSAO.passo>0){
+    e.preventDefault(); e.returnValue='';
+  }
+});
+
+function sidebarMissaoHtml(m){
+  const trilha = TRILHAS.find(function(t){return t.id===m.trilha;});
+  const npc = NPCS[m.personagem] || NPCS.assistente;
+  return '<div class="card sidebar-missao">'+
+    '<div class="item"><b>Objetivo</b>'+ (m.resumo||'') +'</div>'+
+    '<div class="item"><b>Trilha</b>'+(trilha?trilha.nome:'')+'</div>'+
+    '<div class="item"><b>Competências</b>'+(m.competencias||[]).map(function(c){return '<span class="comp-tag">'+c+'</span>';}).join('')+'</div>'+
+    '<div class="item"><b>Tempo estimado</b>'+m.tempoMin+' minutos</div>'+
+    '<div class="item"><b>Risco se malfeito</b><span class="badge '+(m.risco==='alto'?'vermelho':m.risco==='medio'?'amarelo':'verde')+'">'+m.risco+'</span></div>'+
+    '<div class="item"><b>Personagem</b>'+npc.nome+' — '+npc.papel+'</div>'+
+    (m.materiais&&m.materiais.length? ('<div class="item"><b>Material relacionado</b>'+m.materiais.map(function(mid){ const mat=MATERIAIS.find(function(x){return x.id===mid;}); return mat? ('<div><a href="#/biblioteca" style="color:var(--primary);text-decoration:none;">'+mat.titulo+'</a></div>'):''; }).join('')+'</div>') : '')+
+    '</div>';
+}
+
+function desenharMissao(){
+  const m = ESTADO_MISSAO.missao;
+  const funcs = {cenario:desenharCenario, diagnostico:desenharDiagnostico, ordenacao:desenharOrdenacao,
+    documento:desenharDocumento, prazo:desenharPrazo, revisao:desenharRevisao, video:desenharVideo};
+  const corpo = (funcs[m.tipo]||desenharCenario)();
+  document.getElementById('content-inner').innerHTML =
+    '<button class="btn ghost sm" onclick="location.hash=\'#/trilha/'+m.trilha+'\'">'+ic('seta_dir')+' Sair da missão</button>'+
+    '<div class="page-head" style="margin-top:10px;"><div><h2>'+m.titulo+'</h2><span class="tipo-chip">'+rotuloTipo(m.tipo)+'</span></div></div>'+
+    '<div class="missao-layout"><div class="missao-main">'+corpo+'</div><div>'+sidebarMissaoHtml(m)+'</div></div>';
+}
+
+function npcBubble(chave, texto){
+  const npc = NPCS[chave]||NPCS.assistente;
+  return '<div class="npc-line"><div class="avatar" style="background:'+npc.cor+'">'+iniciais(npc.nome)+'</div>'+
+    '<div class="bubble"><b>'+npc.nome+'</b>'+texto+'</div></div>';
+}
+
+/* Tipo 1: Cenário ramificado */
+function desenharCenario(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO.passo >= m.passos.length) return telaResultadoCenario();
+  const passo = m.passos[ESTADO_MISSAO.passo];
+  const escolha = ESTADO_MISSAO._escolhaAtual;
+  let html = '<div class="card">'+npcBubble(m.personagem, passo.situacao)+'<div class="opcoes-lista">';
+  passo.opcoes.forEach(function(o, i){
+    const marcado = escolha!==undefined && escolha===i;
+    let cls='opcao-btn'+(marcado? (' escolhida '+(o.correta?'correta':'incorreta')) : '');
+    html += '<button class="'+cls+'" '+(escolha!==undefined?'disabled':'')+' onclick="escolherOpcaoCenario('+i+')">'+o.texto+'</button>';
+  });
+  html += '</div>';
+  if(escolha!==undefined){
+    const o = passo.opcoes[escolha];
+    html += '<div class="consequencia '+(o.correta?'correta':'incorreta')+'"><h4>'+(o.correta?'Conduta adequada':'Vamos analisar essa escolha')+'</h4>'+
+      '<div class="linha"><b>O que acontece:</b> '+o.feedback.resultado+'</div>'+
+      (o.correta?'':('<div class="linha"><b>Risco:</b> '+o.feedback.risco+'</div>'))+
+      '<div class="linha"><b>Conduta recomendada:</b> '+o.feedback.correto+'</div>'+
+      '<div class="linha"><b>Fonte:</b> '+o.feedback.fonte+'</div></div>'+
+      '<button class="btn primary" style="margin-top:14px" onclick="avancarPassoCenario()">Continuar '+ic('seta_dir')+'</button>';
+  }
+  html += '</div>';
+  return html;
+}
+window.escolherOpcaoCenario = function(i){
+  if(ESTADO_MISSAO._escolhaAtual!==undefined) return;
+  const m = ESTADO_MISSAO.missao, passo = m.passos[ESTADO_MISSAO.passo];
+  ESTADO_MISSAO._escolhaAtual = i;
+  ESTADO_MISSAO.pontos += passo.opcoes[i].pontos;
+  desenharMissao();
+};
+window.avancarPassoCenario = function(){
+  ESTADO_MISSAO.passo++; ESTADO_MISSAO._escolhaAtual = undefined;
+  desenharMissao();
+};
+function telaResultadoCenario(){
+  const m = ESTADO_MISSAO.missao;
+  const max = maxPontosMissao(m);
+  return finalizarEExibirResultado(ESTADO_MISSAO.pontos, max);
+}
+
+/* Tipo 2: Diagnóstico de erro */
+function desenharDiagnostico(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO.finalizado) return finalizarEExibirResultado(ESTADO_MISSAO.pontos, 1);
+  const escolha = ESTADO_MISSAO._escolha;
+  let html = '<div class="card">'+npcBubble(m.personagem, m.resumo)+
+    '<div style="background:var(--panel-2);border-radius:10px;padding:14px;margin:14px 0;white-space:pre-line;font-size:.83rem;font-family:monospace;">'+escapeHtml(m.trecho)+'</div>'+
+    '<div class="opcoes-lista">';
+  m.opcoes.forEach(function(o,i){
+    const marcado = escolha!==undefined && escolha===i;
+    html += '<button class="opcao-btn'+(marcado?(' escolhida '+(o.correta?'correta':'incorreta')):'')+'" '+(escolha!==undefined?'disabled':'')+' onclick="responderSimples('+i+')">'+o.texto+'</button>';
+  });
+  html += '</div>';
+  if(escolha!==undefined){
+    html += '<div class="consequencia '+(m.opcoes[escolha].correta?'correta':'incorreta')+'"><h4>Explicação</h4><div class="linha">'+m.opcoes[escolha].feedback+'</div></div>'+
+      '<button class="btn primary" style="margin-top:14px" onclick="finalizarMissaoSimples()">Concluir missão '+ic('check')+'</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* Tipo 4: Escolha de documento — mesmo mecanismo do diagnóstico */
+function desenharDocumento(){ return desenharDiagnostico(); }
+
+window.responderSimples = function(i){
+  if(ESTADO_MISSAO._escolha!==undefined) return;
+  const m = ESTADO_MISSAO.missao;
+  ESTADO_MISSAO._escolha = i;
+  ESTADO_MISSAO.pontos = m.opcoes[i].correta ? 1 : 0;
+  desenharMissao();
+};
+window.finalizarMissaoSimples = function(){
+  ESTADO_MISSAO.finalizado = true;
+  desenharMissao();
+};
+
+/* Tipo 5: Simulação de prazo — mesmo mecanismo */
+function desenharPrazo(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO.finalizado) return finalizarEExibirResultado(ESTADO_MISSAO.pontos, 1);
+  const escolha = ESTADO_MISSAO._escolha;
+  let html = '<div class="card">'+npcBubble(m.personagem, m.resumo)+
+    '<div style="background:var(--panel-2);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:.82rem;color:var(--muted);">'+m.contexto+'</div>'+
+    '<div class="opcoes-lista">';
+  m.opcoes.forEach(function(o,i){
+    const marcado = escolha!==undefined && escolha===i;
+    html += '<button class="opcao-btn'+(marcado?(' escolhida '+(o.correta?'correta':'incorreta')):'')+'" '+(escolha!==undefined?'disabled':'')+' onclick="responderSimples('+i+')">'+o.texto+'</button>';
+  });
+  html += '</div>';
+  if(escolha!==undefined){
+    html += '<div class="consequencia '+(m.opcoes[escolha].correta?'correta':'incorreta')+'"><h4>Explicação</h4><div class="linha">'+m.opcoes[escolha].feedback+'</div></div>'+
+      '<button class="btn primary" style="margin-top:14px" onclick="finalizarMissaoSimples()">Concluir missão '+ic('check')+'</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* Tipo 3: Ordenação correta */
+function desenharOrdenacao(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO.finalizado) return finalizarEExibirResultado(ESTADO_MISSAO.pontos, m.ordemCorreta.length);
+  if(!ESTADO_MISSAO._ordem){
+    const embaralhado = m.ordemCorreta.map(function(t,i){return {t:t, idxCorreto:i};});
+    for(let i=embaralhado.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=embaralhado[i]; embaralhado[i]=embaralhado[j]; embaralhado[j]=tmp; }
+    ESTADO_MISSAO._ordem = embaralhado;
+  }
+  const conferido = ESTADO_MISSAO._conferido;
+  let html = '<div class="card">'+npcBubble(m.personagem, m.resumo)+'<div style="margin-top:12px;">';
+  ESTADO_MISSAO._ordem.forEach(function(item, pos){
+    let cls='ordenar-item';
+    if(conferido) cls += (item.idxCorreto===pos)?' certo':' errado';
+    html += '<div class="'+cls+'"><div class="num">'+(pos+1)+'</div><div>'+item.t+'</div>'+
+      (!conferido? ('<div class="btns"><button class="btn sm ghost" onclick="moverOrdem('+pos+',-1)" aria-label="Mover para cima">'+ic('cima')+'</button>'+
+      '<button class="btn sm ghost" onclick="moverOrdem('+pos+',1)" aria-label="Mover para baixo">'+ic('baixo')+'</button></div>') : '')+
+      '</div>';
+  });
+  html += '</div>';
+  if(!conferido){
+    html += '<button class="btn primary" style="margin-top:10px" onclick="conferirOrdem()">Confirmar ordem</button>';
+  } else {
+    const acertos = ESTADO_MISSAO._ordem.filter(function(item,pos){return item.idxCorreto===pos;}).length;
+    html += '<div class="consequencia '+(acertos===m.ordemCorreta.length?'correta':'incorreta')+'"><h4>Resultado: '+acertos+'/'+m.ordemCorreta.length+' na posição correta</h4>'+
+      '<div class="linha"><b>Por quê essa ordem:</b> '+m.feedbackFinal.correto+'</div><div class="linha"><b>Fonte:</b> '+m.feedbackFinal.fonte+'</div></div>'+
+      '<button class="btn primary" style="margin-top:14px" onclick="finalizarMissaoSimples()">Concluir missão '+ic('check')+'</button>';
+  }
+  html += '</div>';
+  return html;
+}
+window.moverOrdem = function(pos, dir){
+  const arr = ESTADO_MISSAO._ordem; const novaPos = pos+dir;
+  if(novaPos<0||novaPos>=arr.length) return;
+  const tmp = arr[pos]; arr[pos]=arr[novaPos]; arr[novaPos]=tmp;
+  desenharMissao();
+};
+window.conferirOrdem = function(){
+  ESTADO_MISSAO._conferido = true;
+  ESTADO_MISSAO.pontos = ESTADO_MISSAO._ordem.filter(function(item,pos){return item.idxCorreto===pos;}).length;
+  desenharMissao();
+};
+
+/* Tipo 6: Revisão rápida */
+function desenharRevisao(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO._fase===undefined) ESTADO_MISSAO._fase='flash';
+  if(ESTADO_MISSAO._fase==='flash'){
+    if(ESTADO_MISSAO._flashIdx===undefined) ESTADO_MISSAO._flashIdx=0;
+    const idx = ESTADO_MISSAO._flashIdx;
+    if(idx>=m.flashcards.length){ ESTADO_MISSAO._fase='rapida'; ESTADO_MISSAO._rapidaIdx=0; ESTADO_MISSAO.pontos=0; return desenharMissao(); }
+    const fc = m.flashcards[idx];
+    const virado = ESTADO_MISSAO._virado;
+    return '<div class="card">'+npcBubble(m.personagem,'Revise os cartões abaixo. Toque para ver a resposta.')+
+      '<div class="flash-card" onclick="virarFlash()" style="margin:14px 0;">'+(virado? ('<div class="face-b">'+fc.verso+'</div>') : fc.frente)+'</div>'+
+      '<div style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Cartão '+(idx+1)+' de '+m.flashcards.length+'</div>'+
+      '<button class="btn primary" onclick="proximoFlash()">Próximo '+ic('seta_dir')+'</button></div>';
+  }
+  if(ESTADO_MISSAO._fase==='rapida'){
+    if(ESTADO_MISSAO._rapidaIdx>=m.perguntasRapidas.length) return finalizarEExibirResultado(ESTADO_MISSAO.pontos, m.perguntasRapidas.length);
+    const q = m.perguntasRapidas[ESTADO_MISSAO._rapidaIdx];
+    const resp = ESTADO_MISSAO._rapidaResp;
+    let html = '<div class="card">'+npcBubble(m.personagem,'Verdadeiro ou falso: <br><b>"'+q.texto+'"</b>')+
+      '<div class="opcoes-lista">'+
+      '<button class="opcao-btn'+(resp===true?(' escolhida '+((true===q.correta)?'correta':'incorreta')):'')+'" '+(resp!==undefined?'disabled':'')+' onclick="responderRapida(true)">Verdadeiro</button>'+
+      '<button class="opcao-btn'+(resp===false?(' escolhida '+((false===q.correta)?'correta':'incorreta')):'')+'" '+(resp!==undefined?'disabled':'')+' onclick="responderRapida(false)">Falso</button>'+
+      '</div>';
+    if(resp!==undefined){
+      html += '<div class="consequencia '+(resp===q.correta?'correta':'incorreta')+'"><h4>'+(resp===q.correta?'Correto':'Não exatamente')+'</h4></div>'+
+        '<button class="btn primary" style="margin-top:14px" onclick="proximaRapida()">Continuar '+ic('seta_dir')+'</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+}
+window.virarFlash = function(){ ESTADO_MISSAO._virado = !ESTADO_MISSAO._virado; desenharMissao(); };
+window.proximoFlash = function(){ ESTADO_MISSAO._flashIdx=(ESTADO_MISSAO._flashIdx||0)+1; ESTADO_MISSAO._virado=false; desenharMissao(); };
+window.responderRapida = function(v){
+  if(ESTADO_MISSAO._rapidaResp!==undefined) return;
+  const m = ESTADO_MISSAO.missao; const q = m.perguntasRapidas[ESTADO_MISSAO._rapidaIdx];
+  ESTADO_MISSAO._rapidaResp = v;
+  if(v===q.correta) ESTADO_MISSAO.pontos++;
+  desenharMissao();
+};
+window.proximaRapida = function(){ ESTADO_MISSAO._rapidaIdx++; ESTADO_MISSAO._rapidaResp=undefined; desenharMissao(); };
+
+/* Tipo 7: Narrativa interativa (formato vídeo) */
+function desenharVideo(){
+  const m = ESTADO_MISSAO.missao;
+  if(ESTADO_MISSAO._cenaIdx===undefined){ ESTADO_MISSAO._cenaIdx=0; ESTADO_MISSAO.pontos=0; }
+  if(ESTADO_MISSAO._cenaIdx>=m.cenas.length){
+    const totalPerguntas = m.cenas.filter(function(c){return c.pergunta;}).length || 1;
+    return finalizarEExibirResultado(ESTADO_MISSAO.pontos, totalPerguntas);
+  }
+  const cena = m.cenas[ESTADO_MISSAO._cenaIdx];
+  let html = '<div class="card">'+
+    '<div style="font-size:.68rem;color:var(--muted);margin-bottom:10px;">'+ic('play')+' Narrativa interativa — roteiro ilustrado (sem arquivo de vídeo real nesta versão)</div>'+
+    '<div class="video-scene"><div class="rotulo">'+cena.rotulo+'</div><p style="margin:0;font-size:.88rem;line-height:1.6;">'+cena.texto+'</p></div>';
+  if(cena.pergunta){
+    const resp = ESTADO_MISSAO._cenaResp;
+    html += '<p style="font-weight:600;font-size:.88rem;">'+cena.pergunta.texto+'</p><div class="opcoes-lista">';
+    cena.pergunta.opcoes.forEach(function(o,i){
+      const marcado = resp!==undefined && resp===i;
+      html += '<button class="opcao-btn'+(marcado?(' escolhida '+(o.correta?'correta':'incorreta')):'')+'" '+(resp!==undefined?'disabled':'')+' onclick="responderCenaVideo('+i+')">'+o.texto+'</button>';
+    });
+    html += '</div>';
+    if(resp!==undefined){
+      html += '<div class="consequencia '+(cena.pergunta.opcoes[resp].correta?'correta':'incorreta')+'"><div class="linha">'+cena.pergunta.opcoes[resp].feedback+'</div></div>'+
+        '<button class="btn primary" style="margin-top:14px" onclick="avancarCenaVideo()">Continuar '+ic('seta_dir')+'</button>';
+    }
+  } else {
+    html += '<button class="btn primary" style="margin-top:14px" onclick="avancarCenaVideo()">Continuar '+ic('seta_dir')+'</button>';
+  }
+  html += '</div>';
+  return html;
+}
+window.responderCenaVideo = function(i){
+  if(ESTADO_MISSAO._cenaResp!==undefined) return;
+  const m = ESTADO_MISSAO.missao; const cena = m.cenas[ESTADO_MISSAO._cenaIdx];
+  ESTADO_MISSAO._cenaResp = i;
+  if(cena.pergunta.opcoes[i].correta) ESTADO_MISSAO.pontos++;
+  desenharMissao();
+};
+window.avancarCenaVideo = function(){ ESTADO_MISSAO._cenaIdx++; ESTADO_MISSAO._cenaResp=undefined; desenharMissao(); };
+
+/* Resultado comum */
+function finalizarEExibirResultado(pontos, max){
+  if(!ESTADO_MISSAO._registrado){
+    const novos = registrarConclusao(SESSAO.uid, ESTADO_MISSAO.missao.id, pontos, max);
+    ESTADO_MISSAO._registrado = true;
+    ESTADO_MISSAO._novosBadges = novos;
+  }
+  const pct = max>0? Math.round(pontos/max*100) : 100;
+  let html = '<div class="card" style="text-align:center;">'+
+    '<div class="tipo" style="color:var(--muted);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;">Missão concluída</div>'+
+    '<h2 style="margin:8px 0;">'+pct+'% de aproveitamento</h2>'+
+    '<div class="stat-pill" style="display:inline-flex;">+'+ESTADO_MISSAO.missao.xp+' XP · +'+ESTADO_MISSAO.missao.creditos+' Créditos FB</div>';
+  if(ESTADO_MISSAO._novosBadges && ESTADO_MISSAO._novosBadges.length){
+    html += '<p style="margin-top:14px;color:var(--accent);font-size:.85rem;">Nova conquista desbloqueada: '+
+      ESTADO_MISSAO._novosBadges.map(function(id){ return BADGES.find(function(b){return b.id===id;}).nome; }).join(', ')+'</p>';
+  }
+  html += '<div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;">'+
+    '<button class="btn" onclick="location.hash=\'#/trilha/'+ESTADO_MISSAO.missao.trilha+'\'">Voltar para a trilha</button>'+
+    '<button class="btn primary" onclick="location.hash=\'#/jornada\'">Ir para Minha Jornada</button>'+
+    '</div></div>';
+  return html;
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+/* ---------- Biblioteca ---------- */
+function renderBiblioteca(){
+  let html = '<div class="page-head"><div><h2>Biblioteca de Conhecimento</h2><p>Materiais de apoio ligados às missões — consulte sempre que quiser aprofundar um tema.</p></div></div>';
+  html += '<input id="busca-biblioteca" placeholder="Buscar por título ou trilha…" style="width:100%;max-width:420px;margin-bottom:18px;background:var(--panel);border:1px solid var(--border-strong);border-radius:9px;padding:9px 12px;color:var(--text);font-size:.85rem;">';
+  html += '<div class="grid cols-3" id="lista-materiais"></div>';
+  document.getElementById('content-inner').innerHTML = html;
+  function desenhar(filtro){
+    const f = (filtro||'').toLowerCase();
+    const lista = MATERIAIS.filter(function(m){
+      const trilha = TRILHAS.find(function(t){return t.id===m.trilha;});
+      return !f || m.titulo.toLowerCase().indexOf(f)!==-1 || (trilha&&trilha.nome.toLowerCase().indexOf(f)!==-1) || m.resumo.toLowerCase().indexOf(f)!==-1;
+    });
+    document.getElementById('lista-materiais').innerHTML = lista.map(function(m){
+      const trilha = TRILHAS.find(function(t){return t.id===m.trilha;});
+      return '<div class="card mat-card" onclick="abrirMaterial(\''+m.id+'\')"><span class="tipo-chip">'+m.tipo+'</span>'+
+        '<h4>'+m.titulo+'</h4><p>'+m.resumo+'</p><div style="font-size:.7rem;color:var(--muted);margin-top:8px;">'+(trilha?trilha.nome:'')+'</div></div>';
+    }).join('') || '<div class="empty">Nenhum material encontrado.</div>';
+  }
+  desenhar('');
+  document.getElementById('busca-biblioteca').addEventListener('input', function(e){ desenhar(e.target.value); });
+}
+window.abrirMaterial = function(id){
+  const m = MATERIAIS.find(function(x){return x.id===id;});
+  abrirModal('<h3>'+m.titulo+'</h3><p style="color:var(--muted);font-size:.85rem;line-height:1.6;">'+m.resumo+'</p>'+
+    '<p style="font-size:.78rem;color:var(--muted);margin-top:14px;">Este é um material de apoio interno da Academia FB, referenciado pelas missões da trilha correspondente.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="fecharModal()">Fechar</button></div>');
+};
+
+/* ---------- Ranking ---------- */
+let RANK_VIEW = 'equipe';
+function renderRanking(){
+  let html = '<div class="page-head"><div><h2>Ranking</h2><p>Reconhecimento por evolução — sem exposição negativa: aqui você compara conquistas, não fracassos.</p></div></div>';
+  html += '<div class="rank-tabs">'+
+    '<button data-v="equipe" class="'+(RANK_VIEW==='equipe'?'active':'')+'">Minha equipe</button>'+
+    '<button data-v="trilha" class="'+(RANK_VIEW==='trilha'?'active':'')+'">Trilha em foco</button>'+
+    '<button data-v="pessoal" class="'+(RANK_VIEW==='pessoal'?'active':'')+'">Minha evolução</button>'+
+    '</div><div class="card" id="rank-body"></div>';
+  document.getElementById('content-inner').innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('.rank-tabs button'), function(b){
+    b.addEventListener('click', function(){ RANK_VIEW = b.getAttribute('data-v'); renderRanking(); });
+  });
+  desenharRankBody();
+}
+function desenharRankBody(){
+  const body = document.getElementById('rank-body');
+  const u = usuarioAtual();
+  if(RANK_VIEW==='pessoal'){
+    const est = estadoAtual();
+    body.innerHTML = '<h3 style="margin-bottom:12px;">Sua evolução, sem comparação com colegas</h3>'+
+      '<div class="grid cols-3">'+
+      '<div><div style="font-size:1.6rem;font-weight:700;">'+est.xp+'</div><div style="font-size:.76rem;color:var(--muted);">XP acumulado</div></div>'+
+      '<div><div style="font-size:1.6rem;font-weight:700;">'+Object.keys(est.progresso).filter(function(k){return est.progresso[k].status==='concluida';}).length+'</div><div style="font-size:.76rem;color:var(--muted);">Missões concluídas</div></div>'+
+      '<div><div style="font-size:1.6rem;font-weight:700;">'+est.streakSemanas+'</div><div style="font-size:.76rem;color:var(--muted);">Semanas seguidas ativas</div></div>'+
+      '</div>';
+    return;
+  }
+  let candidatos = DEMO_USERS;
+  if(RANK_VIEW==='equipe') candidatos = DEMO_USERS.filter(function(x){return x.depto===u.depto;});
+  const linhas = candidatos.map(function(x){ return {u:x, xp:DB.usuarios[x.id].xp}; }).sort(function(a,b){return b.xp-a.xp;});
+  body.innerHTML = '<h3 style="margin-bottom:10px;">'+(RANK_VIEW==='equipe'?('Equipe: '+u.depto):'Top XP entre todas as trilhas')+'</h3>'+
+    linhas.map(function(l,i){
+      return '<div class="rank-row'+(l.u.id===SESSAO.uid?' voce':'')+'"><div class="pos">'+(i+1)+'</div>'+
+        '<div class="avatar" style="width:32px;height:32px;font-size:.72rem;background:'+l.u.cor+'">'+iniciais(l.u.nome)+'</div>'+
+        '<div class="nome">'+l.u.nome+(l.u.id===SESSAO.uid?' (você)':'')+'</div><div class="xp">'+l.xp+' XP</div></div>';
+    }).join('');
+}
+
+/* ---------- Conquistas ---------- */
+function renderConquistas(){
+  const est = estadoAtual();
+  let html = '<div class="page-head"><div><h2>Conquistas</h2><p>'+est.badges.length+' de '+BADGES.length+' medalhas desbloqueadas.</p></div></div>';
+  html += '<div class="grid cols-3">'+BADGES.map(function(b){
+    const on = est.badges.indexOf(b.id)!==-1;
+    return '<div class="card badge-card'+(on?' conquistada':'')+'"><div class="ic-wrap">'+ic(b.icone)+'</div><h4>'+b.nome+'</h4><p>'+b.desc+'</p></div>';
+  }).join('')+'</div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+
+/* ---------- Loja de Créditos FB ---------- */
+const ITENS_LOJA = [
+  {id:'titulo-dedicado', tipo:'título', nome:'Título: "Dedicado(a)"', custo:20},
+  {id:'titulo-referencia', tipo:'título', nome:'Título: "Referência da Equipe"', custo:60},
+  {id:'moldura-ouro', tipo:'moldura', nome:'Moldura dourada de perfil', custo:80},
+  {id:'moldura-vinho', tipo:'moldura', nome:'Moldura vinho institucional', custo:40},
+];
+function renderLoja(){
+  const est = estadoAtual();
+  let html = '<div class="page-head"><div><h2>Loja de Créditos FB</h2><p>Itens puramente cosméticos para personalizar seu perfil — não afetam XP, nível ou avaliação.</p></div>'+
+    '<div class="stat-pill" style="background:var(--panel-2);color:var(--accent);">'+ic('moeda')+' '+est.creditos+' Créditos FB</div></div>';
+  html += '<div class="card">'+ITENS_LOJA.map(function(item){
+    const comprado = est.comprados.indexOf(item.id)!==-1;
+    return '<div class="loja-item"><div><b style="font-size:.85rem;">'+item.nome+'</b><div style="font-size:.72rem;color:var(--muted);">'+item.tipo+'</div></div>'+
+      (comprado? '<span class="badge verde">Adquirido</span>' : '<button class="btn sm '+(est.creditos>=item.custo?'primary':'')+'" '+(est.creditos<item.custo?'disabled':'')+' onclick="comprarItem(\''+item.id+'\')">'+item.custo+' créditos</button>')+
+      '</div>';
+  }).join('')+'</div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+window.comprarItem = function(id){
+  const est = estadoAtual(); const item = ITENS_LOJA.find(function(x){return x.id===id;});
+  if(est.creditos<item.custo || est.comprados.indexOf(id)!==-1) return;
+  est.creditos -= item.custo; est.comprados.push(id); salvarDB();
+  toast('Item adquirido: '+item.nome);
+  renderLoja();
+};
+
+/* ---------- Certificados ---------- */
+function renderCertificados(){
+  const est = estadoAtual();
+  let html = '<div class="page-head"><div><h2>Certificados</h2><p>Emitidos automaticamente ao concluir 100% de uma trilha com nota igual ou superior ao mínimo exigido ('+DB.configuracoes.notaMinimaAprovacao+'%).</p></div></div>';
+  html += '<div class="grid cols-3">';
+  TRILHAS.forEach(function(t){
+    const cert = certificadoElegivel(t.id);
+    const emitido = est.certificadosEmitidos.indexOf(t.id)!==-1;
+    html += '<div class="card"><div class="dot" style="background:'+t.cor+';width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:10px;">'+ic(t.icone)+'</div>'+
+      '<h4 style="font-size:.9rem;margin-bottom:6px;">'+t.nome+'</h4>';
+    if(emitido) html += '<button class="btn sm" onclick="imprimirCertificado(\''+t.id+'\')">'+ic('certificado')+' Reimprimir</button>';
+    else if(cert.elegivel) html += '<button class="btn sm primary" onclick="emitirCertificado(\''+t.id+'\')">Emitir agora</button>';
+    else html += '<span class="badge neutro">Ainda não elegível</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+window.emitirCertificado = function(trilhaId){
+  const est = estadoAtual();
+  if(est.certificadosEmitidos.indexOf(trilhaId)===-1){ est.certificadosEmitidos.push(trilhaId); salvarDB(); }
+  imprimirCertificado(trilhaId);
+  if(location.hash.indexOf('#/certificados')===-1 && location.hash.indexOf('#/trilha')===-1) return;
+  render();
+};
+window.imprimirCertificado = function(trilhaId){
+  const t = TRILHAS.find(function(x){return x.id===trilhaId;});
+  const u = usuarioAtual();
+  const media = mediaPontuacao(SESSAO.uid, trilhaId);
+  const w = window.open('', '_blank');
+  w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Certificado — '+t.nome+'</title>'+
+    '<style>body{font-family:Georgia,serif;text-align:center;padding:60px;color:#252736;}'+
+    '.borda{border:3px solid #782F46;padding:50px;max-width:760px;margin:0 auto;}'+
+    'h1{color:#782F46;font-size:1.1rem;letter-spacing:.1em;text-transform:uppercase;}'+
+    'h2{font-size:2rem;margin:22px 0;}p{font-size:1rem;line-height:1.7;}'+
+    '.linha{border-top:1px solid #C59D60;width:220px;margin:36px auto 6px;}</style></head><body>'+
+    '<div class="borda"><h1>Academia FB — Fonseca e Braga</h1><p>Certificamos que</p><h2>'+u.nome+'</h2>'+
+    '<p>concluiu com aproveitamento de <b>'+media+'%</b> a trilha de treinamento</p><h2 style="font-size:1.3rem;">'+t.nome+'</h2>'+
+    '<p style="margin-top:30px;font-size:.85rem;color:#73798A;">'+new Date().toLocaleDateString('pt-BR')+'</p>'+
+    '<div class="linha"></div><p style="font-size:.85rem;">Academia FB</p></div>'+
+    '<script>window.print();<'+'/script></body></html>');
+  w.document.close();
+};
+
+/* ---------- Perfil ---------- */
+function renderPerfil(){
+  const u = usuarioAtual(); const est = estadoAtual(); const nv = nivelInfo(est.xp);
+  let html = '<div class="page-head"><div><h2>Meu Perfil</h2><p>Dados visíveis para colegas na Academia FB (perfil público de treinamento).</p></div></div>';
+  html += '<div class="grid cols-2"><div class="card" style="text-align:center;">'+
+    '<div class="avatar" style="width:72px;height:72px;font-size:1.4rem;margin:0 auto 12px;background:'+u.cor+'">'+iniciais(u.nome)+'</div>'+
+    '<h3>'+u.nome+'</h3><p style="color:var(--muted);font-size:.82rem;">'+u.cargo+' · '+u.depto+'</p>'+
+    '<div class="badge neutro" style="margin-top:10px;">'+nv.nome+'</div>'+
+    (est.cosmeticoAtivo? ('<div style="margin-top:6px;font-size:.76rem;color:var(--accent);">'+ITENS_LOJA.find(function(i){return i.id===est.cosmeticoAtivo;}).nome+'</div>') : '')+
+    '</div>'+
+    '<div class="card"><h3 style="margin-bottom:12px;">Itens cosméticos</h3>'+
+    (est.comprados.length? est.comprados.map(function(id){
+      const item = ITENS_LOJA.find(function(x){return x.id===id;});
+      return '<div class="loja-item"><b style="font-size:.84rem;">'+item.nome+'</b>'+
+        (est.cosmeticoAtivo===id? '<span class="badge verde">Em uso</span>' : '<button class="btn sm" onclick="ativarCosmetico(\''+id+'\')">Usar</button>')+'</div>';
+    }).join('') : '<div class="empty">Nenhum item adquirido ainda. Visite a Loja de Créditos FB.</div>')+
+    '</div></div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+window.ativarCosmetico = function(id){ estadoAtual().cosmeticoAtivo=id; salvarDB(); renderPerfil(); };
+
+/* ---------- Painel de Gestão ---------- */
+let GESTAO_TAB = 'visao';
+function renderGestao(){
+  let html = '<div class="page-head"><div><h2>Painel de Gestão</h2><p>Visão da equipe para apoiar — nunca para expor publicamente colaboradores.</p></div></div>';
+  html += '<div class="tabs-h">'+
+    '<button data-t="visao" class="'+(GESTAO_TAB==='visao'?'active':'')+'">Visão geral</button>'+
+    '<button data-t="riscos" class="'+(GESTAO_TAB==='riscos'?'active':'')+'">Mapa de Riscos de Aprendizagem</button>'+
+    '<button data-t="atrib" class="'+(GESTAO_TAB==='atrib'?'active':'')+'">Atribuições</button>'+
+    '</div><div id="gestao-body"></div>';
+  document.getElementById('content-inner').innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs-h button'), function(b){
+    b.addEventListener('click', function(){ GESTAO_TAB=b.getAttribute('data-t'); renderGestao(); });
+  });
+  const body = document.getElementById('gestao-body');
+  if(GESTAO_TAB==='visao') body.innerHTML = gestaoVisaoGeral();
+  if(GESTAO_TAB==='riscos') body.innerHTML = gestaoMapaRiscos();
+  if(GESTAO_TAB==='atrib') desenharAtribuicoes(body);
+}
+function gestaoVisaoGeral(){
+  const totalMissoes = MISSOES.length;
+  let html = '<div class="grid cols-3">';
+  DEMO_USERS.forEach(function(u){
+    const est = DB.usuarios[u.id];
+    const feitas = Object.keys(est.progresso).filter(function(k){return est.progresso[k].status==='concluida';}).length;
+    html += '<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+      '<div class="avatar" style="width:34px;height:34px;font-size:.72rem;background:'+u.cor+'">'+iniciais(u.nome)+'</div>'+
+      '<div><b style="font-size:.85rem;">'+u.nome+'</b><div style="font-size:.7rem;color:var(--muted);">'+u.cargo+'</div></div></div>'+
+      '<div class="progress-bar"><i style="width:'+Math.round(feitas/totalMissoes*100)+'%"></i></div>'+
+      '<div style="font-size:.74rem;color:var(--muted);margin-top:6px;">'+feitas+'/'+totalMissoes+' missões · '+est.xp+' XP</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+function classificarRisco(uid, trilhaId){
+  const p = progressoTrilha(uid, trilhaId);
+  const media = mediaPontuacao(uid, trilhaId);
+  const obrigMissoes = MISSOES.filter(function(m){return m.trilha===trilhaId && m.obrigatorio;});
+  const obrigPendentes = obrigMissoes.filter(function(m){ const pr=DB.usuarios[uid].progresso[m.id]; return !pr||pr.status!=='concluida'; }).length;
+  if(obrigPendentes>0 && p.pct<30) return 'vermelho';
+  if(media!==null && media<50) return 'vermelho';
+  if(p.pct<70 || (media!==null && media<75)) return 'amarelo';
+  return 'verde';
+}
+function gestaoMapaRiscos(){
+  let html = '<div class="card"><p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Use este mapa para oferecer apoio individual — não para cobrar publicamente. Vermelho indica atenção necessária; amarelo, acompanhamento; verde, sem pendências relevantes.</p>'+
+    '<div style="overflow-x:auto;"><table class="tabela"><thead><tr><th>Colaborador</th>';
+  TRILHAS.forEach(function(t){ html += '<th>'+t.nome.split(' ').slice(0,2).join(' ')+'</th>'; });
+  html += '</tr></thead><tbody>';
+  DEMO_USERS.filter(function(u){return u.papel==='colaborador';}).forEach(function(u){
+    html += '<tr><td>'+u.nome+'</td>';
+    TRILHAS.forEach(function(t){
+      const r = classificarRisco(u.id, t.id);
+      html += '<td><span class="risco-dot '+r+'" title="'+r+'"></span></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  return html;
+}
+function desenharAtribuicoes(body){
+  const meuPapel = usuarioAtual().papel;
+  let html = '<div class="card">';
+  if(meuPapel==='gestor'||meuPapel==='administrador'){
+    html += '<button class="btn primary" style="margin-bottom:16px;" onclick="abrirModalAtribuicao()">Nova atribuição</button>';
+  }
+  html += '<table class="tabela"><thead><tr><th>Trilha</th><th>Colaborador</th><th>Atribuído por</th><th>Prazo</th></tr></thead><tbody>';
+  DB.atribuicoes.forEach(function(a){
+    const t = TRILHAS.find(function(x){return x.id===a.trilhaId;});
+    const para = DEMO_USERS.find(function(x){return x.id===a.paraUid;});
+    const de = DEMO_USERS.find(function(x){return x.id===a.deUid;});
+    html += '<tr><td>'+(t?t.nome:'')+'</td><td>'+(para?para.nome:'')+'</td><td>'+(de?de.nome:'')+'</td><td>'+new Date(a.prazo).toLocaleDateString('pt-BR')+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+}
+window.abrirModalAtribuicao = function(){
+  const opcoesUsers = DEMO_USERS.filter(function(u){return u.papel==='colaborador';}).map(function(u){return '<option value="'+u.id+'">'+u.nome+'</option>';}).join('');
+  const opcoesTrilhas = TRILHAS.map(function(t){return '<option value="'+t.id+'">'+t.nome+'</option>';}).join('');
+  abrirModal('<h3>Nova atribuição</h3>'+
+    '<div class="form-field"><label>Trilha</label><select id="at-trilha">'+opcoesTrilhas+'</select></div>'+
+    '<div class="form-field"><label>Colaborador</label><select id="at-user">'+opcoesUsers+'</select></div>'+
+    '<div class="form-field"><label>Prazo</label><input type="date" id="at-prazo"></div>'+
+    '<div class="modal-foot"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn primary" onclick="salvarAtribuicao()">Atribuir</button></div>');
+};
+window.salvarAtribuicao = function(){
+  const trilhaId = document.getElementById('at-trilha').value;
+  const paraUid = document.getElementById('at-user').value;
+  const prazoStr = document.getElementById('at-prazo').value;
+  const prazo = prazoStr? new Date(prazoStr+'T23:59:59').getTime() : Date.now()+7*86400000;
+  DB.atribuicoes.push({id:'a'+Date.now(), trilhaId:trilhaId, paraUid:paraUid, deUid:SESSAO.uid, prazo:prazo, criadoEm:Date.now()});
+  if(usuarioAtual().papel!=='administrador'){
+    const est = estadoAtual();
+    if(est.badges.indexOf('mentor-em-formacao')===-1) est.badges.push('mentor-em-formacao');
+  }
+  salvarDB(); fecharModal(); toast('Atribuição criada.'); render();
+};
+
+/* ---------- Editor de Conteúdo ---------- */
+function renderEditor(){
+  let html = '<div class="page-head"><div><h2>Editor de Conteúdo</h2><p>Crie, edite e publique missões sem precisar mexer em código.</p></div>'+
+    '<div style="display:flex;gap:8px;"><button class="btn" onclick="abrirModalImportarJson()">'+ic('bloco')+' Importar JSON</button>'+
+    '<button class="btn primary" onclick="abrirModalNovaMissao()">Nova missão</button></div></div>';
+  html += '<div class="card">';
+  DB.conteudo.missoes.forEach(function(m){
+    const trilha = TRILHAS.find(function(t){return t.id===m.trilha;});
+    html += '<div class="conteudo-row"><div class="info"><b>'+m.titulo+'</b>'+
+      '<div class="meta">'+rotuloTipo(m.tipo)+' · '+(trilha?trilha.nome:'')+' · versão '+(m.versao||1)+' · '+
+      '<span class="badge '+(m.status==='rascunho'?'amarelo':'verde')+'">'+(m.status||'publicado')+'</span></div></div>'+
+      '<button class="btn sm ghost" onclick="duplicarMissao(\''+m.id+'\')" aria-label="Duplicar">'+ic('duplicar')+'</button>'+
+      '</div>';
+  });
+  html += '</div>';
+  html += '<div class="card" style="margin-top:16px;"><h3 style="margin-bottom:8px;">Importar missão por IA</h3>'+
+    '<p style="font-size:.8rem;color:var(--muted);line-height:1.5;">Em uma etapa futura, será possível colar aqui o conteúdo gerado com apoio de IA (fora deste sistema) para revisão antes da publicação. Nenhuma chamada de IA ao vivo é feita nesta versão.</p>'+
+    '<button class="btn" disabled style="margin-top:8px;">Importar missão por IA (em breve)</button></div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+window.duplicarMissao = function(id){
+  const original = DB.conteudo.missoes.find(function(x){return x.id===id;});
+  const copia = JSON.parse(JSON.stringify(original));
+  copia.id = 'm_'+Date.now();
+  copia.titulo = copia.titulo+' (cópia)';
+  copia.status = 'rascunho';
+  copia.versao = 1;
+  DB.conteudo.missoes.push(copia);
+  salvarDB(); toast('Missão duplicada como rascunho.'); renderEditor();
+};
+window.abrirModalNovaMissao = function(){
+  abrirModal('<h3>Nova missão (cenário ramificado)</h3>'+
+    '<div class="form-field"><label>Título</label><input id="nm-titulo" placeholder="Ex.: A Ligação Difícil"></div>'+
+    '<div class="form-field"><label>Trilha</label><select id="nm-trilha">'+TRILHAS.map(function(t){return '<option value="'+t.id+'">'+t.nome+'</option>';}).join('')+'</select></div>'+
+    '<div class="form-field"><label>Resumo / situação inicial</label><textarea id="nm-resumo" placeholder="Descreva o contexto da missão…"></textarea></div>'+
+    '<p style="font-size:.76rem;color:var(--muted);">Após criar, use "Importar JSON" para adicionar os passos e opções completos, ou publique como rascunho e edite depois.</p>'+
+    '<div class="modal-foot"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn primary" onclick="salvarNovaMissao()">Salvar como rascunho</button></div>');
+};
+window.salvarNovaMissao = function(){
+  const titulo = document.getElementById('nm-titulo').value.trim();
+  if(!titulo){ toast('Informe um título.'); return; }
+  const nova = {id:'m_'+Date.now(), tipo:'cenario', trilha:document.getElementById('nm-trilha').value,
+    titulo:titulo, risco:'medio', obrigatorio:false, tempoMin:5, personagem:'assistente', xp:20, creditos:8,
+    competencias:[], materiais:[], resumo:document.getElementById('nm-resumo').value.trim(), passos:[], status:'rascunho', versao:1};
+  DB.conteudo.missoes.push(nova); salvarDB(); fecharModal(); toast('Missão criada como rascunho.'); renderEditor();
+};
+window.abrirModalImportarJson = function(){
+  abrirModal('<h3>Importar missão via JSON</h3>'+
+    '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">Cole abaixo um pacote de conteúdo no formato esperado pela Academia FB.</p>'+
+    '<textarea id="json-import" style="min-height:200px;font-family:monospace;font-size:.78rem;" placeholder=\'{"titulo":"...","trilha":"prazos","tipo":"cenario","passos":[...]}\'></textarea>'+
+    '<div id="json-import-err" style="color:var(--danger);font-size:.78rem;margin-top:8px;"></div>'+
+    '<div class="modal-foot"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn primary" onclick="publicarJson()">Validar e publicar</button></div>');
+};
+window.publicarJson = function(){
+  const raw = document.getElementById('json-import').value;
+  const errEl = document.getElementById('json-import-err');
+  let obj;
+  try{ obj = JSON.parse(raw); }catch(e){ errEl.textContent = 'JSON inválido: '+e.message; return; }
+  if(!obj.titulo || !obj.trilha || !obj.tipo){ errEl.textContent = 'Campos obrigatórios ausentes: titulo, trilha, tipo.'; return; }
+  if(!TRILHAS.some(function(t){return t.id===obj.trilha;})){ errEl.textContent = 'Trilha desconhecida: '+obj.trilha; return; }
+  obj.id = obj.id || ('m_'+Date.now());
+  obj.status = 'publicado';
+  obj.versao = 1;
+  obj.xp = obj.xp || obj.xpBase || 20;
+  obj.creditos = obj.creditos || obj.moedasBase || 8;
+  obj.tempoMin = obj.tempoMin || obj.duracaoMinutos || 5;
+  obj.personagem = obj.personagem || 'assistente';
+  obj.competencias = obj.competencias || [];
+  obj.materiais = obj.materiais || [];
+  DB.conteudo.missoes.push(obj); salvarDB(); fecharModal(); toast('Missão publicada a partir do JSON.'); renderEditor();
+};
+
+/* ---------- Configurações ---------- */
+function renderConfig(){
+  let html = '<div class="page-head"><div><h2>Configurações</h2><p>Critérios gerais de aprovação e certificação da Academia FB.</p></div></div>';
+  html += '<div class="card" style="max-width:420px;">'+
+    '<div class="form-field"><label>Nota mínima de aprovação para certificado (%)</label>'+
+    '<input type="number" min="0" max="100" id="cfg-nota" value="'+DB.configuracoes.notaMinimaAprovacao+'"></div>'+
+    '<button class="btn primary" onclick="salvarConfig()">Salvar</button></div>';
+  document.getElementById('content-inner').innerHTML = html;
+}
+window.salvarConfig = function(){
+  const v = parseInt(document.getElementById('cfg-nota').value,10);
+  if(isNaN(v)||v<0||v>100){ toast('Informe um valor entre 0 e 100.'); return; }
+  DB.configuracoes.notaMinimaAprovacao = v; salvarDB(); toast('Configuração salva.');
+};
+
+/* ---------- Modal genérico ---------- */
+function abrirModal(html){ document.getElementById('modal-box').innerHTML = html; document.getElementById('modal-back').classList.add('on'); }
+window.fecharModal = function(){ document.getElementById('modal-back').classList.remove('on'); };
+document.getElementById('modal-back').addEventListener('click', function(e){ if(e.target.id==='modal-back') fecharModal(); });
+
+/* ---------- Busca global (Ctrl/Cmd+K) ---------- */
+function itensBusca(){
+  const itens = [];
+  MISSOES.forEach(function(m){ itens.push({tipo:'Missão', titulo:m.titulo, sub:rotuloTipo(m.tipo), hash:'#/missao/'+m.id}); });
+  TRILHAS.forEach(function(t){ itens.push({tipo:'Trilha', titulo:t.nome, sub:t.subtemas.join(', '), hash:'#/trilha/'+t.id}); });
+  MATERIAIS.forEach(function(m){ itens.push({tipo:'Biblioteca', titulo:m.titulo, sub:m.resumo, hash:'#/biblioteca'}); });
+  return itens;
+}
+function abrirBusca(){
+  document.getElementById('search-modal').classList.add('on');
+  const input = document.getElementById('search-input');
+  input.value=''; input.focus();
+  desenharResultadosBusca('');
+}
+function fecharBusca(){ document.getElementById('search-modal').classList.remove('on'); }
+function desenharResultadosBusca(q){
+  const f = q.toLowerCase();
+  const itens = itensBusca().filter(function(i){ return !f || i.titulo.toLowerCase().indexOf(f)!==-1 || (i.sub||'').toLowerCase().indexOf(f)!==-1; }).slice(0,20);
+  document.getElementById('search-results').innerHTML = itens.map(function(i){
+    return '<div class="res" onclick="location.hash=\''+i.hash+'\';fecharBuscaEl()"><b>'+i.titulo+'</b><small>'+i.tipo+' · '+(i.sub||'')+'</small></div>';
+  }).join('') || '<div class="res" style="cursor:default;">Nada encontrado.</div>';
+}
+window.fecharBuscaEl = fecharBusca;
+document.getElementById('search-input').addEventListener('input', function(e){ desenharResultadosBusca(e.target.value); });
+document.getElementById('search-modal').addEventListener('click', function(e){ if(e.target.id==='search-modal') fecharBusca(); });
+document.getElementById('global-search').addEventListener('click', abrirBusca);
+window.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); abrirBusca(); }
+  if(e.key==='Escape'){ fecharBusca(); fecharModal(); }
+});
+
+/* ---------- Drawer mobile ---------- */
+function abrirDrawer(){ document.getElementById('sidebar').classList.add('on'); document.getElementById('drawer-overlay').classList.add('on'); }
+function fecharDrawer(){ document.getElementById('sidebar').classList.remove('on'); document.getElementById('drawer-overlay').classList.remove('on'); }
+document.getElementById('btn-menu').addEventListener('click', abrirDrawer);
+document.getElementById('drawer-overlay').addEventListener('click', fecharDrawer);
+
+/* ============================= LOGIN ============================= */
+function montarLogin(){
+  const grid = document.getElementById('login-grid');
+  grid.innerHTML = DEMO_USERS.map(function(u){
+    return '<div class="login-card" data-uid="'+u.id+'"><div class="login-avatar" style="background:'+u.cor+'">'+iniciais(u.nome)+'</div>'+
+      '<h3>'+u.nome+'</h3><div class="papel">'+rotuloPapel(u.papel)+'</div><div class="cargo">'+u.cargo+'<br>'+u.depto+'</div></div>';
+  }).join('');
+  Array.prototype.forEach.call(grid.querySelectorAll('.login-card'), function(c){
+    c.addEventListener('click', function(){ entrarComo(c.getAttribute('data-uid')); });
+  });
+}
+function rotuloPapel(p){ return {administrador:'Administrador', gestor:'Gestor de Equipe', colaborador:'Colaborador', autor:'Autor de Conteúdo'}[p]||p; }
+function entrarComo(uid){
+  SESSAO = {uid:uid};
+  const u = usuarioAtual();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').classList.add('on');
+  document.getElementById('tb-nome').textContent = u.nome;
+  document.getElementById('tb-papel').textContent = rotuloPapel(u.papel)+' · '+u.cargo;
+  const av = document.getElementById('tb-avatar'); av.style.background=u.cor; av.textContent = iniciais(u.nome);
+  montarSidebar();
+  if(!location.hash) location.hash = '#/jornada'; else render();
+}
+document.getElementById('btn-sair').addEventListener('click', function(){
+  SESSAO = null;
+  document.getElementById('app-shell').classList.remove('on');
+  document.getElementById('login-screen').style.display='flex';
+  location.hash='';
+});
+document.getElementById('btn-reset-demo').addEventListener('click', resetarDemo);
+
+/* ============================= INÍCIO ============================= */
+carregarDB();
+montarLogin();
+
+})();
+</script>
+</body>
+</html>
