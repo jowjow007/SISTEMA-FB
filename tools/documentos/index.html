@@ -140,13 +140,13 @@
   .doc-header{position:relative;z-index:1;padding:14mm 18mm 4mm;text-align:center;}
   .doc-header img{height:15mm;}
   .doc-pagenum{position:absolute;top:14mm;right:18mm;font-size:8pt;font-weight:600;color:#1a1a1a;z-index:1;}
-  .doc-content{position:relative;z-index:1;margin:0 18mm;height:214mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+  .doc-content{position:relative;z-index:1;margin:0 18mm;height:214mm;overflow:hidden;font-size:calc(9.3pt*var(--fit,1));line-height:calc(1.55 - (1 - var(--fit,1))*0.6);}
   .doc-footer{position:absolute;left:18mm;right:18mm;bottom:10mm;z-index:1;font-size:7.6pt;color:#1a1a1a;text-align:center;border-top:1.4pt solid #8a1f1a;padding-top:2.4mm;}
   .doc-footer .l1{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:1mm;font-weight:600;}
   .doc-footer .l2{display:flex;align-items:center;justify-content:center;gap:5px;color:#333;}
   .doc-footer svg{width:9px;height:9px;flex:0 0 auto;}
 
-  .blk{margin-bottom:2.6mm;text-align:justify;}
+  .blk{margin-bottom:calc(2.6mm*var(--fit,1));text-align:justify;}
   .blk.center{text-align:center;}
   .blk strong{font-weight:700;}
 
@@ -155,7 +155,7 @@
   .doc-label{font-weight:700;margin:3mm 0 1.4mm;}
   .doc-indent{margin-left:14mm;}
 
-  .sig-line{margin:8mm auto 0;text-align:center;width:74mm;}
+  .sig-line{margin:calc(8mm*var(--fit,1)) auto 0;text-align:center;width:74mm;}
   .sig-line .rule{border-top:1pt solid #1a1a1a;margin-bottom:1.6mm;}
   .sig-line .name{font-weight:700;font-size:9pt;}
   .sig-line .doc{font-size:8.6pt;}
@@ -1342,7 +1342,18 @@ function render(){
   }
   const blocks = buildDocumento(d);
   const wrap=document.getElementById('doc-pages');
-  const pages = paginate(blocks, wrap);
+  wrap.style.removeProperty('--fit');
+  let pages = paginate(blocks, wrap);
+  // Procuração: se estourou para a 2ª página, reduz fonte/espaçamentos aos poucos até caber em uma só
+  // (piso de 0,80 para não ficar ilegível; abaixo disso segue normalmente em 2+ páginas).
+  if(d.tipo==='procuracao' && pages.length>1){
+    for(const fit of [0.97,0.94,0.91,0.88,0.85,0.82,0.80]){
+      wrap.style.setProperty('--fit', fit);
+      const tentativa = paginate(blocks, wrap);
+      if(tentativa.length===1){ pages = tentativa; break; }
+      if(fit===0.80){ wrap.style.removeProperty('--fit'); pages = paginate(blocks, wrap); }
+    }
+  }
   status.textContent = pages.length+' página(s)';
   status.className='status ok';
 }
@@ -1767,6 +1778,8 @@ try{
 }catch(err){ /* Firebase indisponível — a ferramenta continua funcionando normalmente sem os atalhos */ }
 
 render();
+// a fonte web (Poppins) pode terminar de carregar depois da primeira paginação; refaz para medir com a fonte real
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(render);
 </script>
 </body>
 </html>
