@@ -589,17 +589,49 @@ function coletar(){
 
 // ══ RENDER PREVIEW ════════════════════════════════════════════
 var rt = null;
-function render(){ clearTimeout(rt); rt = setTimeout(_render, 70); }
+function render(){ clearTimeout(rt); rt = setTimeout(_render, 120); }
 
 function _render(){
   var d = coletar();
   var temConteudo = d.titulo||d.enderecamento||d.requerentes.length||d.topicos.length||d.pedidos.length;
-  var pages = document.getElementById('doc-pages');
+  var wrap = document.getElementById('doc-pages');
   if(!temConteudo){
-    pages.innerHTML = '<div class="doc-page"><div class="doc-content"><div class="dc-empty">Preencha os campos ao lado para ver a petição.</div></div></div>';
+    wrap.innerHTML = '<div class="doc-page"><div class="doc-content"><div class="dc-empty">Preencha os campos ao lado para ver a petição.</div></div></div>';
     return;
   }
-  pages.innerHTML = '<div class="doc-page"><div class="doc-content" id="dc-main">'+buildBody(d)+'</div></div>';
+  var pags = paginar(buildBody(d));
+  wrap.innerHTML = pags.map(function(html){
+    return '<div class="doc-page"><div class="doc-content">'+html+'</div></div>';
+  }).join('');
+}
+
+function paginar(html){
+  // mede elementos num container com mesma largura e fonte
+  var med = document.createElement('div');
+  med.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;top:0;left:-9999px;'
+    + 'font-family:\'Century Gothic\',\'Futura\',\'Trebuchet MS\',sans-serif;font-size:12pt;line-height:1.45;color:#1a1a1a;';
+  med.innerHTML = html;
+  document.body.appendChild(med);
+
+  // largura da área de conteúdo = 160mm; calcula maxH proporcional
+  var cw = med.offsetWidth || 600;
+  var maxH = Math.round(cw * (229 / 160)); // 229mm content height / 160mm content width
+
+  var paginas = [], currentH = 0, currentItems = [];
+  Array.from(med.children).forEach(function(child){
+    var h = child.offsetHeight + (parseFloat(getComputedStyle(child).marginTop)||0) + (parseFloat(getComputedStyle(child).marginBottom)||0);
+    if(h === 0) h = 4;
+    if(currentH + h > maxH && currentItems.length){
+      paginas.push(currentItems.join(''));
+      currentItems = [];
+      currentH = 0;
+    }
+    currentItems.push(child.outerHTML);
+    currentH += h;
+  });
+  if(currentItems.length) paginas.push(currentItems.join(''));
+  document.body.removeChild(med);
+  return paginas.length ? paginas : [html];
 }
 
 function buildBody(d){
@@ -636,26 +668,38 @@ function buildBody(d){
 // ══ EXPORTAR GOOGLE DOCS ══════════════════════════════════════
 document.getElementById('btn-docs').addEventListener('click', async function(){
   var btn = this, status = document.getElementById('export-status');
-  btn.disabled = true; status.textContent = 'Autenticando com Google...'; status.style.color='var(--muted)';
+  btn.disabled = true;
+  status.textContent = 'Autenticando com Google…';
+  status.style.color = 'var(--muted)';
+  status.style.display = 'block';
   try {
     await ensureGToken();
-    status.textContent = 'Criando documento...';
+    status.textContent = 'Criando documento…';
     var d = coletar();
     var docTitle = (d.titulo||'Petição') + (d.processo?' — '+d.processo:'');
     var createR = await fetch('https://docs.googleapis.com/v1/documents',{
-      method:'POST', headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
       body: JSON.stringify({ title: docTitle })
     });
-    if(!createR.ok) throw new Error('Erro ao criar documento: '+createR.status);
+    if(!createR.ok){
+      var errBody = await createR.text();
+      if(createR.status === 403 || createR.status === 404){
+        throw new Error('API do Google Docs não está ativada. Acesse o Google Cloud Console → APIs → ative "Google Docs API" no projeto "Portal FB - Gmail".');
+      }
+      throw new Error('Erro ao criar documento ('+createR.status+'): '+errBody);
+    }
     var doc = await createR.json();
     var reqs = buildDocsRequests(d);
     var updR = await fetch('https://docs.googleapis.com/v1/documents/'+doc.documentId+':batchUpdate',{
-      method:'POST', headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
       body: JSON.stringify({ requests: reqs })
     });
-    if(!updR.ok) throw new Error('Erro ao formatar: '+updR.status);
+    if(!updR.ok) throw new Error('Erro ao formatar ('+updR.status+')');
     var url = 'https://docs.google.com/document/d/'+doc.documentId+'/edit';
-    status.textContent = 'Documento criado!'; status.style.color='var(--ok)';
+    status.textContent = '✓ Documento criado!';
+    status.style.color = 'var(--ok)';
     document.getElementById('docs-link').href = url;
     document.getElementById('docs-link').textContent = url;
     document.getElementById('docs-notif').style.display = 'block';
@@ -665,7 +709,13 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
       })).catch(function(){});
     }
   } catch(err){
-    status.textContent = 'Erro: '+(err.message||err); status.style.color='var(--err)';
+    var msg = err.message || String(err);
+    status.textContent = '✗ ' + msg;
+    status.style.color = 'var(--err)';
+    // mostra alerta se for erro de configuração
+    if(msg.includes('API') || msg.includes('403') || msg.includes('popup')){
+      alert(msg);
+    }
   }
   btn.disabled = false;
 });
