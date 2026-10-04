@@ -895,14 +895,15 @@ function buildDocsRequests(d){
     para(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''), 'secao');
     paragrafos(t.texto).forEach(function(s){
       var n = numParagrafo(s);
-      if(n) para(n+'\t'+restoParagrafo(s), 'body-num', n.length);
+      if(n) para(restoParagrafo(s), 'body-num');
       else para(s, 'body');
     });
   });
   if(d.pedidos.length){
     para('PEDIDO'+(d.pedidos.length>1?'S':''), 'secao');
     para('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:', 'body');
-    d.pedidos.forEach(function(p,i){ var n=alinea(i); para(n+'\t'+pedidoFinal(p,i,d.pedidos.length), 'pedido', n.length); });
+    // tab inicial = nível 2 da lista → letras a), b), c) automáticas
+    d.pedidos.forEach(function(p,i){ para('\t'+pedidoFinal(p,i,d.pedidos.length), 'pedido'); });
   }
   blank();
   para('Nestes Termos,', 'fechamento');
@@ -991,6 +992,43 @@ function buildDocsRequests(d){
       requests.push({ updateTextStyle:{ range:range, textStyle:{bold:true}, fields:'bold' }});
     }
   });
+
+  // ── listas automáticas (renumeram sozinhas ao inserir parágrafos no Docs) ──
+  var Z = {magnitude:0,unit:'PT'}, RECUO = {magnitude:35.4,unit:'PT'};
+  function negritoMarcador(fim){
+    // o número/letra da lista herda o estilo da marca de parágrafo (último caractere)
+    requests.push({ updateTextStyle:{ range:{startIndex:fim-1, endIndex:fim}, textStyle:{bold:true}, fields:'bold' }});
+  }
+
+  var nums = ranges.filter(function(r){ return r.type==='body-num'; });
+  if(nums.length){
+    var n0 = nums[0], nN = nums[nums.length-1];
+    // uma única lista do primeiro ao último parágrafo numerado: numeração contínua entre seções
+    requests.push({ createParagraphBullets:{ range:{startIndex:n0.s, endIndex:nN.e}, bulletPreset:'NUMBERED_DECIMAL_ALPHA_ROMAN' }});
+    ranges.forEach(function(r){
+      if(r.s < n0.s || r.e > nN.e) return;
+      if(r.type === 'body-num'){
+        requests.push({ updateParagraphStyle:{ range:{startIndex:r.s,endIndex:r.e},
+          paragraphStyle:{indentStart:Z, indentFirstLine:Z}, fields:'indentStart,indentFirstLine' }});
+        negritoMarcador(r.e);
+      } else {
+        requests.push({ deleteParagraphBullets:{ range:{startIndex:r.s,endIndex:r.e} }});
+        var recuo = (r.type==='body'||r.type==='qualificacao') ? RECUO : Z;
+        requests.push({ updateParagraphStyle:{ range:{startIndex:r.s,endIndex:r.e},
+          paragraphStyle:{indentStart:Z, indentFirstLine:recuo}, fields:'indentStart,indentFirstLine' }});
+      }
+    });
+  }
+
+  var peds = ranges.filter(function(r){ return r.type==='pedido'; });
+  if(peds.length){
+    var p0 = peds[0], pN = peds[peds.length-1];
+    requests.push({ createParagraphBullets:{ range:{startIndex:p0.s, endIndex:pN.e}, bulletPreset:'NUMBERED_DECIMAL_ALPHA_ROMAN_PARENS' }});
+    // o Docs remove o tab inicial de cada pedido: índices recuam 1 por pedido
+    requests.push({ updateParagraphStyle:{ range:{startIndex:p0.s, endIndex:pN.e - peds.length},
+      paragraphStyle:{indentStart:{magnitude:58,unit:'PT'}, indentFirstLine:RECUO}, fields:'indentStart,indentFirstLine' }});
+    peds.forEach(function(r,k){ negritoMarcador(r.e - (k+1)); });
+  }
 
   return requests;
 }
