@@ -207,6 +207,17 @@
       <div id="hist-list"></div>
     </div>
 
+    <!-- importar texto -->
+    <div class="card">
+      <h2>Importar do Word / Docs</h2>
+      <p class="desc">Cole aqui o texto da petição — o sistema detecta endereçamento, processo, tópicos e pedidos automaticamente.</p>
+      <div class="field">
+        <textarea id="import-txt" rows="7" placeholder="Cole aqui (Ctrl+V) o texto completo da petição..."></textarea>
+      </div>
+      <button class="btn secondary" id="btn-importar" style="width:100%;margin-top:2px;">Detectar e preencher campos</button>
+      <p id="import-status" style="font-size:.74rem;margin-top:8px;display:none;"></p>
+    </div>
+
     <!-- tipo -->
     <div class="card">
       <h2>Tipo de peça</h2>
@@ -725,6 +736,243 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
 
 // notif close
 document.getElementById('docs-notif-close').addEventListener('click', function(){ document.getElementById('docs-notif').style.display='none'; });
+
+// ══ IMPORTAR TEXTO ════════════════════════════════════════════
+document.getElementById('btn-importar').addEventListener('click', function(){
+  var raw = document.getElementById('import-txt').value;
+  if(!raw.trim()){ alert('Cole o texto da petição antes de importar.'); return; }
+  var resultado = parsearPeticao(raw);
+  preencherFormulario(resultado);
+  var st = document.getElementById('import-status');
+  st.style.display = 'block';
+  st.style.color = 'var(--ok)';
+  st.textContent = '✓ Campos preenchidos — revise e ajuste conforme necessário.';
+});
+
+// Cola automática na área de importação
+document.getElementById('import-txt').addEventListener('paste', function(e){
+  var html = e.clipboardData && e.clipboardData.getData('text/html');
+  if(html){ e.preventDefault(); this.value = stripHtml(html); }
+});
+
+function stripHtml(html){
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n\n')
+    .replace(/<\/div>/gi,'\n')
+    .replace(/<\/li>/gi,'\n')
+    .replace(/<\/tr>/gi,'\n')
+    .replace(/<\/h[1-6]>/gi,'\n\n');
+  return tmp.textContent || tmp.innerText || '';
+}
+
+function parsearPeticao(raw){
+  // normaliza
+  var text = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var linhas = text.split('\n').map(function(l){ return l.trim(); });
+
+  // remove linhas em branco consecutivas
+  var clean = [];
+  var prevBlank = false;
+  linhas.forEach(function(l){
+    if(l===''){
+      if(!prevBlank) clean.push('');
+      prevBlank = true;
+    } else {
+      clean.push(l);
+      prevBlank = false;
+    }
+  });
+  while(clean.length && clean[0]==='') clean.shift();
+  while(clean.length && clean[clean.length-1]==='') clean.pop();
+
+  var resultado = {
+    processo:'', vara:'', enderecamento:'', titulo:'',
+    requerentes:[], requeridos:[], topicos:[], pedidos:[],
+    local:'', data:'', sigNome:'', sigOab:''
+  };
+
+  // ── detectar número do processo ──────────────────────────────
+  var PROC_RE = /(\d{7}-\d{2}\.\d{4}\.\d\.\d{2,3}\.\d{4}|\d{4,7}[\/-]\d{2,4}[\/-]\d{2,4}[\/-]\d[\/-]\d{2,4})/;
+  clean.forEach(function(l){
+    if(!resultado.processo){
+      var m = l.match(PROC_RE);
+      if(m) resultado.processo = m[1];
+    }
+  });
+
+  // ── detectar seções por numerais romanos ─────────────────────
+  var ROM_RE = /^(I{1,3}|IV|V|VI{0,3}|IX|X{1,2})\s*[—\-\.]\s*(.*)$/i;
+  var PED_HEADER_RE = /^(DOS\s+PEDIDOS?|PEDIDOS?|DO\s+PEDIDO)\s*$/i;
+  var PEDIDO_ITEM_RE = /^(\d+)\.\s+(.+)/;
+  var OAB_RE = /OAB[\s\/]+[A-Z]{2}\s+n[oº°]\s*([\d.]+)/i;
+  var DATA_LUGAR_RE = /^([A-ZÀ-Úa-zà-ú\s]+(?:\/[A-Z]{2})?),\s+\d{1,2}\s+de\s+\w+\s+de\s+\d{4}/i;
+
+  // divide o documento em blocos pelo marcador romano ou por seções
+  var blocos = []; // {tipo:'header'|'secao'|'pedidos', titulo, linhas}
+  var blocoAtual = {tipo:'header', titulo:'', linhas:[]};
+
+  clean.forEach(function(l){
+    var mRom = l.match(ROM_RE);
+    if(mRom){
+      blocos.push(blocoAtual);
+      var isPed = PED_HEADER_RE.test(mRom[2].trim());
+      blocoAtual = {tipo: isPed ? 'pedidos' : 'secao', titulo: mRom[2].trim(), linhas:[]};
+    } else if(PED_HEADER_RE.test(l) && blocoAtual.linhas.length > 0){
+      blocos.push(blocoAtual);
+      blocoAtual = {tipo:'pedidos', titulo:'', linhas:[]};
+    } else {
+      blocoAtual.linhas.push(l);
+    }
+  });
+  blocos.push(blocoAtual);
+
+  // ── processar bloco header (antes da primeira seção) ─────────
+  var header = blocos[0];
+  var headerLinhas = header.linhas.filter(function(l){ return l!=''; });
+
+  // linha com endereçamento: geralmente a primeira linha com palavras chave ou tudo maiúsculo
+  var ENDER_KW = /^(AO\s|EXCELENT|ILUSTR|MERITÍSSIM|AO TRIBUNAL|À TURMA|AO EGRÉGIO)/i;
+  var endLines = [];
+  var restLines = [];
+  var coletandoEnd = true;
+  headerLinhas.forEach(function(l){
+    if(coletandoEnd){
+      if(ENDER_KW.test(l) || (l === l.toUpperCase() && l.length > 5 && /[A-ZÁÉÍÓÚ]/.test(l) && !PROC_RE.test(l) && !l.match(/^[A-ZÁÉÍÓÚ][a-záéíóú]/))){
+        endLines.push(l);
+      } else {
+        coletandoEnd = false;
+        restLines.push(l);
+      }
+    } else {
+      restLines.push(l);
+    }
+  });
+  resultado.enderecamento = endLines.join('\n');
+
+  // Nos restLines: processo, título, qualificação, vara
+  var possiveisTitulos = ['PETIÇÃO INICIAL','CONTESTAÇÃO','RECURSO ORDINÁRIO','APELAÇÃO CÍVEL',
+    'AGRAVO DE INSTRUMENTO','EMBARGOS DE DECLARAÇÃO','MANIFESTAÇÃO','IMPUGNAÇÃO','MEMORIAL','CONTRARRAZÕES'];
+  restLines.forEach(function(l){
+    if(!l) return;
+    if(!resultado.processo && PROC_RE.test(l)){
+      var m = l.match(PROC_RE); resultado.processo = m[1]; return;
+    }
+    // título em maiúsculas curto
+    if(!resultado.titulo && l === l.toUpperCase() && l.length < 80 && /[A-ZÁÉÍÓÚ]{4}/.test(l) && !PROC_RE.test(l)){
+      resultado.titulo = l; return;
+    }
+    // qualificação (parágrafo longo com vírgulas)
+    if(l.length > 60 && (l.includes('CPF') || l.includes('RG') || l.includes('residente') || l.includes('brasileiro') || l.includes('vem,') || l.includes('vem respeitosamente'))){
+      if(!resultado.requerentes.length) resultado.requerentes.push({nome:'', qual: l});
+    }
+    // vara / tribunal
+    if(!resultado.vara && (/\d[ªº]\.?\s+Var[a]/i.test(l) || /Tribunal/i.test(l) || /comarca/i.test(l))){
+      resultado.vara = l;
+    }
+  });
+
+  // ── processar seções ─────────────────────────────────────────
+  blocos.slice(1).forEach(function(bloco){
+    if(bloco.tipo === 'pedidos' || PED_HEADER_RE.test(bloco.titulo)){
+      // pedidos podem vir numerados dentro
+      var textoBloco = bloco.linhas.join('\n');
+      var itens = [];
+      var bufItem = '';
+      bloco.linhas.forEach(function(l){
+        var mItem = l.match(PEDIDO_ITEM_RE);
+        if(mItem){
+          if(bufItem.trim()) itens.push(bufItem.trim());
+          bufItem = mItem[2];
+        } else if(l && bufItem){
+          bufItem += ' ' + l;
+        }
+      });
+      if(bufItem.trim()) itens.push(bufItem.trim());
+      if(itens.length) resultado.pedidos = resultado.pedidos.concat(itens);
+      else if(textoBloco.trim() && !/^Diante do exposto/i.test(textoBloco.trim())){
+        // pedidos em texto livre — adiciona como pedido único
+        var semIntro = textoBloco.replace(/^Diante do exposto[^:\n]*[:\n]+/i,'').trim();
+        if(semIntro) resultado.pedidos.push(semIntro);
+      }
+    } else if(bloco.tipo === 'secao'){
+      var textoSecao = bloco.linhas.filter(function(l){
+        // remove intro genérica
+        return !/^Diante do exposto/i.test(l) && !/^Nesses termos/i.test(l);
+      }).join('\n').trim();
+      if(bloco.titulo || textoSecao)
+        resultado.topicos.push({titulo: bloco.titulo, texto: textoSecao});
+    }
+  });
+
+  // ── detectar fechamento (signatário, local, data) no final ───
+  var ultimas = clean.slice(-12);
+  ultimas.forEach(function(l){
+    if(!l) return;
+    if(!resultado.sigOab){ var m = l.match(OAB_RE); if(m){ resultado.sigOab = m[1]; resultado.sigNome = resultado.sigNome || ''; } }
+    if(!resultado.sigNome && resultado.sigOab && l && !OAB_RE.test(l) && !DATA_LUGAR_RE.test(l) && l.length < 60 && /[A-ZÁÉÍÓÚ][a-záéíóú]/.test(l)){
+      resultado.sigNome = l;
+    }
+    var mLugar = l.match(/^([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s]+(?:\/[A-Z]{2})?),\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+    if(mLugar && !resultado.local){
+      resultado.local = mLugar[1].trim();
+      var mesesMap = {janeiro:1,fevereiro:2,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+      var mes = mesesMap[(mLugar[3]||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')];
+      if(mes) resultado.data = mLugar[4]+'-'+String(mes).padStart(2,'0')+'-'+String(mLugar[2]).padStart(2,'0');
+    }
+  });
+
+  return resultado;
+}
+
+function preencherFormulario(d){
+  // limpar
+  document.getElementById('reqs-list').innerHTML='';
+  document.getElementById('reds-list').innerHTML='';
+  document.getElementById('tops-list').innerHTML='';
+  document.getElementById('peds-list').innerHTML='';
+  reqCount=0; redCount=0;
+
+  // tipo / título
+  var tipaSel = document.getElementById('tipo-peca');
+  var tiposConhecidos = ['PETIÇÃO INICIAL','CONTESTAÇÃO','RECURSO ORDINÁRIO','APELAÇÃO CÍVEL',
+    'AGRAVO DE INSTRUMENTO','EMBARGOS DE DECLARAÇÃO','MANIFESTAÇÃO','IMPUGNAÇÃO','MEMORIAL','CONTRARRAZÕES'];
+  if(tiposConhecidos.includes(d.titulo)){
+    tipaSel.value = d.titulo;
+    document.getElementById('f-livre').style.display='none';
+  } else if(d.titulo){
+    tipaSel.value = 'outro';
+    document.getElementById('f-livre').style.display='';
+    document.getElementById('titulo-livre').value = d.titulo;
+  }
+
+  if(d.processo)      document.getElementById('num-autos').value = d.processo;
+  if(d.vara)          document.getElementById('vara').value = d.vara;
+  if(d.enderecamento) document.getElementById('enderecamento').value = d.enderecamento;
+  if(d.local)         document.getElementById('local').value = d.local;
+  if(d.data)          document.getElementById('data-f').value = d.data;
+  if(d.sigNome)       document.getElementById('sig-nome').value = d.sigNome;
+  if(d.sigOab)        document.getElementById('sig-oab').value = d.sigOab;
+
+  d.requerentes.forEach(function(p){
+    reqCount++;
+    addParte('reqs-list','Requerente '+reqCount);
+    var last = document.querySelector('#reqs-list .item-block:last-child');
+    if(last){ last.querySelector('.p-nome').value=p.nome||''; last.querySelector('.p-qual').value=p.qual||''; }
+  });
+  d.requeridos.forEach(function(p){
+    redCount++;
+    addParte('reds-list','Requerido '+redCount);
+    var last = document.querySelector('#reds-list .item-block:last-child');
+    if(last){ last.querySelector('.p-nome').value=p.nome||''; last.querySelector('.p-qual').value=p.qual||''; }
+  });
+
+  d.topicos.forEach(function(t){ addTopico(t.titulo, t.texto); });
+  d.pedidos.forEach(function(p){ addPedido(p); });
+
+  render();
+}
 
 // render inicial
 render();
