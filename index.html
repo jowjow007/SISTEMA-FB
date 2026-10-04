@@ -706,7 +706,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v138</span>
+      <span class="version-tag">v139</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -910,7 +910,7 @@
         <input type="file" id="materiais-upload-arquivo" accept="image/*">
         <button type="button" class="btn secondary small" id="materiais-upload-btn">+ Adicionar</button>
       </div>
-      <p class="materiais-upload-hint">Imagens de até ~700 KB (comprima antes se for maior). Formatos: PNG, JPG.</p>
+      <p class="materiais-upload-hint">Pode mandar o arquivo original (foto de celular, PNG grande etc.) — o Portal redimensiona e comprime sozinho antes de salvar.</p>
       <p class="materiais-upload-msg" id="materiais-upload-msg"></p>
     </div>
 
@@ -1343,9 +1343,58 @@
   // Os dois cards fixos reaproveitam as imagens já embutidas para o tema claro/escuro
   // (LOGO_DARK/LOGO_LIGHT). Além disso, qualquer admin pode subir logomarcas extras ou
   // papéis de parede novos — ficam em `materiaisMarca` no Firestore (sem Storage/Blaze,
-  // a imagem vai como base64 no próprio documento, por isso o limite de ~700KB por arquivo).
-  const MATERIAL_TAMANHO_MAX = 700 * 1024;
+  // a imagem vai como base64 no próprio documento). O Firestore trava QUALQUER documento
+  // em 1 MiB (1.048.576 bytes) — não tem como pedir "sem limite" de verdade nesse desenho.
+  // Por isso o arquivo é redimensionado/comprimido sozinho antes de salvar (o usuário não
+  // precisa comprimir manualmente): papel de parede vira JPEG com qualidade decrescente até
+  // caber; logomarca fica em PNG (mantém transparência), só com redimensionamento de lado.
+  const MATERIAL_TAMANHO_ALVO = 700 * 1024;      // o que tentamos alcançar ao comprimir
+  const MATERIAL_TAMANHO_TETO = 950 * 1024;      // teto real antes do doc estourar 1MiB (com folga p/ outros campos)
   let materiaisExtras = [];
+
+  function tamanhoBase64(dataUrl){
+    const i = dataUrl.indexOf(',');
+    const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+    return Math.floor(b64.length * 0.75);
+  }
+  function comprimirImagem(file, tipo){
+    return new Promise(function(resolve, reject){
+      const leitor = new FileReader();
+      leitor.onload = function(){
+        const img = new Image();
+        img.onload = function(){
+          const ladoMax = tipo === 'wallpaper' ? 1920 : 1600;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > ladoMax || h > ladoMax) {
+            const escala = ladoMax / Math.max(w, h);
+            w = Math.round(w * escala);
+            h = Math.round(h * escala);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (tipo === 'wallpaper') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+          ctx.drawImage(img, 0, 0, w, h);
+
+          if (tipo === 'wallpaper') {
+            let qualidade = 0.85;
+            let dataUrl = canvas.toDataURL('image/jpeg', qualidade);
+            while (tamanhoBase64(dataUrl) > MATERIAL_TAMANHO_ALVO && qualidade > 0.3) {
+              qualidade -= 0.15;
+              dataUrl = canvas.toDataURL('image/jpeg', qualidade);
+            }
+            resolve(dataUrl);
+          } else {
+            resolve(canvas.toDataURL('image/png'));
+          }
+        };
+        img.onerror = function(){ reject(new Error('Não foi possível abrir essa imagem.')); };
+        img.src = leitor.result;
+      };
+      leitor.onerror = function(){ reject(new Error('Não foi possível ler o arquivo.')); };
+      leitor.readAsDataURL(file);
+    });
+  }
 
   function extensaoDaImagem(dataUrl){
     const m = /^data:image\/(png|jpeg|jpg|webp)/.exec(dataUrl || '');
@@ -1405,18 +1454,21 @@
     els.materiaisUploadMsg.textContent = '';
     if (!nome) { els.materiaisUploadMsg.className = 'materiais-upload-msg erro'; els.materiaisUploadMsg.textContent = 'Dê um nome para o material.'; return; }
     if (!arquivo) { els.materiaisUploadMsg.className = 'materiais-upload-msg erro'; els.materiaisUploadMsg.textContent = 'Escolha um arquivo de imagem.'; return; }
-    if (arquivo.size > MATERIAL_TAMANHO_MAX) {
-      els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
-      els.materiaisUploadMsg.textContent = 'Arquivo muito grande (' + Math.round(arquivo.size / 1024) + ' KB). Comprima para até ~700 KB e tente de novo.';
-      return;
-    }
+
     els.materiaisUploadBtn.disabled = true;
-    const reader = new FileReader();
-    reader.onload = function(){
+    els.materiaisUploadMsg.textContent = 'Preparando imagem...';
+    comprimirImagem(arquivo, tipo).then(function(dataUrl){
+      if (tamanhoBase64(dataUrl) > MATERIAL_TAMANHO_TETO) {
+        els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
+        els.materiaisUploadMsg.textContent = 'Mesmo comprimida, essa imagem ainda ficou grande demais pra salvar. Tente uma versão mais simples ou com menos detalhe.';
+        els.materiaisUploadBtn.disabled = false;
+        return;
+      }
+      els.materiaisUploadMsg.textContent = 'Salvando...';
       db.collection('materiaisMarca').add({
         tipo: tipo,
         nome: nome,
-        imagem: reader.result,
+        imagem: dataUrl,
         criadoPorUid: currentProfile.uid,
         criadoPorNome: currentProfile.displayName || currentProfile.email,
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
@@ -1431,13 +1483,11 @@
         els.materiaisUploadMsg.textContent = 'Erro ao salvar: ' + e.message;
         els.materiaisUploadBtn.disabled = false;
       });
-    };
-    reader.onerror = function(){
+    }).catch(function(e){
       els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
-      els.materiaisUploadMsg.textContent = 'Não foi possível ler o arquivo.';
+      els.materiaisUploadMsg.textContent = e.message || 'Não foi possível processar essa imagem.';
       els.materiaisUploadBtn.disabled = false;
-    };
-    reader.readAsDataURL(arquivo);
+    });
   });
 
   // ---------- Alternar login / cadastro ----------
