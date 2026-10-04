@@ -132,9 +132,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     height:297mm;
     flex:0 0 auto;
     position:relative;
-    background-image:url('../../assets/timbrado-bg.png');
-    background-size:100% 100%;
-    background-repeat:no-repeat;
+    overflow:hidden;
+    background:#fff;
     box-shadow:0 6px 36px rgba(0,0,0,.6);
     font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;
     font-size:12pt;
@@ -142,8 +141,10 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     line-height:1.45;
   }
 
+  .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
   /* área de conteúdo texto — margens ajustadas ao timbrado */
   .doc-content{
+    z-index:1;
     position:absolute;
     top:36mm;
     left:25mm;
@@ -175,7 +176,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   @media print{
     @page{size:A4;margin:0;}
     html,body{background:#fff;margin:0;padding:0;}
-    header,.form-col,.preview-toolbar{display:none !important;}
+    header,.form-col,.preview-toolbar,#docs-notif{display:none !important;}
     main{max-width:none;margin:0;padding:0;}
     .layout{display:block;}
     #doc-pages-wrap{background:#fff;border:none;padding:0;overflow:visible;}
@@ -304,7 +305,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- exportar -->
     <div class="card">
       <h2>Exportar</h2>
-      <p class="desc">O Google Docs cria o documento sem timbrado (limitação do Docs — use para editar o texto). O PDF usa a impressão do navegador com timbrado completo.</p>
+      <p class="desc">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais. O PDF usa a impressão do navegador.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn green" id="btn-docs">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="2" points="14 2 14 8 20 8"/></svg>
@@ -313,7 +314,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <button class="btn secondary" id="btn-pdf">Imprimir / PDF</button>
         <button class="btn secondary small" id="btn-limpar">Limpar</button>
       </div>
-      <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">💡 No diálogo de impressão: selecione <strong>Salvar como PDF</strong> e marque <strong>"Imprimir planos de fundo"</strong> para incluir o timbrado.</p>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">💡 No diálogo de impressão, escolha <strong>Salvar como PDF</strong>, margens <strong>Nenhuma</strong> e desmarque <strong>Cabeçalhos e rodapés</strong>.</p>
       <p id="export-status" style="font-size:.74rem;margin-top:8px;color:var(--muted);"></p>
     </div>
 
@@ -360,7 +361,7 @@ const db    = firebase.firestore(fbApp);
 
 // ══ GOOGLE OAUTH (Docs + Drive) ═══════════════════════════════
 const DOCS_SCOPE = 'https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file';
-let gTokenClient = null, gAccessToken = null, gTokenResolve = null;
+let gTokenClient = null, gAccessToken = null, gTokenResolve = null, gTokenReject = null;
 
 function loadGIS(cb){
   if(window.google && google.accounts){ cb(); return; }
@@ -369,25 +370,38 @@ function loadGIS(cb){
   s.onload = cb;
   document.head.appendChild(s);
 }
+var G_TOKEN_KEY = 'fb-peticoes-gtoken';
+try{
+  var saved = JSON.parse(localStorage.getItem(G_TOKEN_KEY)||'null');
+  if(saved && saved.exp > Date.now() + 60000) gAccessToken = saved.token;
+}catch(e){}
+
 function ensureGToken(){
   return new Promise(function(resolve, reject){
+    if(gAccessToken){ resolve(true); return; }
     loadGIS(function(){
       if(!gTokenClient){
         gTokenClient = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: DOCS_SCOPE,
           callback: function(resp){
-            if(resp.error){ reject(resp.error); return; }
+            if(resp.error){ if(gTokenReject) gTokenReject(new Error(resp.error)); return; }
             gAccessToken = resp.access_token;
+            try{ localStorage.setItem(G_TOKEN_KEY, JSON.stringify({token:gAccessToken, exp:Date.now()+(resp.expires_in||3600)*1000})); }catch(e){}
             if(gTokenResolve){ gTokenResolve(true); gTokenResolve = null; }
           }
         });
       }
-      if(gAccessToken){ resolve(true); return; }
-      gTokenResolve = resolve;
-      gTokenClient.requestAccessToken({ prompt:'consent' });
+      gTokenResolve = resolve; gTokenReject = reject;
+      var email = currentUser && currentUser.email;
+      // prompt vazio: só pede consentimento na primeira vez; depois apenas renova
+      gTokenClient.requestAccessToken(email ? { prompt:'', login_hint: email } : { prompt:'' });
     });
   });
+}
+function invalidarGToken(){
+  gAccessToken = null;
+  try{ localStorage.removeItem(G_TOKEN_KEY); }catch(e){}
 }
 
 // ══ UTILS ═════════════════════════════════════════════════════
@@ -441,9 +455,11 @@ function addTopico(tv, tx){
   var div = document.createElement('div'); div.className = 'top-block';
   var ord = document.querySelectorAll('.top-block').length + 1;
   div.innerHTML = '<div class="top-head"><span class="top-num">'+roman(ord)+'</span>'
-    +'<input class="top-tit" placeholder="DOS FATOS / DO DIREITO / DOS PEDIDOS..." value="'+(tv?esc(tv):'')+'">'
+    +'<input class="top-tit" placeholder="DOS FATOS / DO DIREITO / DOS PEDIDOS...">'
     +'<button class="btn-rem tr">✕</button></div>'
-    +'<textarea class="top-txt" placeholder="Texto do tópico...">'+(tx?esc(tx):'')+'</textarea>';
+    +'<textarea class="top-txt" placeholder="Texto do tópico (um parágrafo por linha)..."></textarea>';
+  div.querySelector('.top-tit').value = tv || '';
+  div.querySelector('.top-txt').value = tx || '';
   div.querySelector('.tr').onclick = function(){ div.remove(); renumTops(); render(); };
   div.querySelectorAll('input,textarea').forEach(function(el){ el.addEventListener('input', render); });
   document.getElementById('tops-list').appendChild(div);
@@ -604,13 +620,14 @@ function _render(){
   var d = coletar();
   var temConteudo = d.titulo||d.enderecamento||d.requerentes.length||d.topicos.length||d.pedidos.length;
   var wrap = document.getElementById('doc-pages');
+  var BG = '<img class="doc-bg" src="../../assets/timbrado-bg.png" alt="">';
   if(!temConteudo){
-    wrap.innerHTML = '<div class="doc-page"><div class="doc-content"><div class="dc-empty">Preencha os campos ao lado para ver a petição.</div></div></div>';
+    wrap.innerHTML = '<div class="doc-page">'+BG+'<div class="doc-content"><div class="dc-empty">Preencha os campos ao lado para ver a petição.</div></div></div>';
     return;
   }
   var pags = paginar(buildBody(d));
   wrap.innerHTML = pags.map(function(html){
-    return '<div class="doc-page"><div class="doc-content">'+html+'</div></div>';
+    return '<div class="doc-page">'+BG+'<div class="doc-content">'+html+'</div></div>';
   }).join('');
 }
 
@@ -619,7 +636,7 @@ function paginar(html){
   var pageEl = document.querySelector('.doc-page');
   var pageW  = pageEl ? pageEl.offsetWidth : 794;          // largura A4 em px
   var contentW = Math.round(pageW * 160 / 210);            // 160mm de conteúdo
-  var maxH     = Math.round(pageW * 229 / 210);            // 229mm de altura útil
+  var maxH     = Math.round(pageW * 229 / 210 * 0.96);     // 229mm de altura útil, com folga
 
   var med = document.createElement('div');
   med.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;'
@@ -649,20 +666,42 @@ function paginar(html){
   return paginas.length ? paginas : [html];
 }
 
+var FRASE_VEM = ', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado in fine assinado, expor e requerer o seguinte:';
+function paragrafos(t){
+  return (t||'').split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+}
+function numParagrafo(s){
+  var m = s.match(/^(\d+(?:\.\d+)*[.)\-–]?)\s+/);
+  return m ? m[0] : '';
+}
+// separa nome (negrito) do restante; não repete "vem, respeitosamente" se já existir
+function qualifParts(p){
+  var nome = (p.nome||'').trim(), resto = (p.qual||'').trim();
+  if(nome && resto) resto = ', ' + resto;
+  if(!nome && resto){
+    var m = resto.match(/^([A-ZÀ-Ý0-9][A-ZÀ-Ý0-9\s.&\-\/]{2,}?)(?=,)/);
+    if(m){ nome = m[1].trim(); resto = resto.slice(m[1].length); }
+  }
+  var sufixo = /vem,?\s+(respeitosamente|perante|à presença)/i.test(resto) ? '' : FRASE_VEM;
+  return {nome:nome, resto:resto, sufixo:sufixo};
+}
+
 function buildBody(d){
   var h = '';
   if(d.enderecamento) h += '<div class="dc-enderecamento">'+esc(d.enderecamento)+'</div>';
   if(d.processo)      h += '<div class="dc-processo"><strong>Autos nº.</strong> '+esc(d.processo)+'.</div>';
   d.requerentes.forEach(function(p){
-    var txt = '';
-    if(p.nome) txt += '<strong>'+esc(p.nome)+'</strong>';
-    if(p.qual) txt += (p.nome?', ':'')+esc(p.qual);
-    if(txt) h += '<div class="dc-qualificacao">'+txt+', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado <em>in fine</em> assinado, expor e requerer o seguinte:</div>';
+    var q = qualifParts(p);
+    if(!q.nome && !q.resto) return;
+    h += '<div class="dc-qualificacao">'+(q.nome?'<strong>'+esc(q.nome)+'</strong>':'')+esc(q.resto)+esc(q.sufixo)+'</div>';
   });
   if(d.titulo) h += '<div class="dc-titulo-box">'+esc(d.titulo)+'</div>';
   d.topicos.forEach(function(t,i){
     h += '<div class="dc-secao">'+roman(i+1)+(t.titulo?' — '+esc(t.titulo.toUpperCase()):'')+'</div>';
-    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s) h+='<div class="dc-p">'+esc(s)+'</div>'; });
+    paragrafos(t.texto).forEach(function(s){
+      var n = numParagrafo(s);
+      h += '<div class="dc-p">'+(n?'<strong>'+esc(n)+'</strong>'+esc(s.slice(n.length)):esc(s))+'</div>';
+    });
   });
   if(d.pedidos.length){
     h += '<div class="dc-secao">Pedido'+(d.pedidos.length>1?'s':'')+'</div>';
@@ -689,29 +728,26 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
   status.style.display = 'block';
   try {
     await ensureGToken();
-    status.textContent = 'Criando documento…';
+    status.textContent = 'Criando documento com timbrado…';
     var d = coletar();
     var docTitle = (d.titulo||'Petição') + (d.processo?' — '+d.processo:'');
-    var createR = await fetch('https://docs.googleapis.com/v1/documents',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
-      body: JSON.stringify({ title: docTitle })
-    });
-    if(!createR.ok){
-      var errBody = await createR.text();
-      if(createR.status === 403 || createR.status === 404){
-        throw new Error('API do Google Docs não está ativada. Acesse o Google Cloud Console → APIs → ative "Google Docs API" no projeto "Portal FB - Gmail".');
-      }
-      throw new Error('Erro ao criar documento ('+createR.status+'): '+errBody);
+    var docId;
+    try { docId = await criarDocTimbrado(docTitle); }
+    catch(e){
+      if(e.status === 401){ invalidarGToken(); await ensureGToken(); docId = await criarDocTimbrado(docTitle); }
+      else throw e;
     }
-    var doc = await createR.json();
-    var reqs = buildDocsRequests(d);
-    var updR = await fetch('https://docs.googleapis.com/v1/documents/'+doc.documentId+':batchUpdate',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
-      body: JSON.stringify({ requests: reqs })
+    status.textContent = 'Formatando…';
+    var info = await gFetch('https://docs.googleapis.com/v1/documents/'+docId+'?fields=body.content.endIndex');
+    var content = (info.body && info.body.content) || [];
+    var endIdx = content.length ? content[content.length-1].endIndex : 2;
+    var reqs = [];
+    if(endIdx > 2) reqs.push({ deleteContentRange:{ range:{startIndex:1, endIndex:endIdx-1} } });
+    reqs = reqs.concat(buildDocsRequests(d));
+    await gFetch('https://docs.googleapis.com/v1/documents/'+docId+':batchUpdate', {
+      method:'POST', json:{ requests: reqs }
     });
-    if(!updR.ok) throw new Error('Erro ao formatar ('+updR.status+')');
+    var doc = {documentId: docId};
     var url = 'https://docs.google.com/document/d/'+doc.documentId+'/edit';
     status.textContent = '✓ Documento criado!';
     status.style.color = 'var(--ok)';
@@ -735,31 +771,68 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
   btn.disabled = false;
 });
 
+async function gFetch(url, opts){
+  opts = opts || {};
+  var headers = Object.assign({'Authorization':'Bearer '+gAccessToken}, opts.headers||{});
+  var body = opts.body;
+  if(opts.json){ headers['Content-Type'] = 'application/json'; body = JSON.stringify(opts.json); }
+  var r = await fetch(url, {method: opts.method||'GET', headers: headers, body: body});
+  if(!r.ok){
+    var txt = await r.text();
+    var err = new Error('Google respondeu '+r.status+': '+txt.slice(0,300));
+    err.status = r.status;
+    if(r.status === 403 && /has not been used|is disabled/i.test(txt))
+      err.message = 'Uma API do Google não está ativada (Docs ou Drive). Ative no Google Cloud Console, projeto "Portal FB - Gmail".';
+    throw err;
+  }
+  return r.json();
+}
+
+var modeloDocxBlob = null;
+// sobe o MODELO TIMBRADO.docx ao Drive convertendo em Google Docs (mantém cabeçalho/rodapé com o timbrado)
+async function criarDocTimbrado(titulo){
+  if(!modeloDocxBlob){
+    var mr = await fetch('../../assets/modelo-timbrado.docx');
+    if(!mr.ok) throw new Error('Modelo timbrado não encontrado no portal.');
+    modeloDocxBlob = await mr.blob();
+  }
+  var boundary = 'fbpet' + Date.now();
+  var meta = { name: titulo, mimeType: 'application/vnd.google-apps.document' };
+  var body = new Blob([
+    '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n',
+    '--'+boundary+'\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
+    modeloDocxBlob,
+    '\r\n--'+boundary+'--'
+  ]);
+  var res = await gFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method:'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body: body
+  });
+  return res.id;
+}
+
 function buildDocsRequests(d){
   // monta lista de parágrafos com tipo semântico
-  var paras = []; // {text, type}
-  function para(text, type){ paras.push({text: text||'', type: type||'body'}); }
+  var paras = []; // {text, type, boldLen}
+  function para(text, type, boldLen){ paras.push({text: (text||'').replace(/\n/g,' '), type: type||'body', boldLen: boldLen||0}); }
   function blank(){ paras.push({text:'', type:'blank'}); }
 
-  if(d.enderecamento){ para(d.enderecamento, 'enderecamento'); blank(); }
-  if(d.processo){ para('Autos nº. '+d.processo+'.', 'processo'); blank(); }
+  if(d.enderecamento){ paragrafos(d.enderecamento).forEach(function(l){ para(l.toUpperCase(), 'enderecamento'); }); blank(); }
+  if(d.processo){ para('Autos nº. '+d.processo+'.', 'processo', 'Autos nº.'.length); blank(); }
   d.requerentes.forEach(function(p){
-    if(p.nome||p.qual){
-      var t = (p.nome||'') + (p.qual ? (p.nome?', ':'')+p.qual : '');
-      t += ', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado in fine assinado, expor e requerer o seguinte:';
-      para(t, 'qualificacao'); blank();
-    }
+    var q = qualifParts(p);
+    if(!q.nome && !q.resto) return;
+    para(q.nome + q.resto + q.sufixo, 'qualificacao', q.nome.length); blank();
   });
   if(d.titulo){ para(d.titulo, 'titulo'); blank(); }
   d.topicos.forEach(function(t, i){
     para(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''), 'secao');
-    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s) para(s,'body'); });
+    paragrafos(t.texto).forEach(function(s){ para(s, 'body', numParagrafo(s).length); });
     blank();
   });
   if(d.pedidos.length){
     para('PEDIDO'+(d.pedidos.length>1?'S':''), 'secao');
     para('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:', 'body');
-    d.pedidos.forEach(function(p,i){ para((i+1)+'. '+p, 'pedido'); });
+    d.pedidos.forEach(function(p,i){ var n=(i+1)+'. '; para(n+p, 'pedido', n.length); });
     blank();
   }
   para('Nesses termos, pede deferimento.', 'fechamento'); blank();
@@ -785,8 +858,9 @@ function buildDocsRequests(d){
   var ranges = paras.map(function(p){
     var s = pos, e = pos + p.text.length + 1;
     pos = e;
-    return {s:s, e:e, type:p.type};
+    return {s:s, e:e, type:p.type, boldLen:p.boldLen||0};
   });
+  var BORDA = { color:{color:{rgbColor:{red:0.1,green:0.1,blue:0.1}}}, width:{magnitude:1.5,unit:'PT'}, padding:{magnitude:5,unit:'PT'}, dashStyle:'SOLID' };
 
   ranges.slice().reverse().forEach(function(r){
     var range = {startIndex:r.s, endIndex:r.e};
@@ -797,10 +871,10 @@ function buildDocsRequests(d){
       requests.push({ updateParagraphStyle:{ range:range,
         paragraphStyle:{alignment:'CENTER'},
         fields:'alignment' }});
-    } else if(r.type==='body'||r.type==='qualificacao'){
+    } else if(r.type==='body'||r.type==='qualificacao'||r.type==='pedido'){
       requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED', indentFirstLine: INDENT},
-        fields:'alignment,indentFirstLine' }});
+        paragraphStyle:{alignment:'JUSTIFIED', indentFirstLine: INDENT, spaceBelow:{magnitude:6,unit:'PT'}, lineSpacing:150},
+        fields:'alignment,indentFirstLine,spaceBelow,lineSpacing' }});
     } else if(r.type==='fechamento'){
       requests.push({ updateParagraphStyle:{ range:range,
         paragraphStyle:{alignment:'JUSTIFIED'},
@@ -815,6 +889,18 @@ function buildDocsRequests(d){
       requests.push({ updateParagraphStyle:{ range:range,
         paragraphStyle:{alignment:'START'},
         fields:'alignment' }});
+    }
+
+    if(r.type==='titulo'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{ borderTop:BORDA, borderBottom:BORDA, borderLeft:BORDA, borderRight:BORDA },
+        fields:'borderTop,borderBottom,borderLeft,borderRight' }});
+    }
+
+    // negrito parcial: número do parágrafo, "Autos nº.", nome da parte
+    if(r.boldLen){
+      requests.push({ updateTextStyle:{ range:{startIndex:r.s, endIndex:r.s + r.boldLen},
+        textStyle:{bold:true}, fields:'bold' }});
     }
 
     // estilos de texto
