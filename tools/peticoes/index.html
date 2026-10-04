@@ -129,6 +129,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   /* ── página A4 com timbrado real ── */
   .doc-page{
     width:210mm;
+    height:297mm;
     flex:0 0 auto;
     position:relative;
     background-image:url('../../assets/timbrado-bg.png');
@@ -139,8 +140,6 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     font-size:12pt;
     color:#1a1a1a;
     line-height:1.45;
-    /* altura A4 = 297mm; usamos aspect-ratio para manter proporção */
-    aspect-ratio:210/297;
   }
 
   /* área de conteúdo texto — margens ajustadas ao timbrado */
@@ -305,15 +304,16 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- exportar -->
     <div class="card">
       <h2>Exportar</h2>
-      <p class="desc">O Google Docs cria o documento direto no Drive e retorna o link. O PDF usa o timbrado real.</p>
+      <p class="desc">O Google Docs cria o documento sem timbrado (limitação do Docs — use para editar o texto). O PDF usa a impressão do navegador com timbrado completo.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn green" id="btn-docs">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="2" points="14 2 14 8 20 8"/></svg>
           Criar no Google Docs
         </button>
-        <button class="btn secondary" id="btn-pdf">Baixar PDF</button>
+        <button class="btn secondary" id="btn-pdf">Imprimir / PDF</button>
         <button class="btn secondary small" id="btn-limpar">Limpar</button>
       </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">💡 No diálogo de impressão: selecione <strong>Salvar como PDF</strong> e marque <strong>"Imprimir planos de fundo"</strong> para incluir o timbrado.</p>
       <p id="export-status" style="font-size:.74rem;margin-top:8px;color:var(--muted);"></p>
     </div>
 
@@ -835,13 +835,12 @@ function buildDocsRequests(d){
 // ══ EXPORTAR PDF ══════════════════════════════════════════════
 document.getElementById('btn-pdf').addEventListener('click', function(){
   var d = coletar();
-  var title = (d.titulo||'Petição')+(d.processo?' — '+d.processo:'');
-  html2pdf().set({
-    margin:0, filename:title+'.pdf',
-    image:{type:'jpeg',quality:.97},
-    html2canvas:{scale:2,useCORS:true},
-    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-  }).from(document.getElementById('doc-pages')).save();
+  if(!d.titulo && !d.enderecamento && !d.topicos.length){
+    alert('Preencha os campos antes de exportar.'); return;
+  }
+  // Usa impressão nativa do browser — preserva timbrado e fontes perfeitamente.
+  // Na caixa de impressão: escolha "Salvar como PDF" e ative "Imprimir planos de fundo".
+  window.print();
 });
 
 // ══ LIMPAR ════════════════════════════════════════════════════
