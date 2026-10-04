@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -795,25 +795,17 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
   status.style.display = 'block';
   try {
     await ensureGToken();
-    status.textContent = 'Criando documento com timbrado…';
+    status.textContent = 'Montando documento com timbrado…';
     var d = coletar();
     var docTitle = nomeArquivo(d);
+    var docxBlob = await gerarDocx(d);
+    status.textContent = 'Enviando ao Google Docs…';
     var docId;
-    try { docId = await criarDocTimbrado(docTitle); }
+    try { docId = await criarDocTimbrado(docTitle, docxBlob); }
     catch(e){
-      if(e.status === 401){ invalidarGToken(); await ensureGToken(); docId = await criarDocTimbrado(docTitle); }
+      if(e.status === 401){ invalidarGToken(); await ensureGToken(); docId = await criarDocTimbrado(docTitle, docxBlob); }
       else throw e;
     }
-    status.textContent = 'Formatando…';
-    var info = await gFetch('https://docs.googleapis.com/v1/documents/'+docId+'?fields=body.content.endIndex');
-    var content = (info.body && info.body.content) || [];
-    var endIdx = content.length ? content[content.length-1].endIndex : 2;
-    var reqs = [];
-    if(endIdx > 2) reqs.push({ deleteContentRange:{ range:{startIndex:1, endIndex:endIdx-1} } });
-    reqs = reqs.concat(buildDocsRequests(d));
-    await gFetch('https://docs.googleapis.com/v1/documents/'+docId+':batchUpdate', {
-      method:'POST', json:{ requests: reqs }
-    });
     var doc = {documentId: docId};
     var url = 'https://docs.google.com/document/d/'+doc.documentId+'/edit';
     status.textContent = '✓ Documento criado!';
@@ -856,19 +848,14 @@ async function gFetch(url, opts){
 }
 
 var modeloDocxBlob = null;
-// sobe o MODELO TIMBRADO.docx ao Drive convertendo em Google Docs (mantém cabeçalho/rodapé com o timbrado)
-async function criarDocTimbrado(titulo){
-  if(!modeloDocxBlob){
-    var mr = await fetch('../../assets/modelo-timbrado.docx');
-    if(!mr.ok) throw new Error('Modelo timbrado não encontrado no portal.');
-    modeloDocxBlob = await mr.blob();
-  }
+// sobe o .docx gerado ao Drive convertendo em Google Docs (mantém cabeçalho/rodapé com o timbrado)
+async function criarDocTimbrado(titulo, docxBlob){
   var boundary = 'fbpet' + Date.now();
   var meta = { name: titulo, mimeType: 'application/vnd.google-apps.document' };
   var body = new Blob([
     '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n',
     '--'+boundary+'\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
-    modeloDocxBlob,
+    docxBlob,
     '\r\n--'+boundary+'--'
   ]);
   var res = await gFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
@@ -877,160 +864,104 @@ async function criarDocTimbrado(titulo){
   return res.id;
 }
 
-function buildDocsRequests(d){
-  // monta lista de parágrafos com tipo semântico
-  var paras = []; // {text, type, boldLen}
-  function para(text, type, boldLen){ paras.push({text: (text||'').replace(/\n/g,' '), type: type||'body', boldLen: boldLen||0}); }
-  function blank(){ paras.push({text:'', type:'blank'}); }
+// ══ GERADOR DOCX (sobre o MODELO TIMBRADO) ═══════════════════
+// numId 1 = parágrafos "1." em negrito (contínuos); numId 2 = pedidos "a)" em negrito
+var W_FONT = '<w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:eastAsia="Century Gothic" w:cs="Century Gothic"/>';
+var NUMBERING_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+  + '<w:abstractNum w:abstractNumId="10"><w:multiLevelType w:val="multilevel"/>'
+  +   '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/>'
+  +     '<w:pPr><w:tabs><w:tab w:val="num" w:pos="709"/></w:tabs><w:ind w:left="0" w:firstLine="0"/></w:pPr>'
+  +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
+  +   '<w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%2)"/><w:lvlJc w:val="left"/>'
+  +     '<w:pPr><w:ind w:left="1418" w:hanging="709"/></w:pPr>'
+  +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
+  + '</w:abstractNum>'
+  + '<w:abstractNum w:abstractNumId="11"><w:multiLevelType w:val="multilevel"/>'
+  +   '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1)"/><w:lvlJc w:val="left"/>'
+  +     '<w:pPr><w:tabs><w:tab w:val="num" w:pos="1418"/></w:tabs><w:ind w:left="1418" w:hanging="709"/></w:pPr>'
+  +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
+  + '</w:abstractNum>'
+  + '<w:num w:numId="1"><w:abstractNumId w:val="10"/></w:num>'
+  + '<w:num w:numId="2"><w:abstractNumId w:val="11"/></w:num>'
+  + '</w:numbering>';
 
-  if(d.enderecamento){ paragrafos(d.enderecamento).forEach(function(l){ para(l.toUpperCase(), 'enderecamento'); }); blank(); }
-  if(d.processo){ para('Autos nº. '+d.processo+'.', 'processo', 'Autos nº.'.length); blank(); }
+function xmlEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function wRun(t, o){
+  o = o || {};
+  var sz = o.sz || 24;
+  return '<w:r><w:rPr>'+W_FONT+(o.b?'<w:b/><w:bCs/>':'')+(o.i?'<w:i/><w:iCs/>':'')
+    + '<w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/></w:rPr>'
+    + '<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>';
+}
+function wP(runs, o){
+  o = o || {};
+  var ppr = '';
+  if(o.num) ppr += '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="'+o.num+'"/></w:numPr>';
+  if(o.box) ppr += '<w:pBdr>' + ['top','left','bottom','right'].map(function(s){
+    return '<w:'+s+' w:val="single" w:sz="12" w:space="4" w:color="1A1A1A"/>'; }).join('') + '</w:pBdr>';
+  ppr += '<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?200:o.after)+'" w:line="'+(o.line||360)+'" w:lineRule="auto"/>';
+  if(o.ind) ppr += '<w:ind '+o.ind+'/>';
+  ppr += '<w:jc w:val="'+(o.jc||'both')+'"/>';
+  return '<w:p><w:pPr>'+ppr+'</w:pPr>'+(runs||'')+'</w:p>';
+}
+function wVazio(){ return wP('', {after:0}); }
+
+function docxBody(d){
+  var x = '';
+  var RECUO = 'w:left="0" w:firstLine="709"';
+  if(d.enderecamento){
+    paragrafos(d.enderecamento).forEach(function(l){ x += wP(wRun(l.toUpperCase(),{b:1}), {jc:'center', after:0, line:276}); });
+    x += wVazio();
+  }
+  if(d.processo){ x += wP(wRun('Autos nº.',{b:1}) + wRun(' '+d.processo+'.'), {jc:'left'}); }
   d.requerentes.forEach(function(p){
     var q = qualifParts(p);
     if(!q.nome && !q.resto) return;
-    para(q.nome + q.resto + q.sufixo, 'qualificacao', q.nome.length); blank();
+    x += wP((q.nome?wRun(q.nome,{b:1}):'') + wRun(q.resto + q.sufixo), {ind:RECUO});
   });
-  if(d.titulo){ para(d.titulo, 'titulo'); blank(); }
+  if(d.titulo) x += wP(wRun(d.titulo.toUpperCase(),{b:1, sz:26}), {jc:'center', box:1, before:240, after:240});
   d.topicos.forEach(function(t, i){
-    para(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''), 'secao');
+    x += wP(wRun(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''),{b:1}), {jc:'left', before:240, after:120});
     paragrafos(t.texto).forEach(function(s){
-      var n = numParagrafo(s);
-      if(n) para(restoParagrafo(s), 'body-num');
-      else para(s, 'body');
+      if(numParagrafo(s)) x += wP(wRun(restoParagrafo(s)), {num:1});
+      else x += wP(wRun(s), {ind:RECUO});
     });
   });
   if(d.pedidos.length){
-    para('PEDIDO'+(d.pedidos.length>1?'S':''), 'secao');
-    para('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:', 'body');
-    // tab inicial = nível 2 da lista → letras a), b), c) automáticas
-    d.pedidos.forEach(function(p,i){ para('\t'+pedidoFinal(p,i,d.pedidos.length), 'pedido'); });
+    x += wP(wRun('PEDIDO'+(d.pedidos.length>1?'S':''),{b:1}), {jc:'left', before:240, after:120});
+    x += wP(wRun('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:'), {ind:RECUO});
+    d.pedidos.forEach(function(p,i){ x += wP(wRun(pedidoFinal(p,i,d.pedidos.length)), {num:2}); });
   }
-  blank();
-  para('Nestes Termos,', 'fechamento');
-  para('Pede Deferimento.', 'fechamento'); blank();
-  if(d.local||d.data){ para((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.', 'local'); blank(); blank(); }
+  x += wVazio();
+  x += wP(wRun('Nestes Termos,'), {jc:'center', after:0});
+  x += wP(wRun('Pede Deferimento.'), {jc:'center'});
+  if(d.local||d.data) x += wP(wRun((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.'), {jc:'center'});
+  x += wVazio() + wVazio();
   if(d.sigNome){
-    para(d.sigNome.toUpperCase(), 'assinatura-nome');
-    if(d.sigOab) para('OAB/MG nº '+d.sigOab, 'assinatura-nome');
+    x += wP(wRun(d.sigNome.toUpperCase(),{b:1}), {jc:'center', after:0, line:276});
+    if(d.sigOab) x += wP(wRun('OAB/MG nº '+d.sigOab,{b:1}), {jc:'center', after:0, line:276});
   }
+  return x;
+}
 
-  var fullText = paras.map(function(p){ return p.text; }).join('\n');
-  var requests = [{ insertText:{ location:{index:1}, text: fullText } }];
-
-  // fonte global Century Gothic 12pt
-  requests.push({ updateTextStyle:{
-    range:{startIndex:1, endIndex: fullText.length+1},
-    textStyle:{ weightedFontFamily:{fontFamily:'Century Gothic'}, fontSize:{magnitude:12,unit:'PT'} },
-    fields:'weightedFontFamily,fontSize'
-  }});
-
-  // aplica estilos por parágrafo (em ordem reversa para não deslocar índices)
-  var pos = 1;
-  var ranges = paras.map(function(p){
-    var s = pos, e = pos + p.text.length + 1;
-    pos = e;
-    return {s:s, e:e, type:p.type, boldLen:p.boldLen||0};
-  });
-  var BORDA = { color:{color:{rgbColor:{red:0.1,green:0.1,blue:0.1}}}, width:{magnitude:1.5,unit:'PT'}, padding:{magnitude:5,unit:'PT'}, dashStyle:'SOLID' };
-
-  ranges.slice().reverse().forEach(function(r){
-    var range = {startIndex:r.s, endIndex:r.e};
-    var INDENT = {magnitude: 35.4, unit:'PT'}; // 1.25cm
-
-    // estilos de parágrafo
-    var ESPACO = {magnitude:10,unit:'PT'}, ZERO = {magnitude:0,unit:'PT'};
-    if(r.type==='enderecamento'||r.type==='titulo'||r.type==='local'||r.type==='assinatura'||r.type==='assinatura-nome'||r.type==='fechamento'){
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'CENTER'},
-        fields:'alignment' }});
-    } else if(r.type==='body'||r.type==='qualificacao'){
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED', indentStart:ZERO, indentFirstLine: INDENT, spaceBelow:ESPACO, lineSpacing:150},
-        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
-    } else if(r.type==='body-num'){
-      // número na margem + tabulação até 1,25cm (padrão do modelo)
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED', indentStart:ZERO, indentFirstLine:ZERO, spaceBelow:ESPACO, lineSpacing:150},
-        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
-    } else if(r.type==='pedido'){
-      // alínea com recuo pendente: texto alinhado após a letra
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED', indentStart:{magnitude:58,unit:'PT'}, indentFirstLine:INDENT, spaceBelow:ESPACO, lineSpacing:150},
-        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
-    } else if(r.type==='secao'){
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'START',
-          spaceAbove:{magnitude:14,unit:'PT'},
-          spaceBelow:{magnitude:2,unit:'PT'}},
-        fields:'alignment,spaceAbove,spaceBelow' }});
-    } else if(r.type==='processo'){
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'START'},
-        fields:'alignment' }});
-    }
-
-    if(r.type==='titulo'){
-      requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{ borderTop:BORDA, borderBottom:BORDA, borderLeft:BORDA, borderRight:BORDA },
-        fields:'borderTop,borderBottom,borderLeft,borderRight' }});
-    }
-
-    // negrito parcial: número do parágrafo, "Autos nº.", nome da parte
-    if(r.boldLen){
-      requests.push({ updateTextStyle:{ range:{startIndex:r.s, endIndex:r.s + r.boldLen},
-        textStyle:{bold:true}, fields:'bold' }});
-    }
-
-    // estilos de texto
-    if(r.type==='enderecamento'||r.type==='secao'){
-      requests.push({ updateTextStyle:{ range:range, textStyle:{bold:true}, fields:'bold' }});
-    } else if(r.type==='titulo'){
-      requests.push({ updateTextStyle:{ range:range,
-        textStyle:{bold:true, fontSize:{magnitude:13,unit:'PT'}},
-        fields:'bold,fontSize' }});
-    } else if(r.type==='assinatura-nome'){
-      requests.push({ updateTextStyle:{ range:range, textStyle:{bold:true}, fields:'bold' }});
-    }
-  });
-
-  // ── listas automáticas (renumeram sozinhas ao inserir parágrafos no Docs) ──
-  var Z = {magnitude:0,unit:'PT'}, RECUO = {magnitude:35.4,unit:'PT'};
-  function negritoMarcador(fim){
-    // o número/letra da lista herda o estilo da marca de parágrafo (último caractere)
-    requests.push({ updateTextStyle:{ range:{startIndex:fim-1, endIndex:fim}, textStyle:{bold:true}, fields:'bold' }});
+async function gerarDocx(d){
+  if(typeof JSZip === 'undefined') throw new Error('Biblioteca de geração do Word não carregou. Recarregue a página.');
+  if(!modeloDocxBlob){
+    var mr = await fetch('../../assets/modelo-timbrado.docx');
+    if(!mr.ok) throw new Error('Modelo timbrado não encontrado no portal.');
+    modeloDocxBlob = await mr.blob();
   }
-
-  var nums = ranges.filter(function(r){ return r.type==='body-num'; });
-  if(nums.length){
-    var n0 = nums[0], nN = nums[nums.length-1];
-    // uma única lista do primeiro ao último parágrafo numerado: numeração contínua entre seções
-    requests.push({ createParagraphBullets:{ range:{startIndex:n0.s, endIndex:nN.e}, bulletPreset:'NUMBERED_DECIMAL_ALPHA_ROMAN' }});
-    ranges.forEach(function(r){
-      if(r.s < n0.s || r.e > nN.e) return;
-      if(r.type === 'body-num'){
-        requests.push({ updateParagraphStyle:{ range:{startIndex:r.s,endIndex:r.e},
-          paragraphStyle:{indentStart:Z, indentFirstLine:Z}, fields:'indentStart,indentFirstLine' }});
-        negritoMarcador(r.e);
-      } else {
-        requests.push({ deleteParagraphBullets:{ range:{startIndex:r.s,endIndex:r.e} }});
-        var recuo = (r.type==='body'||r.type==='qualificacao') ? RECUO : Z;
-        requests.push({ updateParagraphStyle:{ range:{startIndex:r.s,endIndex:r.e},
-          paragraphStyle:{indentStart:Z, indentFirstLine:recuo}, fields:'indentStart,indentFirstLine' }});
-      }
-    });
-  }
-
-  var peds = ranges.filter(function(r){ return r.type==='pedido'; });
-  if(peds.length){
-    var p0 = peds[0], pN = peds[peds.length-1];
-    requests.push({ createParagraphBullets:{ range:{startIndex:p0.s, endIndex:pN.e}, bulletPreset:'NUMBERED_DECIMAL_ALPHA_ROMAN_PARENS' }});
-    // o Docs remove o tab inicial de cada pedido: índices recuam 1 por pedido
-    requests.push({ updateParagraphStyle:{ range:{startIndex:p0.s, endIndex:pN.e - peds.length},
-      paragraphStyle:{indentStart:{magnitude:58,unit:'PT'}, indentFirstLine:RECUO}, fields:'indentStart,indentFirstLine' }});
-    peds.forEach(function(r,k){ negritoMarcador(r.e - (k+1)); });
-  }
-
-  return requests;
+  var zip = await JSZip.loadAsync(await modeloDocxBlob.arrayBuffer());
+  // async('string') do JSZip trava com este modelo; bytes + TextDecoder funciona
+  var docXml = new TextDecoder('utf-8').decode(await zip.file('word/document.xml').async('uint8array'));
+  var sect = (docXml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/) || [''])[0];
+  var corpo = docxBody(d) + sect;
+  // replacer em função: evita que "$" no texto (ex.: R$) seja interpretado
+  docXml = docXml.replace(/<w:body>[\s\S]*<\/w:body>/, function(){ return '<w:body>' + corpo + '</w:body>'; });
+  zip.file('word/document.xml', docXml);
+  zip.file('word/numbering.xml', NUMBERING_XML);
+  return zip.generateAsync({ type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
 
 // ══ EXPORTAR PDF ══════════════════════════════════════════════
