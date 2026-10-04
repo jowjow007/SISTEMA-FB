@@ -162,15 +162,16 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-secao{font-weight:bold;text-transform:uppercase;font-size:11.5pt;margin:4mm 0 2mm;}
   .dc-p{text-align:justify;text-indent:1.25cm;margin-bottom:3mm;font-size:11.5pt;}
   .dc-p.no-indent{text-indent:0;}
-  .dc-item{display:flex;gap:6px;margin-bottom:4mm;font-size:11.5pt;}
-  .dc-item-num{font-weight:bold;flex:0 0 auto;}
+  .dc-p.dc-num{text-indent:0;}
+  .dc-n{display:inline-block;min-width:1.25cm;font-weight:bold;}
+  .dc-item{display:flex;gap:0;margin-bottom:3mm;font-size:11.5pt;padding-left:1.25cm;}
+  .dc-item-num{font-weight:bold;flex:0 0 8mm;}
   .dc-item-body{text-align:justify;flex:1;min-width:0;}
-  .dc-fechamento{text-align:justify;text-indent:1.25cm;margin:5mm 0 2mm;font-size:11.5pt;}
-  .dc-local{text-align:right;font-size:11pt;margin-top:2mm;}
-  .dc-assinatura{text-align:center;margin:8mm auto 0;width:70mm;}
-  .dc-assinatura .linha{border-top:1pt solid #1a1a1a;margin-bottom:1.5mm;}
-  .dc-assinatura .nome{font-weight:bold;font-size:11pt;}
-  .dc-assinatura .oab{font-size:10pt;color:#333;}
+  .dc-fechamento{text-align:center;margin:10mm 0 4mm;font-size:11.5pt;line-height:1.6;}
+  .dc-local{text-align:center;font-size:11.5pt;margin-bottom:12mm;}
+  .dc-assinatura{text-align:center;margin:0 auto;}
+  .dc-assinatura .nome{font-weight:bold;font-size:11.5pt;}
+  .dc-assinatura .oab{font-weight:bold;font-size:11.5pt;}
   .dc-empty{color:#aaa;font-size:9pt;font-style:italic;text-align:center;margin-top:30mm;}
 
   @media print{
@@ -306,6 +307,14 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <div class="card">
       <h2>Exportar</h2>
       <p class="desc">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais. O PDF usa a impressão do navegador.</p>
+      <p class="section-lbl">Nome do arquivo (POP 008/2023)</p>
+      <div class="grid2">
+        <div class="field"><label>Autor</label><input id="nom-autor" class="nom-in"></div>
+        <div class="field"><label>Réu</label><input id="nom-reu" class="nom-in"></div>
+        <div class="field"><label>Valor (opcional)</label><input id="nom-valor" class="nom-in"></div>
+        <div class="field"><label>Criador</label><input id="nom-criador" class="nom-in"></div>
+      </div>
+      <div id="nom-out" style="font-family:ui-monospace,Consolas,monospace;font-size:.76rem;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:7px;padding:9px 10px;margin:2px 0 12px;word-break:break-word;"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn green" id="btn-docs">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="2" points="14 2 14 8 20 8"/></svg>
@@ -474,7 +483,7 @@ document.getElementById('btn-top').onclick = function(){ addTopico('',''); };
 function addPedido(v){
   var row = document.createElement('div'); row.className = 'ped-row';
   var n = document.createElement('span'); n.className = 'ped-n';
-  n.textContent = (document.querySelectorAll('.ped-row').length+1)+'.';
+  n.textContent = alinea(document.querySelectorAll('.ped-row').length);
   var ta = document.createElement('textarea'); ta.value = v||'';
   ta.placeholder = 'Ex.: A condenação ao pagamento de...';
   ta.addEventListener('input', render);
@@ -485,7 +494,7 @@ function addPedido(v){
   renumPeds(); render();
 }
 function renumPeds(){
-  document.querySelectorAll('.ped-row').forEach(function(r,i){ r.querySelector('.ped-n').textContent = (i+1)+'.'; });
+  document.querySelectorAll('.ped-row').forEach(function(r,i){ r.querySelector('.ped-n').textContent = alinea(i); });
 }
 document.getElementById('btn-ped').onclick = function(){ addPedido(''); };
 
@@ -618,6 +627,8 @@ function render(){ clearTimeout(rt); rt = setTimeout(_render, 120); }
 
 function _render(){
   var d = coletar();
+  sugerirNomenclatura(d);
+  document.getElementById('nom-out').textContent = nomeArquivo(d);
   var temConteudo = d.titulo||d.enderecamento||d.requerentes.length||d.topicos.length||d.pedidos.length;
   var wrap = document.getElementById('doc-pages');
   var BG = '<img class="doc-bg" src="../../assets/timbrado-bg.png" alt="">';
@@ -667,12 +678,34 @@ function paginar(html){
 }
 
 var FRASE_VEM = ', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado in fine assinado, expor e requerer o seguinte:';
+var NUM_RE = /^(\d{1,3}(?:\.\d{1,2})*[.)\-–])\s+/;
+// junta linhas quebradas no meio da frase; novo parágrafo só após pontuação final, linha em branco ou número/alínea
 function paragrafos(t){
-  return (t||'').split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  var out = [];
+  (t||'').split('\n').forEach(function(raw){
+    var l = raw.trim();
+    if(!l){ out.push(''); return; }
+    var prev = out.length ? out[out.length-1] : '';
+    var novo = !prev || /[.:;!?"”»)\]]$/.test(prev) || NUM_RE.test(l) || /^[a-z][.)]\s/.test(l);
+    if(novo) out.push(l); else out[out.length-1] = prev + ' ' + l;
+  });
+  return out.filter(Boolean);
 }
+// retorna "1." (sem o espaço) quando o parágrafo começa numerado
 function numParagrafo(s){
-  var m = s.match(/^(\d+(?:\.\d+)*[.)\-–]?)\s+/);
-  return m ? m[0] : '';
+  var m = s.match(NUM_RE);
+  return m ? m[1] : '';
+}
+function restoParagrafo(s){
+  var m = s.match(NUM_RE);
+  return m ? s.slice(m[0].length) : s;
+}
+function alinea(i){ return String.fromCharCode(97 + (i % 26)) + ')'; }
+function pedidoFinal(p, i, total){
+  return limparPedido(p) + (i === total-1 ? '.' : ';');
+}
+function limparPedido(s){
+  return s.trim().replace(/[\s;,.]+(e|ou)?\s*$/i,'').replace(/^[a-z][.)]\s+/,'');
 }
 // separa nome (negrito) do restante; não repete "vem, respeitosamente" se já existir
 function qualifParts(p){
@@ -685,6 +718,39 @@ function qualifParts(p){
   var sufixo = /vem,?\s+(respeitosamente|perante|à presença)/i.test(resto) ? '' : FRASE_VEM;
   return {nome:nome, resto:resto, sufixo:sufixo};
 }
+
+// ══ NOMENCLATURA (POP 008/2023): (AUTOR X RÉU) – NOME DA PEÇA – [VALOR –] CRIADOR – DD.MM.AA
+function abrevData(v){
+  if(!v) return '';
+  var p = v.split('-');
+  return p.length === 3 ? p[2]+'.'+p[1]+'.'+p[0].slice(2) : v;
+}
+function reuDaQualificacao(q){
+  var m = (q||'').match(/em face d[aoe]s?\s+(.+?)(?=,|\s+(?:por|vem|já)\b)/i);
+  return m ? m[1].trim() : '';
+}
+function sugerirNomenclatura(d){
+  var autor = d.requerentes.length ? qualifParts(d.requerentes[0]).nome : '';
+  var reu = d.requeridos.length ? (d.requeridos[0].nome || '') : '';
+  if(!reu && d.requerentes.length) reu = reuDaQualificacao(d.requerentes[0].qual);
+  var criador = (d.sigNome || (currentUser && currentUser.displayName) || '').trim().split(/\s+/)[0] || '';
+  var sug = {autor:autor, reu:reu, criador:criador};
+  Object.keys(sug).forEach(function(k){
+    var el = document.getElementById('nom-'+k);
+    if(el && !el.dataset.touched) el.value = sug[k].toUpperCase();
+  });
+}
+function nomeArquivo(d){
+  var v = function(id){ return document.getElementById(id).value.trim().toUpperCase(); };
+  var autor = v('nom-autor'), reu = v('nom-reu'), valor = v('nom-valor'), criador = v('nom-criador');
+  var partes = [ '(' + (autor||'AUTOR') + (reu ? ' X ' + reu : '') + ')', (d.titulo||'NOME DA PEÇA').toUpperCase() ];
+  if(valor) partes.push(valor);
+  partes.push(criador||'CRIADOR', abrevData(d.data)||'DD.MM.AA');
+  return partes.join(' – ').replace(/[\\\/:*?"<>|]/g,'-');
+}
+document.querySelectorAll('.nom-in').forEach(function(el){
+  el.addEventListener('input', function(){ el.dataset.touched = el.value ? '1' : ''; render(); });
+});
 
 function buildBody(d){
   var h = '';
@@ -700,20 +766,21 @@ function buildBody(d){
     h += '<div class="dc-secao">'+roman(i+1)+(t.titulo?' — '+esc(t.titulo.toUpperCase()):'')+'</div>';
     paragrafos(t.texto).forEach(function(s){
       var n = numParagrafo(s);
-      h += '<div class="dc-p">'+(n?'<strong>'+esc(n)+'</strong>'+esc(s.slice(n.length)):esc(s))+'</div>';
+      h += n ? '<div class="dc-p dc-num"><strong class="dc-n">'+esc(n)+'</strong>'+esc(restoParagrafo(s))+'</div>'
+             : '<div class="dc-p">'+esc(s)+'</div>';
     });
   });
   if(d.pedidos.length){
     h += '<div class="dc-secao">Pedido'+(d.pedidos.length>1?'s':'')+'</div>';
     h += '<div class="dc-p no-indent">Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:</div>';
-    d.pedidos.forEach(function(p,i){ h+='<div class="dc-item"><span class="dc-item-num">'+(i+1)+'.</span><span class="dc-item-body">'+esc(p)+'</span></div>'; });
+    d.pedidos.forEach(function(p,i){
+      h+='<div class="dc-item"><span class="dc-item-num">'+alinea(i)+'</span><span class="dc-item-body">'+esc(pedidoFinal(p,i,d.pedidos.length))+'</span></div>';
+    });
   }
-  if(d.local||d.data){
-    h += '<div class="dc-fechamento">Nesses termos, pede deferimento.</div>';
-    h += '<div class="dc-local">'+esc(d.local)+(d.local&&d.data?', ':'')+esc(dataExt(d.data))+'.</div>';
-  }
+  h += '<div class="dc-fechamento">Nestes Termos,<br>Pede Deferimento.</div>';
+  if(d.local||d.data) h += '<div class="dc-local">'+esc(d.local)+(d.local&&d.data?', ':'')+esc(dataExt(d.data))+'.</div>';
   if(d.sigNome){
-    h += '<div class="dc-assinatura"><div class="linha"></div><div class="nome">'+esc(d.sigNome)+'</div>'
+    h += '<div class="dc-assinatura"><div class="nome">'+esc(d.sigNome.toUpperCase())+'</div>'
        +(d.sigOab?'<div class="oab">OAB/MG nº '+esc(d.sigOab)+'</div>':'')+'</div>';
   }
   return h;
@@ -730,7 +797,7 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
     await ensureGToken();
     status.textContent = 'Criando documento com timbrado…';
     var d = coletar();
-    var docTitle = (d.titulo||'Petição') + (d.processo?' — '+d.processo:'');
+    var docTitle = nomeArquivo(d);
     var docId;
     try { docId = await criarDocTimbrado(docTitle); }
     catch(e){
@@ -826,21 +893,24 @@ function buildDocsRequests(d){
   if(d.titulo){ para(d.titulo, 'titulo'); blank(); }
   d.topicos.forEach(function(t, i){
     para(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''), 'secao');
-    paragrafos(t.texto).forEach(function(s){ para(s, 'body', numParagrafo(s).length); });
-    blank();
+    paragrafos(t.texto).forEach(function(s){
+      var n = numParagrafo(s);
+      if(n) para(n+'\t'+restoParagrafo(s), 'body-num', n.length);
+      else para(s, 'body');
+    });
   });
   if(d.pedidos.length){
     para('PEDIDO'+(d.pedidos.length>1?'S':''), 'secao');
     para('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:', 'body');
-    d.pedidos.forEach(function(p,i){ var n=(i+1)+'. '; para(n+p, 'pedido', n.length); });
-    blank();
+    d.pedidos.forEach(function(p,i){ var n=alinea(i); para(n+'\t'+pedidoFinal(p,i,d.pedidos.length), 'pedido', n.length); });
   }
-  para('Nesses termos, pede deferimento.', 'fechamento'); blank();
+  blank();
+  para('Nestes Termos,', 'fechamento');
+  para('Pede Deferimento.', 'fechamento'); blank();
   if(d.local||d.data){ para((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.', 'local'); blank(); blank(); }
   if(d.sigNome){
-    para('_'.repeat(42), 'assinatura');
-    para(d.sigNome, 'assinatura-nome');
-    if(d.sigOab) para('OAB/MG nº '+d.sigOab, 'assinatura');
+    para(d.sigNome.toUpperCase(), 'assinatura-nome');
+    if(d.sigOab) para('OAB/MG nº '+d.sigOab, 'assinatura-nome');
   }
 
   var fullText = paras.map(function(p){ return p.text; }).join('\n');
@@ -867,22 +937,29 @@ function buildDocsRequests(d){
     var INDENT = {magnitude: 35.4, unit:'PT'}; // 1.25cm
 
     // estilos de parágrafo
-    if(r.type==='enderecamento'||r.type==='titulo'||r.type==='local'||r.type==='assinatura'||r.type==='assinatura-nome'){
+    var ESPACO = {magnitude:10,unit:'PT'}, ZERO = {magnitude:0,unit:'PT'};
+    if(r.type==='enderecamento'||r.type==='titulo'||r.type==='local'||r.type==='assinatura'||r.type==='assinatura-nome'||r.type==='fechamento'){
       requests.push({ updateParagraphStyle:{ range:range,
         paragraphStyle:{alignment:'CENTER'},
         fields:'alignment' }});
-    } else if(r.type==='body'||r.type==='qualificacao'||r.type==='pedido'){
+    } else if(r.type==='body'||r.type==='qualificacao'){
       requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED', indentFirstLine: INDENT, spaceBelow:{magnitude:6,unit:'PT'}, lineSpacing:150},
-        fields:'alignment,indentFirstLine,spaceBelow,lineSpacing' }});
-    } else if(r.type==='fechamento'){
+        paragraphStyle:{alignment:'JUSTIFIED', indentStart:ZERO, indentFirstLine: INDENT, spaceBelow:ESPACO, lineSpacing:150},
+        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
+    } else if(r.type==='body-num'){
+      // número na margem + tabulação até 1,25cm (padrão do modelo)
       requests.push({ updateParagraphStyle:{ range:range,
-        paragraphStyle:{alignment:'JUSTIFIED'},
-        fields:'alignment' }});
+        paragraphStyle:{alignment:'JUSTIFIED', indentStart:ZERO, indentFirstLine:ZERO, spaceBelow:ESPACO, lineSpacing:150},
+        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
+    } else if(r.type==='pedido'){
+      // alínea com recuo pendente: texto alinhado após a letra
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'JUSTIFIED', indentStart:{magnitude:58,unit:'PT'}, indentFirstLine:INDENT, spaceBelow:ESPACO, lineSpacing:150},
+        fields:'alignment,indentStart,indentFirstLine,spaceBelow,lineSpacing' }});
     } else if(r.type==='secao'){
       requests.push({ updateParagraphStyle:{ range:range,
         paragraphStyle:{alignment:'START',
-          spaceAbove:{magnitude:8,unit:'PT'},
+          spaceAbove:{magnitude:14,unit:'PT'},
           spaceBelow:{magnitude:2,unit:'PT'}},
         fields:'alignment,spaceAbove,spaceBelow' }});
     } else if(r.type==='processo'){
@@ -926,7 +1003,13 @@ document.getElementById('btn-pdf').addEventListener('click', function(){
   }
   // Usa impressão nativa do browser — preserva timbrado e fontes perfeitamente.
   // Na caixa de impressão: escolha "Salvar como PDF" e ative "Imprimir planos de fundo".
+  var nome = nomeArquivo(d);
+  var docs = [document];
+  try{ if(window.top !== window && window.top.document) docs.push(window.top.document); }catch(e){}
+  var originais = docs.map(function(x){ return x.title; });
+  docs.forEach(function(x){ x.title = nome; });
   window.print();
+  setTimeout(function(){ docs.forEach(function(x,i){ x.title = originais[i]; }); }, 1500);
 });
 
 // ══ LIMPAR ════════════════════════════════════════════════════
@@ -939,6 +1022,7 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
   reqCount=0; redCount=0;
+  resetNomenclatura();
   render();
 });
 
@@ -1084,26 +1168,7 @@ function parsearPeticao(raw){
   // ── processar seções ─────────────────────────────────────────
   blocos.slice(1).forEach(function(bloco){
     if(bloco.tipo === 'pedidos' || PED_HEADER_RE.test(bloco.titulo)){
-      // pedidos podem vir numerados dentro
-      var textoBloco = bloco.linhas.join('\n');
-      var itens = [];
-      var bufItem = '';
-      bloco.linhas.forEach(function(l){
-        var mItem = l.match(PEDIDO_ITEM_RE);
-        if(mItem){
-          if(bufItem.trim()) itens.push(bufItem.trim());
-          bufItem = mItem[2];
-        } else if(l && bufItem){
-          bufItem += ' ' + l;
-        }
-      });
-      if(bufItem.trim()) itens.push(bufItem.trim());
-      if(itens.length) resultado.pedidos = resultado.pedidos.concat(itens);
-      else if(textoBloco.trim() && !/^Diante do exposto/i.test(textoBloco.trim())){
-        // pedidos em texto livre — adiciona como pedido único
-        var semIntro = textoBloco.replace(/^Diante do exposto[^:\n]*[:\n]+/i,'').trim();
-        if(semIntro) resultado.pedidos.push(semIntro);
-      }
+      resultado.pedidos = resultado.pedidos.concat(extrairPedidos(bloco.linhas));
     } else if(bloco.tipo === 'secao'){
       var textoSecao = bloco.linhas.filter(function(l){
         // remove intro genérica
@@ -1119,7 +1184,7 @@ function parsearPeticao(raw){
   ultimas.forEach(function(l){
     if(!l) return;
     if(!resultado.sigOab){ var m = l.match(OAB_RE); if(m){ resultado.sigOab = m[1]; resultado.sigNome = resultado.sigNome || ''; } }
-    if(!resultado.sigNome && resultado.sigOab && l && !OAB_RE.test(l) && !DATA_LUGAR_RE.test(l) && l.length < 60 && /[A-ZÁÉÍÓÚ][a-záéíóú]/.test(l)){
+    if(!resultado.sigNome && resultado.sigOab && l && !OAB_RE.test(l) && !DATA_LUGAR_RE.test(l) && !/termos|deferimento/i.test(l) && l.length < 60 && /[A-ZÁÉÍÓÚ][a-záéíóú]/.test(l)){
       resultado.sigNome = l;
     }
     var mLugar = l.match(/^([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s]+(?:\/[A-Z]{2})?),\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
@@ -1134,7 +1199,27 @@ function parsearPeticao(raw){
   return resultado;
 }
 
+// separa alíneas (a., b), c - ...) ou itens numerados; descarta intro "Ante o exposto, requer:" e o fechamento
+function extrairPedidos(linhas){
+  var txt = linhas.join(' ').replace(/\s+/g,' ').trim();
+  var corte = txt.search(/\b(N[ea]?st?es termos|Nesses termos|Termos em que)/i);
+  if(corte >= 0) txt = txt.slice(0, corte);
+  txt = txt.replace(/^\d+[.)]\s+/, '');
+  var mIntro = txt.match(/^.{0,200}?\brequer(?:-se|em)?[^:]{0,120}:\s*/i);
+  if(mIntro) txt = txt.slice(mIntro[0].length);
+  var partes = txt.split(/(?:^|\s)[a-z][.)\-–]\s+(?=\S)/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if(partes.length < 2){
+    partes = txt.split(/(?:^|\s)\d{1,2}[.)]\s+(?=[A-ZÀ-Ýa-zà-ý])/).map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  return partes.map(limparPedido).filter(Boolean);
+}
+
+function resetNomenclatura(){
+  document.querySelectorAll('.nom-in').forEach(function(el){ el.value=''; el.dataset.touched=''; });
+}
+
 function preencherFormulario(d){
+  resetNomenclatura();
   // limpar
   document.getElementById('reqs-list').innerHTML='';
   document.getElementById('reds-list').innerHTML='';
