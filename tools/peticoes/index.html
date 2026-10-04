@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Petições — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script src="../gmail/google-config.js"></script>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010;--panel:#211918;--panel-2:#2a1f1e;--panel-3:#332524;
+    --paper:#ece6e1;--muted:#9c908b;--red:#b8362e;--red-bright:#c9463c;
+    --ok:#4caf7d;--err:#ffb4ae;--silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);--line-strong:rgba(236,230,225,0.20);
+    --font-body:"Poppins",system-ui,-apple-system,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;--panel:#ffffff;--panel-2:#f1ece6;--panel-3:#e6dfd7;
+    --paper:#241c1b;--muted:#7d716b;--silver:#756f6c;
+    --line:rgba(36,28,27,0.10);--line-strong:rgba(36,28,27,0.16);
+    --ok:#2f8f5b;--err:#9c2c20;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:var(--font-body);transition:background-color .2s,color .2s}
+  button,input,select,textarea{font-family:inherit;}
+
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 14px;}
+  header h1{font-family:"Poppins",sans-serif;font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{max-width:1560px;margin:0 auto;padding:20px 20px 70px;}
+  .layout{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:22px;align-items:start;}
+  @media(max-width:1100px){.layout{grid-template-columns:1fr;}}
+
+  .form-col{display:flex;flex-direction:column;gap:14px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  @media(max-width:1100px){.form-col{position:static;max-height:none;}}
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;}
+  .card h2{font-weight:600;font-size:.95rem;margin:0 0 12px;color:var(--paper);}
+  .card .desc{font-size:.74rem;color:var(--muted);margin:0 0 12px;line-height:1.5;}
+
+  .field{margin-bottom:10px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase;}
+  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.84rem;outline:none;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);}
+  .field textarea{resize:vertical;min-height:52px;line-height:1.5;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media(max-width:480px){.grid2{grid-template-columns:1fr;}}
+
+  .btn{padding:9px 16px;border-radius:7px;border:none;background:var(--red);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.secondary:hover{background:var(--panel-2);}
+  .btn.small{padding:6px 11px;font-size:.74rem;}
+  .btn.ghost{background:transparent;color:var(--err);border:1px solid rgba(255,180,174,.3);padding:5px 10px;font-size:.72rem;}
+  .btn.ghost:hover{background:rgba(255,180,174,.08);}
+  .btn.green{background:#2e6b50;}
+  .btn.green:hover{background:#357a5d;}
+
+  .sep{border:none;border-top:1px solid var(--line);margin:10px 0;}
+  .section-lbl{font-size:.68rem;font-weight:700;color:var(--silver);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;}
+
+  .item-block{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:8px;}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .item-head span{font-size:.7rem;font-weight:600;color:var(--silver);}
+
+  .top-block{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:8px;}
+  .top-head{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+  .top-num{background:var(--red);color:#fff;border-radius:4px;font-size:.64rem;font-weight:700;padding:2px 7px;flex:0 0 auto;}
+  .top-head input{flex:1;font-weight:600;font-size:.82rem;padding:5px 9px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-3);color:var(--paper);outline:none;}
+  .top-head input:focus{border-color:var(--red);}
+  .top-txt{width:100%;min-height:72px;padding:8px 10px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-3);color:var(--paper);font-size:.83rem;resize:vertical;line-height:1.5;outline:none;}
+  .top-txt:focus{border-color:var(--red);}
+
+  .ped-row{display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;}
+  .ped-n{color:var(--muted);font-size:.7rem;padding-top:9px;min-width:16px;text-align:right;flex:0 0 16px;}
+  .ped-row textarea{flex:1;min-height:34px;padding:7px 10px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.83rem;resize:vertical;line-height:1.5;outline:none;}
+  .ped-row textarea:focus{border-color:var(--red);}
+
+  .btn-add{width:100%;background:var(--panel-3);color:var(--muted);border:1px dashed var(--line-strong);border-radius:7px;padding:7px;font-size:.75rem;cursor:pointer;transition:all .15s;margin-top:2px;}
+  .btn-add:hover{background:var(--panel-2);color:var(--paper);border-color:var(--red);}
+  .btn-rem{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:.82rem;}
+  .btn-rem:hover{color:var(--err);}
+
+  .hist-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-main{flex:1;min-width:0;background:none;border:none;text-align:left;cursor:pointer;padding:0;color:var(--paper);}
+  .hist-main:hover .hist-nome{color:var(--red-bright);text-decoration:underline;}
+  .hist-nome{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-meta{font-size:.7rem;color:var(--muted);margin-top:2px;}
+
+  .preview-col{min-width:0;}
+  .preview-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .status{font-size:.76rem;color:var(--muted);}
+  .status.ok{color:var(--ok);}
+
+  /* ── área de preview escura ── */
+  #doc-pages-wrap{background:#111;border:1px solid var(--line-strong);border-radius:14px;padding:24px;overflow-x:auto;}
+  #doc-pages{display:flex;flex-direction:column;align-items:center;gap:20px;}
+
+  /* ── página A4 com timbrado real ── */
+  .doc-page{
+    width:210mm;
+    flex:0 0 auto;
+    position:relative;
+    background-image:url('../../assets/timbrado-bg.png');
+    background-size:100% 100%;
+    background-repeat:no-repeat;
+    box-shadow:0 6px 36px rgba(0,0,0,.6);
+    font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;
+    font-size:12pt;
+    color:#1a1a1a;
+    line-height:1.45;
+    /* altura A4 = 297mm; usamos aspect-ratio para manter proporção */
+    aspect-ratio:210/297;
+  }
+
+  /* área de conteúdo texto — margens ajustadas ao timbrado */
+  .doc-content{
+    position:absolute;
+    top:36mm;
+    left:25mm;
+    right:25mm;
+    bottom:32mm;
+    overflow:hidden;
+  }
+
+  /* ── tipografia do documento ── */
+  .dc-enderecamento{text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:6mm;font-size:11.5pt;line-height:1.35;}
+  .dc-processo{font-size:11pt;margin-bottom:5mm;}
+  .dc-processo strong{font-weight:bold;}
+  .dc-qualificacao{text-align:justify;text-indent:1.25cm;margin-bottom:5mm;font-size:11.5pt;}
+  .dc-titulo-box{border:1.5pt solid #1a1a1a;text-align:center;font-weight:bold;font-size:13pt;text-transform:uppercase;padding:2.5mm 4mm;margin:5mm 0;letter-spacing:.03em;}
+  .dc-secao{font-weight:bold;text-transform:uppercase;font-size:11.5pt;margin:4mm 0 2mm;}
+  .dc-p{text-align:justify;text-indent:1.25cm;margin-bottom:3mm;font-size:11.5pt;}
+  .dc-p.no-indent{text-indent:0;}
+  .dc-item{display:flex;gap:6px;margin-bottom:4mm;font-size:11.5pt;}
+  .dc-item-num{font-weight:bold;flex:0 0 auto;}
+  .dc-item-body{text-align:justify;flex:1;min-width:0;}
+  .dc-fechamento{text-align:justify;text-indent:1.25cm;margin:5mm 0 2mm;font-size:11.5pt;}
+  .dc-local{text-align:right;font-size:11pt;margin-top:2mm;}
+  .dc-assinatura{text-align:center;margin:8mm auto 0;width:70mm;}
+  .dc-assinatura .linha{border-top:1pt solid #1a1a1a;margin-bottom:1.5mm;}
+  .dc-assinatura .nome{font-weight:bold;font-size:11pt;}
+  .dc-assinatura .oab{font-size:10pt;color:#333;}
+  .dc-empty{color:#aaa;font-size:9pt;font-style:italic;text-align:center;margin-top:30mm;}
+
+  @media print{
+    @page{size:A4;margin:0;}
+    html,body{background:#fff;margin:0;padding:0;}
+    header,.form-col,.preview-toolbar{display:none !important;}
+    main{max-width:none;margin:0;padding:0;}
+    .layout{display:block;}
+    #doc-pages-wrap{background:#fff;border:none;padding:0;overflow:visible;}
+    #doc-pages{display:block;gap:0;}
+    .doc-page{box-shadow:none;margin:0;page-break-after:always;break-after:page;}
+    .doc-page:last-child{page-break-after:auto;break-after:auto;}
+  }
+
+  /* notificação docs */
+  #docs-notif{position:fixed;bottom:24px;right:24px;z-index:200;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:16px 20px;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;}
+  #docs-notif .notif-title{font-weight:600;font-size:.88rem;margin:0 0 6px;}
+  #docs-notif a{display:inline-block;margin-top:8px;color:var(--ok);font-size:.8rem;word-break:break-all;}
+  #docs-notif .close{float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;margin-left:8px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Petições</h1>
+  <p class="sub">Preencha os campos, veja o preview em A4 e exporte para o Google Docs ou em PDF.</p>
+</header>
+<main>
+<div class="layout">
+
+  <!-- ══ COLUNA DO FORMULÁRIO ══ -->
+  <div class="form-col">
+
+    <!-- histórico -->
+    <div class="card" id="card-hist">
+      <h2>Últimas petições</h2>
+      <p class="desc" id="hist-msg">Faça login no Portal para ver o histórico.</p>
+      <div id="hist-list"></div>
+    </div>
+
+    <!-- tipo -->
+    <div class="card">
+      <h2>Tipo de peça</h2>
+      <div class="field">
+        <select id="tipo-peca">
+          <option value="PETIÇÃO INICIAL">Petição Inicial</option>
+          <option value="CONTESTAÇÃO">Contestação</option>
+          <option value="RECURSO ORDINÁRIO">Recurso Ordinário</option>
+          <option value="APELAÇÃO CÍVEL">Apelação Cível</option>
+          <option value="AGRAVO DE INSTRUMENTO">Agravo de Instrumento</option>
+          <option value="EMBARGOS DE DECLARAÇÃO">Embargos de Declaração</option>
+          <option value="MANIFESTAÇÃO">Manifestação</option>
+          <option value="IMPUGNAÇÃO">Impugnação</option>
+          <option value="MEMORIAL">Memorial</option>
+          <option value="CONTRARRAZÕES">Contrarrazões</option>
+          <option value="outro">Outro (título livre)...</option>
+        </select>
+      </div>
+      <div class="field" id="f-livre" style="display:none;">
+        <label>Título da peça</label>
+        <input id="titulo-livre" placeholder="TÍTULO EM MAIÚSCULAS">
+      </div>
+    </div>
+
+    <!-- processo -->
+    <div class="card">
+      <h2>Processo</h2>
+      <div class="field"><label>Número dos autos</label><input id="num-autos" placeholder="5016794-12.2017.8.13.0702"></div>
+      <div class="field"><label>Vara / Tribunal</label><input id="vara" placeholder="4ª Vara das Famílias da Comarca de Uberlândia/MG"></div>
+    </div>
+
+    <!-- endereçamento -->
+    <div class="card">
+      <h2>Endereçamento</h2>
+      <div class="field">
+        <textarea id="enderecamento" rows="2" placeholder="AO JUÍZO DE DIREITO DA 4ª VARA DAS FAMÍLIAS DA COMARCA DE UBERLÂNDIA/MG"></textarea>
+      </div>
+    </div>
+
+    <!-- partes -->
+    <div class="card">
+      <h2>Qualificação das partes</h2>
+      <p class="section-lbl">Requerente(s)</p>
+      <div id="reqs-list"></div>
+      <button class="btn-add" id="btn-req">+ Requerente</button>
+      <hr class="sep">
+      <p class="section-lbl">Requerido(s)</p>
+      <div id="reds-list"></div>
+      <button class="btn-add" id="btn-red">+ Requerido</button>
+    </div>
+
+    <!-- tópicos -->
+    <div class="card">
+      <h2>Tópicos</h2>
+      <p class="desc">Cada tópico vira uma seção numerada em romano.</p>
+      <div id="tops-list"></div>
+      <button class="btn-add" id="btn-top">+ Adicionar tópico</button>
+    </div>
+
+    <!-- pedidos -->
+    <div class="card">
+      <h2>Pedidos</h2>
+      <div id="peds-list"></div>
+      <button class="btn-add" id="btn-ped">+ Adicionar pedido</button>
+    </div>
+
+    <!-- fechamento -->
+    <div class="card">
+      <h2>Fechamento</h2>
+      <div class="grid2">
+        <div class="field"><label>Local</label><input id="local" value="Uberlândia/MG"></div>
+        <div class="field"><label>Data</label><input id="data-f" type="date"></div>
+      </div>
+      <div class="field">
+        <label>Advogado(a) signatário</label>
+        <select id="sig-sel"><option value="">— selecionar —</option></select>
+      </div>
+      <div class="field"><label>Nome completo</label><input id="sig-nome"></div>
+      <div class="field"><label>OAB/MG nº</label><input id="sig-oab"></div>
+    </div>
+
+    <!-- exportar -->
+    <div class="card">
+      <h2>Exportar</h2>
+      <p class="desc">O Google Docs cria o documento direto no Drive e retorna o link. O PDF usa o timbrado real.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn green" id="btn-docs">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="2" points="14 2 14 8 20 8"/></svg>
+          Criar no Google Docs
+        </button>
+        <button class="btn secondary" id="btn-pdf">Baixar PDF</button>
+        <button class="btn secondary small" id="btn-limpar">Limpar</button>
+      </div>
+      <p id="export-status" style="font-size:.74rem;margin-top:8px;color:var(--muted);"></p>
+    </div>
+
+  </div><!-- /form-col -->
+
+  <!-- ══ COLUNA DO PREVIEW ══ -->
+  <div class="preview-col">
+    <div class="preview-toolbar">
+      <span id="pv-status" class="status">Preencha os campos para ver o preview.</span>
+    </div>
+    <div id="doc-pages-wrap">
+      <div id="doc-pages">
+        <div class="doc-page">
+          <div class="doc-content">
+            <div class="dc-empty">Preencha os campos ao lado para ver a petição.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- notificação docs criado -->
+<div id="docs-notif">
+  <button class="close" id="docs-notif-close">&times;</button>
+  <p class="notif-title">Documento criado no Google Docs</p>
+  <p style="font-size:.78rem;color:var(--muted);margin:0;">Clique para abrir e fazer os ajustes finais:</p>
+  <a id="docs-link" href="#" target="_blank" rel="noopener"></a>
+</div>
+
+<script>
+// ══ FIREBASE ══════════════════════════════════════════════════
+const fbApp = firebase.initializeApp(firebaseConfig);
+const auth  = firebase.auth(fbApp);
+const db    = firebase.firestore(fbApp);
+
+// ══ GOOGLE OAUTH (Docs + Drive) ═══════════════════════════════
+const DOCS_SCOPE = 'https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file';
+let gTokenClient = null, gAccessToken = null, gTokenResolve = null;
+
+function loadGIS(cb){
+  if(window.google && google.accounts){ cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+function ensureGToken(){
+  return new Promise(function(resolve, reject){
+    loadGIS(function(){
+      if(!gTokenClient){
+        gTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: DOCS_SCOPE,
+          callback: function(resp){
+            if(resp.error){ reject(resp.error); return; }
+            gAccessToken = resp.access_token;
+            if(gTokenResolve){ gTokenResolve(true); gTokenResolve = null; }
+          }
+        });
+      }
+      if(gAccessToken){ resolve(true); return; }
+      gTokenResolve = resolve;
+      gTokenClient.requestAccessToken({ prompt:'consent' });
+    });
+  });
+}
+
+// ══ UTILS ═════════════════════════════════════════════════════
+var ROMANOS = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+function roman(n){ return ROMANOS[n-1]||String(n); }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+function meses(n){ return ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][n]; }
+function dataExt(iso){ if(!iso) return ''; var p=iso.split('-'); return parseInt(p[2])+' de '+meses(parseInt(p[1])-1)+' de '+p[0]; }
+
+// ══ DATA HOJE ═════════════════════════════════════════════════
+(function(){
+  var d = new Date();
+  document.getElementById('data-f').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+})();
+
+// ══ FIREBASE AUTH ═════════════════════════════════════════════
+var currentUser = null;
+auth.onAuthStateChanged(function(user){
+  currentUser = user;
+  if(user){
+    document.getElementById('hist-msg').style.display = 'none';
+    carregarHistorico();
+    carregarUsuarios();
+  }
+});
+
+// ══ TIPO DE PEÇA ══════════════════════════════════════════════
+document.getElementById('tipo-peca').addEventListener('change', function(){
+  document.getElementById('f-livre').style.display = this.value === 'outro' ? '' : 'none';
+  render();
+});
+document.getElementById('titulo-livre').addEventListener('input', render);
+
+// ══ PARTES ════════════════════════════════════════════════════
+var reqCount = 0, redCount = 0;
+function addParte(listId, label){
+  var div = document.createElement('div'); div.className = 'item-block';
+  div.innerHTML = '<div class="item-head"><span>'+label+'</span><button class="btn-rem r">✕</button></div>'
+    +'<div class="field"><input class="p-nome" placeholder="Nome / Razão Social"></div>'
+    +'<div class="field"><textarea class="p-qual" rows="2" placeholder="Qualificação completa (CPF, RG, endereço...)"></textarea></div>';
+  div.querySelector('.r').onclick = function(){ div.remove(); render(); };
+  div.querySelectorAll('input,textarea').forEach(function(el){ el.addEventListener('input', render); });
+  document.getElementById(listId).appendChild(div);
+  render();
+}
+document.getElementById('btn-req').onclick = function(){ reqCount++; addParte('reqs-list', 'Requerente '+reqCount); };
+document.getElementById('btn-red').onclick = function(){ redCount++; addParte('reds-list', 'Requerido '+redCount); };
+
+// ══ TÓPICOS ═══════════════════════════════════════════════════
+function addTopico(tv, tx){
+  var div = document.createElement('div'); div.className = 'top-block';
+  var ord = document.querySelectorAll('.top-block').length + 1;
+  div.innerHTML = '<div class="top-head"><span class="top-num">'+roman(ord)+'</span>'
+    +'<input class="top-tit" placeholder="DOS FATOS / DO DIREITO / DOS PEDIDOS..." value="'+(tv?esc(tv):'')+'">'
+    +'<button class="btn-rem tr">✕</button></div>'
+    +'<textarea class="top-txt" placeholder="Texto do tópico...">'+(tx?esc(tx):'')+'</textarea>';
+  div.querySelector('.tr').onclick = function(){ div.remove(); renumTops(); render(); };
+  div.querySelectorAll('input,textarea').forEach(function(el){ el.addEventListener('input', render); });
+  document.getElementById('tops-list').appendChild(div);
+  renumTops(); render();
+}
+function renumTops(){
+  document.querySelectorAll('.top-block').forEach(function(d,i){ d.querySelector('.top-num').textContent = roman(i+1); });
+}
+document.getElementById('btn-top').onclick = function(){ addTopico('',''); };
+
+// ══ PEDIDOS ═══════════════════════════════════════════════════
+function addPedido(v){
+  var row = document.createElement('div'); row.className = 'ped-row';
+  var n = document.createElement('span'); n.className = 'ped-n';
+  n.textContent = (document.querySelectorAll('.ped-row').length+1)+'.';
+  var ta = document.createElement('textarea'); ta.value = v||'';
+  ta.placeholder = 'Ex.: A condenação ao pagamento de...';
+  ta.addEventListener('input', render);
+  var rem = document.createElement('button'); rem.className = 'btn-rem'; rem.textContent = '✕';
+  rem.onclick = function(){ row.remove(); renumPeds(); render(); };
+  row.append(n, ta, rem);
+  document.getElementById('peds-list').appendChild(row);
+  renumPeds(); render();
+}
+function renumPeds(){
+  document.querySelectorAll('.ped-row').forEach(function(r,i){ r.querySelector('.ped-n').textContent = (i+1)+'.'; });
+}
+document.getElementById('btn-ped').onclick = function(){ addPedido(''); };
+
+// ══ USUÁRIOS ══════════════════════════════════════════════════
+function carregarUsuarios(){
+  db.collection('users').get().then(function(snap){
+    var sel = document.getElementById('sig-sel');
+    snap.docs.forEach(function(d){
+      var data = d.data();
+      var nome = data.displayName || data.nome;
+      if(!nome) return;
+      var opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = nome;
+      opt.dataset.nome = nome;
+      opt.dataset.oab = data.oab || '';
+      sel.appendChild(opt);
+    });
+  }).catch(function(){});
+}
+document.getElementById('sig-sel').addEventListener('change', function(){
+  var opt = this.options[this.selectedIndex];
+  if(opt && opt.value){
+    document.getElementById('sig-nome').value = opt.dataset.nome || '';
+    document.getElementById('sig-oab').value  = opt.dataset.oab  || '';
+  }
+  render();
+});
+
+// ══ LIVE LISTENERS ════════════════════════════════════════════
+['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab'].forEach(function(id){
+  var el = document.getElementById(id); if(el) el.addEventListener('input', render);
+});
+
+// ══ HISTÓRICO ═════════════════════════════════════════════════
+function carregarHistorico(){
+  db.collection('peticoes_historico').orderBy('criadoEm','desc').limit(10)
+    .onSnapshot(function(snap){
+      var list = document.getElementById('hist-list');
+      list.innerHTML = '';
+      if(snap.empty){ list.innerHTML='<p style="font-size:.76rem;color:var(--muted);">Nenhuma petição gerada ainda.</p>'; return; }
+      snap.docs.forEach(function(d){
+        var data = d.data();
+        var row = document.createElement('div'); row.className = 'hist-row';
+        var btn = document.createElement('button'); btn.className = 'hist-main';
+        var nome = document.createElement('div'); nome.className = 'hist-nome'; nome.textContent = data.titulo || 'Petição';
+        var meta = document.createElement('div'); meta.className = 'hist-meta';
+        var dt = data.criadoEm ? new Date(data.criadoEm.seconds*1000) : new Date();
+        meta.textContent = dt.toLocaleDateString('pt-BR') + ' · ' + (data.processo||'');
+        btn.append(nome, meta);
+        btn.addEventListener('click', function(){ carregarRascunho(data); });
+        var link = document.createElement('a');
+        link.href = data.docsUrl || '#'; link.target = '_blank'; link.rel = 'noopener';
+        link.style.cssText = 'font-size:.7rem;color:var(--ok);white-space:nowrap;display:'+(data.docsUrl?'':'none');
+        link.textContent = 'Abrir Docs';
+        row.append(btn, link);
+        list.appendChild(row);
+      });
+    }, function(){});
+}
+
+function carregarRascunho(data){
+  var tipaSel = document.getElementById('tipo-peca');
+  var tipoVal = Object.values({
+    'PETIÇÃO INICIAL':'PETIÇÃO INICIAL','CONTESTAÇÃO':'CONTESTAÇÃO','RECURSO ORDINÁRIO':'RECURSO ORDINÁRIO',
+    'APELAÇÃO CÍVEL':'APELAÇÃO CÍVEL','AGRAVO DE INSTRUMENTO':'AGRAVO DE INSTRUMENTO',
+    'EMBARGOS DE DECLARAÇÃO':'EMBARGOS DE DECLARAÇÃO','MANIFESTAÇÃO':'MANIFESTAÇÃO',
+    'IMPUGNAÇÃO':'IMPUGNAÇÃO','MEMORIAL':'MEMORIAL','CONTRARRAZÕES':'CONTRARRAZÕES'
+  }).includes(data.titulo) ? data.titulo : 'outro';
+  tipaSel.value = tipoVal;
+  tipaSel.dispatchEvent(new Event('change'));
+  if(tipoVal==='outro') document.getElementById('titulo-livre').value = data.titulo||'';
+  document.getElementById('num-autos').value    = data.processo||'';
+  document.getElementById('vara').value         = data.vara||'';
+  document.getElementById('enderecamento').value= data.enderecamento||'';
+  document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
+  reqCount=0; redCount=0;
+  (data.requerentes||[]).forEach(function(p){
+    reqCount++;
+    addParte('reqs-list','Requerente '+reqCount);
+    var last=document.querySelector('#reqs-list .item-block:last-child');
+    if(last){ last.querySelector('.p-nome').value=p.nome||''; last.querySelector('.p-qual').value=p.qual||''; }
+  });
+  (data.requeridos||[]).forEach(function(p){
+    redCount++;
+    addParte('reds-list','Requerido '+redCount);
+    var last=document.querySelector('#reds-list .item-block:last-child');
+    if(last){ last.querySelector('.p-nome').value=p.nome||''; last.querySelector('.p-qual').value=p.qual||''; }
+  });
+  document.getElementById('tops-list').innerHTML='';
+  (data.topicos||[]).forEach(function(t){ addTopico(t.titulo,t.texto); });
+  document.getElementById('peds-list').innerHTML='';
+  (data.pedidos||[]).forEach(function(p){ addPedido(p); });
+  document.getElementById('local').value    = data.local||'Uberlândia/MG';
+  document.getElementById('data-f').value   = data.data||'';
+  document.getElementById('sig-nome').value = data.sigNome||'';
+  document.getElementById('sig-oab').value  = data.sigOab||'';
+  render();
+}
+
+// ══ COLETAR DADOS ═════════════════════════════════════════════
+function coletar(){
+  var tipo = document.getElementById('tipo-peca').value;
+  var titulo = tipo==='outro' ? document.getElementById('titulo-livre').value.trim().toUpperCase() : tipo;
+  return {
+    tipo: tipo, titulo: titulo,
+    processo: document.getElementById('num-autos').value.trim(),
+    vara:     document.getElementById('vara').value.trim(),
+    enderecamento: document.getElementById('enderecamento').value.trim(),
+    requerentes: Array.from(document.querySelectorAll('#reqs-list .item-block')).map(function(b){
+      return { nome:b.querySelector('.p-nome').value.trim(), qual:b.querySelector('.p-qual').value.trim() };
+    }).filter(function(p){ return p.nome||p.qual; }),
+    requeridos: Array.from(document.querySelectorAll('#reds-list .item-block')).map(function(b){
+      return { nome:b.querySelector('.p-nome').value.trim(), qual:b.querySelector('.p-qual').value.trim() };
+    }).filter(function(p){ return p.nome||p.qual; }),
+    topicos: Array.from(document.querySelectorAll('.top-block')).map(function(d){
+      return { titulo:d.querySelector('.top-tit').value.trim(), texto:d.querySelector('.top-txt').value.trim() };
+    }),
+    pedidos: Array.from(document.querySelectorAll('.ped-row textarea')).map(function(ta){ return ta.value.trim(); }).filter(Boolean),
+    local:   document.getElementById('local').value.trim(),
+    data:    document.getElementById('data-f').value,
+    sigNome: document.getElementById('sig-nome').value.trim(),
+    sigOab:  document.getElementById('sig-oab').value.trim()
+  };
+}
+
+// ══ RENDER PREVIEW ════════════════════════════════════════════
+var rt = null;
+function render(){ clearTimeout(rt); rt = setTimeout(_render, 70); }
+
+function _render(){
+  var d = coletar();
+  var temConteudo = d.titulo||d.enderecamento||d.requerentes.length||d.topicos.length||d.pedidos.length;
+  var pages = document.getElementById('doc-pages');
+  if(!temConteudo){
+    pages.innerHTML = '<div class="doc-page"><div class="doc-content"><div class="dc-empty">Preencha os campos ao lado para ver a petição.</div></div></div>';
+    return;
+  }
+  pages.innerHTML = '<div class="doc-page"><div class="doc-content" id="dc-main">'+buildBody(d)+'</div></div>';
+}
+
+function buildBody(d){
+  var h = '';
+  if(d.enderecamento) h += '<div class="dc-enderecamento">'+esc(d.enderecamento)+'</div>';
+  if(d.processo)      h += '<div class="dc-processo"><strong>Autos nº.</strong> '+esc(d.processo)+'.</div>';
+  d.requerentes.forEach(function(p){
+    var txt = '';
+    if(p.nome) txt += '<strong>'+esc(p.nome)+'</strong>';
+    if(p.qual) txt += (p.nome?', ':'')+esc(p.qual);
+    if(txt) h += '<div class="dc-qualificacao">'+txt+', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado <em>in fine</em> assinado, expor e requerer o seguinte:</div>';
+  });
+  if(d.titulo) h += '<div class="dc-titulo-box">'+esc(d.titulo)+'</div>';
+  d.topicos.forEach(function(t,i){
+    h += '<div class="dc-secao">'+roman(i+1)+(t.titulo?' — '+esc(t.titulo.toUpperCase()):'')+'</div>';
+    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s) h+='<div class="dc-p">'+esc(s)+'</div>'; });
+  });
+  if(d.pedidos.length){
+    h += '<div class="dc-secao">Pedido'+(d.pedidos.length>1?'s':'')+'</div>';
+    h += '<div class="dc-p no-indent">Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:</div>';
+    d.pedidos.forEach(function(p,i){ h+='<div class="dc-item"><span class="dc-item-num">'+(i+1)+'.</span><span class="dc-item-body">'+esc(p)+'</span></div>'; });
+  }
+  if(d.local||d.data){
+    h += '<div class="dc-fechamento">Nesses termos, pede deferimento.</div>';
+    h += '<div class="dc-local">'+esc(d.local)+(d.local&&d.data?', ':'')+esc(dataExt(d.data))+'.</div>';
+  }
+  if(d.sigNome){
+    h += '<div class="dc-assinatura"><div class="linha"></div><div class="nome">'+esc(d.sigNome)+'</div>'
+       +(d.sigOab?'<div class="oab">OAB/MG nº '+esc(d.sigOab)+'</div>':'')+'</div>';
+  }
+  return h;
+}
+
+// ══ EXPORTAR GOOGLE DOCS ══════════════════════════════════════
+document.getElementById('btn-docs').addEventListener('click', async function(){
+  var btn = this, status = document.getElementById('export-status');
+  btn.disabled = true; status.textContent = 'Autenticando com Google...'; status.style.color='var(--muted)';
+  try {
+    await ensureGToken();
+    status.textContent = 'Criando documento...';
+    var d = coletar();
+    var docTitle = (d.titulo||'Petição') + (d.processo?' — '+d.processo:'');
+    var createR = await fetch('https://docs.googleapis.com/v1/documents',{
+      method:'POST', headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
+      body: JSON.stringify({ title: docTitle })
+    });
+    if(!createR.ok) throw new Error('Erro ao criar documento: '+createR.status);
+    var doc = await createR.json();
+    var reqs = buildDocsRequests(d);
+    var updR = await fetch('https://docs.googleapis.com/v1/documents/'+doc.documentId+':batchUpdate',{
+      method:'POST', headers:{'Authorization':'Bearer '+gAccessToken,'Content-Type':'application/json'},
+      body: JSON.stringify({ requests: reqs })
+    });
+    if(!updR.ok) throw new Error('Erro ao formatar: '+updR.status);
+    var url = 'https://docs.google.com/document/d/'+doc.documentId+'/edit';
+    status.textContent = 'Documento criado!'; status.style.color='var(--ok)';
+    document.getElementById('docs-link').href = url;
+    document.getElementById('docs-link').textContent = url;
+    document.getElementById('docs-notif').style.display = 'block';
+    if(currentUser){
+      db.collection('peticoes_historico').add(Object.assign({}, d,{
+        docsUrl: url, criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPor: currentUser.uid
+      })).catch(function(){});
+    }
+  } catch(err){
+    status.textContent = 'Erro: '+(err.message||err); status.style.color='var(--err)';
+  }
+  btn.disabled = false;
+});
+
+function buildDocsRequests(d){
+  var segs = [];
+  function push(t,s){ if(t) segs.push({text:t,style:s||'normal'}); }
+  function nl(n){ push('\n'.repeat(n||1),'normal'); }
+  if(d.enderecamento){ push(d.enderecamento,'bold'); nl(2); }
+  if(d.processo){ push('Autos nº. '+d.processo+'.','normal'); nl(2); }
+  d.requerentes.forEach(function(p){
+    if(p.nome){ push(p.nome,'bold'); if(p.qual) push(', '+p.qual,'normal'); push(', vem, respeitosamente...','normal'); nl(2); }
+  });
+  if(d.titulo){ push(d.titulo,'h1'); nl(2); }
+  d.topicos.forEach(function(t,i){
+    push(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''),'h2'); nl();
+    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s){ push('\t'+s,'normal'); nl(); } });
+    nl();
+  });
+  if(d.pedidos.length){
+    push('PEDIDO'+(d.pedidos.length>1?'S':''),'h2'); nl();
+    push('Diante do exposto, requer-se a Vossa Excelência que se digne a:','normal'); nl(2);
+    d.pedidos.forEach(function(p,i){ push((i+1)+'. '+p,'normal'); nl(); });
+    nl();
+  }
+  push('Nesses termos, pede deferimento.','normal'); nl(2);
+  push((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.','normal'); nl(2);
+  if(d.sigNome){ push('___________________________________________','normal'); nl(); push(d.sigNome,'bold'); nl(); if(d.sigOab){ push('OAB/MG nº '+d.sigOab,'normal'); nl(); } }
+
+  var fullText='', styleMap=[];
+  segs.forEach(function(seg){ var s=fullText.length; fullText+=seg.text; var e=fullText.length; if(seg.style!=='normal') styleMap.push({s:s,e:e,style:seg.style}); });
+
+  var requests=[{ insertText:{ location:{index:1}, text:fullText } }];
+  styleMap.slice().reverse().forEach(function(r){
+    var s=r.s+1, e=r.e+1;
+    if(r.style==='h1') requests.push({ updateParagraphStyle:{ range:{startIndex:s,endIndex:e}, paragraphStyle:{namedStyleType:'HEADING_1',alignment:'CENTER'}, fields:'namedStyleType,alignment' }});
+    else if(r.style==='h2') requests.push({ updateParagraphStyle:{ range:{startIndex:s,endIndex:e}, paragraphStyle:{namedStyleType:'HEADING_2'}, fields:'namedStyleType' }});
+    else if(r.style==='bold') requests.push({ updateTextStyle:{ range:{startIndex:s,endIndex:e}, textStyle:{bold:true}, fields:'bold' }});
+  });
+  requests.push({ updateTextStyle:{ range:{startIndex:1,endIndex:fullText.length+1}, textStyle:{ weightedFontFamily:{fontFamily:'Century Gothic'}, fontSize:{magnitude:12,unit:'PT'} }, fields:'weightedFontFamily,fontSize' }});
+  return requests;
+}
+
+// ══ EXPORTAR PDF ══════════════════════════════════════════════
+document.getElementById('btn-pdf').addEventListener('click', function(){
+  var d = coletar();
+  var title = (d.titulo||'Petição')+(d.processo?' — '+d.processo:'');
+  html2pdf().set({
+    margin:0, filename:title+'.pdf',
+    image:{type:'jpeg',quality:.97},
+    html2canvas:{scale:2,useCORS:true},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+  }).from(document.getElementById('doc-pages')).save();
+});
+
+// ══ LIMPAR ════════════════════════════════════════════════════
+document.getElementById('btn-limpar').addEventListener('click', function(){
+  if(!confirm('Limpar todos os campos?')) return;
+  document.getElementById('tipo-peca').value='PETIÇÃO INICIAL';
+  document.getElementById('titulo-livre').value='';
+  document.getElementById('f-livre').style.display='none';
+  ['num-autos','vara','enderecamento','sig-nome','sig-oab'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
+  document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
+  reqCount=0; redCount=0;
+  render();
+});
+
+// notif close
+document.getElementById('docs-notif-close').addEventListener('click', function(){ document.getElementById('docs-notif').style.display='none'; });
+
+// render inicial
+render();
+</script>
+</body>
+</html>
