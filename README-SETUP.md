@@ -269,6 +269,11 @@ service cloud.firestore {
       return isAdmin() ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patrimonioVerTudo != false;
     }
+    match /materiaisMarca/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
     match /patrimonio/{itemId} {
       allow read: if isSignedIn() && (podeVerTudoPatrimonio() || resource.data.responsavelUid == request.auth.uid);
       allow create: if isSignedIn()
@@ -460,6 +465,18 @@ Tudo pela aba **Administração** do próprio portal (só admins veem essa aba):
   `users/{uid}.sistemasExternos` (array de ids), sem regra nova no
   Firestore — usa a mesma permissão de escrita que já existe pra
   `users` (só admin edita; a própria pessoa só lê).
+- **Logomarcas e papéis de parede** (clicando na engrenagem, no topo do
+  Portal, qualquer colaborador acessa): mostra as 2 logomarcas padrão
+  (fundo escuro/fundo claro) prontas para download, mais qualquer
+  logomarca extra ou papel de parede que um admin tenha cadastrado.
+  Quem é admin vê um formulário de upload dentro do mesmo painel (nome +
+  arquivo de imagem até ~700 KB) — ao salvar, já fica disponível pra
+  todo mundo baixar na hora, e pode ser excluído pelo mesmo painel. Como
+  o projeto roda no plano Spark (sem Firebase Storage/Blaze), a imagem
+  é guardada em base64 dentro do próprio documento Firestore
+  (coleção `materiaisMarca`), por isso o limite de tamanho por arquivo —
+  se precisar de algo maior, comprima a imagem antes de subir. Regra
+  Firestore: qualquer pessoa logada lê, só admin cria/exclui.
 - **Papéis (cargos)**: cada conta tem um `role` — `Membro` (padrão),
   `Cliente`, `Gestor` ou `Administrador`. Só `Administrador` vê a aba
   Administração. `Gestor` é o único outro papel com poder especial hoje:

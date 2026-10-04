@@ -390,6 +390,21 @@
   .logo-download-preview img{max-height:60px;max-width:100%;object-fit:contain;}
   .logo-download-card p{font-size:.78rem;color:var(--muted);margin:0 0 10px;}
   .logo-download-card.dark p{color:#c7c7c7;}
+  .logo-download-card.extra{background:var(--panel-2);}
+  .logo-download-card .nome{font-size:.8rem;font-weight:600;color:var(--paper);margin:0 0 2px;}
+  .logo-download-card .del-btn{background:none;border:none;color:var(--muted);font-size:.72rem;text-decoration:underline;cursor:pointer;margin-top:6px;padding:0;}
+  .logo-download-card .del-btn:hover{color:var(--red);}
+  #download-logo-backdrop .modal-box{width:min(700px,94vw);max-height:85vh;overflow-y:auto;}
+  .materiais-section-title{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 0 2px;}
+  .materiais-empty{font-size:.8rem;color:var(--muted);margin:4px 0 0;}
+  .materiais-upload-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;}
+  .materiais-upload-row select,.materiais-upload-row input[type="text"]{padding:7px 9px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.8rem;}
+  .materiais-upload-row input[type="text"]{flex:1 1 200px;min-width:0;}
+  .materiais-upload-row input[type="file"]{flex:1 1 180px;min-width:0;font-size:.76rem;color:var(--muted);}
+  .materiais-upload-hint{font-size:.72rem;color:var(--muted);margin:6px 0 0;}
+  .materiais-upload-msg{font-size:.76rem;margin:6px 0 0;min-height:1em;}
+  .materiais-upload-msg.erro{color:var(--red);}
+  .materiais-upload-msg.ok{color:var(--ok,#4caf7d);}
   #edit-tabs-backdrop .modal-box{width:min(640px,94vw);}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
   .form-grid .full{grid-column:1/-1;}
@@ -691,7 +706,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v137</span>
+      <span class="version-tag">v138</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -861,8 +876,10 @@
 
 <div class="modal-backdrop" id="download-logo-backdrop">
   <div class="modal-box">
-    <h3>Logomarca do escritório</h3>
-    <p class="sub">Baixe a logomarca em alta qualidade para usar em apresentações, documentos ou onde precisar. Escolha a versão certa para o fundo que você vai usar.</p>
+    <h3>Logomarcas e papéis de parede</h3>
+    <p class="sub">Baixe imagens oficiais do escritório para usar em apresentações, documentos, computador ou celular.</p>
+
+    <p class="materiais-section-title">Logomarcas</p>
     <div class="logo-download-grid">
       <div class="logo-download-card dark">
         <div class="logo-download-preview"><img id="logo-preview-dark" alt="Logomarca para fundo escuro"></div>
@@ -874,7 +891,29 @@
         <p>Para fundo claro</p>
         <a class="btn secondary small" id="logo-download-light-link" download="fonseca-e-braga-logo-fundo-claro.png">Baixar PNG</a>
       </div>
+      <div class="logo-download-grid" id="materiais-logos-extra" style="display:contents;"></div>
     </div>
+
+    <p class="materiais-section-title">Papéis de parede</p>
+    <div class="logo-download-grid" id="materiais-wallpapers">
+      <p class="materiais-empty" id="materiais-wallpapers-vazio">Nenhum papel de parede cadastrado ainda.</p>
+    </div>
+
+    <div id="materiais-admin-upload" style="display:none;">
+      <p class="materiais-section-title">Adicionar novo material (admin)</p>
+      <div class="materiais-upload-row">
+        <select id="materiais-upload-tipo">
+          <option value="logo">Logomarca</option>
+          <option value="wallpaper">Papel de parede</option>
+        </select>
+        <input type="text" id="materiais-upload-nome" placeholder="Nome (ex: Papel de parede Natal 2026)">
+        <input type="file" id="materiais-upload-arquivo" accept="image/*">
+        <button type="button" class="btn secondary small" id="materiais-upload-btn">+ Adicionar</button>
+      </div>
+      <p class="materiais-upload-hint">Imagens de até ~700 KB (comprima antes se for maior). Formatos: PNG, JPG.</p>
+      <p class="materiais-upload-msg" id="materiais-upload-msg"></p>
+    </div>
+
     <div class="modal-foot">
       <button class="btn secondary" id="download-logo-fechar">Fechar</button>
     </div>
@@ -1114,6 +1153,14 @@
     logoDownloadDarkLink: document.getElementById('logo-download-dark-link'),
     logoDownloadLightLink: document.getElementById('logo-download-light-link'),
     downloadLogoFechar: document.getElementById('download-logo-fechar'),
+    materiaisLogosExtra: document.getElementById('materiais-logos-extra'),
+    materiaisWallpapers: document.getElementById('materiais-wallpapers'),
+    materiaisAdminUpload: document.getElementById('materiais-admin-upload'),
+    materiaisUploadTipo: document.getElementById('materiais-upload-tipo'),
+    materiaisUploadNome: document.getElementById('materiais-upload-nome'),
+    materiaisUploadArquivo: document.getElementById('materiais-upload-arquivo'),
+    materiaisUploadBtn: document.getElementById('materiais-upload-btn'),
+    materiaisUploadMsg: document.getElementById('materiais-upload-msg'),
     editSubabasBackdrop: document.getElementById('edit-subabas-backdrop'),
     editSubabasLabel: document.getElementById('edit-subabas-label'),
     editSubabasTextarea: document.getElementById('edit-subabas-textarea'),
@@ -1292,19 +1339,106 @@
     els.sistemasStatusBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
 
-  // ---------- Baixar logomarca (item no menu da engrenagem) ----------
-  // Reaproveita as mesmas imagens já embutidas para o tema claro/escuro (LOGO_DARK/LOGO_LIGHT)
-  // em vez de guardar uma cópia extra do arquivo — qualquer usuário pode baixar, sem precisar de permissão especial.
+  // ---------- Baixar logomarca / papéis de parede (item no menu da engrenagem) ----------
+  // Os dois cards fixos reaproveitam as imagens já embutidas para o tema claro/escuro
+  // (LOGO_DARK/LOGO_LIGHT). Além disso, qualquer admin pode subir logomarcas extras ou
+  // papéis de parede novos — ficam em `materiaisMarca` no Firestore (sem Storage/Blaze,
+  // a imagem vai como base64 no próprio documento, por isso o limite de ~700KB por arquivo).
+  const MATERIAL_TAMANHO_MAX = 700 * 1024;
+  let materiaisExtras = [];
+
+  function extensaoDaImagem(dataUrl){
+    const m = /^data:image\/(png|jpeg|jpg|webp)/.exec(dataUrl || '');
+    return m ? (m[1] === 'jpeg' ? 'jpg' : m[1]) : 'png';
+  }
+  function nomeArquivoMaterial(nome, dataUrl){
+    const slug = (nome || 'material').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'material';
+    return 'fonseca-e-braga-' + slug + '.' + extensaoDaImagem(dataUrl);
+  }
+  function cardMaterialExtra(doc){
+    const souAdmin = currentProfile && currentProfile.role === 'admin';
+    return '<div class="logo-download-card extra">'
+      + '<div class="logo-download-preview"><img src="' + doc.imagem + '" alt="' + escapeHtml(doc.nome) + '"></div>'
+      + '<p class="nome">' + escapeHtml(doc.nome) + '</p>'
+      + '<a class="btn secondary small" href="' + doc.imagem + '" download="' + nomeArquivoMaterial(doc.nome, doc.imagem) + '">Baixar</a>'
+      + (souAdmin ? '<br><button type="button" class="del-btn" onclick="window.__excluirMaterialMarca(\'' + doc.id + '\')">Excluir</button>' : '')
+      + '</div>';
+  }
+  function renderMateriaisExtras(){
+    const logosExtra = materiaisExtras.filter(function(d){ return d.tipo === 'logo'; });
+    const wallpapers = materiaisExtras.filter(function(d){ return d.tipo === 'wallpaper'; });
+    els.materiaisLogosExtra.innerHTML = logosExtra.map(cardMaterialExtra).join('');
+    els.materiaisWallpapers.innerHTML = wallpapers.length
+      ? wallpapers.map(cardMaterialExtra).join('')
+      : '<p class="materiais-empty" id="materiais-wallpapers-vazio">Nenhum papel de parede cadastrado ainda.</p>';
+  }
+  db.collection('materiaisMarca').onSnapshot(function(snap){
+    materiaisExtras = [];
+    snap.forEach(function(doc){ materiaisExtras.push(Object.assign({ id: doc.id }, doc.data())); });
+    renderMateriaisExtras();
+  });
+  window.__excluirMaterialMarca = function(id){
+    if (!confirm('Excluir este material? Ele some do download para todo mundo.')) return;
+    db.collection('materiaisMarca').doc(id).delete();
+  };
+
   function abrirDownloadLogo(){
     els.logoPreviewDark.src = LOGO_DARK;
     els.logoPreviewLight.src = LOGO_LIGHT;
     els.logoDownloadDarkLink.href = LOGO_DARK;
     els.logoDownloadLightLink.href = LOGO_LIGHT;
+    els.materiaisAdminUpload.style.display = (currentProfile && currentProfile.role === 'admin') ? 'block' : 'none';
+    renderMateriaisExtras();
     els.downloadLogoBackdrop.classList.add('show');
   }
   function fecharDownloadLogo(){ els.downloadLogoBackdrop.classList.remove('show'); }
   els.downloadLogoFechar.addEventListener('click', fecharDownloadLogo);
   els.downloadLogoBackdrop.addEventListener('click', function(e){ if (e.target === els.downloadLogoBackdrop) fecharDownloadLogo(); });
+
+  els.materiaisUploadBtn.addEventListener('click', function(){
+    const tipo = els.materiaisUploadTipo.value;
+    const nome = els.materiaisUploadNome.value.trim();
+    const arquivo = els.materiaisUploadArquivo.files[0];
+    els.materiaisUploadMsg.className = 'materiais-upload-msg';
+    els.materiaisUploadMsg.textContent = '';
+    if (!nome) { els.materiaisUploadMsg.className = 'materiais-upload-msg erro'; els.materiaisUploadMsg.textContent = 'Dê um nome para o material.'; return; }
+    if (!arquivo) { els.materiaisUploadMsg.className = 'materiais-upload-msg erro'; els.materiaisUploadMsg.textContent = 'Escolha um arquivo de imagem.'; return; }
+    if (arquivo.size > MATERIAL_TAMANHO_MAX) {
+      els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
+      els.materiaisUploadMsg.textContent = 'Arquivo muito grande (' + Math.round(arquivo.size / 1024) + ' KB). Comprima para até ~700 KB e tente de novo.';
+      return;
+    }
+    els.materiaisUploadBtn.disabled = true;
+    const reader = new FileReader();
+    reader.onload = function(){
+      db.collection('materiaisMarca').add({
+        tipo: tipo,
+        nome: nome,
+        imagem: reader.result,
+        criadoPorUid: currentProfile.uid,
+        criadoPorNome: currentProfile.displayName || currentProfile.email,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){
+        els.materiaisUploadMsg.className = 'materiais-upload-msg ok';
+        els.materiaisUploadMsg.textContent = 'Adicionado!';
+        els.materiaisUploadNome.value = '';
+        els.materiaisUploadArquivo.value = '';
+        els.materiaisUploadBtn.disabled = false;
+      }).catch(function(e){
+        els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
+        els.materiaisUploadMsg.textContent = 'Erro ao salvar: ' + e.message;
+        els.materiaisUploadBtn.disabled = false;
+      });
+    };
+    reader.onerror = function(){
+      els.materiaisUploadMsg.className = 'materiais-upload-msg erro';
+      els.materiaisUploadMsg.textContent = 'Não foi possível ler o arquivo.';
+      els.materiaisUploadBtn.disabled = false;
+    };
+    reader.readAsDataURL(arquivo);
+  });
 
   // ---------- Alternar login / cadastro ----------
   els.showRegister.addEventListener('click', function(e){
@@ -1895,7 +2029,7 @@
 
     const logoBtn = document.createElement('button');
     logoBtn.type = 'button';
-    logoBtn.innerHTML = iconeSvg('download') + '<span>Baixar logomarca</span>';
+    logoBtn.innerHTML = iconeSvg('download') + '<span>Logomarcas e papéis de parede</span>';
     logoBtn.addEventListener('click', function(){
       closeUserMenu();
       abrirDownloadLogo();
