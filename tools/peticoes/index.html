@@ -615,21 +615,27 @@ function _render(){
 }
 
 function paginar(html){
-  // mede elementos num container com mesma largura e fonte
+  // determina largura real da área de conteúdo a partir da página renderizada
+  var pageEl = document.querySelector('.doc-page');
+  var pageW  = pageEl ? pageEl.offsetWidth : 794;          // largura A4 em px
+  var contentW = Math.round(pageW * 160 / 210);            // 160mm de conteúdo
+  var maxH     = Math.round(pageW * 229 / 210);            // 229mm de altura útil
+
   var med = document.createElement('div');
-  med.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;top:0;left:-9999px;'
-    + 'font-family:\'Century Gothic\',\'Futura\',\'Trebuchet MS\',sans-serif;font-size:12pt;line-height:1.45;color:#1a1a1a;';
+  med.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;'
+    + 'top:0;left:-9999px;width:'+contentW+'px;'
+    + 'font-family:\'Century Gothic\',\'Futura\',\'Trebuchet MS\',sans-serif;'
+    + 'font-size:12pt;line-height:1.45;color:#1a1a1a;';
   med.innerHTML = html;
   document.body.appendChild(med);
 
-  // largura da área de conteúdo = 160mm; calcula maxH proporcional
-  var cw = med.offsetWidth || 600;
-  var maxH = Math.round(cw * (229 / 160)); // 229mm content height / 160mm content width
-
   var paginas = [], currentH = 0, currentItems = [];
   Array.from(med.children).forEach(function(child){
-    var h = child.offsetHeight + (parseFloat(getComputedStyle(child).marginTop)||0) + (parseFloat(getComputedStyle(child).marginBottom)||0);
-    if(h === 0) h = 4;
+    var cs = getComputedStyle(child);
+    var h = child.offsetHeight
+          + (parseFloat(cs.marginTop)||0)
+          + (parseFloat(cs.marginBottom)||0);
+    if(h < 2) h = 4;
     if(currentH + h > maxH && currentItems.length){
       paginas.push(currentItems.join(''));
       currentItems = [];
@@ -730,41 +736,99 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
 });
 
 function buildDocsRequests(d){
-  var segs = [];
-  function push(t,s){ if(t) segs.push({text:t,style:s||'normal'}); }
-  function nl(n){ push('\n'.repeat(n||1),'normal'); }
-  if(d.enderecamento){ push(d.enderecamento,'bold'); nl(2); }
-  if(d.processo){ push('Autos nº. '+d.processo+'.','normal'); nl(2); }
+  // monta lista de parágrafos com tipo semântico
+  var paras = []; // {text, type}
+  function para(text, type){ paras.push({text: text||'', type: type||'body'}); }
+  function blank(){ paras.push({text:'', type:'blank'}); }
+
+  if(d.enderecamento){ para(d.enderecamento, 'enderecamento'); blank(); }
+  if(d.processo){ para('Autos nº. '+d.processo+'.', 'processo'); blank(); }
   d.requerentes.forEach(function(p){
-    if(p.nome){ push(p.nome,'bold'); if(p.qual) push(', '+p.qual,'normal'); push(', vem, respeitosamente...','normal'); nl(2); }
+    if(p.nome||p.qual){
+      var t = (p.nome||'') + (p.qual ? (p.nome?', ':'')+p.qual : '');
+      t += ', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado in fine assinado, expor e requerer o seguinte:';
+      para(t, 'qualificacao'); blank();
+    }
   });
-  if(d.titulo){ push(d.titulo,'h1'); nl(2); }
-  d.topicos.forEach(function(t,i){
-    push(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''),'h2'); nl();
-    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s){ push('\t'+s,'normal'); nl(); } });
-    nl();
+  if(d.titulo){ para(d.titulo, 'titulo'); blank(); }
+  d.topicos.forEach(function(t, i){
+    para(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''), 'secao');
+    if(t.texto) t.texto.split(/\n\n+/).forEach(function(p){ var s=p.trim(); if(s) para(s,'body'); });
+    blank();
   });
   if(d.pedidos.length){
-    push('PEDIDO'+(d.pedidos.length>1?'S':''),'h2'); nl();
-    push('Diante do exposto, requer-se a Vossa Excelência que se digne a:','normal'); nl(2);
-    d.pedidos.forEach(function(p,i){ push((i+1)+'. '+p,'normal'); nl(); });
-    nl();
+    para('PEDIDO'+(d.pedidos.length>1?'S':''), 'secao');
+    para('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:', 'body');
+    d.pedidos.forEach(function(p,i){ para((i+1)+'. '+p, 'pedido'); });
+    blank();
   }
-  push('Nesses termos, pede deferimento.','normal'); nl(2);
-  push((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.','normal'); nl(2);
-  if(d.sigNome){ push('___________________________________________','normal'); nl(); push(d.sigNome,'bold'); nl(); if(d.sigOab){ push('OAB/MG nº '+d.sigOab,'normal'); nl(); } }
+  para('Nesses termos, pede deferimento.', 'fechamento'); blank();
+  if(d.local||d.data){ para((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.', 'local'); blank(); blank(); }
+  if(d.sigNome){
+    para('_'.repeat(42), 'assinatura');
+    para(d.sigNome, 'assinatura-nome');
+    if(d.sigOab) para('OAB/MG nº '+d.sigOab, 'assinatura');
+  }
 
-  var fullText='', styleMap=[];
-  segs.forEach(function(seg){ var s=fullText.length; fullText+=seg.text; var e=fullText.length; if(seg.style!=='normal') styleMap.push({s:s,e:e,style:seg.style}); });
+  var fullText = paras.map(function(p){ return p.text; }).join('\n');
+  var requests = [{ insertText:{ location:{index:1}, text: fullText } }];
 
-  var requests=[{ insertText:{ location:{index:1}, text:fullText } }];
-  styleMap.slice().reverse().forEach(function(r){
-    var s=r.s+1, e=r.e+1;
-    if(r.style==='h1') requests.push({ updateParagraphStyle:{ range:{startIndex:s,endIndex:e}, paragraphStyle:{namedStyleType:'HEADING_1',alignment:'CENTER'}, fields:'namedStyleType,alignment' }});
-    else if(r.style==='h2') requests.push({ updateParagraphStyle:{ range:{startIndex:s,endIndex:e}, paragraphStyle:{namedStyleType:'HEADING_2'}, fields:'namedStyleType' }});
-    else if(r.style==='bold') requests.push({ updateTextStyle:{ range:{startIndex:s,endIndex:e}, textStyle:{bold:true}, fields:'bold' }});
+  // fonte global Century Gothic 12pt
+  requests.push({ updateTextStyle:{
+    range:{startIndex:1, endIndex: fullText.length+1},
+    textStyle:{ weightedFontFamily:{fontFamily:'Century Gothic'}, fontSize:{magnitude:12,unit:'PT'} },
+    fields:'weightedFontFamily,fontSize'
+  }});
+
+  // aplica estilos por parágrafo (em ordem reversa para não deslocar índices)
+  var pos = 1;
+  var ranges = paras.map(function(p){
+    var s = pos, e = pos + p.text.length + 1;
+    pos = e;
+    return {s:s, e:e, type:p.type};
   });
-  requests.push({ updateTextStyle:{ range:{startIndex:1,endIndex:fullText.length+1}, textStyle:{ weightedFontFamily:{fontFamily:'Century Gothic'}, fontSize:{magnitude:12,unit:'PT'} }, fields:'weightedFontFamily,fontSize' }});
+
+  ranges.slice().reverse().forEach(function(r){
+    var range = {startIndex:r.s, endIndex:r.e};
+    var INDENT = {magnitude: 35.4, unit:'PT'}; // 1.25cm
+
+    // estilos de parágrafo
+    if(r.type==='enderecamento'||r.type==='titulo'||r.type==='local'||r.type==='assinatura'||r.type==='assinatura-nome'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'CENTER'},
+        fields:'alignment' }});
+    } else if(r.type==='body'||r.type==='qualificacao'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'JUSTIFIED', indentFirstLine: INDENT},
+        fields:'alignment,indentFirstLine' }});
+    } else if(r.type==='fechamento'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'JUSTIFIED'},
+        fields:'alignment' }});
+    } else if(r.type==='secao'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'START',
+          spaceAbove:{magnitude:8,unit:'PT'},
+          spaceBelow:{magnitude:2,unit:'PT'}},
+        fields:'alignment,spaceAbove,spaceBelow' }});
+    } else if(r.type==='processo'){
+      requests.push({ updateParagraphStyle:{ range:range,
+        paragraphStyle:{alignment:'START'},
+        fields:'alignment' }});
+    }
+
+    // estilos de texto
+    if(r.type==='enderecamento'||r.type==='secao'){
+      requests.push({ updateTextStyle:{ range:range, textStyle:{bold:true}, fields:'bold' }});
+    } else if(r.type==='titulo'){
+      requests.push({ updateTextStyle:{ range:range,
+        textStyle:{bold:true, fontSize:{magnitude:13,unit:'PT'}},
+        fields:'bold,fontSize' }});
+    } else if(r.type==='assinatura-nome'){
+      requests.push({ updateTextStyle:{ range:range, textStyle:{bold:true}, fields:'bold' }});
+    }
+  });
+
   return requests;
 }
 
