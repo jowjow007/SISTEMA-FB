@@ -682,12 +682,20 @@ var NUM_RE = /^(\d{1,3}(?:\.\d{1,2})*[.)\-–])\s+/;
 // junta linhas quebradas no meio da frase; novo parágrafo só após pontuação final, linha em branco ou número/alínea
 function paragrafos(t){
   var out = [];
+  var ultimo = ''; // último parágrafo não vazio (atravessa linhas em branco)
   (t||'').split('\n').forEach(function(raw){
     var l = raw.trim();
-    if(!l){ out.push(''); return; }
+    if(!l){ if(out.length && out[out.length-1] !== '') out.push(''); return; }
     var prev = out.length ? out[out.length-1] : '';
-    var novo = !prev || /[.:;!?"”»)\]]$/.test(prev) || NUM_RE.test(l) || /^[a-z][.)]\s/.test(l);
-    if(novo) out.push(l); else out[out.length-1] = prev + ' ' + l;
+    var fimFrase = /[.:;!?"”»)\]]$/.test(ultimo);
+    var inicioNovo = NUM_RE.test(l) || /^[a-z][.)]\s/.test(l);
+    // continuação: anterior sem pontuação final e linha começando em minúscula/dígito (mesmo após linha em branco)
+    var continua = ultimo && !fimFrase && !inicioNovo && (prev !== '' || /^[a-zà-ÿ0-9]/.test(l));
+    if(continua){
+      if(prev === '') out.pop();
+      out[out.length-1] = out[out.length-1] + ' ' + l;
+    } else out.push(l);
+    ultimo = out[out.length-1];
   });
   return out.filter(Boolean);
 }
@@ -699,6 +707,11 @@ function numParagrafo(s){
 function restoParagrafo(s){
   var m = s.match(NUM_RE);
   return m ? s.slice(m[0].length) : s;
+}
+function ehCitacao(s){ return /^[“"«]/.test(s); }
+// se algum parágrafo veio numerado, a peça segue o padrão do escritório: todos os parágrafos do corpo numerados
+function usaNumeracao(d){
+  return d.topicos.some(function(t){ return paragrafos(t.texto).some(function(s){ return !!numParagrafo(s); }); });
 }
 function alinea(i){ return String.fromCharCode(97 + (i % 26)) + ')'; }
 function pedidoFinal(p, i, total){
@@ -762,17 +775,22 @@ function buildBody(d){
     h += '<div class="dc-qualificacao">'+(q.nome?'<strong>'+esc(q.nome)+'</strong>':'')+esc(q.resto)+esc(q.sufixo)+'</div>';
   });
   if(d.titulo) h += '<div class="dc-titulo-box">'+esc(d.titulo)+'</div>';
+  var numerar = usaNumeracao(d), cont = 0;
+  function pNum(texto){
+    cont++;
+    return '<div class="dc-p dc-num"><strong class="dc-n">'+cont+'.</strong>'+esc(texto)+'</div>';
+  }
   d.topicos.forEach(function(t,i){
     h += '<div class="dc-secao">'+roman(i+1)+(t.titulo?' — '+esc(t.titulo.toUpperCase()):'')+'</div>';
     paragrafos(t.texto).forEach(function(s){
-      var n = numParagrafo(s);
-      h += n ? '<div class="dc-p dc-num"><strong class="dc-n">'+esc(n)+'</strong>'+esc(restoParagrafo(s))+'</div>'
-             : '<div class="dc-p">'+esc(s)+'</div>';
+      if(numerar && !ehCitacao(s)) h += pNum(restoParagrafo(s));
+      else h += '<div class="dc-p">'+esc(s)+'</div>';
     });
   });
   if(d.pedidos.length){
     h += '<div class="dc-secao">Pedido'+(d.pedidos.length>1?'s':'')+'</div>';
-    h += '<div class="dc-p no-indent">Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:</div>';
+    var intro = 'Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:';
+    h += numerar ? pNum(intro) : '<div class="dc-p">'+esc(intro)+'</div>';
     d.pedidos.forEach(function(p,i){
       h+='<div class="dc-item"><span class="dc-item-num">'+alinea(i)+'</span><span class="dc-item-body">'+esc(pedidoFinal(p,i,d.pedidos.length))+'</span></div>';
     });
@@ -921,16 +939,18 @@ function docxBody(d){
     x += wP((q.nome?wRun(q.nome,{b:1}):'') + wRun(q.resto + q.sufixo), {ind:RECUO});
   });
   if(d.titulo) x += wP(wRun(d.titulo.toUpperCase(),{b:1, sz:26}), {jc:'center', box:1, before:240, after:240});
+  var numerar = usaNumeracao(d);
   d.topicos.forEach(function(t, i){
     x += wP(wRun(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''),{b:1}), {jc:'left', before:240, after:120});
     paragrafos(t.texto).forEach(function(s){
-      if(numParagrafo(s)) x += wP(wRun(restoParagrafo(s)), {num:1});
+      if(numerar && !ehCitacao(s)) x += wP(wRun(restoParagrafo(s)), {num:1});
       else x += wP(wRun(s), {ind:RECUO});
     });
   });
   if(d.pedidos.length){
     x += wP(wRun('PEDIDO'+(d.pedidos.length>1?'S':''),{b:1}), {jc:'left', before:240, after:120});
-    x += wP(wRun('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:'), {ind:RECUO});
+    var intro = 'Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:';
+    x += numerar ? wP(wRun(intro), {num:1}) : wP(wRun(intro), {ind:RECUO});
     d.pedidos.forEach(function(p,i){ x += wP(wRun(pedidoFinal(p,i,d.pedidos.length)), {num:2}); });
   }
   x += wVazio();
