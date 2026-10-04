@@ -427,12 +427,17 @@ function dataExt(iso){ if(!iso) return ''; var p=iso.split('-'); return parseInt
 })();
 
 // ══ FIREBASE AUTH ═════════════════════════════════════════════
-var currentUser = null;
+var currentUser = null, isAdmin = false, meuNome = '';
 auth.onAuthStateChanged(function(user){
   currentUser = user;
   if(user){
     document.getElementById('hist-msg').style.display = 'none';
-    carregarHistorico();
+    db.collection('users').doc(user.uid).get().then(function(s){
+      var u = s.exists ? s.data() : {};
+      isAdmin = u.role === 'admin';
+      meuNome = u.displayName || u.nome || user.displayName || '';
+      render();
+    }).catch(function(){}).then(carregarHistorico);
     carregarUsuarios();
   }
 });
@@ -540,7 +545,9 @@ function carregarHistorico(){
         var data = d.data();
         var row = document.createElement('div'); row.className = 'hist-row';
         var btn = document.createElement('button'); btn.className = 'hist-main';
-        var nome = document.createElement('div'); nome.className = 'hist-nome'; nome.textContent = data.titulo || 'Petição';
+        var nome = document.createElement('div'); nome.className = 'hist-nome';
+        nome.textContent = data.nomeArquivo || data.titulo || 'Petição';
+        nome.title = nome.textContent;
         var meta = document.createElement('div'); meta.className = 'hist-meta';
         var dt = data.criadoEm ? new Date(data.criadoEm.seconds*1000) : new Date();
         meta.textContent = dt.toLocaleDateString('pt-BR') + ' · ' + (data.processo||'');
@@ -551,6 +558,16 @@ function carregarHistorico(){
         link.style.cssText = 'font-size:.7rem;color:var(--ok);white-space:nowrap;display:'+(data.docsUrl?'':'none');
         link.textContent = 'Abrir Docs';
         row.append(btn, link);
+        // exclusão: quem criou ou administrador
+        if(currentUser && (data.criadoPor === currentUser.uid || isAdmin)){
+          var del = document.createElement('button');
+          del.className = 'btn-rem'; del.textContent = '🗑'; del.title = 'Excluir do histórico';
+          del.addEventListener('click', function(){
+            if(!confirm('Excluir "'+(data.nomeArquivo||data.titulo||'Petição')+'" do histórico?\n\nO documento no Google Drive não é apagado.')) return;
+            db.collection('peticoes_historico').doc(d.id).delete().catch(function(e){ alert('Não foi possível excluir: '+e.message); });
+          });
+          row.appendChild(del);
+        }
         list.appendChild(row);
       });
     }, function(){});
@@ -746,7 +763,7 @@ function sugerirNomenclatura(d){
   var autor = d.requerentes.length ? qualifParts(d.requerentes[0]).nome : '';
   var reu = d.requeridos.length ? (d.requeridos[0].nome || '') : '';
   if(!reu && d.requerentes.length) reu = reuDaQualificacao(d.requerentes[0].qual);
-  var criador = (d.sigNome || (currentUser && currentUser.displayName) || '').trim().split(/\s+/)[0] || '';
+  var criador = (d.sigNome || meuNome || (currentUser && currentUser.displayName) || '').trim().split(/\s+/)[0] || '';
   var sug = {autor:autor, reu:reu, criador:criador};
   Object.keys(sug).forEach(function(k){
     var el = document.getElementById('nom-'+k);
@@ -833,7 +850,7 @@ document.getElementById('btn-docs').addEventListener('click', async function(){
     document.getElementById('docs-notif').style.display = 'block';
     if(currentUser){
       db.collection('peticoes_historico').add(Object.assign({}, d,{
-        docsUrl: url, criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPor: currentUser.uid
+        docsUrl: url, nomeArquivo: docTitle, criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPor: currentUser.uid
       })).catch(function(){});
     }
   } catch(err){
