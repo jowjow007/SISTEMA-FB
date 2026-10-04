@@ -1451,6 +1451,12 @@
       try { savedView = localStorage.getItem(VIEW_CACHE_KEY); } catch(e){ /* indisponível */ }
       setView(savedView === 'kanban' || savedView === 'enviadas' ? savedView : 'lista');
       startListening();
+    }).catch(function(e){
+      // Sem isso, qualquer falha aqui (ex.: regra do Firestore quebrada/sobrescrita por
+      // outra ferramenta) deixava a tela 100% em branco, sem gate nem app nem mensagem
+      // nenhuma — exatamente o sintoma "sumiu tudo, sem erro" relatado em 2026-10-04.
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Não foi possível carregar suas anotações: ' + e.message + ' (tente recarregar a página; se persistir, avise o administrador).';
     });
   });
 

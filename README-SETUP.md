@@ -197,6 +197,15 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isSignedIn() && (resource.data.criadoPorUid == request.auth.uid || isAdmin());
     }
+    match /peticoes_historico/{docId} {
+      allow read: if isSignedIn() && resource.data.criadoPor == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.criadoPor == request.auth.uid
+                    && request.resource.data.nomeArquivo is string
+                    && request.resource.data.docsUrl is string;
+      allow update: if false;
+      allow delete: if isSignedIn() && (resource.data.criadoPor == request.auth.uid || isAdmin());
+    }
     match /organograma/{uid} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
@@ -323,6 +332,8 @@ service cloud.firestore {
 > Na tela, o que foi enviado para alguém não aparece só no banner de aviso: vira também uma **lista virtual "📨 Recebidas"**, em cor laranja (diferente de todas as listas normais), fixada no topo da barra lateral em modo Lista e como primeira coluna em modo Kanban — não existe de verdade em `pendGrupos`, é montada na hora a partir de `tarefasEnviadas`, então não pode ser excluída nem recebe tarefas soltas dentro dela. Enquanto houver algo `pendente` ou `reprovada` nela, tanto essa lista/coluna quanto a própria aba "Minhas Anotações" no menu do Portal **piscam** (ver `updateAnotacoesBlink()` no `index.html` do Portal, que reaproveita o mesmo mecanismo `.tab-blink` já usado pela aba "Gestão"); o piscar para assim que o destinatário conclui, sem esperar a aprovação do remetente.
 
 > A regra de `contratosGerados` (usada pela ferramenta **Contratos e Propostas**, histórico "últimos documentos gerados") é compartilhada entre toda a equipe: qualquer usuário logado lê a lista inteira (para reaproveitar contratos gerados por colegas), mas só cria registros com o próprio `criadoPorUid`. Os registros nunca são editados depois de criados (`allow update: if false`) — cada geração de PDF cria um novo documento, não atualiza um existente. Apagar é permitido para quem criou o registro ou para admin (ex.: remover um teste/engano da lista). O campo `dados` guarda o objeto inteiro do formulário (nome, CPF, valores, cláusulas preenchidas etc.) para permitir recarregar o formulário com um clique — não guarda o PDF em si, só os dados usados para gerá-lo.
+
+> A regra de `peticoes_historico` (usada pela ferramenta **Formatador de Petições**, `tools/peticoes/`) é pessoal — diferente de `contratosGerados`: `allow read` exige `resource.data.criadoPor == request.auth.uid`, então cada um só lê o próprio histórico de petições geradas (a ferramenta já filtra assim, com `where('criadoPor','==',uid)`). Cria só com `criadoPor` = o próprio uid; nunca é editado depois de criado; apaga quem criou ou admin. Esta regra **não estava publicada** quando o histórico ficou com seleção múltipla/exclusão (sessão de 2026-10-04) — se alguém publicou algo manualmente nesse meio tempo sem usar o bloco completo desta seção, isso pode ter sobrescrito as regras de outras coleções (Firestore substitui o conjunto de regras inteiro a cada publicação, não é incremental). **Sempre publique o bloco inteiro da seção 3, nunca um trecho isolado.**
 
 > A regra de `organograma` (usada pela ferramenta **Organograma** e como diretório de colegas em **Minhas Anotações** → "Enviar tarefa") existe porque `users/{uid}` só pode ser lido pelo próprio dono do cadastro ou por um admin (regra `allow read` de `users` acima) — então um gestor sem papel de admin nunca conseguiria montar a lista de todo mundo direto de `users`. `organograma/{uid}` é um espelho **só com os campos não sensíveis** (`displayName`, `deptoAtual`, `dataIngresso`, `remuneracao`) que qualquer usuário logado pode ler — CPF, RG, telefone e endereço nunca são copiados para cá, continuam só em `users`. Admin sempre escreve (`allow write: if isAdmin()`) e a ferramenta grava nos dois lugares ao mesmo tempo (`users` e `organograma`) sempre que os 3 campos editáveis são alterados (modal "Dados cadastrais", bloco do Organograma) **ou** quando um admin cria um usuário novo pela aba Administração. A cláusula extra `allow create` permite que a própria pessoa crie seu espelho (só com `displayName`, e só com os outros 3 campos vazios) no momento em que ela mesma se cadastra pela tela **"Cadastre-se"** — sem essa cláusula, quem se autocadastra só apareceria no diretório depois que um admin abrisse "Dados" para ela.
 
