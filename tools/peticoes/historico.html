@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minhas petições — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); }catch(e){}
+</script>
+<style>
+  :root{
+    --ink:#161010;--panel:#211918;--panel-2:#2a1f1e;--panel-3:#332524;
+    --paper:#ece6e1;--muted:#9c908b;--red:#b8362e;--red-bright:#c9463c;
+    --ok:#4caf7d;--err:#ffb4ae;
+    --line:rgba(236,230,225,0.10);--line-strong:rgba(236,230,225,0.20);
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;--panel:#ffffff;--panel-2:#f1ece6;--panel-3:#e6dfd7;
+    --paper:#241c1b;--muted:#7d716b;--ok:#2f8f5b;--err:#9c2c20;
+    --line:rgba(36,28,27,0.10);--line-strong:rgba(36,28,27,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--ink);color:var(--paper);font-family:"Poppins",system-ui,sans-serif;}
+  header{background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px;}
+  header h1{font-size:1.25rem;font-weight:600;margin:0 0 2px;}
+  header p{font-size:.8rem;color:var(--muted);margin:0;}
+  main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:16px;}
+  .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .tools input[type=search]{flex:1;min-width:200px;padding:8px 10px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-family:inherit;font-size:.84rem;outline:none;}
+  .tools input[type=search]:focus{border-color:var(--red);}
+  label.all{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .btn{padding:8px 14px;border-radius:7px;border:1px solid rgba(255,180,174,.3);background:transparent;color:var(--err);font-family:inherit;font-weight:600;font-size:.78rem;cursor:pointer;}
+  .btn:hover:not(:disabled){background:rgba(255,180,174,.08);}
+  .btn:disabled{opacity:.45;cursor:default;}
+  .row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .info{flex:1;min-width:0;}
+  .nome{font-size:.84rem;font-weight:600;word-break:break-word;}
+  .meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .acoes{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  .acoes a{font-size:.74rem;white-space:nowrap;}
+  .a-docs{color:var(--ok);} .a-form{color:var(--red-bright);}
+  .del{background:none;border:none;cursor:pointer;font-size:.95rem;color:var(--muted);padding:2px 6px;}
+  .del:hover{color:var(--err);}
+  .msg{font-size:.82rem;color:var(--muted);padding:10px 4px;}
+  .count{font-size:.74rem;color:var(--muted);margin:0 0 8px;}
+  @media(max-width:600px){ .row{flex-wrap:wrap;} .acoes{width:100%;justify-content:flex-start;padding-left:26px;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Minhas petições</h1>
+  <p>Tudo o que você gerou no Formatador de Petições.</p>
+</header>
+<main>
+  <div class="card">
+    <div class="tools">
+      <input type="search" id="busca" placeholder="Buscar por parte, peça ou número do processo...">
+      <label class="all"><input type="checkbox" id="all"> Selecionar todas</label>
+      <button class="btn" id="del-sel" disabled>Excluir selecionadas</button>
+    </div>
+    <p class="count" id="count"></p>
+    <div id="lista"><p class="msg">Carregando…</p></div>
+  </div>
+</main>
+<script>
+var app = firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(app), db = firebase.firestore(app);
+var itens = [], filtro = '';
+
+function nomePeticao(d){ return d.nomeArquivo || d.titulo || 'Petição'; }
+
+auth.onAuthStateChanged(function(user){
+  if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
+  db.collection('peticoes_historico').where('criadoPor','==',user.uid).onSnapshot(function(snap){
+    itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
+      .sort(function(a,b){ return ((b.data.criadoEm||{}).seconds||9e12) - ((a.data.criadoEm||{}).seconds||9e12); });
+    desenhar();
+  }, function(e){
+    document.getElementById('lista').innerHTML = '<p class="msg" style="color:var(--err)">Erro ao carregar: '+e.message+'</p>';
+  });
+});
+
+function visiveis(){
+  if(!filtro) return itens;
+  var f = filtro.toLowerCase();
+  return itens.filter(function(it){
+    return (nomePeticao(it.data)+' '+(it.data.processo||'')+' '+(it.data.titulo||'')).toLowerCase().indexOf(f) >= 0;
+  });
+}
+
+function desenhar(){
+  var lista = document.getElementById('lista');
+  var vis = visiveis();
+  document.getElementById('count').textContent = itens.length
+    ? (vis.length === itens.length ? itens.length+' petição(ões)' : vis.length+' de '+itens.length+' petição(ões)') : '';
+  lista.innerHTML = '';
+  document.getElementById('all').checked = false;
+  atualizar();
+  if(!vis.length){ lista.innerHTML = '<p class="msg">'+(itens.length ? 'Nenhuma petição encontrada.' : 'Você ainda não gerou petições.')+'</p>'; return; }
+  vis.forEach(function(it){
+    var d = it.data;
+    var row = document.createElement('div'); row.className = 'row';
+    var chk = document.createElement('input'); chk.type = 'checkbox'; chk.className = 'chk'; chk.dataset.id = it.id;
+    chk.addEventListener('change', atualizar);
+    var info = document.createElement('div'); info.className = 'info';
+    var nome = document.createElement('div'); nome.className = 'nome'; nome.textContent = nomePeticao(d);
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var dt = d.criadoEm ? new Date(d.criadoEm.seconds*1000) : null;
+    meta.textContent = (dt ? dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '') + (d.processo ? ' · Autos '+d.processo : '');
+    info.append(nome, meta);
+    var acoes = document.createElement('div'); acoes.className = 'acoes';
+    if(d.docsUrl){
+      var a1 = document.createElement('a'); a1.className = 'a-docs'; a1.href = d.docsUrl; a1.target = '_blank'; a1.rel = 'noopener'; a1.textContent = 'Abrir Docs';
+      acoes.appendChild(a1);
+    }
+    var a2 = document.createElement('a'); a2.className = 'a-form'; a2.href = 'index.html?carregar='+encodeURIComponent(it.id); a2.textContent = 'Abrir no formatador';
+    acoes.appendChild(a2);
+    var del = document.createElement('button'); del.className = 'del'; del.title = 'Excluir do histórico'; del.textContent = '🗑';
+    del.addEventListener('click', function(){ excluir([it]); });
+    acoes.appendChild(del);
+    row.append(chk, info, acoes);
+    lista.appendChild(row);
+  });
+}
+
+function atualizar(){
+  var chks = Array.from(document.querySelectorAll('.chk'));
+  var n = chks.filter(function(c){ return c.checked; }).length;
+  var b = document.getElementById('del-sel');
+  b.disabled = !n;
+  b.textContent = n ? 'Excluir selecionadas ('+n+')' : 'Excluir selecionadas';
+  document.getElementById('all').checked = n > 0 && n === chks.length;
+}
+
+function excluir(sel){
+  if(!sel.length) return;
+  var lista = sel.slice(0,8).map(function(it){ return '• '+nomePeticao(it.data); }).join('\n');
+  if(sel.length > 8) lista += '\n… e mais '+(sel.length-8);
+  var msg = (sel.length === 1 ? 'Excluir esta petição do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?')
+    + '\n\n'+lista+'\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
+  if(!confirm(msg)) return;
+  var lotes = [];
+  for(var i = 0; i < sel.length; i += 450){
+    var b = db.batch();
+    sel.slice(i, i+450).forEach(function(it){ b.delete(db.collection('peticoes_historico').doc(it.id)); });
+    lotes.push(b.commit());
+  }
+  Promise.all(lotes).catch(function(e){ alert('Não foi possível excluir: '+e.message); });
+}
+
+document.getElementById('busca').addEventListener('input', function(){ filtro = this.value.trim(); desenhar(); });
+document.getElementById('all').addEventListener('change', function(){
+  var v = this.checked;
+  document.querySelectorAll('.chk').forEach(function(c){ c.checked = v; });
+  atualizar();
+});
+document.getElementById('del-sel').addEventListener('click', function(){
+  var ids = Array.from(document.querySelectorAll('.chk:checked')).map(function(c){ return c.dataset.id; });
+  excluir(itens.filter(function(it){ return ids.indexOf(it.id) >= 0; }));
+});
+</script>
+</body>
+</html>
