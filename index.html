@@ -382,6 +382,14 @@
   .sistemas-status-row.off .nome{color:var(--muted);}
   .sistemas-status-row .desc{font-size:.72rem;color:var(--muted);line-height:1.35;margin-top:1px;}
   .sistemas-status-empty{padding:14px 12px;font-size:.8rem;color:var(--muted);text-align:center;}
+  .logo-download-grid{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;}
+  .logo-download-card{flex:1 1 180px;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;}
+  .logo-download-card.dark{background:#17181b;}
+  .logo-download-card.light{background:#f2f2f2;}
+  .logo-download-preview{height:70px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+  .logo-download-preview img{max-height:60px;max-width:100%;object-fit:contain;}
+  .logo-download-card p{font-size:.78rem;color:var(--muted);margin:0 0 10px;}
+  .logo-download-card.dark p{color:#c7c7c7;}
   #edit-tabs-backdrop .modal-box{width:min(640px,94vw);}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
   .form-grid .full{grid-column:1/-1;}
@@ -683,7 +691,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v136</span>
+      <span class="version-tag">v137</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -847,6 +855,28 @@
     <div class="modal-foot">
       <button class="btn secondary" id="edit-sistemas-cancelar">Cancelar</button>
       <button class="btn" id="edit-sistemas-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="download-logo-backdrop">
+  <div class="modal-box">
+    <h3>Logomarca do escritório</h3>
+    <p class="sub">Baixe a logomarca em alta qualidade para usar em apresentações, documentos ou onde precisar. Escolha a versão certa para o fundo que você vai usar.</p>
+    <div class="logo-download-grid">
+      <div class="logo-download-card dark">
+        <div class="logo-download-preview"><img id="logo-preview-dark" alt="Logomarca para fundo escuro"></div>
+        <p>Para fundo escuro</p>
+        <a class="btn secondary small" id="logo-download-dark-link" download="fonseca-e-braga-logo-fundo-escuro.png">Baixar PNG</a>
+      </div>
+      <div class="logo-download-card light">
+        <div class="logo-download-preview"><img id="logo-preview-light" alt="Logomarca para fundo claro"></div>
+        <p>Para fundo claro</p>
+        <a class="btn secondary small" id="logo-download-light-link" download="fonseca-e-braga-logo-fundo-claro.png">Baixar PNG</a>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" id="download-logo-fechar">Fechar</button>
     </div>
   </div>
 </div>
@@ -1078,6 +1108,12 @@
     editSistemasList: document.getElementById('edit-sistemas-list'),
     editSistemasCancelar: document.getElementById('edit-sistemas-cancelar'),
     editSistemasSalvar: document.getElementById('edit-sistemas-salvar'),
+    downloadLogoBackdrop: document.getElementById('download-logo-backdrop'),
+    logoPreviewDark: document.getElementById('logo-preview-dark'),
+    logoPreviewLight: document.getElementById('logo-preview-light'),
+    logoDownloadDarkLink: document.getElementById('logo-download-dark-link'),
+    logoDownloadLightLink: document.getElementById('logo-download-light-link'),
+    downloadLogoFechar: document.getElementById('download-logo-fechar'),
     editSubabasBackdrop: document.getElementById('edit-subabas-backdrop'),
     editSubabasLabel: document.getElementById('edit-subabas-label'),
     editSubabasTextarea: document.getElementById('edit-subabas-textarea'),
@@ -1255,6 +1291,20 @@
     els.sistemasStatusBtn.classList.toggle('open', isOpen);
     els.sistemasStatusBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
+
+  // ---------- Baixar logomarca (item no menu da engrenagem) ----------
+  // Reaproveita as mesmas imagens já embutidas para o tema claro/escuro (LOGO_DARK/LOGO_LIGHT)
+  // em vez de guardar uma cópia extra do arquivo — qualquer usuário pode baixar, sem precisar de permissão especial.
+  function abrirDownloadLogo(){
+    els.logoPreviewDark.src = LOGO_DARK;
+    els.logoPreviewLight.src = LOGO_LIGHT;
+    els.logoDownloadDarkLink.href = LOGO_DARK;
+    els.logoDownloadLightLink.href = LOGO_LIGHT;
+    els.downloadLogoBackdrop.classList.add('show');
+  }
+  function fecharDownloadLogo(){ els.downloadLogoBackdrop.classList.remove('show'); }
+  els.downloadLogoFechar.addEventListener('click', fecharDownloadLogo);
+  els.downloadLogoBackdrop.addEventListener('click', function(e){ if (e.target === els.downloadLogoBackdrop) fecharDownloadLogo(); });
 
   // ---------- Alternar login / cadastro ----------
   els.showRegister.addEventListener('click', function(e){
@@ -1656,6 +1706,7 @@
     shieldcheck: '<path d="M12 3.2 19 6v6c0 4.8-3.1 8.6-7 9.8-3.9-1.2-7-5-7-9.8V6z"></path><path d="M9 12l2 2 4-4"></path>',
     checkcircle: '<circle cx="12" cy="12" r="9"></circle><path d="M8 12.3 10.8 15 16 9.5"></path>',
     xcircle: '<circle cx="12" cy="12" r="9"></circle><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line>',
+    download: '<path d="M12 3.5v11.5"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4.5 18.5h15"></path>',
   };
 
   function iconeSvg(chave){
@@ -1841,6 +1892,19 @@
       div.className = 'user-menu-divider';
       els.userMenuDropdown.appendChild(div);
     }
+
+    const logoBtn = document.createElement('button');
+    logoBtn.type = 'button';
+    logoBtn.innerHTML = iconeSvg('download') + '<span>Baixar logomarca</span>';
+    logoBtn.addEventListener('click', function(){
+      closeUserMenu();
+      abrirDownloadLogo();
+    });
+    els.userMenuDropdown.appendChild(logoBtn);
+
+    const divLogo = document.createElement('div');
+    divLogo.className = 'user-menu-divider';
+    els.userMenuDropdown.appendChild(divLogo);
 
     const sairBtn = document.createElement('button');
     sairBtn.type = 'button';
