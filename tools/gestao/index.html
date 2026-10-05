@@ -214,6 +214,11 @@
       <label>Nome / descrição *</label>
       <input type="text" id="pat-nome" placeholder="Ex: Notebook Dell Latitude">
     </div>
+    <div class="field">
+      <label>Número da etiqueta (código) *</label>
+      <input type="text" id="pat-codigo" placeholder="Ex: PAT-0001">
+      <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Digite exatamente o número que está (ou vai estar) na etiqueta colada no item.</div>
+    </div>
     <div class="field-row">
       <div class="field">
         <label>Categoria</label>
@@ -664,7 +669,6 @@
         '<td class="num">' + formatBRL(it.valor) + '</td>' +
         '<td><span class="pill ' + (it.status || 'ativo') + '">' + (STATUS_PAT_LABEL[it.status] || 'Ativo') + '</span></td>' +
         '<td class="actions-cell">' +
-          '<button type="button" class="btn small" data-pat-etiqueta="' + it.id + '">Etiqueta</button>' +
           (it.notaFiscalArquivo ? '<a class="btn small" style="display:inline-block;text-decoration:none;" href="' + it.notaFiscalArquivo + '" download="' + escapeHtml(it.notaFiscalNome || ('NF-' + it.codigo)) + '">📎 Baixar NF</a>' : '') +
           '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
           (souAdmin ? '<button type="button" class="btn small" data-pat-transferir="' + it.id + '">🔄 Transferir</button>' : '') +
@@ -673,9 +677,6 @@
       '</tr>';
     }).join('');
 
-    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-etiqueta]'), function(b){
-      b.addEventListener('click', function(){ imprimirEtiqueta(patItens.find(function(x){ return x.id === b.dataset.patEtiqueta; })); });
-    });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-editar]'), function(b){
       b.addEventListener('click', function(){ abrirModalPatrimonio(patItens.find(function(x){ return x.id === b.dataset.patEditar; })); });
     });
@@ -692,7 +693,18 @@
     });
   }
 
-  function proximoCodigoPatrimonio(){
+  // Só sugere um próximo número de etiqueta (não reserva/incrementa nada) — o código agora
+  // é sempre digitado à mão, pra bater exatamente com a etiqueta colável física do item.
+  function sugerirCodigoPatrimonio(){
+    const ref = db.collection('contadores').doc('patrimonio');
+    return ref.get().then(function(doc){
+      const atual = (doc.exists && doc.data().seq) || 0;
+      return 'PAT-' + String(atual + 1).padStart(4, '0');
+    });
+  }
+  // Usada só na importação em lote de NF (onde não dá pra pedir o número da etiqueta de cada
+  // item um por um) — reserva de verdade o próximo número PAT-0000, incrementando o contador.
+  function reservarProximoCodigoPatrimonio(){
     const ref = db.collection('contadores').doc('patrimonio');
     return db.runTransaction(function(tx){
       return tx.get(ref).then(function(doc){
@@ -702,6 +714,21 @@
         return novo;
       });
     }).then(function(novo){ return 'PAT-' + String(novo).padStart(4, '0'); });
+  }
+  // Mantém a sugestão em dia: se o código salvo seguir o padrão PAT-0000 e for maior que o
+  // contador atual, avança o contador — assim a próxima sugestão continua fazendo sentido.
+  // Se a pessoa usar outro padrão de numeração (o da própria etiqueta comprada), não mexe em nada.
+  function avancarContadorSeForPadrao(codigo){
+    const m = /^PAT-(\d+)$/i.exec((codigo || '').trim());
+    if (!m) return Promise.resolve();
+    const numero = parseInt(m[1], 10);
+    const ref = db.collection('contadores').doc('patrimonio');
+    return db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        const atual = (doc.exists && doc.data().seq) || 0;
+        if (numero > atual) tx.set(ref, { seq: numero }, { merge: true });
+      });
+    }).catch(function(){ /* não é crítico — só afeta a próxima sugestão */ });
   }
 
   const patBackdrop = document.getElementById('pat-modal-backdrop');
@@ -726,6 +753,14 @@
     patEditandoId = item ? item.id : null;
     document.getElementById('pat-modal-titulo').textContent = item ? ('Editar item — ' + item.codigo) : 'Novo item';
     document.getElementById('pat-nome').value = item ? (item.nome || '') : '';
+    const codigoInput = document.getElementById('pat-codigo');
+    codigoInput.value = item ? (item.codigo || '') : '';
+    if (!item) {
+      codigoInput.placeholder = 'Sugerindo um número...';
+      sugerirCodigoPatrimonio().then(function(sugestao){
+        if (!patEditandoId && !codigoInput.value) codigoInput.value = sugestao;
+      });
+    }
     const catSelect = document.getElementById('pat-categoria');
     catSelect.value = item ? (item.categoria || 'Informática') : 'Informática';
     document.getElementById('pat-status').value = item ? (item.status || 'ativo') : 'ativo';
@@ -754,13 +789,16 @@
 
   document.getElementById('pat-salvar').addEventListener('click', function(){
     const nome = document.getElementById('pat-nome').value.trim();
+    const codigo = document.getElementById('pat-codigo').value.trim();
     const errEl = document.getElementById('pat-err');
     if (!nome) { errEl.textContent = 'Informe o nome/descrição do item.'; errEl.style.display = 'block'; return; }
+    if (!codigo) { errEl.textContent = 'Informe o número da etiqueta (código).'; errEl.style.display = 'block'; return; }
     errEl.style.display = 'none';
 
     const responsavelUid = document.getElementById('pat-responsavel').value;
     const dados = {
       nome: nome,
+      codigo: codigo,
       categoria: document.getElementById('pat-categoria').value,
       status: document.getElementById('pat-status').value,
       marcaModelo: document.getElementById('pat-marca').value.trim(),
@@ -789,12 +827,9 @@
         dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
         dados.criadoPor = meuNome;
         dados.criadoPorUid = meuUid;
-        p = proximoCodigoPatrimonio().then(function(codigo){
-          dados.codigo = codigo;
-          return db.collection('patrimonio').add(dados);
-        });
+        p = db.collection('patrimonio').add(dados);
       }
-      p.then(function(){ fecharModalPatrimonio(); }).catch(function(err){
+      p.then(function(){ return avancarContadorSeForPadrao(codigo); }).then(function(){ fecharModalPatrimonio(); }).catch(function(err){
         errEl.textContent = 'Erro ao salvar: ' + err.message;
         errEl.style.display = 'block';
       }).finally(function(){ salvarBtn.disabled = false; });
@@ -1060,7 +1095,7 @@
     linhas.forEach(function(linha){
       for (let n = 0; n < linha.quantidade; n++) {
         tarefas.push(function(){
-          return proximoCodigoPatrimonio().then(function(codigo){
+          return reservarProximoCodigoPatrimonio().then(function(codigo){
             const doc = {
               nome: linha.nome + (linha.quantidade > 1 ? ' (' + (n + 1) + '/' + linha.quantidade + ')' : ''),
               categoria: linha.categoria,
@@ -1171,27 +1206,6 @@
       document.getElementById('pat-permissoes-err').style.display = 'block';
     }).finally(function(){ btn.disabled = false; });
   });
-
-  function imprimirEtiqueta(it){
-    if (!it) return;
-    const w = window.open('', '_blank', 'width=420,height=300');
-    if (!w) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
-    w.document.write(
-      '<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta — ' + escapeHtml(it.codigo) + '</title>' +
-      '<style>' +
-      '@page{size:70mm 35mm;margin:0;}' +
-      'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;display:flex;align-items:center;justify-content:center;height:100vh;}' +
-      '.etiqueta{width:66mm;height:31mm;border:1px solid #000;border-radius:3mm;padding:3mm 4mm;box-sizing:border-box;text-align:center;}' +
-      '.etiqueta .fb{font-size:8pt;letter-spacing:.06em;text-transform:uppercase;color:#444;}' +
-      '.etiqueta .cod{font-size:20pt;font-weight:800;letter-spacing:.03em;margin:2mm 0;}' +
-      '.etiqueta .nome{font-size:9pt;color:#222;line-height:1.2;overflow:hidden;max-height:11mm;}' +
-      '</style></head><body>' +
-      '<div class="etiqueta"><div class="fb">Fonseca e Braga</div><div class="cod">' + escapeHtml(it.codigo) + '</div><div class="nome">' + escapeHtml(it.nome) + '</div></div>' +
-      '<script>window.onload=function(){window.print();};<' + '/script>' +
-      '</body></html>'
-    );
-    w.document.close();
-  }
 
   // ============================================================
   // Módulo: Controle de Compras
