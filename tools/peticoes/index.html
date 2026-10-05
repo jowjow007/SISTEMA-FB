@@ -169,6 +169,10 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-p{text-align:justify;text-indent:1.25cm;margin-bottom:3mm;font-size:11.5pt;}
   .dc-p.no-indent{text-indent:0;}
   .dc-p.dc-num{text-indent:0;}
+  .dc-titulo-box.dc-quebra{margin-top:0;}
+  .dc-centro{text-align:center;font-weight:bold;font-size:11.5pt;margin:2mm 0 3mm;}
+  .dc-rotulo{font-size:11.5pt;margin-bottom:1mm;}
+  .dc-sigs{display:flex;flex-wrap:wrap;justify-content:center;gap:6mm 14mm;}
   .dc-n{display:inline-block;min-width:1.25cm;font-weight:bold;}
   .dc-item{display:flex;gap:0;margin-bottom:3mm;font-size:11.5pt;padding-left:1.25cm;}
   .dc-item-num{font-weight:bold;flex:0 0 8mm;}
@@ -289,7 +293,9 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- tópicos -->
     <div class="card">
       <h2>Tópicos</h2>
-      <p class="desc">Cada tópico vira uma seção numerada em romano.</p>
+      <p class="desc">Cada tópico vira uma seção. Um tópico começando com "RAZÕES", "CONTRARRAZÕES" ou "MINUTA" abre nova página e reinicia a numeração.</p>
+      <label style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="opt-num" checked> Numerar parágrafos (1., 2., 3.…)</label>
+      <label style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="opt-rom" checked> Títulos com algarismos romanos (I —, II —…)</label>
       <div id="tops-list"></div>
       <button class="btn-add" id="btn-top">+ Adicionar tópico</button>
     </div>
@@ -314,6 +320,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       </div>
       <div class="field"><label>Nome completo</label><input id="sig-nome"></div>
       <div class="field"><label>OAB/MG nº</label><input id="sig-oab"></div>
+      <div class="field"><label>Outros signatários (um por linha: NOME | OAB)</label><textarea id="sig-extra" rows="2" placeholder="HECY BRAGA DE OLIVEIRA | 95.948"></textarea></div>
     </div>
 
     <!-- exportar -->
@@ -543,7 +550,8 @@ document.getElementById('sig-sel').addEventListener('change', function(){
 });
 
 // ══ LIVE LISTENERS ════════════════════════════════════════════
-['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab'].forEach(function(id){
+['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab','sig-extra','opt-num','opt-rom'].forEach(function(id){
+  var el2 = document.getElementById(id); if(el2) el2.addEventListener('change', render);
   var el = document.getElementById(id); if(el) el.addEventListener('input', render);
 });
 
@@ -674,7 +682,20 @@ function carregarRascunho(data){
   document.getElementById('data-f').value   = data.data||'';
   document.getElementById('sig-nome').value = data.sigNome||'';
   document.getElementById('sig-oab').value  = data.sigOab||'';
+  aplicarOpcoes(data);
   render();
+}
+
+// "NOME | OAB" por linha ↔ lista de signatários adicionais
+function lerSigExtra(){
+  return document.getElementById('sig-extra').value.split('\n').map(function(l){
+    var p = l.split('|'); return {nome:(p[0]||'').trim(), oab:(p[1]||'').replace(/OAB\/?[A-Z]{0,2}\s*n?[º°o]?/i,'').trim()};
+  }).filter(function(s){ return s.nome; });
+}
+function aplicarOpcoes(d){
+  document.getElementById('sig-extra').value = (d.sigExtra||[]).map(function(s){ return s.nome+(s.oab?' | '+s.oab:''); }).join('\n');
+  document.getElementById('opt-num').checked = d.numerar !== false;
+  document.getElementById('opt-rom').checked = d.romanos !== false;
 }
 
 // ══ COLETAR DADOS ═════════════════════════════════════════════
@@ -699,7 +720,10 @@ function coletar(){
     local:   document.getElementById('local').value.trim(),
     data:    document.getElementById('data-f').value,
     sigNome: document.getElementById('sig-nome').value.trim(),
-    sigOab:  document.getElementById('sig-oab').value.trim()
+    sigOab:  document.getElementById('sig-oab').value.trim(),
+    sigExtra: lerSigExtra(),
+    numerar: document.getElementById('opt-num').checked,
+    romanos: document.getElementById('opt-rom').checked
   };
 }
 
@@ -746,7 +770,8 @@ function paginar(html){
           + (parseFloat(cs.marginTop)||0)
           + (parseFloat(cs.marginBottom)||0);
     if(h < 2) h = 4;
-    if(currentH + h > maxH && currentItems.length){
+    var quebra = child.classList.contains('dc-quebra');
+    if((quebra || currentH + h > maxH) && currentItems.length){
       paginas.push(currentItems.join(''));
       currentItems = [];
       currentH = 0;
@@ -761,7 +786,15 @@ function paginar(html){
 
 var FRASE_VEM = ', vem, respeitosamente, à presença de Vossa Excelência, por meio de seu advogado in fine assinado, expor e requerer o seguinte:';
 var NUM_RE = /^(\d{1,3}(?:\.\d{1,2})*[.)\-–])\s+/;
-// junta linhas quebradas no meio da frase; novo parágrafo só após pontuação final, linha em branco ou número/alínea
+// linhas de identificação nas razões: "Recorrente: ...", "Processo nº ..."
+var ROTULO_RE = /^(?:(?:Recorrente|Recorrid[oa]|Apelante|Apelad[oa]|Agravante|Agravad[oa]|Embargante|Embargad[oa]|Requerente|Requerid[oa]|Impetrante|Impetrad[oa]|Exequente|Executad[oa]|Reclamante|Reclamad[oa])\s*:|(?:Processo|Autos|Origem)\s*(?:n\.?\s*[º°o]\.?|:))/i;
+// título que abre uma nova peça dentro do documento (razões, contrarrazões, minuta)
+var ABERTURA_RE = /^(RAZ[ÕO]ES|CONTRARRAZ[ÕO]ES|MINUTA)\b/i;
+var ENDER_KW = /^(AO\s|AOS\s|À\s|ÀS\s|EXCELENT|EXMO|ILUSTR|MERIT|EGR[ÉE]GI|COLEND)/i;
+function ehMaiusculas(l){ return l === l.toUpperCase() && /[A-ZÀ-Ý]{3}/.test(l); }
+function ehEspecial(l){ return ROTULO_RE.test(l) || ehMaiusculas(l) || ehCitacao(l); }
+
+// junta linhas quebradas no meio da frase; mantém separados títulos, rótulos e citações
 function paragrafos(t){
   var out = [];
   var ultimo = ''; // último parágrafo não vazio (atravessa linhas em branco)
@@ -770,9 +803,11 @@ function paragrafos(t){
     if(!l){ if(out.length && out[out.length-1] !== '') out.push(''); return; }
     var prev = out.length ? out[out.length-1] : '';
     var fimFrase = /[.:;!?"”»)\]]$/.test(ultimo);
-    var inicioNovo = NUM_RE.test(l) || /^[a-z][.)]\s/.test(l);
-    // continuação: anterior sem pontuação final e linha começando em minúscula/dígito (mesmo após linha em branco)
-    var continua = ultimo && !fimFrase && !inicioNovo && (prev !== '' || /^[a-zà-ÿ0-9]/.test(l));
+    var inicioNovo = NUM_RE.test(l) || /^[a-z][.)]\s/.test(l) || ehEspecial(l);
+    var minuscula = /^[a-zà-ÿ0-9]/.test(l);
+    // continuação: anterior sem pontuação final e (linha em minúscula/dígito, ou quebra de linha longa sem linha em branco)
+    var continua = ultimo && !fimFrase && !inicioNovo && !ehEspecial(ultimo)
+      && (minuscula || (prev !== '' && ultimo.length > 60));
     if(continua){
       if(prev === '') out.pop();
       out[out.length-1] = out[out.length-1] + ' ' + l;
@@ -791,9 +826,56 @@ function restoParagrafo(s){
   return m ? s.slice(m[0].length) : s;
 }
 function ehCitacao(s){ return /^[“"«]/.test(s); }
-// se algum parágrafo veio numerado, a peça segue o padrão do escritório: todos os parágrafos do corpo numerados
-function usaNumeracao(d){
-  return d.topicos.some(function(t){ return paragrafos(t.texto).some(function(s){ return !!numParagrafo(s); }); });
+function assinaturas(d){
+  var l = [];
+  if(d.sigNome) l.push({nome:d.sigNome, oab:d.sigOab});
+  (d.sigExtra||[]).forEach(function(s){ if(s.nome) l.push(s); });
+  return l;
+}
+
+// estrutura única do documento: alimenta o preview/PDF e o Word/Docs
+function montarBlocos(d){
+  var B = [];
+  if(d.enderecamento) B.push({t:'ender', linhas: paragrafos(d.enderecamento).map(function(l){ return l.toUpperCase(); })});
+  if(d.processo) B.push({t:'processo', texto:d.processo});
+  d.requerentes.forEach(function(p){
+    var q = qualifParts(p);
+    if(q.nome || q.resto) B.push({t:'qualif', q:q});
+  });
+  if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase()});
+  var numerar = d.numerar !== false, romanos = d.romanos !== false;
+  var cont = 0, lista = 1, rom = 0;
+  function corpo(s){
+    if(numerar){ cont++; B.push({t:'p', texto:restoParagrafo(s), n:cont, lista:lista}); }
+    else B.push({t:'p', texto:s});
+  }
+  d.topicos.forEach(function(tp){
+    var tit = (tp.titulo||'').trim();
+    if(tit && ABERTURA_RE.test(tit)){
+      B.push({t:'abertura', texto:tit.toUpperCase()});
+      cont = 0; lista = 3; rom = 0;   // razões recomeçam a numeração
+    } else if(tit){
+      rom++;
+      B.push({t:'secao', texto:(romanos ? roman(rom)+' — ' : '') + tit.toUpperCase()});
+    }
+    paragrafos(tp.texto).forEach(function(s){
+      if(ehCitacao(s)) B.push({t:'cit', texto:s});
+      else if(ROTULO_RE.test(s)){ var m = s.match(ROTULO_RE); B.push({t:'rotulo', rot:m[0], texto:s.slice(m[0].length)}); }
+      else if(ehMaiusculas(s) && s.length < 200) B.push({t:'centro', texto:s});
+      else corpo(s);
+    });
+  });
+  if(d.pedidos.length){
+    rom++;
+    B.push({t:'secao', texto:(romanos ? roman(rom)+' — ' : '') + 'DOS PEDIDOS'});
+    corpo('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:');
+    d.pedidos.forEach(function(p,i){ B.push({t:'pedido', letra:alinea(i), texto:pedidoFinal(p,i,d.pedidos.length)}); });
+  }
+  B.push({t:'fech'});
+  if(d.local||d.data) B.push({t:'local', texto:(d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.'});
+  var sigs = assinaturas(d);
+  if(sigs.length) B.push({t:'sig', lista:sigs});
+  return B;
 }
 function alinea(i){ return String.fromCharCode(97 + (i % 26)) + ')'; }
 function pedidoFinal(p, i, total){
@@ -848,42 +930,29 @@ document.querySelectorAll('.nom-in').forEach(function(el){
 });
 
 function buildBody(d){
-  var h = '';
-  if(d.enderecamento) h += '<div class="dc-enderecamento">'+esc(d.enderecamento)+'</div>';
-  if(d.processo)      h += '<div class="dc-processo"><strong>Autos nº.</strong> '+esc(d.processo)+'.</div>';
-  d.requerentes.forEach(function(p){
-    var q = qualifParts(p);
-    if(!q.nome && !q.resto) return;
-    h += '<div class="dc-qualificacao">'+(q.nome?'<strong>'+esc(q.nome)+'</strong>':'')+esc(q.resto)+esc(q.sufixo)+'</div>';
-  });
-  if(d.titulo) h += '<div class="dc-titulo-box">'+esc(d.titulo)+'</div>';
-  var numerar = usaNumeracao(d), cont = 0;
-  function pNum(texto){
-    cont++;
-    return '<div class="dc-p dc-num"><strong class="dc-n">'+cont+'.</strong>'+esc(texto)+'</div>';
-  }
-  d.topicos.forEach(function(t,i){
-    h += '<div class="dc-secao">'+roman(i+1)+(t.titulo?' — '+esc(t.titulo.toUpperCase()):'')+'</div>';
-    paragrafos(t.texto).forEach(function(s){
-      if(numerar && !ehCitacao(s)) h += pNum(restoParagrafo(s));
-      else h += '<div class="dc-p">'+esc(s)+'</div>';
-    });
-  });
-  if(d.pedidos.length){
-    h += '<div class="dc-secao">Pedido'+(d.pedidos.length>1?'s':'')+'</div>';
-    var intro = 'Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:';
-    h += numerar ? pNum(intro) : '<div class="dc-p">'+esc(intro)+'</div>';
-    d.pedidos.forEach(function(p,i){
-      h+='<div class="dc-item"><span class="dc-item-num">'+alinea(i)+'</span><span class="dc-item-body">'+esc(pedidoFinal(p,i,d.pedidos.length))+'</span></div>';
-    });
-  }
-  h += '<div class="dc-fechamento">Nestes Termos,<br>Pede Deferimento.</div>';
-  if(d.local||d.data) h += '<div class="dc-local">'+esc(d.local)+(d.local&&d.data?', ':'')+esc(dataExt(d.data))+'.</div>';
-  if(d.sigNome){
-    h += '<div class="dc-assinatura"><div class="nome">'+esc(d.sigNome.toUpperCase())+'</div>'
-       +(d.sigOab?'<div class="oab">OAB/MG nº '+esc(d.sigOab)+'</div>':'')+'</div>';
-  }
-  return h;
+  return montarBlocos(d).map(function(b){
+    switch(b.t){
+      case 'ender':    return '<div class="dc-enderecamento">'+b.linhas.map(esc).join('<br>')+'</div>';
+      case 'processo': return '<div class="dc-processo"><strong>Autos nº.</strong> '+esc(b.texto)+'.</div>';
+      case 'qualif':   return '<div class="dc-qualificacao">'+(b.q.nome?'<strong>'+esc(b.q.nome)+'</strong>':'')+esc(b.q.resto)+esc(b.q.sufixo)+'</div>';
+      case 'titulo':   return '<div class="dc-titulo-box">'+esc(b.texto)+'</div>';
+      case 'abertura': return '<div class="dc-titulo-box dc-quebra">'+esc(b.texto)+'</div>';
+      case 'secao':    return '<div class="dc-secao">'+esc(b.texto)+'</div>';
+      case 'centro':   return '<div class="dc-centro">'+esc(b.texto)+'</div>';
+      case 'rotulo':   return '<div class="dc-rotulo"><strong>'+esc(b.rot)+'</strong>'+esc(b.texto)+'</div>';
+      case 'cit':      return '<div class="dc-p">'+esc(b.texto)+'</div>';
+      case 'p':        return b.n ? '<div class="dc-p dc-num"><strong class="dc-n">'+b.n+'.</strong>'+esc(b.texto)+'</div>'
+                              : '<div class="dc-p">'+esc(b.texto)+'</div>';
+      case 'pedido':   return '<div class="dc-item"><span class="dc-item-num">'+b.letra+'</span><span class="dc-item-body">'+esc(b.texto)+'</span></div>';
+      case 'fech':     return '<div class="dc-fechamento">Nestes Termos,<br>Pede Deferimento.</div>';
+      case 'local':    return '<div class="dc-local">'+esc(b.texto)+'</div>';
+      case 'sig':      return '<div class="dc-sigs">'+b.lista.map(function(s){
+                         return '<div class="dc-assinatura"><div class="nome">'+esc(s.nome.toUpperCase())+'</div>'
+                           +(s.oab?'<div class="oab">OAB/MG nº '+esc(s.oab)+'</div>':'')+'</div>';
+                       }).join('')+'</div>';
+    }
+    return '';
+  }).join('');
 }
 
 // ══ EXPORTAR GOOGLE DOCS ══════════════════════════════════════
@@ -967,23 +1036,29 @@ async function criarDocTimbrado(titulo, docxBlob){
 // ══ GERADOR DOCX (sobre o MODELO TIMBRADO) ═══════════════════
 // numId 1 = parágrafos "1." em negrito (contínuos); numId 2 = pedidos "a)" em negrito
 var W_FONT = '<w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:eastAsia="Century Gothic" w:cs="Century Gothic"/>';
+// lista de parágrafos "1." em negrito (o id define um contador independente)
+function listaParagrafos(id){
+  return '<w:abstractNum w:abstractNumId="'+id+'"><w:multiLevelType w:val="multilevel"/>'
+    + '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/>'
+    +   '<w:pPr><w:tabs><w:tab w:val="num" w:pos="709"/></w:tabs><w:ind w:left="0" w:firstLine="0"/></w:pPr>'
+    +   '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
+    + '<w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%2)"/><w:lvlJc w:val="left"/>'
+    +   '<w:pPr><w:ind w:left="1418" w:hanging="709"/></w:pPr>'
+    +   '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
+    + '</w:abstractNum>';
+}
 var NUMBERING_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-  + '<w:abstractNum w:abstractNumId="10"><w:multiLevelType w:val="multilevel"/>'
-  +   '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/>'
-  +     '<w:pPr><w:tabs><w:tab w:val="num" w:pos="709"/></w:tabs><w:ind w:left="0" w:firstLine="0"/></w:pPr>'
-  +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
-  +   '<w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%2)"/><w:lvlJc w:val="left"/>'
-  +     '<w:pPr><w:ind w:left="1418" w:hanging="709"/></w:pPr>'
-  +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
-  + '</w:abstractNum>'
+  + listaParagrafos(10)
   + '<w:abstractNum w:abstractNumId="11"><w:multiLevelType w:val="multilevel"/>'
   +   '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1)"/><w:lvlJc w:val="left"/>'
   +     '<w:pPr><w:tabs><w:tab w:val="num" w:pos="1418"/></w:tabs><w:ind w:left="1418" w:hanging="709"/></w:pPr>'
   +     '<w:rPr>'+W_FONT+'<w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:lvl>'
   + '</w:abstractNum>'
+  + listaParagrafos(12)
   + '<w:num w:numId="1"><w:abstractNumId w:val="10"/></w:num>'
   + '<w:num w:numId="2"><w:abstractNumId w:val="11"/></w:num>'
+  + '<w:num w:numId="3"><w:abstractNumId w:val="12"/></w:num>'
   + '</w:numbering>';
 
 function xmlEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -997,7 +1072,8 @@ function wRun(t, o){
 function wP(runs, o){
   o = o || {};
   var ppr = '';
-  if(o.num) ppr += '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="'+o.num+'"/></w:numPr>';
+  if(o.quebra) ppr += '<w:pageBreakBefore/>';
+  if(o.num) ppr +='<w:numPr><w:ilvl w:val="0"/><w:numId w:val="'+o.num+'"/></w:numPr>';
   if(o.box) ppr += '<w:pBdr>' + ['top','left','bottom','right'].map(function(s){
     return '<w:'+s+' w:val="single" w:sz="12" w:space="4" w:color="1A1A1A"/>'; }).join('') + '</w:pBdr>';
   ppr += '<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?200:o.after)+'" w:line="'+(o.line||360)+'" w:lineRule="auto"/>';
@@ -1008,42 +1084,37 @@ function wP(runs, o){
 function wVazio(){ return wP('', {after:0}); }
 
 function docxBody(d){
-  var x = '';
   var RECUO = 'w:left="0" w:firstLine="709"';
-  if(d.enderecamento){
-    paragrafos(d.enderecamento).forEach(function(l){ x += wP(wRun(l.toUpperCase(),{b:1}), {jc:'center', after:0, line:276}); });
-    x += wVazio();
-  }
-  if(d.processo){ x += wP(wRun('Autos nº.',{b:1}) + wRun(' '+d.processo+'.'), {jc:'left'}); }
-  d.requerentes.forEach(function(p){
-    var q = qualifParts(p);
-    if(!q.nome && !q.resto) return;
-    x += wP((q.nome?wRun(q.nome,{b:1}):'') + wRun(q.resto + q.sufixo), {ind:RECUO});
+  var x = '';
+  montarBlocos(d).forEach(function(b){
+    switch(b.t){
+      case 'ender':
+        b.linhas.forEach(function(l){ x += wP(wRun(l,{b:1}), {jc:'center', after:0, line:276}); });
+        x += wVazio(); break;
+      case 'processo': x += wP(wRun('Autos nº.',{b:1}) + wRun(' '+b.texto+'.'), {jc:'left'}); break;
+      case 'qualif':   x += wP((b.q.nome?wRun(b.q.nome,{b:1}):'') + wRun(b.q.resto + b.q.sufixo), {ind:RECUO}); break;
+      case 'titulo':   x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:240, after:240}); break;
+      case 'abertura': x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:0, after:240, quebra:1}); break;
+      case 'secao':    x += wP(wRun(b.texto,{b:1}), {jc:'left', before:240, after:120}); break;
+      case 'centro':   x += wP(wRun(b.texto,{b:1}), {jc:'center', after:120, line:276}); break;
+      case 'rotulo':   x += wP(wRun(b.rot,{b:1}) + wRun(b.texto), {jc:'left', after:0, line:276}); break;
+      case 'cit':      x += wP(wRun(b.texto), {ind:RECUO}); break;
+      case 'p':        x += b.n ? wP(wRun(b.texto), {num:b.lista}) : wP(wRun(b.texto), {ind:RECUO}); break;
+      case 'pedido':   x += wP(wRun(b.texto), {num:2}); break;
+      case 'fech':
+        x += wVazio();
+        x += wP(wRun('Nestes Termos,'), {jc:'center', after:0});
+        x += wP(wRun('Pede Deferimento.'), {jc:'center'}); break;
+      case 'local':    x += wP(wRun(b.texto), {jc:'center'}); break;
+      case 'sig':
+        b.lista.forEach(function(s){
+          x += wVazio() + wVazio();
+          x += wP(wRun(s.nome.toUpperCase(),{b:1}), {jc:'center', after:0, line:276});
+          if(s.oab) x += wP(wRun('OAB/MG nº '+s.oab,{b:1}), {jc:'center', after:0, line:276});
+        });
+        break;
+    }
   });
-  if(d.titulo) x += wP(wRun(d.titulo.toUpperCase(),{b:1, sz:26}), {jc:'center', box:1, before:240, after:240});
-  var numerar = usaNumeracao(d);
-  d.topicos.forEach(function(t, i){
-    x += wP(wRun(roman(i+1)+(t.titulo?' — '+t.titulo.toUpperCase():''),{b:1}), {jc:'left', before:240, after:120});
-    paragrafos(t.texto).forEach(function(s){
-      if(numerar && !ehCitacao(s)) x += wP(wRun(restoParagrafo(s)), {num:1});
-      else x += wP(wRun(s), {ind:RECUO});
-    });
-  });
-  if(d.pedidos.length){
-    x += wP(wRun('PEDIDO'+(d.pedidos.length>1?'S':''),{b:1}), {jc:'left', before:240, after:120});
-    var intro = 'Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:';
-    x += numerar ? wP(wRun(intro), {num:1}) : wP(wRun(intro), {ind:RECUO});
-    d.pedidos.forEach(function(p,i){ x += wP(wRun(pedidoFinal(p,i,d.pedidos.length)), {num:2}); });
-  }
-  x += wVazio();
-  x += wP(wRun('Nestes Termos,'), {jc:'center', after:0});
-  x += wP(wRun('Pede Deferimento.'), {jc:'center'});
-  if(d.local||d.data) x += wP(wRun((d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.'), {jc:'center'});
-  x += wVazio() + wVazio();
-  if(d.sigNome){
-    x += wP(wRun(d.sigNome.toUpperCase(),{b:1}), {jc:'center', after:0, line:276});
-    if(d.sigOab) x += wP(wRun('OAB/MG nº '+d.sigOab,{b:1}), {jc:'center', after:0, line:276});
-  }
   return x;
 }
 
@@ -1089,7 +1160,8 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   document.getElementById('tipo-peca').value='PETIÇÃO INICIAL';
   document.getElementById('titulo-livre').value='';
   document.getElementById('f-livre').style.display='none';
-  ['num-autos','vara','enderecamento','sig-nome','sig-oab'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['num-autos','vara','enderecamento','sig-nome','sig-oab','sig-extra'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('opt-num').checked = true; document.getElementById('opt-rom').checked = true;
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
   reqCount=0; redCount=0;
@@ -1131,139 +1203,96 @@ function stripHtml(html){
 }
 
 function parsearPeticao(raw){
-  // normaliza
-  var text = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  var linhas = text.split('\n').map(function(l){ return l.trim(); });
-
-  // remove linhas em branco consecutivas
-  var clean = [];
-  var prevBlank = false;
-  linhas.forEach(function(l){
-    if(l===''){
-      if(!prevBlank) clean.push('');
-      prevBlank = true;
-    } else {
-      clean.push(l);
-      prevBlank = false;
-    }
-  });
-  while(clean.length && clean[0]==='') clean.shift();
-  while(clean.length && clean[clean.length-1]==='') clean.pop();
+  var linhas = raw.replace(/\r\n?/g,'\n').replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
 
   var resultado = {
     processo:'', vara:'', enderecamento:'', titulo:'',
     requerentes:[], requeridos:[], topicos:[], pedidos:[],
-    local:'', data:'', sigNome:'', sigOab:''
+    local:'', data:'', sigNome:'', sigOab:'', sigExtra:[],
+    numerar:true, romanos:false
   };
 
-  // ── detectar número do processo ──────────────────────────────
   var PROC_RE = /(\d{7}-\d{2}\.\d{4}\.\d\.\d{2,3}\.\d{4}|\d{4,7}[\/-]\d{2,4}[\/-]\d{2,4}[\/-]\d[\/-]\d{2,4})/;
-  clean.forEach(function(l){
-    if(!resultado.processo){
-      var m = l.match(PROC_RE);
-      if(m) resultado.processo = m[1];
-    }
-  });
-
-  // ── detectar seções por numerais romanos ─────────────────────
-  var ROM_RE = /^(I{1,3}|IV|V|VI{0,3}|IX|X{1,2})\s*[—\-\.]\s*(.*)$/i;
-  var PED_HEADER_RE = /^(DOS\s+PEDIDOS?|PEDIDOS?|DO\s+PEDIDO)\s*$/i;
-  var PEDIDO_ITEM_RE = /^(\d+)\.\s+(.+)/;
+  var ROM_RE = /^(I{1,3}|IV|V|VI{0,3}|IX|X{1,2})\s*[—\-–\.]\s*(.*)$/;
+  var PED_HEADER_RE = /^(DOS\s+PEDIDOS?|PEDIDOS?|DO\s+PEDIDO|DOS\s+REQUERIMENTOS)\s*:?$/i;
   var OAB_RE = /OAB[\s\/]+[A-Z]{2}\s+n[oº°]\s*([\d.]+)/i;
-  var DATA_LUGAR_RE = /^([A-ZÀ-Úa-zà-ú\s]+(?:\/[A-Z]{2})?),\s+\d{1,2}\s+de\s+\w+\s+de\s+\d{4}/i;
+  var FECH_RE = /^(N[ea]?st?es\s+termos|Nesses\s+termos|Termos\s+em\s+que|Pede\s+deferimento)/i;
+  var SECAO_INICIO_RE = /^(DOS?|DAS?|PRELIMINAR|PRELIMINARMENTE|S[ÍI]NTESE|RESUMO|BREVE|M[ÉE]RITO|FATOS)\b/;
 
-  // divide o documento em blocos pelo marcador romano ou por seções
-  var blocos = []; // {tipo:'header'|'secao'|'pedidos', titulo, linhas}
-  var blocoAtual = {tipo:'header', titulo:'', linhas:[]};
+  function ehTituloSecao(l){
+    return ehMaiusculas(l) && l.length <= 180 && !ENDER_KW.test(l) && !ROTULO_RE.test(l)
+      && !OAB_RE.test(l) && !PROC_RE.test(l) && !ehCitacao(l);
+  }
 
-  clean.forEach(function(l){
-    var mRom = l.match(ROM_RE);
-    if(mRom){
-      blocos.push(blocoAtual);
-      var isPed = PED_HEADER_RE.test(mRom[2].trim());
-      blocoAtual = {tipo: isPed ? 'pedidos' : 'secao', titulo: mRom[2].trim(), linhas:[]};
-    } else if(PED_HEADER_RE.test(l) && blocoAtual.linhas.length > 0){
-      blocos.push(blocoAtual);
-      blocoAtual = {tipo:'pedidos', titulo:'', linhas:[]};
-    } else {
-      blocoAtual.linhas.push(l);
+  // ── 1. endereçamento: linhas em maiúsculas no topo ──
+  var i = 0;
+  while(i < linhas.length && !linhas[i]) i++;
+  var ender = [];
+  while(i < linhas.length && linhas[i] && ehMaiusculas(linhas[i]) && !PROC_RE.test(linhas[i])){ ender.push(linhas[i]); i++; }
+  resultado.enderecamento = ender.join('\n');
+
+  // ── 2. cabeçalho: processo, qualificação, título ──
+  var topico = null, modoPedidos = false, pedLinhas = [], fim = linhas.length;
+  for(var k = i; k < linhas.length; k++){ if(FECH_RE.test(linhas[k])){ fim = k; break; } }
+
+  for(; i < fim; i++){
+    var l = linhas[i];
+    if(!l) continue;
+    if(!resultado.processo && PROC_RE.test(l) && l.length < 90){ resultado.processo = l.match(PROC_RE)[1]; continue; }
+    if(ROM_RE.test(l) || PED_HEADER_RE.test(l)) break;
+    if(ehMaiusculas(l) && l.length < 160){
+      if(SECAO_INICIO_RE.test(l) && !resultado.titulo) break;  // primeira seção, peça sem título
+      if(!resultado.titulo){ resultado.titulo = l; i++; break; }
     }
-  });
-  blocos.push(blocoAtual);
+    if(l.length > 60 && /\bvem\b|\bCPF\b|\bCNPJ\b|inscrit|residente|qualificad/i.test(l) && !resultado.requerentes.length){
+      resultado.requerentes.push({nome:'', qual:l}); continue;
+    }
+    break; // parágrafo comum: começa o corpo
+  }
 
-  // ── processar bloco header (antes da primeira seção) ─────────
-  var header = blocos[0];
-  var headerLinhas = header.linhas.filter(function(l){ return l!=''; });
+  // ── 3. corpo: tópicos (romanos ou títulos em maiúsculas) e pedidos ──
+  function novoTopico(titulo){
+    if(topico && (topico.titulo || topico.linhas.some(Boolean))) resultado.topicos.push({titulo:topico.titulo, texto:topico.linhas.join('\n').trim()});
+    topico = {titulo:titulo, linhas:[]};
+  }
+  topico = {titulo:'', linhas:[]};
+  for(; i < fim; i++){
+    var ln = linhas[i];
+    if(modoPedidos){ pedLinhas.push(ln); continue; }
+    var mRom = ln.match(ROM_RE);
+    var tituloRom = mRom && ehMaiusculas(mRom[2]) ? mRom[2].trim() : '';
+    if(PED_HEADER_RE.test(tituloRom || ln)){ modoPedidos = true; if(mRom) resultado.romanos = true; continue; }
+    if(tituloRom){ resultado.romanos = true; novoTopico(tituloRom); continue; }
+    if(ln && ehTituloSecao(ln)){ novoTopico(ln); continue; }
+    if(/^(Diante|Ante)\s+o\s+exposto/i.test(ln) && ln.length < 120) continue;
+    topico.linhas.push(ln);
+  }
+  novoTopico('');
+  // pedidos que vieram no mesmo parágrafo do fechamento
+  if(modoPedidos) resultado.pedidos = extrairPedidos(pedLinhas.concat(linhas.slice(fim, fim+1)));
 
-  // linha com endereçamento: geralmente a primeira linha com palavras chave ou tudo maiúsculo
-  var ENDER_KW = /^(AO\s|EXCELENT|ILUSTR|MERITÍSSIM|AO TRIBUNAL|À TURMA|AO EGRÉGIO)/i;
-  var endLines = [];
-  var restLines = [];
-  var coletandoEnd = true;
-  headerLinhas.forEach(function(l){
-    if(coletandoEnd){
-      if(ENDER_KW.test(l) || (l === l.toUpperCase() && l.length > 5 && /[A-ZÁÉÍÓÚ]/.test(l) && !PROC_RE.test(l) && !l.match(/^[A-ZÁÉÍÓÚ][a-záéíóú]/))){
-        endLines.push(l);
-      } else {
-        coletandoEnd = false;
-        restLines.push(l);
+  // ── 4. fechamento: local/data e advogados (nome + OAB) ──
+  var cauda = linhas.slice(fim);
+  cauda.forEach(function(l, j){
+    var mo = l.match(OAB_RE);
+    if(mo && l.length < 45){
+      var nome = '';
+      for(var k2 = j-1; k2 >= 0 && k2 >= j-2; k2--){
+        var c = cauda[k2];
+        if(c && !OAB_RE.test(c) && !FECH_RE.test(c) && !/\d{4}|assinatura/i.test(c) && c.length < 70){ nome = c; break; }
       }
-    } else {
-      restLines.push(l);
+      if(!resultado.sigOab){ resultado.sigNome = nome; resultado.sigOab = mo[1]; }
+      else resultado.sigExtra.push({nome:nome, oab:mo[1]});
     }
-  });
-  resultado.enderecamento = endLines.join('\n');
-
-  // Nos restLines: processo, título, qualificação, vara
-  var possiveisTitulos = ['PETIÇÃO INICIAL','CONTESTAÇÃO','RECURSO ORDINÁRIO','APELAÇÃO CÍVEL',
-    'AGRAVO DE INSTRUMENTO','EMBARGOS DE DECLARAÇÃO','MANIFESTAÇÃO','IMPUGNAÇÃO','MEMORIAL','CONTRARRAZÕES'];
-  restLines.forEach(function(l){
-    if(!l) return;
-    if(!resultado.processo && PROC_RE.test(l)){
-      var m = l.match(PROC_RE); resultado.processo = m[1]; return;
-    }
-    // título em maiúsculas curto
-    if(!resultado.titulo && l === l.toUpperCase() && l.length < 80 && /[A-ZÁÉÍÓÚ]{4}/.test(l) && !PROC_RE.test(l)){
-      resultado.titulo = l; return;
-    }
-    // qualificação (parágrafo longo com vírgulas)
-    if(l.length > 60 && (l.includes('CPF') || l.includes('RG') || l.includes('residente') || l.includes('brasileiro') || l.includes('vem,') || l.includes('vem respeitosamente'))){
-      if(!resultado.requerentes.length) resultado.requerentes.push({nome:'', qual: l});
-    }
-    // vara / tribunal
-    if(!resultado.vara && (/\d[ªº]\.?\s+Var[a]/i.test(l) || /Tribunal/i.test(l) || /comarca/i.test(l))){
-      resultado.vara = l;
-    }
-  });
-
-  // ── processar seções ─────────────────────────────────────────
-  blocos.slice(1).forEach(function(bloco){
-    if(bloco.tipo === 'pedidos' || PED_HEADER_RE.test(bloco.titulo)){
-      resultado.pedidos = resultado.pedidos.concat(extrairPedidos(bloco.linhas));
-    } else if(bloco.tipo === 'secao'){
-      var textoSecao = bloco.linhas.filter(function(l){
-        // remove intro genérica
-        return !/^Diante do exposto/i.test(l) && !/^Nesses termos/i.test(l);
-      }).join('\n').trim();
-      if(bloco.titulo || textoSecao)
-        resultado.topicos.push({titulo: bloco.titulo, texto: textoSecao});
-    }
-  });
-
-  // ── detectar fechamento (signatário, local, data) no final ───
-  var ultimas = clean.slice(-12);
-  ultimas.forEach(function(l){
-    if(!l) return;
-    if(!resultado.sigOab){ var m = l.match(OAB_RE); if(m){ resultado.sigOab = m[1]; resultado.sigNome = resultado.sigNome || ''; } }
-    if(!resultado.sigNome && resultado.sigOab && l && !OAB_RE.test(l) && !DATA_LUGAR_RE.test(l) && !/termos|deferimento/i.test(l) && l.length < 60 && /[A-ZÁÉÍÓÚ][a-záéíóú]/.test(l)){
-      resultado.sigNome = l;
-    }
-    var mLugar = l.match(/^([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s]+(?:\/[A-Z]{2})?),\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+    var mLugar = l.match(/([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s]+\/[A-Z]{2}),\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+              || l.match(/([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú\s]+\/[A-Z]{2}),/);
     if(mLugar && !resultado.local){
       resultado.local = mLugar[1].trim();
-      var mesesMap = {janeiro:1,fevereiro:2,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
-      var mes = mesesMap[(mLugar[3]||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')];
-      if(mes) resultado.data = mLugar[4]+'-'+String(mes).padStart(2,'0')+'-'+String(mLugar[2]).padStart(2,'0');
+      if(mLugar[4]){
+        var mesesMap = {janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+        var mes = mesesMap[(mLugar[3]||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')];
+        if(mes) resultado.data = mLugar[4]+'-'+String(mes).padStart(2,'0')+'-'+String(mLugar[2]).padStart(2,'0');
+      }
     }
   });
 
@@ -1318,6 +1347,7 @@ function preencherFormulario(d){
   if(d.data)          document.getElementById('data-f').value = d.data;
   if(d.sigNome)       document.getElementById('sig-nome').value = d.sigNome;
   if(d.sigOab)        document.getElementById('sig-oab').value = d.sigOab;
+  aplicarOpcoes(d);
 
   d.requerentes.forEach(function(p){
     reqCount++;
