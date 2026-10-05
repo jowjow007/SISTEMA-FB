@@ -278,6 +278,26 @@
   </div>
 </div>
 
+<!-- Modal: importar itens de patrimônio a partir do XML de uma Nota Fiscal -->
+<div class="modal-backdrop" id="pat-import-backdrop">
+  <div class="modal" style="max-width:780px;">
+    <h3>Importar de Nota Fiscal (XML)</h3>
+    <p style="font-size:.84rem;color:var(--muted);margin-top:-8px;">
+      Envie o arquivo <strong>XML</strong> da NF-e (não o PDF/DANFE — o fornecedor costuma mandar os dois, ou dá pra baixar o XML no portal da nota pela chave de acesso). O Portal lê os produtos sozinho; você só confere, ajusta o que quiser e confirma. Depois falta só imprimir a etiqueta de cada item.
+    </p>
+    <div class="field" id="pat-import-upload-field">
+      <label>Arquivo XML da NF-e</label>
+      <input type="file" id="pat-import-file" accept=".xml,text/xml">
+    </div>
+    <div class="msg-err" id="pat-import-err"></div>
+    <div id="pat-import-preview"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-import-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pat-import-confirmar" style="display:none;">Importar itens selecionados</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: transferir responsável de um item de patrimônio -->
 <div class="modal-backdrop" id="pat-transf-backdrop">
   <div class="modal">
@@ -520,6 +540,7 @@
         '</p></div>' +
         '<div class="actions-cell">' +
           (souAdmin ? '<button type="button" class="btn small" id="pat-permissoes-btn">⚙ Quem vê tudo</button>' : '') +
+          '<button type="button" class="btn small" id="pat-import-btn">📥 Importar NF (XML)</button>' +
           '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
         '</div>' +
       '</div>' +
@@ -544,6 +565,8 @@
     document.getElementById('pat-filtro-status').addEventListener('change', function(e){ patFiltroStatus = e.target.value; renderPatrimonio(); });
     const novoBtn = document.getElementById('pat-novo-btn');
     if (novoBtn) novoBtn.addEventListener('click', function(){ abrirModalPatrimonio(null); });
+    const importBtn = document.getElementById('pat-import-btn');
+    if (importBtn) importBtn.addEventListener('click', abrirModalImportarNF);
     const toggleMeusBtn = document.getElementById('pat-toggle-meus');
     if (toggleMeusBtn) toggleMeusBtn.addEventListener('click', function(){
       patFiltroSoMeu = !patFiltroSoMeu;
@@ -710,6 +733,180 @@
       errEl.textContent = 'Erro ao salvar: ' + err.message;
       errEl.style.display = 'block';
     }).finally(function(){ salvarBtn.disabled = false; });
+  });
+
+  // ---------- Importar itens de patrimônio a partir do XML de uma NF-e ----------
+  // Lê o XML padrão da Nota Fiscal Eletrônica (o mesmo arquivo .xml que o fornecedor
+  // manda junto do PDF/DANFE, ou que dá pra baixar no site da nota pela chave de acesso)
+  // e já pré-preenche nome/valor/data de cada produto — sem IA, sem servidor, 100% no navegador.
+  const patImportBackdrop = document.getElementById('pat-import-backdrop');
+  const patImportFile = document.getElementById('pat-import-file');
+  const patImportErr = document.getElementById('pat-import-err');
+  const patImportPreview = document.getElementById('pat-import-preview');
+  const patImportConfirmar = document.getElementById('pat-import-confirmar');
+  let patImportItens = [];
+  let patImportInfo = null;
+
+  function abrirModalImportarNF(){
+    patImportFile.value = '';
+    patImportErr.style.display = 'none';
+    patImportErr.textContent = '';
+    patImportPreview.innerHTML = '';
+    patImportConfirmar.style.display = 'none';
+    patImportItens = [];
+    patImportInfo = null;
+    document.getElementById('pat-import-upload-field').style.display = 'block';
+    patImportBackdrop.classList.add('show');
+  }
+  function fecharModalImportarNF(){ patImportBackdrop.classList.remove('show'); }
+  document.getElementById('pat-import-cancelar').addEventListener('click', fecharModalImportarNF);
+  patImportBackdrop.addEventListener('click', function(e){ if (e.target === patImportBackdrop) fecharModalImportarNF(); });
+
+  function xmlTexto(elPai, tag){
+    if (!elPai) return '';
+    const el = elPai.getElementsByTagName(tag)[0];
+    return el ? el.textContent.trim() : '';
+  }
+
+  function parseNFeXML(xmlTexto_){
+    const doc = new DOMParser().parseFromString(xmlTexto_, 'text/xml');
+    if (doc.getElementsByTagName('parsererror').length) {
+      throw new Error('O arquivo não é um XML válido.');
+    }
+    const dets = doc.getElementsByTagName('det');
+    if (!dets.length) {
+      throw new Error('Não encontrei produtos neste arquivo. Confirme que é o XML da NF-e (não o PDF/DANFE nem outro tipo de XML).');
+    }
+    const emit = doc.getElementsByTagName('emit')[0];
+    const ide = doc.getElementsByTagName('ide')[0];
+    const fornecedor = xmlTexto(emit, 'xNome');
+    const numeroNF = xmlTexto(ide, 'nNF');
+    let dataEmissao = xmlTexto(ide, 'dhEmi') || xmlTexto(ide, 'dEmi');
+    if (dataEmissao) dataEmissao = dataEmissao.slice(0, 10);
+
+    const itens = [];
+    for (let i = 0; i < dets.length; i++) {
+      const prod = dets[i].getElementsByTagName('prod')[0];
+      if (!prod) continue;
+      const qtd = parseFloat(xmlTexto(prod, 'qCom').replace(',', '.')) || 1;
+      itens.push({
+        nome: xmlTexto(prod, 'xProd') || ('Item ' + (i + 1)),
+        valor: parseFloat(xmlTexto(prod, 'vUnCom').replace(',', '.')) || parseFloat(xmlTexto(prod, 'vProd').replace(',', '.')) || 0,
+        quantidade: Math.max(1, Math.round(qtd))
+      });
+    }
+    return { fornecedor: fornecedor, numeroNF: numeroNF, dataEmissao: dataEmissao, itens: itens };
+  }
+
+  function renderPreviewImportNF(){
+    const CATS = ['Informática','Mobiliário','Eletrônico/Eletrodoméstico','Veículo','Outros'];
+    let html = '';
+    if (patImportInfo) {
+      html += '<p style="font-size:.82rem;color:var(--muted);">NF nº ' + escapeHtml(patImportInfo.numeroNF || '—') +
+        (patImportInfo.fornecedor ? ' · Fornecedor: ' + escapeHtml(patImportInfo.fornecedor) : '') +
+        (patImportInfo.dataEmissao ? ' · Emitida em ' + formatDataBR(patImportInfo.dataEmissao) : '') + '</p>';
+    }
+    html += '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+      '<th></th><th>Item (da NF)</th><th>Categoria</th><th>Qtd. (um item p/ cada)</th><th>Valor unit. (R$)</th>' +
+      '</tr></thead><tbody>';
+    patImportItens.forEach(function(it, i){
+      html += '<tr>' +
+        '<td><input type="checkbox" class="pin-check" data-i="' + i + '" checked></td>' +
+        '<td><input type="text" class="pin-nome" data-i="' + i + '" value="' + escapeHtml(it.nome) + '" style="width:100%;"></td>' +
+        '<td><select class="pin-cat" data-i="' + i + '">' +
+          CATS.map(function(c){ return '<option value="' + escapeHtml(c) + '"' + (c === 'Outros' ? ' selected' : '') + '>' + escapeHtml(c) + '</option>'; }).join('') +
+        '</select></td>' +
+        '<td><input type="number" min="1" class="pin-qtd" data-i="' + i + '" value="' + it.quantidade + '" style="width:60px;"></td>' +
+        '<td><input type="text" class="pin-valor" data-i="' + i + '" value="' + numeroParaMoedaInput(it.valor) + '" style="width:100px;"></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>' +
+      '<p style="font-size:.74rem;color:var(--muted);margin-top:8px;">Quando a quantidade for maior que 1, um item de patrimônio (com etiqueta própria) é criado para cada unidade.</p>';
+    patImportPreview.innerHTML = html;
+    patImportPreview.querySelectorAll('.pin-valor').forEach(ligarMascaraMoeda);
+    patImportConfirmar.style.display = 'inline-flex';
+  }
+
+  patImportFile.addEventListener('change', function(){
+    const arquivo = patImportFile.files[0];
+    patImportErr.style.display = 'none';
+    if (!arquivo) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      try {
+        const info = parseNFeXML(String(reader.result).trim());
+        patImportInfo = { fornecedor: info.fornecedor, numeroNF: info.numeroNF, dataEmissao: info.dataEmissao };
+        patImportItens = info.itens;
+        document.getElementById('pat-import-upload-field').style.display = 'none';
+        renderPreviewImportNF();
+      } catch (e) {
+        patImportErr.textContent = e.message || 'Não foi possível ler este arquivo.';
+        patImportErr.style.display = 'block';
+      }
+    };
+    reader.onerror = function(){
+      patImportErr.textContent = 'Não foi possível ler o arquivo.';
+      patImportErr.style.display = 'block';
+    };
+    reader.readAsText(arquivo, 'utf-8');
+  });
+
+  patImportConfirmar.addEventListener('click', function(){
+    const linhas = [];
+    patImportPreview.querySelectorAll('.pin-check:checked').forEach(function(cb){
+      const i = cb.dataset.i;
+      linhas.push({
+        nome: patImportPreview.querySelector('.pin-nome[data-i="' + i + '"]').value.trim(),
+        categoria: patImportPreview.querySelector('.pin-cat[data-i="' + i + '"]').value,
+        quantidade: Math.max(1, parseInt(patImportPreview.querySelector('.pin-qtd[data-i="' + i + '"]').value, 10) || 1),
+        valor: moedaParaNumero(patImportPreview.querySelector('.pin-valor[data-i="' + i + '"]').value)
+      });
+    });
+    if (!linhas.length) {
+      patImportErr.textContent = 'Marque pelo menos um item para importar.';
+      patImportErr.style.display = 'block';
+      return;
+    }
+    patImportConfirmar.disabled = true;
+    const obs = patImportInfo && (patImportInfo.numeroNF || patImportInfo.fornecedor)
+      ? ('Importado da NF nº ' + (patImportInfo.numeroNF || '—') + (patImportInfo.fornecedor ? ' — ' + patImportInfo.fornecedor : ''))
+      : 'Importado de NF-e.';
+
+      const tarefas = [];
+    linhas.forEach(function(linha){
+      for (let n = 0; n < linha.quantidade; n++) {
+        tarefas.push(function(){
+          return proximoCodigoPatrimonio().then(function(codigo){
+            return db.collection('patrimonio').add({
+              nome: linha.nome + (linha.quantidade > 1 ? ' (' + (n + 1) + '/' + linha.quantidade + ')' : ''),
+              categoria: linha.categoria,
+              status: 'ativo',
+              marcaModelo: '',
+              numeroSerie: '',
+              local: '',
+              responsavelUid: null,
+              responsavel: '',
+              dataAquisicao: (patImportInfo && patImportInfo.dataEmissao) || null,
+              valor: linha.valor,
+              observacoes: obs,
+              codigo: codigo,
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              criadoPor: meuNome,
+              criadoPorUid: meuUid
+            });
+          });
+        });
+      }
+    });
+
+    // em sequência (não em paralelo) porque o código do próximo item depende do contador do anterior
+    tarefas.reduce(function(prev, tarefa){ return prev.then(tarefa); }, Promise.resolve())
+      .then(function(){ fecharModalImportarNF(); })
+      .catch(function(err){
+        patImportErr.textContent = 'Erro ao importar: ' + err.message;
+        patImportErr.style.display = 'block';
+      })
+      .finally(function(){ patImportConfirmar.disabled = false; });
   });
 
   const patTransfBackdrop = document.getElementById('pat-transf-backdrop');
