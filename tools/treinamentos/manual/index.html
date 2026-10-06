@@ -24,13 +24,6 @@
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
     --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --ink:#161010; --paper:#ece6e1; --panel:#211918; --panel-2:#2a1f1e; --panel-3:#332726;
-      --muted:#9c908b; --gold:#d8b25a; --silver:#a9adb2;
-      --line:rgba(236,230,225,0.10); --line-strong:rgba(236,230,225,0.18);
-    }
-  }
   :root[data-theme="dark"]{
     --ink:#161010; --paper:#ece6e1; --panel:#211918; --panel-2:#2a1f1e; --panel-3:#332726;
     --muted:#9c908b; --gold:#d8b25a; --silver:#a9adb2;
@@ -176,10 +169,6 @@
   .cover-logo{ position:relative; height:56px; margin:0 0 30px; display:flex; align-items:center; justify-content:center; }
   .cover-logo img{ height:100%; width:auto; object-fit:contain; }
   .cover-logo .logo-dark{ display:none; }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]) .cover-logo .logo-light{ display:none; }
-    :root:not([data-theme="light"]) .cover-logo .logo-dark{ display:block; }
-  }
   :root[data-theme="dark"] .cover-logo .logo-light{ display:none; }
   :root[data-theme="dark"] .cover-logo .logo-dark{ display:block; }
 </style>
@@ -187,10 +176,16 @@
 <body>
 <script>
 (function(){
+  function sync(theme){
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+  }
   try{
-    var saved = localStorage.getItem('manual-fb-theme');
-    if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
+    sync(localStorage.getItem('fb-portal-theme'));
   }catch(e){}
+  window.addEventListener('storage', function(e){
+    if (e.key === 'fb-portal-theme') sync(e.newValue);
+  });
 })();
 </script>
 
@@ -450,21 +445,6 @@
   CNPJ 57.704.224/0001-00 · Manual de uso interno do Portal — não distribuir externamente.
 </footer>
 
-<button class="theme-toggle" id="themeBtn" title="Alternar tema" aria-label="Alternar tema claro/escuro">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-</button>
-<script>
-(function(){
-  var btn = document.getElementById('themeBtn');
-  btn.addEventListener('click', function(){
-    var cur = document.documentElement.getAttribute('data-theme');
-    var next = cur === 'light' ? 'dark' : (cur === 'dark' ? null : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
-    if (next) document.documentElement.setAttribute('data-theme', next);
-    else document.documentElement.removeAttribute('data-theme');
-    try{ localStorage.setItem('manual-fb-theme', next || ''); }catch(e){}
-  });
-})();
-</script>
 
 </body>
 </html>

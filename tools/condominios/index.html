@@ -10,12 +10,20 @@
     var t = localStorage.getItem('fb-portal-theme');
     if(t === 'light') document.documentElement.setAttribute('data-theme','light');
   }catch(e){}
+  function updateLogo(){
+    var img = document.getElementById('brand-logo-img');
+    if(!img) return;
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    img.src = light ? '../../assets/logo-light.png' : '../../assets/logo-dark.png';
+  }
   window.addEventListener('storage', function(e){
     if(e.key === 'fb-portal-theme'){
       if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
       else document.documentElement.removeAttribute('data-theme');
+      updateLogo();
     }
   });
+  document.addEventListener('DOMContentLoaded', updateLogo);
 })();
 </script>
 <style>
@@ -38,6 +46,11 @@
     --warn-text:#f0b8b0;
     --warn-gold-text:#e9c98a;
     --pill-text:#f0b8b0;
+    --topbar-bg:var(--ink);
+    --topbar-text:#ece6e1;
+    --search-bg:#2a2220;
+    --search-line:#3a302c;
+    --search-text:#c9c0ba;
     --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
     --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
     --font-mono:"Consolas","SFMono-Regular",Menlo,monospace;
@@ -56,6 +69,11 @@
     --warn-text:#5c1a16;
     --warn-gold-text:#6b4d15;
     --pill-text:#8a231f;
+    --topbar-bg:#ffffff;
+    --topbar-text:#211a17;
+    --search-bg:#f1ece6;
+    --search-line:#e7e1d8;
+    --search-text:#5c524c;
   }
   *{box-sizing:border-box;}
   *{scrollbar-width:thin;scrollbar-color:var(--red-deep) var(--card);}
@@ -70,14 +88,15 @@
 
   /* top bar */
   .topbar{
-    position:sticky;top:0;z-index:6;background:var(--ink);color:#ece6e1;
+    position:sticky;top:0;z-index:6;background:var(--topbar-bg);color:var(--topbar-text);
     padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--card-line);transition:background-color .2s,color .2s;
   }
   .brand{flex:0 0 auto;display:flex;align-items:center;}
   .brand img{height:34px;width:auto;object-fit:contain;display:block;}
   .search{
-    flex:1 1 260px;display:flex;align-items:center;gap:8px;background:#2a2220;border:1px solid #3a302c;border-radius:8px;
-    padding:8px 12px;color:#c9c0ba;font-size:.82rem;min-width:200px;max-width:520px;
+    flex:1 1 260px;display:flex;align-items:center;gap:8px;background:var(--search-bg);border:1px solid var(--search-line);border-radius:8px;
+    padding:8px 12px;color:var(--search-text);font-size:.82rem;min-width:200px;max-width:520px;
   }
 
   /* horizontal nav (replaces the reference site's vertical sidebar) */
@@ -276,7 +295,7 @@
 <body>
 
 <div class="topbar">
-  <div class="brand"><img src="../../assets/logo-dark.png" alt="Fonseca e Braga"></div>
+  <div class="brand"><img id="brand-logo-img" src="../../assets/logo-dark.png" alt="Fonseca e Braga"></div>
   <div class="search">🔎 Buscar POPs, condomínios, procedimentos…</div>
 </div>
 
