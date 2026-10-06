@@ -13,9 +13,44 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Portal FB">
 <script>
+  // Registra o service worker e detecta quando ha uma versao nova baixada:
+  // em vez de trocar o app sozinho no meio do uso, so avisa com um botao
+  // ("Atualizar agora") e a troca so acontece quando o usuario clicar.
   if ('serviceWorker' in navigator) {
+    var swEmEspera = null;
+    function mostrarBotaoAtualizarApp(){
+      var banner = document.getElementById('app-update-banner');
+      if (banner) banner.classList.add('show');
+    }
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('./sw.js').catch(function(){});
+      navigator.serviceWorker.register('./sw.js').then(function(reg){
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          swEmEspera = reg.waiting;
+          mostrarBotaoAtualizarApp();
+        }
+        reg.addEventListener('updatefound', function(){
+          var novo = reg.installing;
+          if (!novo) return;
+          novo.addEventListener('statechange', function(){
+            if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+              swEmEspera = novo;
+              mostrarBotaoAtualizarApp();
+            }
+          });
+        });
+      }).catch(function(){});
+    });
+    var jaRecarregouApp = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (jaRecarregouApp) return;
+      jaRecarregouApp = true;
+      window.location.reload();
+    });
+    document.addEventListener('DOMContentLoaded', function(){
+      var btn = document.getElementById('app-update-btn');
+      if (btn) btn.addEventListener('click', function(){
+        if (swEmEspera) swEmEspera.postMessage('SKIP_WAITING');
+      });
     });
   }
 </script>
@@ -128,6 +163,19 @@
 
   /* ---------- APP SHELL ---------- */
   #app-screen{display:none;height:100vh;flex-direction:column;}
+  #app-update-banner{
+    display:none;position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:500;
+    align-items:center;gap:12px;background:var(--red);color:#fff;padding:10px 10px 10px 16px;
+    border-radius:30px;box-shadow:0 12px 28px rgba(0,0,0,.4);font-size:.82rem;max-width:min(92vw,420px);
+  }
+  #app-update-banner.show{display:flex;}
+  #app-update-banner button{
+    flex:0 0 auto;background:#fff;color:var(--red);border:none;border-radius:20px;padding:7px 14px;
+    font-weight:700;font-size:.78rem;cursor:pointer;white-space:nowrap;
+  }
+  @media (max-width: 860px){
+    #app-update-banner{bottom:92px;}
+  }
   #topbar{
     position:relative;min-height:76px;flex:0 0 auto;display:flex;flex-wrap:wrap;row-gap:8px;align-items:center;gap:14px;padding:10px 18px;
     background:var(--panel);border-bottom:1px solid var(--line-strong);
@@ -765,6 +813,10 @@
 
 <!-- ================= APP ================= -->
 <div id="app-screen">
+  <div id="app-update-banner">
+    <span>Nova versão do Portal disponível.</span>
+    <button type="button" id="app-update-btn">Atualizar agora</button>
+  </div>
   <div id="topbar">
     <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menu">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>

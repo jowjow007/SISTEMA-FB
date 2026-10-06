@@ -8,7 +8,13 @@ const CACHE_NAME = 'portal-fb-cache-v2';
 const OFFLINE_FALLBACK = './index.html';
 
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // Não ativa sozinho: fica "esperando" até o usuário clicar em "Atualizar"
+  // no Portal (veja o botão de atualização em index.html). Isso evita trocar
+  // o app debaixo do usuário no meio de uma tarefa.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
