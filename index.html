@@ -176,6 +176,9 @@
   .user-menu-dropdown .user-menu-divider{height:1px;background:var(--line);margin:6px 4px;}
   .user-menu-dropdown button.logout-item{color:var(--danger-text);}
   .user-menu-dropdown button.logout-item:hover{background:rgba(201,70,60,.12);}
+  .user-menu-dropdown button.theme-switch-item{justify-content:space-between;}
+  .user-menu-dropdown button.theme-switch-item .theme-switch-label{display:flex;align-items:center;gap:8px;}
+  .user-menu-dropdown button.theme-switch-item .theme-switch-track{flex:0 0 auto;}
   #topbar .spacer{flex:1;}
   #topbar .search-box{
     width:min(340px,28vw);min-width:200px;flex:0 1 auto;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:20px;
@@ -720,7 +723,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v143</span>
+      <span class="version-tag">v144</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -735,10 +738,6 @@
       </button>
       <div id="tabstrip-list"></div>
       <div id="theme-toggle-row">
-        <button type="button" class="theme-switch" id="theme-toggle">
-          <span class="theme-switch-label"><span id="theme-icon">🌙</span> <span id="theme-label">Tema escuro</span></span>
-          <span class="theme-switch-track"><span class="knob"></span></span>
-        </button>
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <p class="cnpj-footer">
           <span class="firm">Fonseca e Braga Sociedade de Advogados</span>
@@ -1142,9 +1141,6 @@
     globalSearch: document.getElementById('global-search'),
     drawerGlobalSearch: document.getElementById('drawer-global-search'),
     mobileLogoutBtn: document.getElementById('mobile-logout-btn'),
-    themeToggle: document.getElementById('theme-toggle'),
-    themeIcon: document.getElementById('theme-icon'),
-    themeLabel: document.getElementById('theme-label'),
     loginThemeToggle: document.getElementById('login-theme-toggle'),
     loginThemeIcon: document.getElementById('login-theme-icon'),
     loginThemeLabel: document.getElementById('login-theme-label'),
@@ -1213,15 +1209,13 @@
     document.querySelectorAll('.brand-logo').forEach(function(img){
       img.src = theme === 'light' ? LOGO_LIGHT : LOGO_DARK;
     });
-    els.themeIcon.textContent = theme === 'light' ? '☀️' : '🌙';
-    els.themeLabel.textContent = theme === 'light' ? 'Tema claro' : 'Tema escuro';
+    const ti = document.getElementById('theme-icon'), tl = document.getElementById('theme-label');
+    if (ti) ti.textContent = theme === 'light' ? '☀️' : '🌙';
+    if (tl) tl.textContent = theme === 'light' ? 'Tema claro' : 'Tema escuro';
     els.loginThemeIcon.textContent = theme === 'light' ? '☀️' : '🌙';
     els.loginThemeLabel.textContent = theme === 'light' ? 'Tema claro' : 'Tema escuro';
   }
   applyTheme(currentTheme);
-  els.themeToggle.addEventListener('click', function(){
-    applyTheme(currentTheme === 'light' ? 'dark' : 'light');
-  });
   els.loginThemeToggle.addEventListener('click', function(){
     applyTheme(currentTheme === 'light' ? 'dark' : 'light');
   });
@@ -2075,6 +2069,24 @@
 
   function renderUserMenu(menuTabs){
     els.userMenuDropdown.innerHTML = '';
+
+    const themeBtn = document.createElement('button');
+    themeBtn.type = 'button';
+    themeBtn.className = 'theme-switch-item';
+    themeBtn.id = 'theme-toggle';
+    themeBtn.innerHTML =
+      '<span class="theme-switch-label"><span id="theme-icon">' + (currentTheme === 'light' ? '☀️' : '🌙') + '</span> <span id="theme-label">' + (currentTheme === 'light' ? 'Tema claro' : 'Tema escuro') + '</span></span>' +
+      '<span class="theme-switch-track"><span class="knob"></span></span>';
+    themeBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+    els.userMenuDropdown.appendChild(themeBtn);
+
+    const divTheme = document.createElement('div');
+    divTheme.className = 'user-menu-divider';
+    els.userMenuDropdown.appendChild(divTheme);
+
     menuTabs.forEach(function(t){
       const btn = document.createElement('button');
       btn.type = 'button';
