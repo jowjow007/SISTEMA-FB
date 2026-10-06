@@ -342,6 +342,7 @@
     background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);font-family:inherit;font-size:.85rem;text-align:left;cursor:pointer;
   }
   .mh-search svg{width:16px;height:16px;flex:0 0 auto;opacity:.75;}
+  .mh-search span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .mh-section-label{display:flex;align-items:center;gap:10px;margin:0 0 12px;}
   .mh-section-label .txt{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);white-space:nowrap;}
   .mh-section-label .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line-strong),transparent);}
@@ -823,7 +824,7 @@
           </div>
           <button type="button" class="mh-search" id="mh-search-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <span>Buscar ferramenta, processo...</span>
+            <span>Pesquisar no Portal Fonseca e Braga</span>
           </button>
           <div class="mh-section-label"><span class="txt">Acesso rápido</span><span class="rule"></span></div>
           <div class="mh-big" id="mh-big"></div>
@@ -2357,7 +2358,11 @@
     let visiveis = 0;
     botoes.forEach(function(b){
       const texto = b.textContent.toLowerCase();
-      const bate = !termo || texto.indexOf(termo) !== -1;
+      const tab = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
+      const bateSubaba = !!(tab && tab.subtabs && tab.subtabs.some(function(s){
+        return (s.label || '').toLowerCase().indexOf(termo) !== -1;
+      }));
+      const bate = !termo || texto.indexOf(termo) !== -1 || bateSubaba;
       b.classList.toggle('search-hidden', !bate);
       if (bate) visiveis++;
     });
