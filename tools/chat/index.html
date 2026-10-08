@@ -78,12 +78,25 @@
     font-family:var(--font-display);font-weight:600;font-size:1.2rem;margin:0;color:var(--paper);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
+  .sidebar-actions-row{display:flex;align-items:center;gap:8px;margin-top:12px;}
   .btn-novo-pill{
-    display:block;margin-top:12px;width:133px;height:34px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;
+    flex:0 0 auto;width:125px;height:32px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;
     background-image:url('assets/novo-botao-chat.jpg');background-repeat:no-repeat;
-    background-size:153px 86px;background-position:-10px -24px;
+    background-size:144px 80px;background-position:-9px -23px;
   }
   .btn-novo-pill:hover{filter:brightness(1.12);}
+  .btn-arquivadas-wrap{position:relative;flex:0 0 auto;}
+  .btn-arquivadas-pill{
+    width:124px;height:32px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;background-color:transparent;
+    background-image:url('assets/novo-botao-arquivadas.jpg');background-repeat:no-repeat;
+    background-size:142px 79px;background-position:-9px -23px;
+  }
+  .btn-arquivadas-pill:hover{filter:brightness(1.3);}
+  .btn-arquivadas-pill.on{box-shadow:0 0 0 2px var(--gold);border-radius:20px;}
+  .arquivadas-badge{
+    position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;
+    border-radius:20px;padding:1px 6px;pointer-events:none;line-height:1.3;
+  }
   .type-tabs{display:flex;gap:3px;margin-top:12px;background:var(--panel-2);border-radius:20px;padding:3px;}
   .type-tab{flex:1;border:none;background:none;color:var(--muted);font-size:.74rem;font-weight:700;padding:6px 0;border-radius:16px;cursor:pointer;}
   .type-tab:hover{color:var(--paper);}
@@ -168,7 +181,6 @@
   .small-link-btn.on{color:var(--gold);border-color:rgba(216,178,90,.5);}
   .small-link-btn.danger{color:#ffb4ae;border-color:rgba(184,54,46,.4);}
   .small-link-btn.danger:hover{background:rgba(184,54,46,.12);border-color:rgba(184,54,46,.6);}
-  .archive-toggle{margin-top:10px;}
 
   .msg-list{
     flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:4px;
@@ -346,8 +358,13 @@
         <button class="type-tab" type="button" data-tipo="prioritaria">Prioritária</button>
       </div>
       <div class="tag-filter-row" id="tag-filter-row"></div>
-      <button class="btn-novo-pill" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
-      <button class="small-link-btn archive-toggle" id="btn-ver-arquivadas"></button>
+      <div class="sidebar-actions-row">
+        <button class="btn-novo-pill" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
+        <div class="btn-arquivadas-wrap">
+          <button class="btn-arquivadas-pill" id="btn-ver-arquivadas" title="Ver arquivadas" aria-label="Ver arquivadas"></button>
+          <span class="arquivadas-badge" id="arquivadas-badge" style="display:none;"></span>
+        </div>
+      </div>
     </div>
     <div class="conv-list" id="conv-list"></div>
   </aside>
@@ -532,6 +549,7 @@
     btnArquivar: document.getElementById('btn-arquivar'),
     btnExcluirConversa: document.getElementById('btn-excluir-conversa'),
     btnVerArquivadas: document.getElementById('btn-ver-arquivadas'),
+    arquivadasBadge: document.getElementById('arquivadas-badge'),
     msgList: document.getElementById('msg-list'),
     photoPreviewRow: document.getElementById('photo-preview-row'),
     photoPreviewImg: document.getElementById('photo-preview-img'),
@@ -636,7 +654,6 @@
 
   // ícones estáticos (os que alternam de estado são atualizados nas próprias funções de toggle)
   els.btnNotif.innerHTML = icoSvg('bell');
-  els.btnVerArquivadas.innerHTML = icoSvg('archive', 13) + ' Ver arquivadas';
   document.querySelector('#thread-empty .big').innerHTML =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
       (ICO.chat || '') +
@@ -804,10 +821,14 @@
     var qtdArquivadas = conversas.filter(function(c){
       return !conversaExcluida(c) && tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
     }).length;
-    els.btnVerArquivadas.innerHTML = verArquivadas
-      ? icoSvg('chat', 13) + ' Ver conversas ativas'
-      : icoSvg('archive', 13) + ' Ver arquivadas' + (qtdArquivadas ? ' (' + qtdArquivadas + ')' : '');
+    els.btnVerArquivadas.title = verArquivadas ? 'Ver conversas ativas' : 'Ver arquivadas';
     els.btnVerArquivadas.classList.toggle('on', verArquivadas);
+    if (!verArquivadas && qtdArquivadas > 0){
+      els.arquivadasBadge.textContent = qtdArquivadas;
+      els.arquivadasBadge.style.display = 'inline-block';
+    } else {
+      els.arquivadasBadge.style.display = 'none';
+    }
   }
 
   function renderConvList(){
