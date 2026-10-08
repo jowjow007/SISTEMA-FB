@@ -130,11 +130,16 @@
   .avatar{
     width:42px;height:42px;border-radius:50%;background:var(--panel-2);background-size:cover;background-position:center;
     flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);
-    font-size:1rem;color:var(--gold);border:1px solid var(--line-strong);
+    font-size:1rem;color:var(--gold);border:1px solid var(--line-strong);position:relative;
   }
   .avatar.group{color:var(--silver);}
   .avatar.group svg{display:block;}
   .avatar.group.hash{color:var(--red-bright);background:var(--panel-2);font-family:var(--font-body);font-weight:800;font-size:1.25rem;}
+  .presence-dot{
+    position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;
+    background:var(--muted);border:2px solid var(--panel);
+  }
+  .presence-dot.online{background:#2ECC71;}
   .conv-body{flex:1;min-width:0;}
   .conv-top-line{display:flex;align-items:center;gap:6px;}
   .conv-name{font-size:.88rem;font-weight:600;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
@@ -711,10 +716,22 @@
     return (partes[0][0] + (partes[1] ? partes[1][0] : '')).toUpperCase();
   }
 
-  function avatarHtml(nomeParaIniciais, fotoBase64, isGroup){
-    if (fotoBase64) return '<div class="avatar" style="background-image:url(\'' + fotoBase64 + '\')"></div>';
+  function estaOnline(uid){
+    var p = perfis[uid];
+    if (!p || !p.lastActive || !p.lastActive.toMillis) return false;
+    return (Date.now() - p.lastActive.toMillis()) < 70000;
+  }
+
+  function dotHtml(uid){
+    if (!uid) return '';
+    return '<span class="presence-dot' + (estaOnline(uid) ? ' online' : '') + '"></span>';
+  }
+
+  function avatarHtml(nomeParaIniciais, fotoBase64, isGroup, uid){
+    var dot = isGroup ? '' : dotHtml(uid);
+    if (fotoBase64) return '<div class="avatar" style="background-image:url(\'' + fotoBase64 + '\')">' + dot + '</div>';
     if (isGroup) return '<div class="avatar group hash">#</div>';
-    return '<div class="avatar">' + escapeHtml(iniciais(nomeParaIniciais)) + '</div>';
+    return '<div class="avatar">' + escapeHtml(iniciais(nomeParaIniciais)) + dot + '</div>';
   }
 
   function tituloConversa(c){
@@ -731,7 +748,7 @@
   function avatarConversaHtml(c){
     if (c.tipo === 'grupo') return avatarHtml(null, c.fotoGrupoBase64, true);
     var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
-    return avatarHtml(nomeDe(outro), fotoDe(outro), false);
+    return avatarHtml(nomeDe(outro), fotoDe(outro), false, outro);
   }
 
   function formatHora(ts){
@@ -1674,7 +1691,7 @@
       els.pickerList.innerHTML = contatos.map(function(c){
         return '<div class="picker-item" data-uid="' + c.uid + '">' +
           '<input type="checkbox" ' + (pickerSelected[c.uid] ? 'checked' : '') + '>' +
-          avatarHtml(c.nome, perfis[c.uid].photoBase64, false) +
+          avatarHtml(c.nome, perfis[c.uid].photoBase64, false, c.uid) +
           '<span class="nome">' + escapeHtml(c.nome) + '</span></div>';
       }).join('');
       Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){
@@ -1714,7 +1731,7 @@
     }
     els.pickerList.innerHTML = alvos.map(function(a){
       return '<div class="picker-item" data-tipo="' + a.tipo + '" data-alvo="' + (a.id || a.uid) + '">' +
-        avatarHtml(a.nome, a.uid ? perfis[a.uid].photoBase64 : null, a.tipo === 'conversa' && a.sub === 'Grupo') +
+        avatarHtml(a.nome, a.uid ? perfis[a.uid].photoBase64 : null, a.tipo === 'conversa' && a.sub === 'Grupo', a.uid) +
         '<span class="nome">' + escapeHtml(a.nome) + (a.sub ? ' <span class="sub">· ' + escapeHtml(a.sub) + '</span>' : '') + '</span></div>';
     }).join('');
     Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){

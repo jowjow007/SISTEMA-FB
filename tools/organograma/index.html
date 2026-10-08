@@ -104,9 +104,14 @@
   .card .head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
   .avatar{
     width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;
-    border:2px solid var(--gold);background-color:var(--panel-2);flex:0 0 auto;
+    border:2px solid var(--gold);background-color:var(--panel-2);flex:0 0 auto;position:relative;
     display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.3rem;color:var(--gold);
   }
+  .presence-dot{
+    position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;
+    background:var(--muted);border:2px solid var(--panel);
+  }
+  .presence-dot.online{background:#2ECC71;}
   .card .nome{font-family:var(--font-display);font-weight:600;font-size:1rem;color:var(--paper);line-height:1.25;}
   .card .row{display:flex;justify-content:space-between;gap:8px;font-size:.8rem;padding:6px 0;border-top:1px solid var(--line);}
   .card .row .k{color:var(--muted);}
@@ -495,11 +500,18 @@
     atualizarSyncHint();
   }
 
+  function estaOnline(uid){
+    const perfil = perfisMap[uid];
+    if (!perfil || !perfil.lastActive || !perfil.lastActive.toMillis) return false;
+    return (Date.now() - perfil.lastActive.toMillis()) < 70000;
+  }
+
   function renderCard(p){
     const foto = perfisMap[p.uid] && perfisMap[p.uid].photoBase64;
+    const dot = '<span class="presence-dot' + (estaOnline(p.uid) ? ' online' : '') + '"></span>';
     const avatarInner = foto
-      ? '<div class="avatar" style="background-image:url(' + foto + ')"></div>'
-      : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
+      ? '<div class="avatar" style="background-image:url(' + foto + ')">' + dot + '</div>'
+      : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + dot + '</div>';
     const ingresso = p.dataIngresso
       ? formatarData(p.dataIngresso) + '<div class="tempo">' + tempoDeCasa(p.dataIngresso) + '</div>'
       : '<span style="color:var(--muted);font-weight:400;">não informado</span>';

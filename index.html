@@ -339,7 +339,11 @@
     position:relative;
   }
   #tabstrip .tab-btn:hover{background:var(--panel-2);color:var(--paper);}
-  #tabstrip .tab-btn.active{background:var(--red-deep);color:#fff;border-color:var(--red);}
+  #tabstrip .tab-btn.active{background:var(--red-deep);color:#fff;border-color:rgba(216,178,90,.35);}
+  #tabstrip .tab-btn.active::after{
+    content:'';position:absolute;right:8px;top:8px;width:6px;height:6px;border-radius:50%;
+    background:var(--gold);box-shadow:0 0 8px 1px rgba(216,178,90,.85);
+  }
   #tabstrip .tab-btn .tab-icon{width:34px;height:34px;flex:0 0 auto;opacity:.85;}
   #tabstrip .tab-btn .tab-icon-img{
     background-color:currentColor;display:inline-block;
@@ -1927,6 +1931,25 @@
     if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
     subscribeAnotacoesPendentes();
     verificarAvisoFotoObrigatoria();
+    iniciarPresenca();
+  }
+
+  // Heartbeat de presença: marca o usuário como "online" enquanto o portal estiver
+  // aberto, para o Chat e os Colaboradores (Gestão) mostrarem a bolinha de status.
+  var presencaIniciada = false;
+  function iniciarPresenca(){
+    if (presencaIniciada) return;
+    presencaIniciada = true;
+    function marcarAtivo(){
+      db.collection('perfis').doc(currentProfile.uid).set({
+        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+    marcarAtivo();
+    setInterval(marcarAtivo, 25000);
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible') marcarAtivo();
+    });
   }
 
   // Pisca a aba "Gestão" pro admin quando há solicitação de compra aguardando aprovação
