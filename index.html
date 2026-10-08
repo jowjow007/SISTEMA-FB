@@ -1945,17 +1945,33 @@
 
   // Heartbeat de presença: marca o usuário como "online" enquanto o portal estiver
   // aberto, para o Chat e os Colaboradores (Gestão) mostrarem a bolinha de status.
+  // A cada tique de 25s também soma esse tempo em presencaDiaria/{uid}_{data}, para
+  // os Colaboradores (Gestão) mostrarem quanto tempo cada um ficou logado no portal.
   var presencaIniciada = false;
   function iniciarPresenca(){
     if (presencaIniciada) return;
     presencaIniciada = true;
+    var INTERVALO_MS = 25000;
+    function diaAtual(){
+      var d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
     function marcarAtivo(){
       db.collection('perfis').doc(currentProfile.uid).set({
         lastActive: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
     }
+    function heartbeatComTempo(){
+      marcarAtivo();
+      var docId = currentProfile.uid + '_' + diaAtual();
+      db.collection('presencaDiaria').doc(docId).set({
+        uid: currentProfile.uid,
+        data: diaAtual(),
+        segundos: firebase.firestore.FieldValue.increment(INTERVALO_MS / 1000)
+      }, { merge: true });
+    }
     marcarAtivo();
-    setInterval(marcarAtivo, 25000);
+    setInterval(heartbeatComTempo, INTERVALO_MS);
     document.addEventListener('visibilitychange', function(){
       if (document.visibilityState === 'visible') marcarAtivo();
     });
@@ -2856,6 +2872,10 @@
     if (!editSistemasTargetUid) return;
     const novaLista = Array.prototype.slice.call(document.querySelectorAll('.edit-sistema-cb:checked')).map(function(c){ return c.value; });
     db.collection('users').doc(editSistemasTargetUid).update({ sistemasExternos: novaLista }).then(function(){
+      // Espelha em perfis/{uid} (coleção já lida por todo mundo) para os Colaboradores
+      // (Gestão) mostrarem os sistemas liberados sem precisar ler o doc de users de outra pessoa.
+      return db.collection('perfis').doc(editSistemasTargetUid).set({ sistemasExternos: novaLista }, { merge: true });
+    }).then(function(){
       if (editSistemasTargetUid === currentProfile.uid) {
         currentProfile.sistemasExternos = novaLista;
         renderSistemasStatus();

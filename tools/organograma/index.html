@@ -149,6 +149,38 @@
   .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
   .msg-err{display:none;color:var(--red-bright);font-size:.78rem;margin-top:-6px;margin-bottom:12px;}
 
+  .card{cursor:pointer;}
+  .card .foot button{position:relative;z-index:1;}
+
+  .detail-section{margin-bottom:18px;}
+  .detail-section h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px;}
+  .detail-sistemas-list{display:flex;flex-direction:column;gap:6px;}
+  .detail-sistema-row{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--paper);}
+  .detail-sistema-row .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+  .detail-sistema-row .dot.on{background:#2ECC71;}
+  .detail-sistema-row .dot.off{background:var(--muted);opacity:.5;}
+  .detail-sistema-row.off{color:var(--muted);}
+  .detail-valor-btn{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:10px 14px;
+    color:var(--paper);font-family:var(--font-display);font-size:1.1rem;font-weight:600;cursor:pointer;width:100%;text-align:left;
+  }
+  .detail-valor-btn:hover{border-color:var(--gold);}
+  .detail-patrimonio-lista{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .detail-patrimonio-item{
+    display:flex;justify-content:space-between;gap:10px;font-size:.8rem;padding:8px 10px;
+    background:var(--panel-2);border-radius:8px;border:1px solid var(--line-strong);
+  }
+  .detail-patrimonio-item .nome{color:var(--paper);}
+  .detail-patrimonio-item .cod{color:var(--muted);font-size:.72rem;}
+  .detail-patrimonio-item .valor{color:var(--gold);font-weight:600;white-space:nowrap;}
+  .detail-tempo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .tempo-cell{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .tempo-cell .k{font-size:.7rem;color:var(--muted);}
+  .tempo-cell .v{font-size:1rem;font-weight:600;color:var(--paper);font-family:var(--font-display);}
+
   @media (max-width:640px){
     .card .row{flex-direction:column;gap:2px;}
     .card .row .v{text-align:left;}
@@ -287,6 +319,38 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="detail-backdrop">
+  <div class="modal-box">
+    <h3 id="detail-titulo">Colaborador</h3>
+    <p class="sub" id="detail-sub">Sistemas liberados, patrimônio e tempo de uso do portal.</p>
+
+    <div class="detail-section">
+      <h4>Sistemas liberados</h4>
+      <div id="detail-sistemas" class="detail-sistemas-list"></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Patrimônio</h4>
+      <button type="button" class="detail-valor-btn" id="detail-patrimonio-valor">R$ 0,00</button>
+      <div id="detail-patrimonio-lista" class="detail-patrimonio-lista" style="display:none;"></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Tempo logado no portal</h4>
+      <div class="detail-tempo-grid" id="detail-tempo-grid">
+        <div class="tempo-cell"><span class="k">Esta semana</span><span class="v" id="detail-tempo-semana">—</span></div>
+        <div class="tempo-cell"><span class="k">Este mês</span><span class="v" id="detail-tempo-mes">—</span></div>
+        <div class="tempo-cell"><span class="k">Este ano</span><span class="v" id="detail-tempo-ano">—</span></div>
+        <div class="tempo-cell"><span class="k">Desde sempre</span><span class="v" id="detail-tempo-total">—</span></div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn" id="detail-fechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -343,7 +407,28 @@
     editCancelar: document.getElementById('edit-cancelar'),
     editSalvar: document.getElementById('edit-salvar'),
     deptosExistentes: document.getElementById('deptos-existentes'),
+    detailBackdrop: document.getElementById('detail-backdrop'),
+    detailTitulo: document.getElementById('detail-titulo'),
+    detailSistemas: document.getElementById('detail-sistemas'),
+    detailPatrimonioValor: document.getElementById('detail-patrimonio-valor'),
+    detailPatrimonioLista: document.getElementById('detail-patrimonio-lista'),
+    detailTempoSemana: document.getElementById('detail-tempo-semana'),
+    detailTempoMes: document.getElementById('detail-tempo-mes'),
+    detailTempoAno: document.getElementById('detail-tempo-ano'),
+    detailTempoTotal: document.getElementById('detail-tempo-total'),
+    detailFechar: document.getElementById('detail-fechar'),
   };
+
+  const SISTEMAS_EXTERNOS = [
+    { id:'google-drive', nome:'Google Drive', desc:'Acesso a documentos e pastas dos clientes' },
+    { id:'google-agenda', nome:'Google Agenda', desc:'Acesso aos agendamentos do escritório e compromissos públicos' },
+    { id:'google-workspace', nome:'Sistema Google', desc:'E-mail e uso do Docs, Sheets e ecossistema Google' },
+    { id:'digisac', nome:'Digisac', desc:'Comunicação com os clientes via WhatsApp' },
+    { id:'zapsign', nome:'ZapSign', desc:'Assinatura digital de documentos' },
+    { id:'astrea', nome:'ASTREA', desc:'Controle jurídico e cadastro de pessoas, clientes, processos e casos' },
+    { id:'token', nome:'Token', desc:'Token cadastrado no computador para acesso aos sistemas dos tribunais' },
+    { id:'authenticator', nome:'Authenticator', desc:'Autenticação em duplo fator nos sistemas dos tribunais' }
+  ];
 
   let souAdmin = false;
   let meuUid = null;
@@ -526,7 +611,7 @@
         '</div>'
       : '';
 
-    return '<div class="card">' +
+    return '<div class="card" data-uid="' + p.uid + '">' +
       '<div class="head">' + avatarInner + '<div class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</div></div>' +
       '<div class="row"><span class="k">Departamento</span><span class="v">' + escapeHtml((p.deptoAtual || '').trim() || 'não informado') + '</span></div>' +
       '<div class="row"><span class="k">Ingresso</span><span class="v">' + ingresso + '</span></div>' +
@@ -642,6 +727,113 @@
   els.editCancelar.addEventListener('click', fecharModal);
   els.editBackdrop.addEventListener('click', function(e){
     if (e.target === els.editBackdrop) fecharModal();
+  });
+
+  // ---------- Modal: detalhes do colaborador (sistemas, patrimônio, tempo logado) ----------
+  function formatarMoeda(n){
+    return (n || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  }
+
+  function formatarTempo(segundos){
+    const total = segundos || 0;
+    const h = Math.floor(total / 3600);
+    const m = Math.round((total % 3600) / 60);
+    if (h === 0 && m === 0) return '0 min';
+    if (h === 0) return m + ' min';
+    return h + 'h ' + m + 'min';
+  }
+
+  function dataIso(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function inicioDaSemana(hoje){
+    const d = new Date(hoje);
+    const diaSemana = d.getDay(); // 0 = domingo
+    d.setDate(d.getDate() - diaSemana);
+    return d;
+  }
+
+  function abrirDetalhe(uid){
+    const perfil = perfisMap[uid] || {};
+    const pessoa = (organogramaMap[uid] || {});
+    els.detailTitulo.textContent = perfil.displayName || pessoa.displayName || 'Colaborador';
+    els.detailSistemas.innerHTML = '<p style="color:var(--muted);font-size:.82rem;">Carregando...</p>';
+    els.detailPatrimonioValor.textContent = 'Carregando...';
+    els.detailPatrimonioLista.style.display = 'none';
+    els.detailPatrimonioLista.innerHTML = '';
+    els.detailTempoSemana.textContent = '—';
+    els.detailTempoMes.textContent = '—';
+    els.detailTempoAno.textContent = '—';
+    els.detailTempoTotal.textContent = '—';
+    els.detailBackdrop.classList.add('show');
+
+    const liberados = (perfisMap[uid] && perfisMap[uid].sistemasExternos) || [];
+    els.detailSistemas.innerHTML = SISTEMAS_EXTERNOS.map(function(s){
+      const on = liberados.indexOf(s.id) !== -1;
+      return '<div class="detail-sistema-row' + (on ? '' : ' off') + '">' +
+        '<span class="dot ' + (on ? 'on' : 'off') + '"></span>' +
+        '<span>' + escapeHtml(s.nome) + '</span></div>';
+    }).join('');
+
+    db.collection('patrimonio').where('responsavelUid', '==', uid).get().then(function(snap){
+      const itens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      const total = itens.reduce(function(s, it){ return s + (it.valor || 0); }, 0);
+      els.detailPatrimonioValor.textContent = formatarMoeda(total) + (itens.length ? ' · ' + itens.length + (itens.length > 1 ? ' itens' : ' item') + ' (clique para ver)' : '');
+      els.detailPatrimonioValor.onclick = function(){
+        if (!itens.length) return;
+        const aberto = els.detailPatrimonioLista.style.display !== 'none';
+        els.detailPatrimonioLista.style.display = aberto ? 'none' : 'flex';
+        if (!aberto && !els.detailPatrimonioLista.innerHTML) {
+          els.detailPatrimonioLista.innerHTML = itens.map(function(it){
+            return '<div class="detail-patrimonio-item">' +
+              '<span><span class="nome">' + escapeHtml(it.nome || '') + '</span><br><span class="cod">' + escapeHtml(it.codigo || '') + '</span></span>' +
+              '<span class="valor">' + formatarMoeda(it.valor) + '</span></div>';
+          }).join('');
+        }
+      };
+    }).catch(function(){
+      els.detailPatrimonioValor.textContent = 'Não foi possível carregar.';
+    });
+
+    db.collection('presencaDiaria').where('uid', '==', uid).get().then(function(snap){
+      const hoje = new Date();
+      const inicioSemanaIso = dataIso(inicioDaSemana(hoje));
+      const inicioMesIso = dataIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+      const inicioAnoIso = dataIso(new Date(hoje.getFullYear(), 0, 1));
+      let semana = 0, mes = 0, ano = 0, totalGeral = 0;
+      snap.docs.forEach(function(d){
+        const row = d.data();
+        const seg = row.segundos || 0;
+        const data = row.data || '';
+        totalGeral += seg;
+        if (data >= inicioAnoIso) ano += seg;
+        if (data >= inicioMesIso) mes += seg;
+        if (data >= inicioSemanaIso) semana += seg;
+      });
+      els.detailTempoSemana.textContent = formatarTempo(semana);
+      els.detailTempoMes.textContent = formatarTempo(mes);
+      els.detailTempoAno.textContent = formatarTempo(ano);
+      els.detailTempoTotal.textContent = formatarTempo(totalGeral);
+    }).catch(function(){
+      els.detailTempoSemana.textContent = 'erro';
+      els.detailTempoMes.textContent = 'erro';
+      els.detailTempoAno.textContent = 'erro';
+      els.detailTempoTotal.textContent = 'erro';
+    });
+  }
+
+  function fecharDetalhe(){
+    els.detailBackdrop.classList.remove('show');
+  }
+  els.detailFechar.addEventListener('click', fecharDetalhe);
+  els.detailBackdrop.addEventListener('click', function(e){
+    if (e.target === els.detailBackdrop) fecharDetalhe();
+  });
+  els.secoes.addEventListener('click', function(e){
+    const card = e.target.closest('.card');
+    if (!card || e.target.closest('button')) return;
+    abrirDetalhe(card.dataset.uid);
   });
 
   els.editSalvar.addEventListener('click', function(){
