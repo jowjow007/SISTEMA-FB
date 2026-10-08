@@ -344,8 +344,7 @@
       </div>
       <div class="type-tabs" id="type-tabs">
         <button class="type-tab active" type="button" data-tipo="todos">Todos</button>
-        <button class="type-tab" type="button" data-tipo="canais">Canais</button>
-        <button class="type-tab" type="button" data-tipo="diretas">Diretas</button>
+        <button class="type-tab" type="button" data-tipo="prioritaria">Prioritária</button>
       </div>
       <div class="tag-filter-row" id="tag-filter-row"></div>
       <button class="small-link-btn archive-toggle" id="btn-ver-arquivadas"></button>
@@ -599,7 +598,7 @@
   var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
   var replyTarget = null;     // mensagem sendo respondida
   var verArquivadas = false;  // false = lista normal, true = mostrando só as arquivadas
-  var filtroTipo = 'todos';   // 'todos' | 'canais' | 'diretas'
+  var filtroTipo = 'todos';   // 'todos' | 'prioritaria' (marcadas com a estrela de Fixar)
   var novaFotoGrupoDataUrl = null;  // foto escolhida ao criar um grupo novo
   var edicaoGrupoFotoDataUrl = null; // foto escolhida ao editar um grupo existente
 
@@ -817,8 +816,7 @@
       if (conversaExcluida(c)) return false;
       var arquivada = !!(tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada);
       if (arquivada !== verArquivadas) return false;
-      if (filtroTipo === 'canais' && c.tipo !== 'grupo') return false;
-      if (filtroTipo === 'diretas' && c.tipo !== 'individual') return false;
+      if (filtroTipo === 'prioritaria' && !(tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada)) return false;
       var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
       if (filtroAtivo.length && !filtroAtivo.some(function(id){ return tagIds.indexOf(id) !== -1; })) return false;
       if (!termo) return true;
