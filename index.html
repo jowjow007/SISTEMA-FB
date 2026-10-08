@@ -591,6 +591,10 @@
     width:60px;padding:6px 8px;border-radius:6px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-size:.83rem;
   }
+  .url-input{
+    width:100%;min-width:220px;padding:6px 8px;border-radius:6px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-size:.8rem;
+  }
 
   .modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
@@ -3158,7 +3162,7 @@
       return '<tr draggable="true" data-tab-id="' + t.id + '">' +
         '<td class="drag-handle" title="Arraste para reordenar">⠿</td>' +
         '<td>' + escapeHtml(t.label) + '</td>' +
-        '<td style="word-break:break-all;">' + escapeHtml(t.url) + '</td>' +
+        '<td><input type="text" class="url-input" value="' + escapeHtml(t.url) + '" data-tab-id="' + t.id + '"></td>' +
         '<td><input type="number" class="ordem-input" value="' + t.order + '" data-tab-id="' + t.id + '"></td>' +
         '<td>' + subResumo + '</td>' +
         '<td class="actions-cell">' +
@@ -3168,6 +3172,7 @@
       '</tr>';
     }).join('');
     ativarEdicaoOrdem(tbody);
+    ativarEdicaoUrl(tbody);
     ativarArrastarTabs(tbody);
   }
 
@@ -3201,6 +3206,16 @@
         const novaOrdem = parseInt(inp.value, 10);
         if (isNaN(novaOrdem)) return;
         db.collection('tabs').doc(inp.dataset.tabId).update({ order: novaOrdem });
+      });
+    });
+  }
+
+  function ativarEdicaoUrl(tbody){
+    Array.prototype.slice.call(tbody.querySelectorAll('.url-input')).forEach(function(inp){
+      inp.addEventListener('change', function(){
+        const novaUrl = inp.value.trim();
+        if (!novaUrl) return;
+        db.collection('tabs').doc(inp.dataset.tabId).update({ url: novaUrl });
       });
     });
   }
