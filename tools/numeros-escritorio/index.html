@@ -10,12 +10,22 @@
     var t = localStorage.getItem('fb-portal-theme');
     if(t === 'light') document.documentElement.setAttribute('data-theme','light');
   }catch(e){}
+  function updateLogo(){
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    var src = light ? '../../assets/logo-light.png' : '../../assets/logo-dark.png';
+    ['brand-logo-img','brand-logo-img-2'].forEach(function(id){
+      var img = document.getElementById(id);
+      if(img) img.src = src;
+    });
+  }
   window.addEventListener('storage', function(e){
     if(e.key === 'fb-portal-theme'){
       if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
       else document.documentElement.removeAttribute('data-theme');
+      updateLogo();
     }
   });
+  document.addEventListener('DOMContentLoaded', updateLogo);
 })();
 </script>
 <style>
@@ -79,23 +89,24 @@
   body{background:
     radial-gradient(1100px 620px at 12% -8%, rgba(184,54,46,0.10), transparent 60%),
     radial-gradient(900px 560px at 108% 8%, rgba(169,173,178,0.06), transparent 55%),
-    var(--ink);
+    var(--panel);
   }
 
   header{
-    padding:20px 20px 18px;text-align:left;border-bottom:1px solid var(--line-strong);
+    padding:32px 20px 26px;text-align:center;border-bottom:1px solid var(--line-strong);
     background:linear-gradient(180deg, var(--header-wash), transparent);
   }
   .header-inner{
-    max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:flex-start;gap:28px;
+    max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:28px;
   }
-  .header-center{flex:1 1 auto;min-width:0;}
+  .header-center{flex:1 1 auto;min-width:0;max-width:620px;}
+  .brand-logo{height:56px;width:auto;flex:0 0 auto;opacity:.9;}
   header h1{
-    font-family:var(--font-display);font-weight:600;font-size:1.3rem;
-    margin:0 0 2px;color:var(--paper);letter-spacing:.01em;
+    font-family:var(--font-display);font-weight:600;font-size:clamp(1.7rem,4vw,2.5rem);
+    margin:0 0 8px;color:var(--paper);letter-spacing:.01em;
   }
   header .sub{
-    font-size:.86rem;color:var(--muted);margin:0;max-width:560px;line-height:1.5;
+    font-size:.86rem;color:var(--muted);margin:0 auto;max-width:560px;line-height:1.5;
   }
   .updated-chip{
     display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:6px 16px;border-radius:20px;
@@ -307,6 +318,8 @@
     .kpi-row{grid-template-columns:1fr 1fr;}
   }
   @media(max-width:640px){
+    .header-inner{flex-direction:column;gap:12px;text-align:center;}
+    .brand-logo{height:52px;}
     .header-center{max-width:100%;}
     main{padding:26px 14px 60px;}
     .bar-row{grid-template-columns:96px 1fr 64px;gap:8px;}
@@ -343,6 +356,7 @@
     header{background:none !important;}
     .kpi::after{display:none;}
     .print-btn, .print-btn-label{display:none !important;}
+    .brand-logo{filter:invert(1) brightness(.82) contrast(1.05);}
     section{break-inside:avoid;}
     .trend-card,.month-card,.pubarea-card,.areas-chart,.split-cards,.inst-row{break-inside:avoid;}
     .tabnav{display:none !important;}
@@ -382,11 +396,13 @@
 
 <header>
   <div class="header-inner">
+    <img class="brand-logo" id="brand-logo-img" src="../../assets/logo-dark.png" alt="Fonseca e Braga">
     <div class="header-center">
       <h1>Números do Escritório</h1>
       <p class="sub">Panorama consolidado da carteira ativa de processos e casos, extraído diretamente da base de gestão jurídica do escritório.</p>
       <span class="updated-chip"><span class="dot"></span>Base de dados atualizada em 15 de agosto de 2026</span>
     </div>
+    <img class="brand-logo" id="brand-logo-img-2" src="../../assets/logo-dark.png" alt="Fonseca e Braga">
   </div>
 </header>
 
