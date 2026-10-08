@@ -139,6 +139,7 @@
   :root[data-theme="light"] .card{background:var(--panel);box-shadow:none;}
   .card:hover{border-color:rgba(212,175,106,0.4);transform:translateY(-2px);}
   .card .head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .card .head > div{min-width:0;}
   .avatar{
     width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;
     border:1.5px solid transparent;background-image:linear-gradient(var(--panel-2),var(--panel-2)),linear-gradient(155deg,#E8C98A,#8A6F3E);
@@ -151,7 +152,8 @@
     background:var(--muted);border:2px solid var(--panel);
   }
   .presence-dot.online{background:#2ECC71;box-shadow:0 0 6px 1px rgba(46,204,113,0.6);}
-  .card .nome{font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--paper);line-height:1.25;}
+  .card .nome{font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--paper);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .card .email{font-size:.74rem;color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .card .row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.8rem;padding:7px 0;border-top:1px solid rgba(255,255,255,0.06);}
   .card .row .k{color:var(--muted);display:flex;align-items:center;gap:7px;}
   .card .row .v{color:var(--paper);font-weight:600;text-align:right;}
@@ -676,7 +678,8 @@
       : '';
 
     return '<div class="card" data-uid="' + p.uid + '">' +
-      '<div class="head">' + avatarInner + '<div class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</div></div>' +
+      '<div class="head">' + avatarInner + '<div><div class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</div>' +
+        (p.email ? '<div class="email">' + escapeHtml(p.email) + '</div>' : '') + '</div></div>' +
       '<div class="row"><span class="k">Departamento</span><span class="v">' + escapeHtml((p.deptoAtual || '').trim() || 'não informado') + '</span></div>' +
       '<div class="row"><span class="k">Ingresso</span><span class="v">' + ingresso + '</span></div>' +
       '<div class="row"><span class="k">Remuneração</span><span class="v">' + remuneracao + '</span></div>' +
@@ -997,6 +1000,7 @@
       const ref = db.collection('organograma').doc(uid);
       batch.set(ref, {
         displayName: u.displayName || '',
+        email: u.email || '',
         deptoAtual: u.deptoAtual || '',
         dataIngresso: u.dataIngresso || '',
         remuneracao: u.remuneracao || '',
