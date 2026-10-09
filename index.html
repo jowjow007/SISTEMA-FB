@@ -317,14 +317,26 @@
   }
   .cnpj-footer .firm{display:block;font-size:.56rem;color:var(--muted);letter-spacing:0;opacity:.9;white-space:nowrap;}
   .cnpj-footer .cnpj-num{display:block;font-size:.58rem;color:var(--muted);opacity:.62;letter-spacing:.02em;margin-top:2px;white-space:nowrap;}
-  .company-badge-wrap{display:flex;justify-content:center;}
+  .company-badge-wrap{display:flex;justify-content:center;padding:4px 0;}
   #tabstrip.collapsed .company-badge-wrap{display:none;}
   .company-badge{
     width:32px;height:32px;cursor:pointer;border:none;background:transparent;padding:0;
-    border-radius:50%;perspective:500px;
+    perspective:400px;
   }
-  .company-badge img{width:100%;height:100%;object-fit:contain;display:block;animation:fb-badge-spin 7s linear infinite;}
-  .company-badge:hover img{animation-duration:1.4s;}
+  .company-badge-cube{
+    position:relative;width:100%;height:100%;transform-style:preserve-3d;
+    animation:fb-badge-spin 7s linear infinite;
+    filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));
+  }
+  .company-badge:hover .company-badge-cube{animation-duration:1.6s;}
+  .cube-face{position:absolute;backface-visibility:hidden;}
+  .cube-face.front,.cube-face.back{width:32px;height:32px;top:0;left:0;border-radius:6px;overflow:hidden;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);}
+  .cube-face.front img,.cube-face.back img{width:100%;height:100%;object-fit:contain;display:block;}
+  .cube-face.front{transform:translateZ(5px);}
+  .cube-face.back{transform:translateZ(-5px) rotateY(180deg);}
+  .cube-face.right,.cube-face.left{width:10px;height:32px;top:0;left:11px;background:linear-gradient(90deg,#8f8f8f,#cfcfcf 40%,#8f8f8f);}
+  .cube-face.right{transform:rotateY(90deg) translateZ(16px);}
+  .cube-face.left{transform:rotateY(-90deg) translateZ(16px);}
   @keyframes fb-badge-spin{
     from{transform:rotateY(0deg);}
     to{transform:rotateY(360deg);}
@@ -936,7 +948,12 @@
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <div class="company-badge-wrap">
           <button type="button" class="company-badge" id="company-badge-btn" title="Dados da empresa">
-            <img src="assets/favicon.png" alt="Fonseca e Braga">
+            <div class="company-badge-cube">
+              <div class="cube-face front"><img src="assets/favicon.png" alt="Fonseca e Braga"></div>
+              <div class="cube-face back"><img src="assets/favicon.png" alt="Fonseca e Braga"></div>
+              <div class="cube-face right"></div>
+              <div class="cube-face left"></div>
+            </div>
           </button>
         </div>
         <p class="cnpj-footer">
