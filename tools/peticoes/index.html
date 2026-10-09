@@ -174,6 +174,11 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-titulo-box.dc-quebra{margin-top:0;}
   .dc-centro{text-align:center;font-weight:bold;font-size:11.5pt;margin:2mm 0 3mm;}
   .dc-rotulo{font-size:11.5pt;margin-bottom:1mm;}
+  .dc-subtitulo{font-size:10pt;margin-top:1.5mm;letter-spacing:0;}
+  .dc-tabela{border-collapse:collapse;margin:2mm auto 4mm;font-size:10.5pt;}
+  .dc-tabela td,.dc-tabela th{border:0.75pt solid #1a1a1a;padding:1mm 4mm;text-align:left;}
+  .dc-tabela th{font-weight:bold;background:#f2f2f2;}
+  .dc-tabela td:last-child{text-align:right;}
   .dc-sigs{display:flex;flex-wrap:wrap;justify-content:center;gap:6mm 14mm;}
   .dc-n{display:inline-block;min-width:1.25cm;font-weight:bold;}
   .dc-item{display:flex;gap:0;margin-bottom:3mm;font-size:11.5pt;padding-left:1.25cm;}
@@ -263,6 +268,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <label>Título da peça</label>
         <input id="titulo-livre" placeholder="TÍTULO EM MAIÚSCULAS">
       </div>
+      <div class="field"><label>Subtítulo (opcional)</label><input id="subtitulo" placeholder="COM PEDIDO DE EFEITO SUSPENSIVO..."></div>
+      <div class="field"><label>Texto após o título (opcional)</label><textarea id="apos-titulo" rows="2" placeholder="em face de BANCO DO BRASIL S.A., pelos fundamentos a seguir."></textarea></div>
     </div>
 
     <!-- processo -->
@@ -307,6 +314,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <h2>Pedidos</h2>
       <div id="peds-list"></div>
       <button class="btn-add" id="btn-ped">+ Adicionar pedido</button>
+      <div class="field" style="margin-top:10px;"><label>Texto após os pedidos (opcional)</label><textarea id="apos-pedidos" rows="2" placeholder="Dá-se à causa o valor de R$ ..."></textarea></div>
     </div>
 
     <!-- fechamento -->
@@ -552,7 +560,7 @@ document.getElementById('sig-sel').addEventListener('change', function(){
 });
 
 // ══ LIVE LISTENERS ════════════════════════════════════════════
-['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab','sig-extra','opt-num','opt-rom'].forEach(function(id){
+['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab','sig-extra','opt-num','opt-rom','subtitulo','apos-titulo','apos-pedidos'].forEach(function(id){
   var el2 = document.getElementById(id); if(el2) el2.addEventListener('change', render);
   var el = document.getElementById(id); if(el) el.addEventListener('input', render);
 });
@@ -698,6 +706,9 @@ function aplicarOpcoes(d){
   document.getElementById('sig-extra').value = (d.sigExtra||[]).map(function(s){ return s.nome+(s.oab?' | '+s.oab:''); }).join('\n');
   document.getElementById('opt-num').checked = d.numerar !== false;
   document.getElementById('opt-rom').checked = d.romanos !== false;
+  document.getElementById('subtitulo').value = d.subtitulo || '';
+  document.getElementById('apos-titulo').value = d.aposTitulo || '';
+  document.getElementById('apos-pedidos').value = d.aposPedidos || '';
 }
 
 // ══ COLETAR DADOS ═════════════════════════════════════════════
@@ -724,6 +735,9 @@ function coletar(){
     sigNome: document.getElementById('sig-nome').value.trim(),
     sigOab:  document.getElementById('sig-oab').value.trim(),
     sigExtra: lerSigExtra(),
+    subtitulo: document.getElementById('subtitulo').value.trim(),
+    aposTitulo: document.getElementById('apos-titulo').value.trim(),
+    aposPedidos: document.getElementById('apos-pedidos').value.trim(),
     numerar: document.getElementById('opt-num').checked,
     romanos: document.getElementById('opt-rom').checked
   };
@@ -794,7 +808,18 @@ var ROTULO_RE = /^(?:(?:Recorrente|Recorrid[oa]|Apelante|Apelad[oa]|Agravante|Ag
 var ABERTURA_RE = /^(RAZ[ÕO]ES|CONTRARRAZ[ÕO]ES|MINUTA)\b/i;
 var ENDER_KW = /^(AO\s|AOS\s|À\s|ÀS\s|EXCELENT|EXMO|ILUSTR|MERIT|EGR[ÉE]GI|COLEND)/i;
 function ehMaiusculas(l){ return l === l.toUpperCase() && /[A-ZÀ-Ý]{3}/.test(l); }
-function ehEspecial(l){ return ROTULO_RE.test(l) || ehMaiusculas(l) || ehCitacao(l); }
+// tabela: células separadas por tab (cópia do Word/Docs) ou linhas "data/Total + R$" coladas sem separador
+var LINHA_TAB_RE = /^(\d{2}\/\d{2}\/\d{2,4}|Total|Subtotal|Saldo)\s*(R\$\s?-?[\d.,]+)$/i;
+function ehLinhaTabela(l){ return l.indexOf('\t') >= 0 || LINHA_TAB_RE.test(l); }
+function celulasTabela(l){
+  if(l.indexOf('\t') >= 0){ var cs = l.split('\t').map(function(c){ return c.trim(); }); while(cs.length > 1 && !cs[cs.length-1]) cs.pop(); return cs; }
+  var m = l.match(LINHA_TAB_RE); if(m) return [m[1], m[2]];
+  var c = l.match(/^([A-ZÀ-Ý][a-zà-ÿ]+)([A-ZÀ-Ý][a-zà-ÿ]+)$/); // "PeríodoValor"
+  return c ? [c[1], c[2]] : [l];
+}
+// linha de cálculo/valor: "R$ 699.169,94 × 1% × 198 ÷ 30 = R$ 46.145,22"
+function ehFormula(l){ return /^R\$\s?[\d.,]+/.test(l) && l.length < 140; }
+function ehEspecial(l){ return ROTULO_RE.test(l) || ehMaiusculas(l) || ehCitacao(l) || ehLinhaTabela(l) || ehFormula(l); }
 
 // junta linhas quebradas no meio da frase; mantém separados títulos, rótulos e citações
 function paragrafos(t){
@@ -844,7 +869,8 @@ function montarBlocos(d){
     var q = qualifParts(p);
     if(q.nome || q.resto) B.push({t:'qualif', q:q});
   });
-  if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase()});
+  if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
+  if(d.aposTitulo) paragrafos(d.aposTitulo).forEach(function(s){ B.push({t:'p', texto:s}); });
   var numerar = d.numerar !== false, romanos = d.romanos !== false;
   var cont = 0, lista = 1, rom = 0;
   function corpo(s){
@@ -860,12 +886,40 @@ function montarBlocos(d){
       rom++;
       B.push({t:'secao', texto:(romanos ? roman(rom)+' — ' : '') + tit.toUpperCase()});
     }
-    paragrafos(tp.texto).forEach(function(s){
-      if(ehCitacao(s)) B.push({t:'cit', texto:s});
-      else if(ROTULO_RE.test(s)){ var m = s.match(ROTULO_RE); B.push({t:'rotulo', rot:m[0], texto:s.slice(m[0].length)}); }
-      else if(ehMaiusculas(s) && s.length < 200) B.push({t:'centro', texto:s});
-      else corpo(s);
-    });
+    var ps = paragrafos(tp.texto);
+    for(var i = 0; i < ps.length; i++){
+      var s = ps[i];
+      // tabela: linhas consecutivas com células (o cabeçalho pode vir antes)
+      if(ehLinhaTabela(s) || (i+1 < ps.length && ehLinhaTabela(ps[i+1]) && s.length < 60 && !/[.:;]$/.test(s))){
+        var linhas = [];
+        while(i < ps.length && (ehLinhaTabela(ps[i]) || (!linhas.length && ps[i].length < 60))){ linhas.push(celulasTabela(ps[i])); i++; }
+        i--;
+        B.push({t:'tabela', linhas:linhas});
+        continue;
+      }
+      // lista após dois-pontos: itens curtos terminados em ";" (o último pode terminar em ".")
+      if(/:$/.test(s) && i+1 < ps.length && /;$/.test(ps[i+1]) && ps[i+1].length < 160 && !NUM_RE.test(ps[i+1]) && !/^[a-z][.)]\s/.test(ps[i+1])){
+        corpo(s);
+        var k = 0;
+        while(i+1 < ps.length){
+          var it = ps[i+1];
+          var item = it.length < 160 && !NUM_RE.test(it) && !/^[a-z][.)]\s/.test(it)
+            && (/;$/.test(it) || (k > 0 && /^[a-zà-ÿ]/.test(it) && /\.$/.test(it)));
+          if(!item) break;
+          B.push({t:'alinea', letra:alinea(k), texto:it});
+          k++; i++;
+          if(/\.$/.test(it)) break;
+        }
+        continue;
+      }
+      var mA = s.match(/^([a-z])[.)]\s+(.*)$/);
+      if(mA){ B.push({t:'alinea', letra:mA[1]+')', texto:mA[2]}); continue; }
+      if(ehCitacao(s)){ B.push({t:'cit', texto:s}); continue; }
+      if(ehFormula(s)){ B.push({t:'formula', texto:s}); continue; }
+      if(ROTULO_RE.test(s)){ var m = s.match(ROTULO_RE); B.push({t:'rotulo', rot:m[0], texto:s.slice(m[0].length)}); continue; }
+      if(ehMaiusculas(s) && s.length < 200){ B.push({t:'centro', texto:s}); continue; }
+      corpo(s);
+    }
   });
   if(d.pedidos.length){
     rom++;
@@ -873,12 +927,14 @@ function montarBlocos(d){
     corpo('Diante do exposto, requer'+(d.requerentes.length===1?'-se':' os requerentes')+' a Vossa Excelência que se digne a:');
     d.pedidos.forEach(function(p,i){ B.push({t:'pedido', letra:alinea(i), texto:pedidoFinal(p,i,d.pedidos.length)}); });
   }
+  if(d.aposPedidos) paragrafos(d.aposPedidos).forEach(function(s){ B.push({t:'p', texto:s}); });
   B.push({t:'fech'});
   if(d.local||d.data) B.push({t:'local', texto:(d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.'});
   var sigs = assinaturas(d);
   if(sigs.length) B.push({t:'sig', lista:sigs});
   return B;
 }
+
 function alinea(i){ return String.fromCharCode(97 + (i % 26)) + ')'; }
 function pedidoFinal(p, i, total){
   return limparPedido(p) + (i === total-1 ? '.' : ';');
@@ -894,7 +950,7 @@ function qualifParts(p){
     var m = resto.match(/^([A-ZÀ-Ý0-9][A-ZÀ-Ý0-9\s.&\-\/]{2,}?)(?=,)/);
     if(m){ nome = m[1].trim(); resto = resto.slice(m[1].length); }
   }
-  var sufixo = /vem,?\s+(respeitosamente|perante|à presença)/i.test(resto) ? '' : FRASE_VEM;
+  var sufixo = (/\bv[eê]m\b/i.test(resto) || /:\s*$/.test(resto)) ? '' : FRASE_VEM;
   return {nome:nome, resto:resto, sufixo:sufixo};
 }
 
@@ -937,7 +993,13 @@ function buildBody(d){
       case 'ender':    return '<div class="dc-enderecamento">'+b.linhas.map(esc).join('<br>')+'</div>';
       case 'processo': return '<div class="dc-processo"><strong>Autos nº.</strong> '+esc(b.texto)+'.</div>';
       case 'qualif':   return '<div class="dc-qualificacao">'+(b.q.nome?'<strong>'+esc(b.q.nome)+'</strong>':'')+esc(b.q.resto)+esc(b.q.sufixo)+'</div>';
-      case 'titulo':   return '<div class="dc-titulo-box">'+esc(b.texto)+'</div>';
+      case 'titulo':   return '<div class="dc-titulo-box">'+esc(b.texto)+(b.sub?'<div class="dc-subtitulo">'+esc(b.sub)+'</div>':'')+'</div>';
+      case 'alinea':   return '<div class="dc-item"><span class="dc-item-num">'+esc(b.letra)+'</span><span class="dc-item-body">'+esc(b.texto)+'</span></div>';
+      case 'formula':  return '<div class="dc-centro">'+esc(b.texto)+'</div>';
+      case 'tabela':   return '<table class="dc-tabela">'+b.linhas.map(function(r, ri){
+                         var cab = ri === 0 && !r.some(function(c){ return /R\$|\d/.test(c); });
+                         return '<tr>'+r.map(function(c){ return (cab?'<th>':'<td>')+esc(c)+(cab?'</th>':'</td>'); }).join('')+'</tr>';
+                       }).join('')+'</table>';
       case 'abertura': return '<div class="dc-titulo-box dc-quebra">'+esc(b.texto)+'</div>';
       case 'secao':    return '<div class="dc-secao">'+esc(b.texto)+'</div>';
       case 'centro':   return '<div class="dc-centro">'+esc(b.texto)+'</div>';
@@ -1078,12 +1140,33 @@ function wP(runs, o){
   if(o.num) ppr +='<w:numPr><w:ilvl w:val="0"/><w:numId w:val="'+o.num+'"/></w:numPr>';
   if(o.box) ppr += '<w:pBdr>' + ['top','left','bottom','right'].map(function(s){
     return '<w:'+s+' w:val="single" w:sz="12" w:space="4" w:color="1A1A1A"/>'; }).join('') + '</w:pBdr>';
+  if(o.tabs) ppr += '<w:tabs><w:tab w:val="left" w:pos="'+o.tabs+'"/></w:tabs>';
   ppr += '<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?200:o.after)+'" w:line="'+(o.line||360)+'" w:lineRule="auto"/>';
   if(o.ind) ppr += '<w:ind '+o.ind+'/>';
   ppr += '<w:jc w:val="'+(o.jc||'both')+'"/>';
   return '<w:p><w:pPr>'+ppr+'</w:pPr>'+(runs||'')+'</w:p>';
 }
 function wVazio(){ return wP('', {after:0}); }
+function wTabela(linhas){
+  var cols = Math.max.apply(null, linhas.map(function(r){ return r.length; }));
+  var larg = Math.round(6000 / cols);
+  var borda = ['top','left','bottom','right','insideH','insideV'].map(function(s){ return '<w:'+s+' w:val="single" w:sz="6" w:space="0" w:color="1A1A1A"/>'; }).join('');
+  var x = '<w:tbl><w:tblPr><w:tblW w:w="'+(larg*cols)+'" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>'+borda+'</w:tblBorders>'
+    + '<w:tblCellMar><w:left w:w="113" w:type="dxa"/><w:right w:w="113" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>';
+  for(var c = 0; c < cols; c++) x += '<w:gridCol w:w="'+larg+'"/>';
+  x += '</w:tblGrid>';
+  linhas.forEach(function(r, ri){
+    var cab = ri === 0 && !r.some(function(c){ return /R\$|\d/.test(c); });
+    x += '<w:tr>';
+    for(var c = 0; c < cols; c++){
+      var txt = r[c] || '';
+      x += '<w:tc><w:tcPr><w:tcW w:w="'+larg+'" w:type="dxa"/>'+(cab?'<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>':'')+'</w:tcPr>'
+        + wP(wRun(txt,{b:cab, sz:21}), {jc:(c === cols-1 && !cab ? 'right' : 'left'), after:0, line:240}) + '</w:tc>';
+    }
+    x += '</w:tr>';
+  });
+  return x + '</w:tbl>' + wP('', {after:120});
+}
 
 function docxBody(d){
   var RECUO = 'w:left="0" w:firstLine="709"';
@@ -1095,7 +1178,14 @@ function docxBody(d){
         x += wVazio(); break;
       case 'processo': x += wP(wRun('Autos nº.',{b:1}) + wRun(' '+b.texto+'.'), {jc:'left'}); break;
       case 'qualif':   x += wP((b.q.nome?wRun(b.q.nome,{b:1}):'') + wRun(b.q.resto + b.q.sufixo), {ind:RECUO}); break;
-      case 'titulo':   x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:240, after:240}); break;
+      case 'titulo':
+        // parágrafos vizinhos com a mesma borda formam uma única moldura
+        x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:240, after:b.sub?0:240, line:b.sub?276:360});
+        if(b.sub) x += wP(wRun(b.sub,{b:1, sz:20}), {jc:'center', box:1, after:240, line:276});
+        break;
+      case 'alinea':   x += wP(wRun(b.letra,{b:1}) + '<w:r><w:tab/></w:r>' + wRun(b.texto), {ind:'w:left="1418" w:hanging="709"', tabs:1418}); break;
+      case 'formula':  x += wP(wRun(b.texto,{b:1}), {jc:'center', after:120}); break;
+      case 'tabela':   x += wTabela(b.linhas); break;
       case 'abertura': x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:0, after:240, quebra:1}); break;
       case 'secao':    x += wP(wRun(b.texto,{b:1}), {jc:'left', before:240, after:120}); break;
       case 'centro':   x += wP(wRun(b.texto,{b:1}), {jc:'center', after:120, line:276}); break;
@@ -1162,7 +1252,7 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   document.getElementById('tipo-peca').value='PETIÇÃO INICIAL';
   document.getElementById('titulo-livre').value='';
   document.getElementById('f-livre').style.display='none';
-  ['num-autos','vara','enderecamento','sig-nome','sig-oab','sig-extra'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['num-autos','vara','enderecamento','sig-nome','sig-oab','sig-extra','subtitulo','apos-titulo','apos-pedidos'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('opt-num').checked = true; document.getElementById('opt-rom').checked = true;
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
@@ -1199,6 +1289,7 @@ function stripHtml(html){
     .replace(/<\/p>/gi,'\n\n')
     .replace(/<\/div>/gi,'\n')
     .replace(/<\/li>/gi,'\n')
+    .replace(/<\/t[dh]>/gi,'\t')
     .replace(/<\/tr>/gi,'\n')
     .replace(/<\/h[1-6]>/gi,'\n\n');
   return tmp.textContent || tmp.innerText || '';
@@ -1211,6 +1302,7 @@ function parsearPeticao(raw){
     processo:'', vara:'', enderecamento:'', titulo:'',
     requerentes:[], requeridos:[], topicos:[], pedidos:[],
     local:'', data:'', sigNome:'', sigOab:'', sigExtra:[],
+    subtitulo:'', aposTitulo:'', aposPedidos:'',
     numerar:true, romanos:false
   };
 
@@ -1220,6 +1312,8 @@ function parsearPeticao(raw){
   var OAB_RE = /OAB[\s\/]+[A-Z]{2}\s+n[oº°]\s*([\d.]+)/i;
   var FECH_RE = /^(N[ea]?st?es\s+termos|Nesses\s+termos|Termos\s+em\s+que|Pede\s+deferimento)/i;
   var SECAO_INICIO_RE = /^(DOS?|DAS?|PRELIMINAR|PRELIMINARMENTE|S[ÍI]NTESE|RESUMO|BREVE|M[ÉE]RITO|FATOS)\b/;
+  // "1. Tempestividade" — título curto numerado, sem pontuação final
+  var NUMHEAD_RE = /^(\d{1,2})[.)]\s+([A-ZÀ-Ý][^.;:,!?]{1,110})$/;
 
   function ehTituloSecao(l){
     return ehMaiusculas(l) && l.length <= 180 && !ENDER_KW.test(l) && !ROTULO_RE.test(l)
@@ -1230,7 +1324,7 @@ function parsearPeticao(raw){
   var i = 0;
   while(i < linhas.length && !linhas[i]) i++;
   var ender = [];
-  while(i < linhas.length && linhas[i] && ehMaiusculas(linhas[i]) && !PROC_RE.test(linhas[i])){ ender.push(linhas[i]); i++; }
+  while(i < linhas.length && linhas[i] && (ehMaiusculas(linhas[i]) || (!ender.length && ENDER_KW.test(linhas[i]))) && !PROC_RE.test(linhas[i])){ ender.push(linhas[i]); i++; }
   resultado.enderecamento = ender.join('\n');
 
   // ── 2. cabeçalho: processo, qualificação, título ──
@@ -1242,9 +1336,23 @@ function parsearPeticao(raw){
     if(!l) continue;
     if(!resultado.processo && PROC_RE.test(l) && l.length < 90){ resultado.processo = l.match(PROC_RE)[1]; continue; }
     if(ROM_RE.test(l) || PED_HEADER_RE.test(l)) break;
+    if(NUMHEAD_RE.test(l)) break;
     if(ehMaiusculas(l) && l.length < 160){
       if(SECAO_INICIO_RE.test(l) && !resultado.titulo) break;  // primeira seção, peça sem título
-      if(!resultado.titulo){ resultado.titulo = l; i++; break; }
+      if(!resultado.titulo){
+        resultado.titulo = l; i++;
+        // subtítulo em maiúsculas e complemento "em face de ..." logo após o título
+        var sub = [];
+        for(; i < fim; i++){
+          var s2 = linhas[i];
+          if(!s2) continue;
+          if(ehMaiusculas(s2) && !SECAO_INICIO_RE.test(s2) && !ROM_RE.test(s2) && !NUMHEAD_RE.test(s2) && !PED_HEADER_RE.test(s2)){ sub.push(s2); continue; }
+          if(/^[a-zà-ÿ]/.test(s2) || /^em face/i.test(s2)){ resultado.aposTitulo = s2; i++; }
+          break;
+        }
+        resultado.subtitulo = sub.join(' ');
+        break;
+      }
     }
     if(l.length > 60 && /\bvem\b|\bCPF\b|\bCNPJ\b|inscrit|residente|qualificad/i.test(l) && !resultado.requerentes.length){
       resultado.requerentes.push({nome:'', qual:l}); continue;
@@ -1263,6 +1371,9 @@ function parsearPeticao(raw){
     if(modoPedidos){ pedLinhas.push(ln); continue; }
     var mRom = ln.match(ROM_RE);
     var tituloRom = mRom && ehMaiusculas(mRom[2]) ? mRom[2].trim() : '';
+    // seção numerada em algarismos comuns ("1. Tempestividade") vira título em romano
+    var mNum = !tituloRom && ln.match(NUMHEAD_RE);
+    if(mNum){ mRom = mNum; tituloRom = mNum[2].trim(); }
     if(PED_HEADER_RE.test(tituloRom || ln)){ modoPedidos = true; if(mRom) resultado.romanos = true; continue; }
     if(tituloRom){ resultado.romanos = true; novoTopico(tituloRom); continue; }
     if(ln && ehTituloSecao(ln)){ novoTopico(ln); continue; }
@@ -1271,7 +1382,15 @@ function parsearPeticao(raw){
   }
   novoTopico('');
   // pedidos que vieram no mesmo parágrafo do fechamento
-  if(modoPedidos) resultado.pedidos = extrairPedidos(pedLinhas.concat(linhas.slice(fim, fim+1)));
+  if(modoPedidos){
+    // "Dá-se à causa o valor..." depois dos pedidos fica como texto à parte
+    var kDa = pedLinhas.findIndex(function(x){ return /^(Dá-se|Atribui-se)\b/i.test(x); });
+    if(kDa >= 0){
+      resultado.aposPedidos = pedLinhas.slice(kDa).filter(Boolean).join('\n');
+      pedLinhas = pedLinhas.slice(0, kDa);
+    }
+    resultado.pedidos = extrairPedidos(pedLinhas.concat(kDa >= 0 ? [] : linhas.slice(fim, fim+1)));
+  }
 
   // ── 4. fechamento: local/data e advogados (nome + OAB) ──
   var cauda = linhas.slice(fim);
