@@ -366,17 +366,24 @@
   #tabstrip.collapsed .company-badge-wrap{display:none;}
   .company-badge{
     width:42px;height:42px;cursor:pointer;border:none;background:transparent;padding:0;
-    border-radius:50%;overflow:hidden;
+    position:relative;border-radius:50%;overflow:hidden;
     box-shadow:0 4px 10px rgba(0,0,0,.5);
+    perspective:260px;
   }
-  .company-badge img{
-    width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;
-    animation:fb-badge-spin 6s linear infinite;
+  .sphere-globe{
+    position:relative;width:100%;height:100%;transform-style:preserve-3d;
+    animation:fb-globe-spin 6s linear infinite;
   }
-  .company-badge:hover img{animation-duration:1.4s;}
-  @keyframes fb-badge-spin{
-    from{transform:rotate(0deg);}
-    to{transform:rotate(360deg);}
+  .company-badge:hover .sphere-globe{animation-duration:1.6s;}
+  .sphere-face{
+    position:absolute;inset:0;border-radius:50%;background-size:cover;background-position:center;
+    backface-visibility:hidden;
+  }
+  .sphere-face.front{transform:translateZ(6px);}
+  .sphere-face.back{transform:translateZ(-6px) rotateY(180deg);}
+  @keyframes fb-globe-spin{
+    from{transform:rotateY(0deg);}
+    to{transform:rotateY(360deg);}
   }
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
@@ -1011,7 +1018,10 @@
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <div class="company-badge-wrap">
           <button type="button" class="company-badge" id="company-badge-btn" title="Dados da empresa">
-            <img src="assets/logo-sphere.png" alt="Fonseca e Braga">
+            <div class="sphere-globe">
+              <div class="sphere-face front" style="background-image:url('assets/logo-sphere2.png');"></div>
+              <div class="sphere-face back" style="background-image:url('assets/logo-sphere2.png');"></div>
+            </div>
           </button>
         </div>
         <p class="cnpj-footer">
