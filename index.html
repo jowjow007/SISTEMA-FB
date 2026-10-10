@@ -2555,19 +2555,27 @@
   function carregarFotoAvatarMobile(){
     if (mhAvatarFotoCarregada || !currentProfile.uid) return;
     mhAvatarFotoCarregada = true;
+    // DIAGNÓSTICO TEMPORÁRIO — toca na bolinha pra ver os detalhes. Remover depois.
+    els.mhAvatarInner.style.cursor = 'pointer';
+    els.mhAvatarInner.addEventListener('click', function(){
+      alert('uid: ' + currentProfile.uid + '\ncampos: ' + (window.__fotoDiagCampos || '(ainda carregando...)') + '\nphotoBase64: ' + (window.__fotoDiagValor || '(nenhum)'));
+    });
     db.collection('perfis').doc(currentProfile.uid).get().then(function(doc){
-      const dados = doc.data();
-      if (dados && dados.photoBase64) {
-        els.mhAvatarInner.style.backgroundImage = 'url(' + dados.photoBase64 + ')';
+      const dados = doc.data() || {};
+      window.__fotoDiagCampos = Object.keys(dados).join(', ') || '(documento vazio)';
+      const v = dados.photoBase64;
+      window.__fotoDiagValor = v ? ('string de ' + String(v).length + ' caracteres, começa com "' + String(v).slice(0, 20) + '..."') : JSON.stringify(v);
+      if (v) {
+        els.mhAvatarInner.style.backgroundImage = 'url(' + v + ')';
         els.mhAvatarInner.classList.add('has-photo');
         els.mhAvatarInner.textContent = '';
       } else {
-        // DIAGNÓSTICO TEMPORÁRIO — remover depois de descobrir por que a foto não aparece.
         els.mhAvatarInner.textContent = doc.exists ? 'SEM-FOTO' : 'SEM-DOC';
         els.mhAvatarInner.style.fontSize = '8px';
       }
     }).catch(function(err){
-      // DIAGNÓSTICO TEMPORÁRIO — remover depois de descobrir por que a foto não aparece.
+      window.__fotoDiagCampos = 'erro antes de ler';
+      window.__fotoDiagValor = (err && (err.code + ': ' + err.message)) || 'erro desconhecido';
       els.mhAvatarInner.textContent = (err && err.code) || 'ERRO';
       els.mhAvatarInner.style.fontSize = '8px';
     });
@@ -3588,13 +3596,14 @@
 (function(){
   var canvas = document.getElementById('globe-canvas');
   if(!canvas) return;
-  /* render at high internal resolution, display small via CSS for crispness */
-  var RES = 200;
-  canvas.width = canvas.height = RES;
-  canvas.style.width = canvas.style.height = '48px';
+  var DISP = 56;
+  var dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = canvas.height = Math.round(DISP * dpr);
+  canvas.style.width = canvas.style.height = DISP + 'px';
   var ctx = canvas.getContext('2d');
-  var CX = RES / 2, CY = RES / 2;
-  var CR = RES / 2 - 1;
+  ctx.scale(dpr, dpr);
+  var CX = DISP / 2, CY = DISP / 2;
+  var CR = DISP / 2 - 0.5;
   var GR = CR * 0.60;
   var TILT = 22 * Math.PI / 180;
   var SEGS = 80, LATS = 5, LONS = 8;
@@ -3619,7 +3628,7 @@
       ctx.moveTo(a.px, a.py);
       ctx.lineTo(b.px, b.py);
       ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 0.5;
       ctx.stroke();
     }
   }
@@ -3645,9 +3654,9 @@
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(CX, CY, CR - 1, 0, Math.PI * 2);
+    ctx.arc(CX, CY, CR - 0.5, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 0.7;
     ctx.stroke();
     for(var i = 1; i <= LATS; i++)
       drawLine(buildLat(i * Math.PI / (LATS + 1)));
