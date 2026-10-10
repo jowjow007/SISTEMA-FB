@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -446,24 +446,24 @@
   /* pill container — collapses to a circle, expands on hover */
   .globe-pill{
     display:inline-flex;align-items:center;justify-content:flex-end;
-    background:#0a0304;border-radius:999px;
-    height:42px;width:42px;overflow:hidden;cursor:pointer;
+    background:#000;border-radius:999px;
+    height:48px;width:48px;overflow:hidden;cursor:pointer;
     border:none;padding:0;
-    box-shadow:0 4px 14px rgba(0,0,0,.55);
+    box-shadow:0 4px 16px rgba(0,0,0,.7);
     transition:width .35s cubic-bezier(.4,0,.2,1);
     position:relative;
   }
-  .globe-pill:hover{width:160px;}
+  .globe-pill:hover{width:172px;}
   .globe-pill-label{
     flex:1;color:#fff;font-size:.72rem;font-weight:500;letter-spacing:.01em;
-    white-space:nowrap;padding-left:14px;
+    white-space:nowrap;padding-left:16px;
     opacity:0;transform:translateX(-6px);
     transition:opacity .25s ease .05s, transform .25s ease .05s;
     pointer-events:none;
   }
   .globe-pill:hover .globe-pill-label{opacity:1;transform:translateX(0);}
-  .globe-pill-globe{flex-shrink:0;width:42px;height:42px;border-radius:50%;overflow:hidden;}
-  #globe-canvas{display:block;border-radius:50%;}
+  .globe-pill-globe{flex-shrink:0;width:48px;height:48px;border-radius:50%;overflow:hidden;}
+  #globe-canvas{display:block;}
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
     align-items:center;justify-content:center;padding:20px;
@@ -1146,7 +1146,7 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Fonseca e Braga</span>
             <span class="globe-pill-globe">
-              <canvas id="globe-canvas" width="84" height="84" style="width:42px;height:42px;"></canvas>
+              <canvas id="globe-canvas" width="96" height="96" style="width:48px;height:48px;"></canvas>
             </span>
           </button>
         </div>
@@ -3584,36 +3584,37 @@
   var canvas = document.getElementById('globe-canvas');
   if(!canvas) return;
   var dpr = window.devicePixelRatio || 1;
-  var SIZE = 42;
+  var SIZE = 48;
   canvas.width = canvas.height = SIZE * dpr;
   canvas.style.width = canvas.style.height = SIZE + 'px';
   var ctx = canvas.getContext('2d');
-  var R = SIZE * dpr / 2 - 2 * dpr;
-  var cx = SIZE * dpr / 2, cy = SIZE * dpr / 2;
+  var CX = SIZE * dpr / 2, CY = SIZE * dpr / 2;
+  var CR = SIZE * dpr / 2 - 0.5 * dpr;
+  var GR = CR * 0.60;
+  var TILT = 22 * Math.PI / 180;
+  var SEGS = 80, LATS = 5, LONS = 8;
   var angle = 0, speed = 0.006;
-  var SEGS = 64;
-  var LATS = 6, LONS = 8;
 
-  /* orthographic projection, rotation around Y only */
   function proj(theta, phi){
-    var x = Math.sin(theta) * Math.cos(phi + angle);
-    var y = Math.cos(theta);
-    var z = Math.sin(theta) * Math.sin(phi + angle);
-    return {px: cx + x * R, py: cy - y * R, z: z};
+    var x0 = Math.sin(theta) * Math.cos(phi + angle);
+    var y0 = Math.cos(theta);
+    var z0 = Math.sin(theta) * Math.sin(phi + angle);
+    var x = x0;
+    var y = y0 * Math.cos(TILT) - z0 * Math.sin(TILT);
+    var z = y0 * Math.sin(TILT) + z0 * Math.cos(TILT);
+    return {px: CX + x * GR, py: CY - y * GR, z: z};
   }
 
-  /* draw one grid line as small segments, alpha driven by z depth */
-  function drawLine(pts3d){
-    for(var i = 0; i < pts3d.length - 1; i++){
-      var a = pts3d[i], b = pts3d[i+1];
+  function drawLine(pts){
+    for(var i = 0; i < pts.length - 1; i++){
+      var a = pts[i], b = pts[i+1];
       var midZ = (a.z + b.z) * 0.5;
-      /* front: full brightness; back: dim */
-      var alpha = midZ >= 0 ? 0.82 : 0.16;
+      var alpha = midZ >= 0 ? 0.88 : 0.22;
       ctx.beginPath();
       ctx.moveTo(a.px, a.py);
       ctx.lineTo(b.px, b.py);
-      ctx.strokeStyle = 'rgba(216,178,90,' + alpha + ')';
-      ctx.lineWidth = 0.9 * dpr;
+      ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
+      ctx.lineWidth = 0.8 * dpr;
       ctx.stroke();
     }
   }
@@ -3628,34 +3629,25 @@
   function buildLon(phi){
     var pts = [];
     for(var s = 0; s <= SEGS; s++)
-      pts.push(proj(s / SEGS * Math.PI, phi));
+      pts.push(proj(s / SEGS * 2 * Math.PI, phi));
     return pts;
   }
 
   function draw(){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    /* background circle */
     ctx.beginPath();
-    ctx.arc(cx, cy, R + 2 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = '#060202';
+    ctx.arc(CX, CY, CR, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
     ctx.fill();
-
-    /* outer ring */
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(216,178,90,0.55)';
-    ctx.lineWidth = 1 * dpr;
+    ctx.arc(CX, CY, CR - 0.5 * dpr, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 0.8 * dpr;
     ctx.stroke();
-
-    /* latitude lines */
-    for(var i = 1; i < LATS; i++)
-      drawLine(buildLat(i * Math.PI / LATS));
-
-    /* longitude lines */
+    for(var i = 1; i <= LATS; i++)
+      drawLine(buildLat(i * Math.PI / (LATS + 1)));
     for(var i = 0; i < LONS; i++)
       drawLine(buildLon(i * Math.PI / LONS));
-
     angle += speed;
     requestAnimationFrame(draw);
   }
