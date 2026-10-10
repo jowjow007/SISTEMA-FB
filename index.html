@@ -2561,8 +2561,16 @@
         els.mhAvatarInner.style.backgroundImage = 'url(' + dados.photoBase64 + ')';
         els.mhAvatarInner.classList.add('has-photo');
         els.mhAvatarInner.textContent = '';
+      } else {
+        // DIAGNÓSTICO TEMPORÁRIO — remover depois de descobrir por que a foto não aparece.
+        els.mhAvatarInner.textContent = doc.exists ? 'SEM-FOTO' : 'SEM-DOC';
+        els.mhAvatarInner.style.fontSize = '8px';
       }
-    }).catch(function(){ /* sem foto cadastrada: mantém as iniciais */ });
+    }).catch(function(err){
+      // DIAGNÓSTICO TEMPORÁRIO — remover depois de descobrir por que a foto não aparece.
+      els.mhAvatarInner.textContent = (err && err.code) || 'ERRO';
+      els.mhAvatarInner.style.fontSize = '8px';
+    });
   }
 
   function subscribeMobileHomeBadges(){
