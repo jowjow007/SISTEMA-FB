@@ -1147,10 +1147,10 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Fonseca e Braga</span>
             <span class="globe-pill-globe">
-              <svg id="globe-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="49" fill="#000"/>
-                <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.8"/>
-                <g id="globe-lines"></g>
+              <svg id="globe-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">
+                <circle cx="50" cy="50" r="49.5" fill="#000"/>
+                <circle cx="50" cy="50" r="48.5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+                <g id="globe-lines" stroke-linecap="round" stroke-linejoin="round"></g>
               </svg>
             </span>
           </button>
@@ -3600,84 +3600,46 @@
 (function(){
   var g = document.getElementById('globe-lines');
   if(!g) return;
-  var CX=50, CY=50, GR=29;
+  var CX=50, CY=50, GR=28;
   var TILT = 22 * Math.PI / 180;
-  var SEGS=72, LATS=5, LONS=8;
+  var SEGS=36, LATS=5, LONS=8;
   var angle=0, speed=0.006;
-  var NS='http://www.w3.org/2000/svg';
 
   function proj(theta, phi){
     var x0=Math.sin(theta)*Math.cos(phi+angle);
     var y0=Math.cos(theta);
     var z0=Math.sin(theta)*Math.sin(phi+angle);
-    var x=x0;
-    var y=y0*Math.cos(TILT)-z0*Math.sin(TILT);
-    var z=y0*Math.sin(TILT)+z0*Math.cos(TILT);
-    return {px:CX+x*GR, py:CY-y*GR, z:z};
+    return {
+      px: CX + x0*GR,
+      py: CY - (y0*Math.cos(TILT) - z0*Math.sin(TILT))*GR,
+      z:  y0*Math.sin(TILT) + z0*Math.cos(TILT)
+    };
   }
 
   function buildLat(theta){
-    var pts=[];
-    for(var s=0;s<=SEGS;s++) pts.push(proj(theta, s/SEGS*2*Math.PI));
-    return pts;
+    var p=[]; for(var s=0;s<=SEGS;s++) p.push(proj(theta,s/SEGS*2*Math.PI)); return p;
   }
-
   function buildLon(phi){
-    var pts=[];
-    for(var s=0;s<=SEGS;s++) pts.push(proj(s/SEGS*2*Math.PI, phi));
-    return pts;
+    var p=[]; for(var s=0;s<=SEGS;s++) p.push(proj(s/SEGS*2*Math.PI,phi)); return p;
   }
 
-  function ptsToSegments(pts){
-    /* split into front/back runs and return array of {d, alpha} */
-    var segs=[], run=[], curFront=null;
+  function linesToSVG(pts){
+    var h='';
     for(var i=0;i<pts.length-1;i++){
-      var a=pts[i], b=pts[i+1];
-      var front=(a.z+b.z)*0.5>=0;
-      if(curFront===null) curFront=front;
-      if(front!==curFront){
-        segs.push({run:run.slice(), alpha:curFront?0.88:0.22});
-        run=[pts[i]]; curFront=front;
-      }
-      run.push(pts[i+1]);
+      var a=pts[i],b=pts[i+1];
+      var alpha=(a.z+b.z)>=0 ? 0.85 : 0.20;
+      h+='<line x1="'+a.px.toFixed(2)+'" y1="'+a.py.toFixed(2)+
+           '" x2="'+b.px.toFixed(2)+'" y2="'+b.py.toFixed(2)+
+           '" stroke="rgba(255,255,255,'+alpha+')" stroke-width="0.9"/>';
     }
-    if(run.length>1) segs.push({run:run, alpha:curFront?0.88:0.22});
-    return segs;
-  }
-
-  function runToD(run){
-    var d='M'+run[0].px.toFixed(2)+' '+run[0].py.toFixed(2);
-    for(var i=1;i<run.length;i++) d+='L'+run[i].px.toFixed(2)+' '+run[i].py.toFixed(2);
-    return d;
-  }
-
-  /* pre-create path elements */
-  var paths=[];
-  var totalLines=(LATS+LONS)*20; /* generous pool */
-  for(var i=0;i<totalLines;i++){
-    var p=document.createElementNS(NS,'path');
-    p.setAttribute('fill','none');
-    p.setAttribute('stroke-width','0.7');
-    p.style.display='none';
-    g.appendChild(p);
-    paths.push(p);
+    return h;
   }
 
   function draw(){
-    var allSegs=[];
-    for(var i=1;i<=LATS;i++) ptsToSegments(buildLat(i*Math.PI/(LATS+1))).forEach(function(s){allSegs.push(s);});
-    for(var i=0;i<LONS;i++) ptsToSegments(buildLon(i*Math.PI/LONS)).forEach(function(s){allSegs.push(s);});
-
-    for(var i=0;i<paths.length;i++){
-      if(i<allSegs.length){
-        var s=allSegs[i];
-        paths[i].setAttribute('d', runToD(s.run));
-        paths[i].setAttribute('stroke','rgba(255,255,255,'+s.alpha+')');
-        paths[i].style.display='';
-      } else {
-        paths[i].style.display='none';
-      }
-    }
+    var h='';
+    for(var i=1;i<=LATS;i++) h+=linesToSVG(buildLat(i*Math.PI/(LATS+1)));
+    for(var i=0;i<LONS;i++)  h+=linesToSVG(buildLon(i*Math.PI/LONS));
+    g.innerHTML=h;
     angle+=speed;
     requestAnimationFrame(draw);
   }
