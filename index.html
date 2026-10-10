@@ -448,7 +448,7 @@
   .globe-pill{
     display:inline-flex;align-items:center;justify-content:flex-end;
     background:#000;border-radius:999px;
-    height:56px;width:56px;overflow:hidden;cursor:pointer;
+    height:44px;width:44px;overflow:hidden;cursor:pointer;
     border:none;padding:0;
     box-shadow:0 4px 16px rgba(0,0,0,.7);
     transition:width .35s cubic-bezier(.4,0,.2,1);
@@ -463,7 +463,7 @@
     pointer-events:none;
   }
   .globe-pill:hover .globe-pill-label{opacity:1;transform:translateX(0);}
-  .globe-pill-globe{flex-shrink:0;width:56px;height:56px;border-radius:50%;overflow:hidden;}
+  .globe-pill-globe{flex-shrink:0;width:44px;height:44px;border-radius:50%;overflow:hidden;}
   #globe-canvas{display:block;}
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
@@ -1147,7 +1147,7 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Fonseca e Braga</span>
             <span class="globe-pill-globe">
-              <canvas id="globe-canvas" style="width:56px;height:56px;"></canvas>
+              <canvas id="globe-canvas" style="width:44px;height:44px;display:block;"></canvas>
             </span>
           </button>
         </div>
@@ -3596,14 +3596,14 @@
 (function(){
   var canvas = document.getElementById('globe-canvas');
   if(!canvas) return;
-  var DISP = 56;
-  var dpr = Math.min(window.devicePixelRatio || 1, 3);
-  canvas.width = canvas.height = Math.round(DISP * dpr);
+  /* 3x super-sampling: draw at 132px, display at 44px via CSS */
+  var DISP = 44, S = 3;
+  var W = DISP * S;
+  canvas.width = canvas.height = W;
   canvas.style.width = canvas.style.height = DISP + 'px';
   var ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  var CX = DISP / 2, CY = DISP / 2;
-  var CR = DISP / 2 - 0.5;
+  var CX = W / 2, CY = W / 2;
+  var CR = W / 2 - S;
   var GR = CR * 0.60;
   var TILT = 22 * Math.PI / 180;
   var SEGS = 80, LATS = 5, LONS = 8;
@@ -3628,7 +3628,7 @@
       ctx.moveTo(a.px, a.py);
       ctx.lineTo(b.px, b.py);
       ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 1.2;
       ctx.stroke();
     }
   }
@@ -3648,15 +3648,15 @@
   }
 
   function draw(){
-    ctx.clearRect(0, 0, DISP, DISP);
+    ctx.clearRect(0, 0, W, W);
     ctx.beginPath();
     ctx.arc(CX, CY, CR, 0, Math.PI * 2);
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(CX, CY, CR - 0.5, 0, Math.PI * 2);
+    ctx.arc(CX, CY, CR - S * 0.5, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 0.7;
+    ctx.lineWidth = 1.8;
     ctx.stroke();
     for(var i = 1; i <= LATS; i++)
       drawLine(buildLat(i * Math.PI / (LATS + 1)));
