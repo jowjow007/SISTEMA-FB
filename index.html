@@ -1150,7 +1150,7 @@
               <svg id="globe-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">
                 <circle cx="50" cy="50" r="49.5" fill="#000"/>
                 <circle cx="50" cy="50" r="48.5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
-                <g id="globe-lines" stroke-linecap="round" stroke-linejoin="round"></g>
+                <g id="globe-lines"></g>
               </svg>
             </span>
           </button>
@@ -3602,7 +3602,7 @@
   if(!g) return;
   var CX=50, CY=50, GR=28;
   var TILT = 22 * Math.PI / 180;
-  var SEGS=36, LATS=5, LONS=8;
+  var SEGS=60, LATS=5, LONS=8;
   var angle=0, speed=0.006;
 
   function proj(theta, phi){
@@ -3623,22 +3623,34 @@
     var p=[]; for(var s=0;s<=SEGS;s++) p.push(proj(s/SEGS*2*Math.PI,phi)); return p;
   }
 
-  function linesToSVG(pts){
-    var h='';
-    for(var i=0;i<pts.length-1;i++){
-      var a=pts[i],b=pts[i+1];
-      var alpha=(a.z+b.z)>=0 ? 0.85 : 0.20;
-      h+='<line x1="'+a.px.toFixed(2)+'" y1="'+a.py.toFixed(2)+
-           '" x2="'+b.px.toFixed(2)+'" y2="'+b.py.toFixed(2)+
-           '" stroke="rgba(255,255,255,'+alpha+')" stroke-width="0.9"/>';
+  /* split pts into continuous front/back runs, draw each as one polyline */
+  function ptsToSVG(pts){
+    var h='', run=[], curFront=(pts[0].z>=0);
+    function flushRun(){
+      if(run.length<2) return;
+      var alpha=curFront?0.88:0.20;
+      var coords=run.map(function(p){return p.px.toFixed(2)+','+p.py.toFixed(2);}).join(' ');
+      h+='<polyline points="'+coords+'" fill="none" stroke="rgba(255,255,255,'+alpha+')" stroke-width="0.9"/>';
     }
+    for(var i=0;i<pts.length;i++){
+      var front=pts[i].z>=0;
+      if(front!==curFront){
+        run.push(pts[i]); /* overlap point for smooth join */
+        flushRun();
+        run=[pts[i]];
+        curFront=front;
+      } else {
+        run.push(pts[i]);
+      }
+    }
+    flushRun();
     return h;
   }
 
   function draw(){
     var h='';
-    for(var i=1;i<=LATS;i++) h+=linesToSVG(buildLat(i*Math.PI/(LATS+1)));
-    for(var i=0;i<LONS;i++)  h+=linesToSVG(buildLon(i*Math.PI/LONS));
+    for(var i=1;i<=LATS;i++) h+=ptsToSVG(buildLat(i*Math.PI/(LATS+1)));
+    for(var i=0;i<LONS;i++)  h+=ptsToSVG(buildLon(i*Math.PI/LONS));
     g.innerHTML=h;
     angle+=speed;
     requestAnimationFrame(draw);
