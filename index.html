@@ -441,27 +441,29 @@
   }
   .cnpj-footer .firm{display:block;font-size:.56rem;color:var(--muted);letter-spacing:0;opacity:.9;white-space:nowrap;}
   .cnpj-footer .cnpj-num{display:block;font-size:.58rem;color:var(--muted);opacity:.62;letter-spacing:.02em;margin-top:2px;white-space:nowrap;}
-  .company-badge-wrap{display:flex;justify-content:center;padding:4px 0;position:relative;}
+  .company-badge-wrap{display:flex;justify-content:flex-end;padding:4px 8px 4px 0;}
   #tabstrip.collapsed .company-badge-wrap{display:none;}
-  .company-badge{
-    width:42px;height:42px;cursor:pointer;border:none;background:transparent;padding:0;
-    position:relative;border-radius:50%;overflow:hidden;
-    box-shadow:0 4px 10px rgba(0,0,0,.5);
+  /* pill container — collapses to a circle, expands on hover */
+  .globe-pill{
+    display:inline-flex;align-items:center;justify-content:flex-end;
+    background:#0a0304;border-radius:999px;
+    height:42px;width:42px;overflow:hidden;cursor:pointer;
+    border:none;padding:0;
+    box-shadow:0 4px 14px rgba(0,0,0,.55);
+    transition:width .35s cubic-bezier(.4,0,.2,1);
+    position:relative;
   }
+  .globe-pill:hover{width:160px;}
+  .globe-pill-label{
+    flex:1;color:#fff;font-size:.72rem;font-weight:500;letter-spacing:.01em;
+    white-space:nowrap;padding-left:14px;
+    opacity:0;transform:translateX(-6px);
+    transition:opacity .25s ease .05s, transform .25s ease .05s;
+    pointer-events:none;
+  }
+  .globe-pill:hover .globe-pill-label{opacity:1;transform:translateX(0);}
+  .globe-pill-globe{flex-shrink:0;width:42px;height:42px;border-radius:50%;overflow:hidden;}
   #globe-canvas{display:block;border-radius:50%;}
-  .globe-tooltip{
-    position:absolute;left:52px;top:50%;transform:translateY(-50%);
-    background:rgba(10,3,2,.92);border:1px solid rgba(216,178,90,.45);
-    color:rgba(216,178,90,.95);font-size:.68rem;letter-spacing:.04em;
-    white-space:nowrap;padding:5px 10px;border-radius:6px;
-    pointer-events:none;opacity:0;transition:opacity .2s ease;
-    box-shadow:0 2px 12px rgba(0,0,0,.5);z-index:20;
-  }
-  .globe-tooltip::before{
-    content:'';position:absolute;right:100%;top:50%;transform:translateY(-50%);
-    border:5px solid transparent;border-right-color:rgba(216,178,90,.45);
-  }
-  .company-badge-wrap:hover .globe-tooltip{opacity:1;}
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
     align-items:center;justify-content:center;padding:20px;
@@ -1141,10 +1143,12 @@
       <div id="theme-toggle-row">
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <div class="company-badge-wrap">
-          <button type="button" class="company-badge" id="company-badge-btn" title="">
-            <canvas id="globe-canvas" width="84" height="84" style="width:42px;height:42px;"></canvas>
+          <button type="button" class="globe-pill" id="company-badge-btn" title="">
+            <span class="globe-pill-label">Fonseca e Braga</span>
+            <span class="globe-pill-globe">
+              <canvas id="globe-canvas" width="84" height="84" style="width:42px;height:42px;"></canvas>
+            </span>
           </button>
-          <span class="globe-tooltip">Fonseca e Braga Advogados</span>
         </div>
         <p class="cnpj-footer">
           <span class="firm">Fonseca e Braga Sociedade de Advogados</span>
