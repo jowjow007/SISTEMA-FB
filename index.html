@@ -2590,25 +2590,29 @@
     els.mhAvatarInner.addEventListener('click', function(){
       alert('uid: ' + currentProfile.uid + '\ncampos: ' + (window.__fotoDiagCampos || '(ainda carregando...)') + '\nphotoBase64: ' + (window.__fotoDiagValor || '(nenhum)'));
     });
-    db.collection('perfis').doc(currentProfile.uid).get().then(function(doc){
-      const dados = doc.data() || {};
-      window.__fotoDiagCampos = Object.keys(dados).join(', ') || '(documento vazio)';
-      const v = dados.photoBase64;
-      window.__fotoDiagValor = v ? ('string de ' + String(v).length + ' caracteres, começa com "' + String(v).slice(0, 20) + '..."') : JSON.stringify(v);
-      if (v) {
-        els.mhAvatarInner.style.backgroundImage = 'url(' + v + ')';
-        els.mhAvatarInner.classList.add('has-photo');
-        els.mhAvatarInner.textContent = '';
-      } else {
-        els.mhAvatarInner.textContent = doc.exists ? 'SEM-FOTO' : 'SEM-DOC';
+    db.collection('perfis').doc(currentProfile.uid)
+      .onSnapshot({ includeMetadataChanges: true }, function(doc){
+        const dados = doc.data() || {};
+        const origem = doc.metadata.fromCache ? 'CACHE-local' : 'SERVIDOR';
+        window.__fotoDiagCampos = origem + ' | ' + (Object.keys(dados).join(', ') || '(documento vazio)');
+        const v = dados.photoBase64;
+        window.__fotoDiagValor = v ? ('string de ' + String(v).length + ' caracteres, começa com "' + String(v).slice(0, 20) + '..."') : JSON.stringify(v);
+        if (v) {
+          els.mhAvatarInner.style.backgroundImage = 'url(' + v + ')';
+          els.mhAvatarInner.classList.add('has-photo');
+          els.mhAvatarInner.textContent = '';
+        } else {
+          els.mhAvatarInner.classList.remove('has-photo');
+          els.mhAvatarInner.style.backgroundImage = '';
+          els.mhAvatarInner.textContent = doc.exists ? 'SEM-FOTO' : 'SEM-DOC';
+          els.mhAvatarInner.style.fontSize = '8px';
+        }
+      }, function(err){
+        window.__fotoDiagCampos = 'erro antes de ler';
+        window.__fotoDiagValor = (err && (err.code + ': ' + err.message)) || 'erro desconhecido';
+        els.mhAvatarInner.textContent = (err && err.code) || 'ERRO';
         els.mhAvatarInner.style.fontSize = '8px';
-      }
-    }).catch(function(err){
-      window.__fotoDiagCampos = 'erro antes de ler';
-      window.__fotoDiagValor = (err && (err.code + ': ' + err.message)) || 'erro desconhecido';
-      els.mhAvatarInner.textContent = (err && err.code) || 'ERRO';
-      els.mhAvatarInner.style.fontSize = '8px';
-    });
+      });
   }
 
   function subscribeMobileHomeBadges(){
