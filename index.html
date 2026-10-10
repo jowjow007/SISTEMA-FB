@@ -464,7 +464,7 @@
   }
   .globe-pill:hover .globe-pill-label{opacity:1;transform:translateX(0);}
   .globe-pill-globe{flex-shrink:0;width:44px;height:44px;border-radius:50%;overflow:hidden;}
-  #globe-canvas{display:block;}
+  #globe-svg{display:block;width:44px;height:44px;border-radius:50%;}
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
     align-items:center;justify-content:center;padding:20px;
@@ -1147,7 +1147,11 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Fonseca e Braga</span>
             <span class="globe-pill-globe">
-              <canvas id="globe-canvas" style="width:44px;height:44px;display:block;"></canvas>
+              <svg id="globe-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="49" fill="#000"/>
+                <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.8"/>
+                <g id="globe-lines"></g>
+              </svg>
             </span>
           </button>
         </div>
@@ -3594,84 +3598,96 @@
 </script>
 <script>
 (function(){
-  var canvas = document.getElementById('globe-canvas');
-  if(!canvas) return;
-  /* 3x super-sampling: draw at 132px, display at 44px via CSS */
-  var DISP = 44, S = 3;
-  var W = DISP * S;
-  canvas.width = canvas.height = W;
-  canvas.style.width = canvas.style.height = DISP + 'px';
-  var ctx = canvas.getContext('2d');
-  var CX = W / 2, CY = W / 2;
-  var CR = W / 2 - S;
-  var GR = CR * 0.60;
+  var g = document.getElementById('globe-lines');
+  if(!g) return;
+  var CX=50, CY=50, GR=29;
   var TILT = 22 * Math.PI / 180;
-  var SEGS = 80, LATS = 5, LONS = 8;
-  var angle = 0, speed = 0.006;
+  var SEGS=72, LATS=5, LONS=8;
+  var angle=0, speed=0.006;
+  var NS='http://www.w3.org/2000/svg';
 
   function proj(theta, phi){
-    var x0 = Math.sin(theta) * Math.cos(phi + angle);
-    var y0 = Math.cos(theta);
-    var z0 = Math.sin(theta) * Math.sin(phi + angle);
-    var x = x0;
-    var y = y0 * Math.cos(TILT) - z0 * Math.sin(TILT);
-    var z = y0 * Math.sin(TILT) + z0 * Math.cos(TILT);
-    return {px: CX + x * GR, py: CY - y * GR, z: z};
-  }
-
-  function drawLine(pts){
-    for(var i = 0; i < pts.length - 1; i++){
-      var a = pts[i], b = pts[i+1];
-      var midZ = (a.z + b.z) * 0.5;
-      var alpha = midZ >= 0 ? 0.88 : 0.22;
-      ctx.beginPath();
-      ctx.moveTo(a.px, a.py);
-      ctx.lineTo(b.px, b.py);
-      ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-    }
+    var x0=Math.sin(theta)*Math.cos(phi+angle);
+    var y0=Math.cos(theta);
+    var z0=Math.sin(theta)*Math.sin(phi+angle);
+    var x=x0;
+    var y=y0*Math.cos(TILT)-z0*Math.sin(TILT);
+    var z=y0*Math.sin(TILT)+z0*Math.cos(TILT);
+    return {px:CX+x*GR, py:CY-y*GR, z:z};
   }
 
   function buildLat(theta){
-    var pts = [];
-    for(var s = 0; s <= SEGS; s++)
-      pts.push(proj(theta, s / SEGS * 2 * Math.PI));
+    var pts=[];
+    for(var s=0;s<=SEGS;s++) pts.push(proj(theta, s/SEGS*2*Math.PI));
     return pts;
   }
 
   function buildLon(phi){
-    var pts = [];
-    for(var s = 0; s <= SEGS; s++)
-      pts.push(proj(s / SEGS * 2 * Math.PI, phi));
+    var pts=[];
+    for(var s=0;s<=SEGS;s++) pts.push(proj(s/SEGS*2*Math.PI, phi));
     return pts;
   }
 
+  function ptsToSegments(pts){
+    /* split into front/back runs and return array of {d, alpha} */
+    var segs=[], run=[], curFront=null;
+    for(var i=0;i<pts.length-1;i++){
+      var a=pts[i], b=pts[i+1];
+      var front=(a.z+b.z)*0.5>=0;
+      if(curFront===null) curFront=front;
+      if(front!==curFront){
+        segs.push({run:run.slice(), alpha:curFront?0.88:0.22});
+        run=[pts[i]]; curFront=front;
+      }
+      run.push(pts[i+1]);
+    }
+    if(run.length>1) segs.push({run:run, alpha:curFront?0.88:0.22});
+    return segs;
+  }
+
+  function runToD(run){
+    var d='M'+run[0].px.toFixed(2)+' '+run[0].py.toFixed(2);
+    for(var i=1;i<run.length;i++) d+='L'+run[i].px.toFixed(2)+' '+run[i].py.toFixed(2);
+    return d;
+  }
+
+  /* pre-create path elements */
+  var paths=[];
+  var totalLines=(LATS+LONS)*20; /* generous pool */
+  for(var i=0;i<totalLines;i++){
+    var p=document.createElementNS(NS,'path');
+    p.setAttribute('fill','none');
+    p.setAttribute('stroke-width','0.7');
+    p.style.display='none';
+    g.appendChild(p);
+    paths.push(p);
+  }
+
   function draw(){
-    ctx.clearRect(0, 0, W, W);
-    ctx.beginPath();
-    ctx.arc(CX, CY, CR, 0, Math.PI * 2);
-    ctx.fillStyle = '#000';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(CX, CY, CR - S * 0.5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-    for(var i = 1; i <= LATS; i++)
-      drawLine(buildLat(i * Math.PI / (LATS + 1)));
-    for(var i = 0; i < LONS; i++)
-      drawLine(buildLon(i * Math.PI / LONS));
-    angle += speed;
+    var allSegs=[];
+    for(var i=1;i<=LATS;i++) ptsToSegments(buildLat(i*Math.PI/(LATS+1))).forEach(function(s){allSegs.push(s);});
+    for(var i=0;i<LONS;i++) ptsToSegments(buildLon(i*Math.PI/LONS)).forEach(function(s){allSegs.push(s);});
+
+    for(var i=0;i<paths.length;i++){
+      if(i<allSegs.length){
+        var s=allSegs[i];
+        paths[i].setAttribute('d', runToD(s.run));
+        paths[i].setAttribute('stroke','rgba(255,255,255,'+s.alpha+')');
+        paths[i].style.display='';
+      } else {
+        paths[i].style.display='none';
+      }
+    }
+    angle+=speed;
     requestAnimationFrame(draw);
   }
 
   draw();
 
-  var btn = document.getElementById('company-badge-btn');
+  var btn=document.getElementById('company-badge-btn');
   if(btn){
-    btn.addEventListener('mouseenter', function(){ speed = 0.022; });
-    btn.addEventListener('mouseleave', function(){ speed = 0.006; });
+    btn.addEventListener('mouseenter',function(){speed=0.022;});
+    btn.addEventListener('mouseleave',function(){speed=0.006;});
   }
 })();
 </script>
