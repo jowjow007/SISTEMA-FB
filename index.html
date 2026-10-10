@@ -447,23 +447,8 @@
     width:42px;height:42px;cursor:pointer;border:none;background:transparent;padding:0;
     position:relative;border-radius:50%;overflow:hidden;
     box-shadow:0 4px 10px rgba(0,0,0,.5);
-    perspective:260px;
   }
-  .sphere-globe{
-    position:relative;width:100%;height:100%;transform-style:preserve-3d;
-    animation:fb-globe-spin 6s linear infinite;
-  }
-  .company-badge:hover .sphere-globe{animation-duration:1.6s;}
-  .sphere-face{
-    position:absolute;inset:0;border-radius:50%;background-size:cover;background-position:center;
-    backface-visibility:hidden;
-  }
-  .sphere-face.front{transform:translateZ(6px);}
-  .sphere-face.back{transform:translateZ(-6px) rotateY(180deg);}
-  @keyframes fb-globe-spin{
-    from{transform:rotateY(0deg);}
-    to{transform:rotateY(360deg);}
-  }
+  #globe-canvas{display:block;border-radius:50%;}
   #company-modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
     align-items:center;justify-content:center;padding:20px;
@@ -1139,10 +1124,7 @@
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <div class="company-badge-wrap">
           <button type="button" class="company-badge" id="company-badge-btn" title="Dados da empresa">
-            <div class="sphere-globe" id="sphere-globe">
-              <div class="sphere-face front" style="background-image:url('assets/logo-sphere2.png');"></div>
-              <div class="sphere-face back" style="background-image:url('assets/logo-sphere2.png');"></div>
-            </div>
+            <canvas id="globe-canvas" width="84" height="84" style="width:42px;height:42px;"></canvas>
           </button>
         </div>
         <p class="cnpj-footer">
@@ -3552,6 +3534,107 @@
     db.collection('tabs').doc(id).delete();
   };
 
+})();
+</script>
+<script>
+(function(){
+  var canvas = document.getElementById('globe-canvas');
+  if(!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var SIZE = 42;
+  canvas.width = canvas.height = SIZE * dpr;
+  canvas.style.width = canvas.style.height = SIZE + 'px';
+  var ctx = canvas.getContext('2d');
+  var R = SIZE * dpr / 2 - 1.5 * dpr;
+  var cx = SIZE * dpr / 2;
+  var cy = SIZE * dpr / 2;
+
+  var N = 32;
+  var pts = [];
+  for(var i = 0; i < N; i++){
+    var theta = Math.acos(2 * Math.random() - 1);
+    var phi = Math.random() * 2 * Math.PI;
+    pts.push({theta: theta, phi: phi});
+  }
+
+  var angle = 0;
+  var speed = 0.004;
+
+  function proj(theta, phi){
+    var x = Math.sin(theta) * Math.cos(phi + angle);
+    var y = Math.cos(theta);
+    var z = Math.sin(theta) * Math.sin(phi + angle);
+    var s = (z * 0.18 + 1);
+    return {px: cx + x * R * s, py: cy - y * R * s, z: z};
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    /* dark circle bg */
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 2 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(16,6,5,0.92)';
+    ctx.fill();
+
+    /* subtle ring */
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 1.5 * dpr, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(216,178,90,0.25)';
+    ctx.lineWidth = 0.8 * dpr;
+    ctx.stroke();
+
+    var projected = pts.map(function(p){ return proj(p.theta, p.phi); });
+
+    /* connections */
+    for(var i = 0; i < N; i++){
+      for(var j = i + 1; j < N; j++){
+        var a = projected[i], b = projected[j];
+        var ax = Math.sin(pts[i].theta) * Math.cos(pts[i].phi + angle);
+        var ay = Math.cos(pts[i].theta);
+        var az = Math.sin(pts[i].theta) * Math.sin(pts[i].phi + angle);
+        var bx = Math.sin(pts[j].theta) * Math.cos(pts[j].phi + angle);
+        var by = Math.cos(pts[j].theta);
+        var bz = Math.sin(pts[j].theta) * Math.sin(pts[j].phi + angle);
+        var d = Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by)+(az-bz)*(az-bz));
+        if(d < 0.65){
+          var fa = Math.max(0, a.z + 0.5) / 1.5;
+          var fb = Math.max(0, b.z + 0.5) / 1.5;
+          var alpha = (1 - d / 0.65) * 0.55 * fa * fb;
+          ctx.beginPath();
+          ctx.moveTo(a.px, a.py);
+          ctx.lineTo(b.px, b.py);
+          ctx.strokeStyle = 'rgba(216,178,90,' + alpha + ')';
+          ctx.lineWidth = 0.7 * dpr;
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* dots */
+    for(var i = 0; i < N; i++){
+      var p = projected[i];
+      if(p.z < -0.1) continue;
+      var alpha = (p.z + 1) / 2 * 0.85 + 0.15;
+      var r = Math.max(0.7 * dpr, (p.z + 1) * 1.2 * dpr);
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(216,178,90,' + alpha + ')';
+      ctx.fill();
+    }
+
+    angle += speed;
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+
+  /* speed up on hover */
+  var btn = document.getElementById('company-badge-btn');
+  if(btn){
+    btn.addEventListener('mouseenter', function(){ speed = 0.018; });
+    btn.addEventListener('mouseleave', function(){ speed = 0.004; });
+  }
 })();
 </script>
 </body>
