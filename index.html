@@ -1147,7 +1147,7 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Fonseca e Braga</span>
             <span class="globe-pill-globe">
-              <canvas id="globe-canvas" width="96" height="96" style="width:48px;height:48px;"></canvas>
+              <canvas id="globe-canvas" width="200" height="200" style="width:48px;height:48px;"></canvas>
             </span>
           </button>
         </div>
@@ -3588,13 +3588,13 @@
 (function(){
   var canvas = document.getElementById('globe-canvas');
   if(!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var SIZE = 48;
-  canvas.width = canvas.height = SIZE * dpr;
-  canvas.style.width = canvas.style.height = SIZE + 'px';
+  /* render at high internal resolution, display small via CSS for crispness */
+  var RES = 200;
+  canvas.width = canvas.height = RES;
+  canvas.style.width = canvas.style.height = '48px';
   var ctx = canvas.getContext('2d');
-  var CX = SIZE * dpr / 2, CY = SIZE * dpr / 2;
-  var CR = SIZE * dpr / 2 - 0.5 * dpr;
+  var CX = RES / 2, CY = RES / 2;
+  var CR = RES / 2 - 1;
   var GR = CR * 0.60;
   var TILT = 22 * Math.PI / 180;
   var SEGS = 80, LATS = 5, LONS = 8;
@@ -3619,7 +3619,7 @@
       ctx.moveTo(a.px, a.py);
       ctx.lineTo(b.px, b.py);
       ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
-      ctx.lineWidth = 0.35 * dpr;
+      ctx.lineWidth = 1.4;
       ctx.stroke();
     }
   }
@@ -3645,9 +3645,9 @@
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(CX, CY, CR - 0.5 * dpr, 0, Math.PI * 2);
+    ctx.arc(CX, CY, CR - 1, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 0.6 * dpr;
+    ctx.lineWidth = 2.0;
     ctx.stroke();
     for(var i = 1; i <= LATS; i++)
       drawLine(buildLat(i * Math.PI / (LATS + 1)));
