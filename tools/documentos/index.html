@@ -204,7 +204,10 @@
       </div>
 
       <div class="card" id="card-historico">
-        <h2>Últimos documentos gerados</h2>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+          <h2>Últimos documentos gerados</h2>
+          <a href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todos →</a>
+        </div>
         <p class="desc" id="historico-msg">Faça login no Portal para ver e reaproveitar o histórico da equipe.</p>
         <div id="historico-list"></div>
       </div>
@@ -1716,11 +1719,10 @@ function renderHistorico(docs){
 }
 function carregarHistorico(){
   if(!window.__db) return;
-  // busca mais que 25 porque a coleção é compartilhada com o Contratos — depois
-  // de filtrar só os tipos deste app, cortamos para os 25 mais recentes.
+  // a coleção é compartilhada com o Contratos: busca mais e filtra só os tipos deste app
   window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(80)
     .onSnapshot(snap=>{
-      const meus = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo)).slice(0,25);
+      const meus = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo)).slice(0,3);
       renderHistorico(meus);
     }, err=>{
       document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
@@ -1774,6 +1776,13 @@ try{
       }).catch(()=>{ /* sem acesso ao Firestore — segue sem o atalho */ });
       document.getElementById('historico-msg').textContent = 'Carregando histórico…';
       carregarHistorico();
+      // aberto pela página "Ver todos" (?carregar=ID)
+      const carregarId = new URLSearchParams(location.search).get('carregar');
+      if(carregarId){
+        window.__db.collection('contratosGerados').doc(carregarId).get().then(s=>{
+          if(s.exists && DOCUMENTOS_TIPOS.includes(s.data().tipo)) preencherFormulario(s.data().dados);
+        }).catch(()=>{});
+      }
     });
   } else {
     document.getElementById('historico-msg').textContent = 'Histórico indisponível (configuração do Firebase pendente).';

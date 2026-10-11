@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documentos gerados — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); }catch(e){}
+</script>
+<style>
+  :root{
+    --ink:#161010;--panel:#211918;--panel-2:#2a1f1e;--panel-3:#332524;
+    --paper:#ece6e1;--muted:#9c908b;--silver:#a9adb2;--red:#b8362e;--red-bright:#c9463c;--red-deep:#5c1a16;
+    --err:#ffb4ae;
+    --line:rgba(236,230,225,0.10);--line-strong:rgba(236,230,225,0.20);
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;--panel:#ffffff;--panel-2:#f1ece6;--panel-3:#e6dfd7;
+    --paper:#241c1b;--muted:#7d716b;--silver:#756f6c;--err:#9c2c20;
+    --line:rgba(36,28,27,0.10);--line-strong:rgba(36,28,27,0.16);
+  }
+  *{box-sizing:border-box;}
+  *{scrollbar-width:thin;scrollbar-color:var(--red-deep) var(--panel-2);}
+  html,body{margin:0;background:var(--ink);color:var(--paper);font-family:"Poppins",system-ui,sans-serif;}
+  header{background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px;}
+  header h1{font-size:1.25rem;font-weight:600;margin:0 0 2px;}
+  header p{font-size:.8rem;color:var(--muted);margin:0;}
+  main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:16px;}
+  .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;}
+  .tools input[type=search],.tools select{padding:8px 10px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-family:inherit;font-size:.84rem;outline:none;}
+  .tools input[type=search]{flex:1;min-width:200px;}
+  .tools input[type=search]:focus,.tools select:focus{border-color:var(--red);}
+  .row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .info{flex:1;min-width:0;}
+  .nome{font-size:.84rem;font-weight:600;word-break:break-word;}
+  .tipo{display:inline-block;font-size:.62rem;color:var(--silver);background:var(--panel-3);border-radius:6px;padding:1px 6px;margin-right:6px;letter-spacing:.02em;font-weight:500;}
+  .meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .acoes a{font-size:.74rem;white-space:nowrap;color:var(--red-bright);}
+  .msg{font-size:.82rem;color:var(--muted);padding:10px 4px;}
+  .count{font-size:.74rem;color:var(--muted);margin:0 0 8px;}
+  @media(max-width:600px){ .row{flex-wrap:wrap;} .acoes{width:100%;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Documentos gerados</h1>
+  <p>Tudo o que a equipe gerou no Criador de Documentos.</p>
+</header>
+<main>
+  <div class="card">
+    <div class="tools">
+      <input type="search" id="busca" placeholder="Buscar por nome, CPF, valor ou quem gerou...">
+      <select id="filtro-tipo">
+        <option value="">Todos os tipos</option>
+        <option value="procuracao">Procuração</option>
+        <option value="substabelecimento">Substabelecimento</option>
+        <option value="hipossuficiencia">Hipossuficiência</option>
+        <option value="termo_repasse">Termo de Repasse</option>
+        <option value="recibo">Recibo</option>
+      </select>
+    </div>
+    <p class="count" id="count"></p>
+    <div id="lista"><p class="msg">Carregando…</p></div>
+  </div>
+</main>
+<script>
+var DOCUMENTOS_TIPOS = ['procuracao','substabelecimento','hipossuficiencia','termo_repasse','recibo'];
+var LABEL = {procuracao:'Procuração', substabelecimento:'Substabelecimento', hipossuficiencia:'Hipossuficiência', termo_repasse:'Termo de Repasse', recibo:'Recibo'};
+var app = firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(app), db = firebase.firestore(app);
+var itens = [], busca = '', tipo = '';
+
+auth.onAuthStateChanged(function(user){
+  if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
+  // coleção compartilhada com o Contratos: filtra só os tipos do Criador de Documentos
+  db.collection('contratosGerados').orderBy('criadoEm','desc').limit(1000).onSnapshot(function(snap){
+    itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
+      .filter(function(it){ return DOCUMENTOS_TIPOS.indexOf(it.data.tipo) >= 0; });
+    desenhar();
+  }, function(e){
+    var p = document.createElement('p'); p.className = 'msg'; p.style.color = 'var(--err)';
+    p.textContent = 'Erro ao carregar: ' + e.message;
+    document.getElementById('lista').replaceChildren(p);
+  });
+});
+
+function visiveis(){
+  var f = busca.toLowerCase();
+  return itens.filter(function(it){
+    var d = it.data;
+    if(tipo && d.tipo !== tipo) return false;
+    if(!f) return true;
+    return [d.nomeDisplay, d.metaDisplay, d.dataDisplay, d.criadoPorNome, LABEL[d.tipo]].join(' ').toLowerCase().indexOf(f) >= 0;
+  });
+}
+
+function desenhar(){
+  var lista = document.getElementById('lista');
+  var vis = visiveis();
+  document.getElementById('count').textContent = itens.length
+    ? (vis.length === itens.length ? itens.length + ' documento(s)' : vis.length + ' de ' + itens.length + ' documento(s)') : '';
+  lista.innerHTML = '';
+  if(!vis.length){
+    lista.innerHTML = '<p class="msg">' + (itens.length ? 'Nenhum documento encontrado.' : 'Nenhum documento gerado ainda.') + '</p>';
+    return;
+  }
+  vis.forEach(function(it){
+    var d = it.data;
+    var row = document.createElement('div'); row.className = 'row';
+    var info = document.createElement('div'); info.className = 'info';
+    var nome = document.createElement('div'); nome.className = 'nome';
+    var tag = document.createElement('span'); tag.className = 'tipo'; tag.textContent = LABEL[d.tipo] || d.tipo;
+    nome.append(tag, document.createTextNode(d.nomeDisplay || '(sem nome)'));
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var dt = d.criadoEm ? new Date(d.criadoEm.seconds * 1000) : null;
+    meta.textContent = [
+      dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '',
+      d.metaDisplay || '',
+      d.criadoPorNome ? 'por ' + d.criadoPorNome : ''
+    ].filter(Boolean).join(' · ');
+    info.append(nome, meta);
+    var acoes = document.createElement('div'); acoes.className = 'acoes';
+    var a = document.createElement('a'); a.href = 'index.html?carregar=' + encodeURIComponent(it.id); a.textContent = 'Abrir no criador';
+    acoes.appendChild(a);
+    row.append(info, acoes);
+    lista.appendChild(row);
+  });
+}
+
+document.getElementById('busca').addEventListener('input', function(){ busca = this.value.trim(); desenhar(); });
+document.getElementById('filtro-tipo').addEventListener('change', function(){ tipo = this.value; desenhar(); });
+</script>
+</body>
+</html>
