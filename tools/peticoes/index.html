@@ -58,7 +58,34 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     html,body{margin:0;min-height:100%;background:var(--panel);color:var(--paper);font-family:var(--font-body);transition:background-color .2s,color .2s}
   button,input,select,textarea{font-family:inherit;}
 
-  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 14px;}
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 14px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .view-tabs{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:9px;padding:3px;}
+  .view-tabs button{background:transparent;border:none;border-radius:6px;padding:7px 14px;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer;}
+  .view-tabs button:hover{color:var(--paper);}
+  .view-tabs button.active{background:var(--red);color:#fff;}
+
+  /* gerador de nomenclatura (POP nº 008/2023) — antes ficava em Sistemas */
+  .nomenclatura-view{max-width:1100px;margin:0 auto;padding:28px 20px 70px;}
+  .nomenclatura-view .kicker{font-size:.68rem;letter-spacing:.12em;color:var(--red-bright);text-transform:uppercase;font-weight:700;margin:0 0 8px;}
+  .nomenclatura-view h2{font-size:1.6rem;margin:0 0 10px;color:var(--paper);font-weight:600;}
+  .nomenclatura-view .lead{font-size:.9rem;color:var(--muted);max-width:760px;line-height:1.55;margin:0 0 22px;}
+  .nomenclatura-view .nom-types{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+  .nomenclatura-view .nom-types button{flex:1 1 160px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;padding:16px 10px;
+    text-align:center;font-size:.83rem;font-weight:600;color:var(--paper);cursor:pointer;}
+  .nomenclatura-view .nom-types button .ic{display:block;font-size:1.2rem;margin-bottom:6px;}
+  .nomenclatura-view .nom-types button.active{background:var(--red);border-color:var(--red);color:#fff;}
+  .nomenclatura-view .nom-grid{display:grid;gap:18px;grid-template-columns:1fr 1fr;}
+  .nomenclatura-view .nom-grid h3{margin:0 0 14px;font-size:1rem;font-weight:600;color:var(--paper);}
+  .nomenclatura-view .nom-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .nomenclatura-view .nom-form label{display:block;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .nomenclatura-view .nom-form input,.nomenclatura-view .nom-form select{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;font-size:.85rem;
+    background:var(--panel-2);color:var(--paper);outline:none;}
+  .nomenclatura-view .nom-form input:focus,.nomenclatura-view .nom-form select:focus{border-color:var(--red);}
+  .nomenclatura-view .nom-result{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:16px;font-family:ui-monospace,Consolas,monospace;
+    font-size:.85rem;color:var(--paper);min-height:70px;word-break:break-word;line-height:1.5;}
+  .nomenclatura-view .copy-btn{margin-top:14px;width:100%;}
+  @media(max-width:760px){ .nomenclatura-view .nom-grid,.nomenclatura-view .nom-form{grid-template-columns:1fr;} }
   header h1{font-family:"Poppins",sans-serif;font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
   header .sub{font-size:.8rem;color:var(--muted);margin:0;}
 
@@ -212,10 +239,17 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 </head>
 <body>
 <header>
-  <h1>Petições</h1>
-  <p class="sub">Preencha os campos, veja o preview em A4 e exporte para o Google Docs ou em PDF.</p>
+  <div>
+    <h1>Petições</h1>
+    <p class="sub" id="header-sub">Preencha os campos, veja o preview em A4 e exporte para o Google Docs ou em PDF.</p>
+  </div>
+  <div class="view-tabs" role="tablist">
+    <button type="button" class="active" data-view="formatar">Formatar petição</button>
+    <button type="button" data-view="nomenclatura">Nomenclatura</button>
+  </div>
 </header>
-<main>
+<section id="view-nomenclatura" class="nomenclatura-view" hidden></section>
+<main id="view-formatar">
 <div class="layout">
 
   <!-- ══ COLUNA DO FORMULÁRIO ══ -->
@@ -1491,6 +1525,140 @@ function preencherFormulario(d){
 
 // render inicial
 render();
+</script>
+<script>
+/* ---------- aba "Nomenclatura": gerador de nomes do POP nº 008/2023 (antes em Sistemas) ---------- */
+(function(){
+  var SUB_FORMATAR = document.getElementById('header-sub').textContent;
+  var SUB_NOMENCLATURA = 'Gere o nome padronizado de qualquer arquivo conforme o POP nº 008/2023.';
+  var viewFormatar = document.getElementById('view-formatar');
+  var viewNom = document.getElementById('view-nomenclatura');
+
+  var NOM_TYPES = [
+    {id:'judicial', ic:'⚖️', label:'Judicial'},
+    {id:'administrativo', ic:'📄', label:'Administrativo'},
+    {id:'honorarios', ic:'📝', label:'Contrato de Honorários'},
+    {id:'notificacao', ic:'🏢', label:'Notificação Condominial'}
+  ];
+  var NOM_FIELD_DEFS = {
+    judicial: [
+      {k:'autor', label:'Autor'}, {k:'reu', label:'Réu'},
+      {k:'peca', label:'Nome da Peça'}, {k:'valor', label:'Valor (opcional)'},
+      {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+    ],
+    administrativo: [
+      {k:'parte1', label:'Parte 1'}, {k:'parte2', label:'Parte 2 (opcional)'},
+      {k:'arquivo', label:'Nome do Arquivo'}, {k:'valor', label:'Valor (opcional)'},
+      {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+    ],
+    honorarios: [
+      {k:'parte', label:'Parte'},
+      {k:'tipo', label:'Tipo', type:'select', options:['AVULSO JUDICIAL','AVULSO EXTRAJUDICIAL','ASSESSORIA','PARALEGAL']},
+      {k:'criador', label:'Criador'}, {k:'data', label:'Data', type:'date'}
+    ],
+    notificacao: [
+      {k:'condominio', label:'Nome do Condomínio'}, {k:'torre', label:'Torre'},
+      {k:'apto', label:'Apto'}, {k:'ocorrencia', label:'Ocorrência #'},
+      {k:'titulo', label:'Título da Ocorrência'}, {k:'criador', label:'Criador'},
+      {k:'data', label:'Data', type:'date'}
+    ]
+  };
+  var tipoAtual = 'judicial';
+
+  viewNom.innerHTML = '<div class="kicker">POP Nº 008/2023</div>'
+    + '<h2>Nomenclatura de Documentos</h2>'
+    + '<p class="lead">Selecione o tipo de documento, preencha os campos e copie o nome formatado conforme o padrão do escritório.</p>'
+    + '<div class="nom-types">' + NOM_TYPES.map(function(t){
+        return '<button type="button" class="'+(t.id===tipoAtual?'active':'')+'" data-nom-type="'+t.id+'"><span class="ic">'+t.ic+'</span>'+t.label+'</button>';
+      }).join('') + '</div>'
+    + '<div class="nom-grid">'
+      + '<div class="card"><h3>Preencha os campos</h3><div class="nom-form" id="nomg-fields"></div></div>'
+      + '<div class="card"><h3>Resultado</h3><div class="nom-result" id="nomg-result">—</div>'
+        + '<button type="button" class="btn copy-btn" id="nomg-copy">📋 Copiar nome</button></div>'
+    + '</div>';
+
+  function abrev(v){
+    var p = (v||'').split('-');
+    return p.length === 3 ? p[2]+'.'+p[1]+'.'+p[0].slice(2) : (v||'');
+  }
+  function val(k){
+    var el = viewNom.querySelector('[data-nk="'+k+'"]');
+    return el ? el.value.trim() : '';
+  }
+  function up(k){ return val(k).toUpperCase(); }
+
+  function renderCampos(){
+    var el = document.getElementById('nomg-fields');
+    el.innerHTML = NOM_FIELD_DEFS[tipoAtual].map(function(f){
+      if(f.type === 'select'){
+        return '<div><label>'+f.label+'</label><select data-nk="'+f.k+'">'
+          + f.options.map(function(o){ return '<option value="'+o+'">'+o+'</option>'; }).join('')
+          + '</select></div>';
+      }
+      return '<div><label>'+f.label+'</label><input data-nk="'+f.k+'" type="'+(f.type||'text')+'" placeholder="'+f.label.toUpperCase()+'"></div>';
+    }).join('');
+    el.querySelectorAll('[data-nk]').forEach(function(inp){
+      inp.addEventListener('input', atualizar);
+      inp.addEventListener('change', atualizar);
+    });
+    atualizar();
+  }
+
+  function atualizar(){
+    var out = '';
+    if(tipoAtual === 'judicial'){
+      var p = ['('+(up('autor')||'AUTOR')+' X '+(up('reu')||'RÉU')+')', up('peca')||'NOME DA PEÇA'];
+      if(up('valor')) p.push(up('valor'));
+      p.push(up('criador')||'CRIADOR', abrev(val('data'))||'DD.MM.AA');
+      out = p.join(' – ');
+    } else if(tipoAtual === 'administrativo'){
+      var partes = up('parte2') ? '('+(up('parte1')||'PARTE 1')+' X '+up('parte2')+')' : '('+(up('parte1')||'PARTE')+')';
+      var p2 = [partes, up('arquivo')||'NOME DO ARQUIVO'];
+      if(up('valor')) p2.push(up('valor'));
+      p2.push(up('criador')||'CRIADOR', abrev(val('data'))||'DD.MM.AA');
+      out = p2.join(' – ');
+    } else if(tipoAtual === 'honorarios'){
+      out = '('+(up('parte')||'PARTE')+') – CPSHA - '+(val('tipo')||'AVULSO JUDICIAL')+' – '+(up('criador')||'CRIADOR')+' – '+(abrev(val('data'))||'DD.MM.AA');
+    } else if(tipoAtual === 'notificacao'){
+      out = '(COND. '+(up('condominio')||'X')+' T'+(val('torre')||'X')+', APTO '+(val('apto')||'XXX')+') #'+(val('ocorrencia')||'000')
+        + ' – NOTIFICAÇÃO – '+(up('titulo')||'TÍTULO DA OCORRÊNCIA')+' – '+(up('criador')||'CRIADOR')+' – '+(abrev(val('data'))||'DD.MM.AA');
+    }
+    document.getElementById('nomg-result').textContent = out;
+  }
+
+  viewNom.querySelectorAll('[data-nom-type]').forEach(function(b){
+    b.addEventListener('click', function(){
+      tipoAtual = b.getAttribute('data-nom-type');
+      viewNom.querySelectorAll('[data-nom-type]').forEach(function(bb){ bb.classList.toggle('active', bb === b); });
+      renderCampos();
+    });
+  });
+
+  document.getElementById('nomg-copy').addEventListener('click', function(){
+    var btn = this, txt = document.getElementById('nomg-result').textContent;
+    var feito = function(){ var old = btn.innerHTML; btn.innerHTML = '✓ Copiado'; setTimeout(function(){ btn.innerHTML = old; }, 1400); };
+    var fallback = function(){
+      var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(e){}
+      document.body.removeChild(ta); feito();
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(feito).catch(fallback);
+    else fallback();
+  });
+
+  renderCampos();
+
+  document.querySelectorAll('.view-tabs [data-view]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var nom = b.dataset.view === 'nomenclatura';
+      document.querySelectorAll('.view-tabs [data-view]').forEach(function(bb){ bb.classList.toggle('active', bb === b); });
+      viewFormatar.hidden = nom;
+      viewNom.hidden = !nom;
+      document.getElementById('header-sub').textContent = nom ? SUB_NOMENCLATURA : SUB_FORMATAR;
+      window.scrollTo(0, 0);
+    });
+  });
+})();
 </script>
 </body>
 </html>
