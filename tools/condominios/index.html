@@ -138,10 +138,10 @@
   /* largura limitada pela altura da janela para as 2 fileiras de cards caberem sem rolar */
   .cd-grid{
     display:flex;flex-wrap:wrap;justify-content:center;gap:46px 18px;margin:0 auto;
-    max-width:clamp(820px, calc((100vh - 470px) * 5.4 + 72px), 1180px);
+    max-width:clamp(900px, calc((100vh - 470px) * 6.48 + 90px), 1200px);
   }
   .cd-card{
-    position:relative;flex:0 0 calc((100% - 72px) / 5);display:flex;flex-direction:column;align-items:center;
+    position:relative;flex:0 0 calc((100% - 90px) / 6);display:flex;flex-direction:column;align-items:center;
     border:2px solid rgba(214,168,104,.88);border-radius:14px;cursor:pointer;padding:0 0 12px;
     background:linear-gradient(180deg,#6e4a4a 0%,#5f3c3f 9%,#5b383d 17%,#4f2c32 29%,#48262d 35%,#3e161c 52%,#41171b 100%);
     box-shadow:0 0 16px rgba(222,160,86,.38),inset 0 0 14px rgba(255,190,120,.07),inset 0 1px 0 rgba(255,232,196,.28),0 22px 44px rgba(0,0,0,.55);
@@ -182,6 +182,10 @@
     .cd-card{flex-basis:calc((100% - 12px) / 2);}
     .cd-sub{margin-bottom:40px;}
   }
+
+  .fluxo-img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--card-line);margin-top:6px;cursor:zoom-in;}
+  .fluxo-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .fluxo-acoes .btn{text-decoration:none;display:inline-block;}
 
   main{max-width:1180px;margin:0 auto;padding:34px 22px 80px;}
   .kicker{font-size:.68rem;letter-spacing:.12em;color:var(--red);text-transform:uppercase;font-weight:700;margin:0 0 8px;}
@@ -389,7 +393,15 @@ var SECTIONS = [
   {id:'notificacoes', label:'Notificações'},
   {id:'gerar-notificacao', label:'Gerar Notificação'},
   {id:'nomenclatura', label:'Nomenclatura'},
+  {id:'fluxos', label:'Fluxos'},
   {id:'relatorios-condominiais', label:'Relatórios Condominiais'}
+];
+
+var FLUXOS = [
+  {img:'fluxos/fluxo-geral-notificacoes.jpg', titulo:'Fluxo Geral De Notificações',
+   desc:'Tratamento das tarefas condominiais: verificação dos sistemas (BRCondos, Almah e avulsos), cadastro no ASTREA, análise, multa ou notificação, aprovação da síndica e encerramento.'},
+  {img:'fluxos/fluxo-por-responsaveis.jpg', titulo:'Fluxo Por Responsáveis',
+   desc:'Fluxo operacional dividido por responsável: recepção e triagem, elaboração de notificações, aprovação, orientação e recursos.'}
 ];
 
 var CONDOMINIOS = [
@@ -547,6 +559,7 @@ function render(){
   else if(state.section === 'notificacoes') m.innerHTML = viewNotificacoes();
   else if(state.section === 'gerar-notificacao') m.innerHTML = state.gerarView==='aprovacao' ? viewNotificacoesProntas() : viewGerarNotificacao();
   else if(state.section === 'nomenclatura') m.innerHTML = viewNomenclatura();
+  else if(state.section === 'fluxos') m.innerHTML = viewFluxos();
   else if(state.section === 'relatorios-condominiais') m.innerHTML = viewRelatoriosCondominiais();
   bindDynamic();
 }
@@ -657,6 +670,7 @@ function viewInicio(){
     {img:'notificacoes', w:47.6, mt:-12.7, t:'Padrão de Notificações', d:'Estrutura, blocos e fluxo', go:'notificacoes'},
     {img:'gerar',        w:54.3, mt:-12.7, t:'Gerar Notificação', d:'Compor e aprovar notificações extrajudiciais', go:'gerar-notificacao'},
     {img:'nomenclatura', w:39.4, mt:-18.4, t:'Nomenclatura de Documentos', d:'POP Nº 008 — gerador automático', go:'nomenclatura'},
+    {img:'fluxos.svg',   w:60,   mt:-21,  t:'Fluxos', d:'Fluxogramas de notificações e por responsáveis', go:'fluxos'},
     {img:'relatorios',   w:48.3, mt:-18.4, t:'Relatórios Condominiais', d:'Acompanhamento jurídico por condomínio', go:'relatorios-condominiais'}
   ];
   return CD_DECO + '<div class="cd-hub">'
@@ -664,7 +678,7 @@ function viewInicio(){
     + '<p class="cd-sub">Selecione o módulo que deseja acessar</p>'
     + '<div class="cd-grid">' + cards.map(function(c){
         return '<div class="cd-card" data-go="'+c.go+'" role="button" tabindex="0">'
-          + '<div class="cd-art"><img src="img/'+c.img+'.jpg" alt="" style="--w:'+c.w+'%;--mt:'+c.mt+'%"></div>'
+          + '<div class="cd-art"><img src="img/'+(c.img.indexOf('.') < 0 ? c.img+'.jpg' : c.img)+'" alt="" style="--w:'+c.w+'%;--mt:'+c.mt+'%"></div>'
           + '<h3>'+c.t+'</h3><p>'+c.d+'</p><span class="cd-btn">Acessar →</span></div>';
       }).join('') + '</div></div>';
 }
@@ -2251,6 +2265,23 @@ function viewRelatoriosCondominiais(){
             }).join('')
           + '</div>';
       }).join('') + '</div>';
+}
+
+function viewFluxos(){
+  return '<div class="kicker">Processos</div>'
+    + '<h1>Fluxos</h1>'
+    + '<p class="lead">Fluxogramas de trabalho da equipe de condomínios. Clique na imagem para abrir em tamanho original.</p>'
+    + '<hr class="rule">'
+    + FLUXOS.map(function(f){
+        return '<div class="box fluxo-box">'
+          + '<h2 class="section-h"><span class="ic">🔀</span> '+f.titulo+'</h2>'
+          + '<p>'+f.desc+'</p>'
+          + '<a href="'+f.img+'" target="_blank" rel="noopener"><img class="fluxo-img" src="'+f.img+'" alt="'+f.titulo+'" loading="lazy"></a>'
+          + '<div class="fluxo-acoes">'
+          + '<a class="btn" href="'+f.img+'" target="_blank" rel="noopener">Abrir em tela cheia</a>'
+          + '<a class="btn ghost" href="'+f.img+'" download="'+f.titulo+'.jpg">Baixar imagem</a>'
+          + '</div></div>';
+      }).join('');
 }
 
 /* ---------- nomenclatura generator (POP nº 008/2023) ---------- */
