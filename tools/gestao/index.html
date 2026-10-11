@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Merriweather:wght@700;900&family=Fira+Sans+Condensed:wght@300;400&display=swap" rel="stylesheet">
 <script>
 (function(){
   try{
@@ -111,21 +111,77 @@
   #gate{padding:80px 20px;text-align:center;color:var(--muted);}
 
   /* ---- hub / landing ---- */
-  .hub-view{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 60px;}
-  .hub-title{font-family:var(--font-display);font-size:1.55rem;font-weight:700;margin:0 0 6px;text-align:center;color:var(--paper);}
-  .hub-sub{font-size:.85rem;color:var(--muted);margin:0 0 40px;text-align:center;line-height:1.5;}
-  .hub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;width:100%;max-width:720px;}
-  .hub-card{
-    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:16px;
-    padding:32px 20px 26px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;
-    text-align:center;display:flex;flex-direction:column;align-items:center;
+  .hub-view{
+    position:relative;z-index:1;flex:1 1 auto;overflow-y:auto;overflow-x:hidden;
+    display:flex;flex-direction:column;padding:34px 24px 48px;
+    background:
+      radial-gradient(1100px 520px at 50% -4%, rgba(92,38,44,.85), transparent 62%),
+      radial-gradient(900px 640px at 104% 104%, rgba(110,82,46,.30), transparent 62%),
+      radial-gradient(700px 600px at -6% 60%, rgba(60,18,26,.7), transparent 65%),
+      linear-gradient(160deg,#2e1216 0%,#1f0b10 52%,#151012 100%);
   }
-  .hub-card:hover{background:var(--panel);border-color:var(--gold);transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.45);}
-  .hub-card-icon{font-size:2.5rem;margin-bottom:16px;line-height:1;}
-  .hub-card-title{font-family:var(--font-display);font-size:1.1rem;font-weight:700;margin:0 0 8px;color:var(--paper);}
-  .hub-card-desc{font-size:.75rem;color:var(--muted);margin:0;line-height:1.5;}
-  .hub-card-arrow{margin-top:18px;font-size:.72rem;color:var(--gold);font-weight:600;letter-spacing:.03em;}
-  @media(max-width:640px){.hub-grid{grid-template-columns:1fr;}}
+  .hub-deco{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+  .hub-deco .tw{animation:hubTwinkle 3.2s ease-in-out infinite;}
+  .hub-deco .tw:nth-child(3n){animation-delay:-1.1s;animation-duration:2.6s;}
+  .hub-deco .tw:nth-child(3n+1){animation-delay:-2.2s;animation-duration:3.8s;}
+  @keyframes hubTwinkle{0%,100%{opacity:.15}50%{opacity:.9}}
+  .hub-inner{position:relative;z-index:1;margin:auto;width:100%;max-width:1120px;text-align:center;}
+  .hub-logo{display:block;height:56px;width:auto;margin:0 auto 34px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+  .hub-title{
+    font-family:'Merriweather',Georgia,serif;font-weight:900;font-size:clamp(2.3rem,5.2vw,3.7rem);
+    line-height:1.15;margin:0 0 14px;
+    background:linear-gradient(180deg,#fff0c8 0%,#efc77e 38%,#c48d43 70%,#8d5a24 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 22px rgba(232,170,84,.35)) drop-shadow(0 3px 2px rgba(0,0,0,.75));
+  }
+  .hub-sub{font-family:'Fira Sans Condensed',var(--font-body);font-weight:400;font-size:1.2rem;color:#dcc09a;margin:0 0 54px;}
+  .hub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;width:100%;}
+  .hub-card{
+    position:relative;display:flex;flex-direction:column;align-items:center;overflow:hidden;
+    border:2px solid rgba(214,168,104,.9);border-radius:18px;cursor:pointer;padding:0 0 26px;
+    background:
+      linear-gradient(100deg,rgba(255,190,150,.07) 0%,transparent 42%),
+      linear-gradient(180deg,#3e121b 0%,#380f19 45%,#320a16 100%);
+    box-shadow:
+      0 0 16px rgba(222,160,86,.38),
+      inset 0 0 16px rgba(226,150,90,.22),
+      0 22px 44px rgba(0,0,0,.55);
+    transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
+  }
+  .hub-card:hover,.hub-card:focus-visible{
+    transform:translateY(-5px);border-color:#f0c983;outline:none;
+    box-shadow:0 0 28px rgba(240,180,96,.6),inset 0 0 18px rgba(226,150,90,.3),0 28px 50px rgba(0,0,0,.6);
+  }
+  /* topo do card recortado do layout de referência (ícone + reflexo do vidro), funde no gradiente embaixo */
+  .hub-art{display:block;width:100%;height:auto;
+    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 100%);
+            mask-image:linear-gradient(180deg,#000 72%,transparent 100%);}
+  .hub-card-title{font-family:'Merriweather',Georgia,serif;font-weight:700;font-size:1.55rem;color:#f2dcc0;margin:0 0 8px;padding:0 10px;text-shadow:0 2px 6px rgba(0,0,0,.6);}
+  .hub-card-desc{
+    flex:1 1 auto;font-family:'Fira Sans Condensed',var(--font-body);font-weight:400;font-size:1.15rem;
+    line-height:1.3;color:#ead8c4;padding:0 18px;margin:0 0 18px;
+  }
+  .hub-card-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Fira Sans Condensed',var(--font-body);font-weight:400;font-size:1.12rem;
+    padding:7px 36px;border-radius:999px;color:#f7e8d4;
+    background:linear-gradient(180deg,#8f2e24 0%,#6a1c16 55%,#561510 100%);
+    border:1.5px solid #d9a46a;
+    box-shadow:inset 0 1px 0 rgba(255,206,160,.35),0 0 12px rgba(214,130,70,.35),0 4px 10px rgba(0,0,0,.45);
+    transition:background .25s,color .25s,box-shadow .25s;
+  }
+  .hub-card:hover .hub-card-btn,.hub-card:focus-visible .hub-card-btn{
+    color:#3b1d0e;background:linear-gradient(180deg,#f7e2ad 0%,#e3bd77 50%,#c79a54 100%);border-color:#f3d496;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 16px rgba(240,190,110,.55),0 4px 10px rgba(0,0,0,.45);
+  }
+  @media(max-width:860px){
+    .hub-grid{grid-template-columns:1fr;max-width:380px;margin:0 auto;gap:26px;}
+    .hub-sub{margin-bottom:36px;}
+  }
+  @media(max-width:480px){
+    .hub-view{padding:26px 16px 40px;}
+    .hub-logo{height:36px;margin-bottom:24px;}
+  }
 
   /* ---- módulo genérico ---- */
   .mod-scroll{flex:1 1 auto;overflow-y:auto;padding:18px 24px 40px;}
@@ -255,26 +311,90 @@
 <div id="shell">
   <nav class="subtabs" id="subtabs-nav" style="display:none;"></nav>
   <div id="hub-view" class="hub-view">
-    <h1 class="hub-title">Gestão</h1>
-    <p class="hub-sub">Selecione o módulo que deseja acessar</p>
-    <div class="hub-grid">
-      <div class="hub-card" data-goto="colaboradores">
-        <span class="hub-card-icon">👥</span>
-        <div class="hub-card-title">Colaboradores</div>
-        <div class="hub-card-desc">Organograma, equipe e estrutura do escritório</div>
-        <div class="hub-card-arrow">Acessar →</div>
-      </div>
-      <div class="hub-card" data-goto="patrimonio">
-        <span class="hub-card-icon">🏷️</span>
-        <div class="hub-card-title">Patrimônio</div>
-        <div class="hub-card-desc">Inventário de bens e equipamentos do escritório</div>
-        <div class="hub-card-arrow">Acessar →</div>
-      </div>
-      <div class="hub-card" data-goto="compras">
-        <span class="hub-card-icon">🛒</span>
-        <div class="hub-card-title">Controle de Compras</div>
-        <div class="hub-card-desc">Solicitações, aprovações e histórico de aquisições</div>
-        <div class="hub-card-arrow">Acessar →</div>
+    <svg class="hub-deco" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <filter id="hubGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+        <linearGradient id="hubBeam" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#f3c47a" stop-opacity="0"/>
+          <stop offset=".45" stop-color="#f6cf8a" stop-opacity=".85"/>
+          <stop offset="1" stop-color="#f3c47a" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g stroke="url(#hubBeam)" fill="none">
+        <path d="M760 940 L1660 40" stroke-width="16" opacity=".22" filter="url(#hubGlow)"/>
+        <path d="M760 940 L1660 40" stroke-width="2"/>
+        <path d="M1010 940 L1700 250" stroke-width="12" opacity=".18" filter="url(#hubGlow)"/>
+        <path d="M1010 940 L1700 250" stroke-width="1.5"/>
+        <path d="M560 960 L1500 20" stroke-width="1" opacity=".55"/>
+      </g>
+      <g stroke="#c8955a" stroke-width="1" opacity=".22">
+        <path d="M1180 0 L1600 420"/><path d="M1205 0 L1600 395"/><path d="M1230 0 L1600 370"/>
+        <path d="M1255 0 L1600 345"/><path d="M1280 0 L1600 320"/><path d="M1305 0 L1600 295"/>
+        <path d="M1330 0 L1600 270"/><path d="M1355 0 L1600 245"/>
+      </g>
+      <g stroke="#c8955a" stroke-width="1.6" fill="none" opacity=".5">
+        <path d="M-10 40 H150 L262 152 V252 L216 298"/>
+        <path d="M120 -10 V88 L336 304"/>
+        <path d="M-10 330 H112 L192 410 V640 L64 768 H-10"/>
+        <path d="M-10 384 H82 L150 452 V608 L40 718"/>
+        <path d="M-10 832 H222 L300 910"/>
+        <path d="M150 910 L252 808 H430"/>
+      </g>
+      <g stroke="#c8955a" stroke-width="1" opacity=".18">
+        <path d="M-20 600 L250 330"/><path d="M-20 625 L262 343"/><path d="M-20 650 L274 356"/>
+        <path d="M-20 675 L286 369"/><path d="M-20 700 L298 382"/><path d="M-20 725 L310 395"/>
+        <path d="M-20 750 L322 408"/>
+      </g>
+      <g stroke="#c8955a" stroke-width="1.6" fill="none" opacity=".5">
+        <path d="M1610 60 H1500 L1420 140 V360"/>
+        <path d="M1610 112 H1532 L1470 174 V300"/>
+        <path d="M1610 600 H1540 L1500 640 V910"/>
+        <path d="M1610 652 H1562 L1544 670 V910"/>
+        <path d="M1320 910 V780 L1380 720 H1470"/>
+      </g>
+      <g fill="#c8955a" opacity=".85">
+        <circle cx="216" cy="298" r="5"/><circle cx="336" cy="304" r="5"/><circle cx="40" cy="718" r="4"/>
+        <circle cx="430" cy="808" r="4"/><circle cx="1420" cy="360" r="5"/><circle cx="1470" cy="300" r="4"/>
+        <circle cx="1470" cy="720" r="4"/><circle cx="1560" cy="230" r="5"/><circle cx="1180" cy="220" r="4"/>
+        <circle cx="1548" cy="560" r="4"/>
+      </g>
+      <g fill="#f6d08c">
+        <circle class="tw" cx="1240" cy="160" r="1.8"/><circle class="tw" cx="1302" cy="236" r="1.4"/>
+        <circle class="tw" cx="1388" cy="118" r="2"/><circle class="tw" cx="1456" cy="410" r="1.5"/>
+        <circle class="tw" cx="1340" cy="480" r="1.8"/><circle class="tw" cx="1520" cy="330" r="1.4"/>
+        <circle class="tw" cx="1210" cy="560" r="1.6"/><circle class="tw" cx="1426" cy="610" r="2"/>
+        <circle class="tw" cx="1120" cy="300" r="1.3"/><circle class="tw" cx="1560" cy="470" r="1.6"/>
+        <circle class="tw" cx="1290" cy="680" r="1.4"/><circle class="tw" cx="1180" cy="820" r="1.8"/>
+        <circle class="tw" cx="980" cy="760" r="1.4"/><circle class="tw" cx="860" cy="840" r="1.6"/>
+        <circle class="tw" cx="290" cy="250" r="1.6"/><circle class="tw" cx="380" cy="420" r="1.3"/>
+        <circle class="tw" cx="170" cy="520" r="1.8"/><circle class="tw" cx="420" cy="640" r="1.4"/>
+        <circle class="tw" cx="230" cy="860" r="1.6"/><circle class="tw" cx="520" cy="120" r="1.3"/>
+        <circle class="tw" cx="1080" cy="120" r="1.4"/><circle class="tw" cx="700" cy="860" r="1.3"/>
+      </g>
+    </svg>
+    <div class="hub-inner">
+      <img class="hub-logo" src="../../assets/logo-dark.png" alt="Fonseca e Braga — Sociedade de Advogados">
+      <h1 class="hub-title">Gestão</h1>
+      <p class="hub-sub">Selecione o módulo que deseja acessar</p>
+      <div class="hub-grid">
+        <div class="hub-card" data-goto="colaboradores" role="button" tabindex="0">
+          <img class="hub-art" src="img/colaboradores.jpg" alt="">
+          <div class="hub-card-title">Colaboradores</div>
+          <div class="hub-card-desc">Organograma, equipe e estrutura do escritório</div>
+          <span class="hub-card-btn">Acessar →</span>
+        </div>
+        <div class="hub-card" data-goto="patrimonio" role="button" tabindex="0">
+          <img class="hub-art" src="img/patrimonio.jpg" alt="">
+          <div class="hub-card-title">Patrimônio</div>
+          <div class="hub-card-desc">Inventário de bens e equipamentos do escritório</div>
+          <span class="hub-card-btn">Acessar →</span>
+        </div>
+        <div class="hub-card" data-goto="compras" role="button" tabindex="0">
+          <img class="hub-art" src="img/compras.jpg" alt="">
+          <div class="hub-card-title">Controle de Compras</div>
+          <div class="hub-card-desc">Solicitações, aprovações e histórico de aquisições</div>
+          <span class="hub-card-btn">Acessar →</span>
+        </div>
       </div>
     </div>
   </div>
@@ -572,13 +692,20 @@
   const initedModulo = {};
 
   /* hub navigation */
-  hubView.addEventListener('click', function(e){
+  Array.prototype.forEach.call(hubView.querySelectorAll('[data-goto]'), function(card){
+    if (!ATIVAS.some(function(t){ return t.id === card.dataset.goto; })) card.style.display = 'none';
+  });
+  function openFromHub(e){
     const card = e.target.closest('[data-goto]');
     if (!card) return;
     hubView.style.display = 'none';
     panelsEl.style.display = '';
     nav.style.display = '';
     selectSubtab(card.dataset.goto);
+  }
+  hubView.addEventListener('click', openFromHub);
+  hubView.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFromHub(e); }
   });
 
   /* back-to-hub button */
