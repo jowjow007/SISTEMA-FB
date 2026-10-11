@@ -229,10 +229,6 @@
   .step .b{font-weight:700;font-size:.85rem;margin-bottom:2px;}
   .step .d{font-size:.78rem;color:var(--muted);line-height:1.45;}
 
-  table.sla{width:100%;border-collapse:collapse;font-size:.83rem;}
-  table.sla th{text-align:left;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--card-line);}
-  table.sla td{padding:9px 6px;border-bottom:1px solid var(--card-line);}
-  table.sla .pill{display:inline-block;background:var(--red-pale);color:var(--pill-text);font-size:.72rem;font-weight:700;border-radius:14px;padding:2px 10px;}
 
   .badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.03em;border-radius:20px;padding:2px 10px;text-transform:uppercase;}
   .badge.ativo{background:var(--green-bg);color:var(--green-text);}
@@ -384,9 +380,9 @@
 
 var SECTIONS = [
   {id:'inicio', label:'Início'},
+  {id:'condominios', label:'Clientes/Calculadoras'},
   {id:'comece', label:'Comece por Aqui'},
   {id:'pops', label:'POPs'},
-  {id:'condominios', label:'Clientes/Calculadoras'},
   {id:'astrea', label:'ASTREA'},
   {id:'brcondos', label:'BRCondos'},
   {id:'almahcondos', label:'AlmahCondos'},
@@ -652,10 +648,10 @@ var CD_DECO = '<svg class="cd-deco" viewBox="0 0 1600 900" preserveAspectRatio="
 function viewInicio(){
   // w/mt: largura e deslocamento do recorte (em % da largura do card) para a borda dourada do recorte cair na borda do card
   var cards = [
+    {img:'clientes',     w:63.1, mt:-16.5, t:'Consultar Clientes', d:'Síndicos, observações e regras', go:'condominios'},
     {img:'comece',       w:62.6, mt:-17.4, t:'Comece por Aqui', d:'Onboarding obrigatório para quem está começando', go:'comece'},
     {img:'pops',         w:55.9, mt:-18.4, t:'Ver POPs', d:'Procedimentos operacionais padrão', go:'pops'},
-    {img:'clientes',     w:63.1, mt:-16.5, t:'Consultar Clientes', d:'Síndicos, observações e regras', go:'condominios'},
-    {img:'astrea',       w:54.3, mt:-18.4, t:'Como usar o ASTREA', d:'Casos, tarefas e SLA', go:'astrea'},
+    {img:'astrea',       w:54.3, mt:-18.4, t:'Como usar o ASTREA', d:'Casos e tarefas', go:'astrea'},
     {img:'brcondos',     w:56.9, mt:-12.7, t:'BRCondos', d:'Livro de ocorrências e gestão condominial', go:'brcondos'},
     {img:'almah',        w:54.7, mt:-15.1, t:'AlmahCondos', d:'Padrão de cores das ocorrências', go:'almahcondos'},
     {img:'notificacoes', w:47.6, mt:-12.7, t:'Padrão de Notificações', d:'Estrutura, blocos e fluxo', go:'notificacoes'},
@@ -695,8 +691,8 @@ function viewComece(){
 
     + '<h2 class="section-h"><span class="ic">🖥️</span> Como funcionam as ocorrências</h2>'
     + '<div class="box">'
-      + '<p>Os condomínios utilizam a plataforma <b>BRCondos</b> para registro e gestão das ocorrências. Dependendo do condomínio, elas podem ser:</p>'
-      + '<ul><li>✅ Criadas diretamente pelos condôminos na plataforma</li><li>✅ Enviadas pelos síndicos ao escritório por e-mail — e nós registramos no BRCondos</li></ul>'
+      + '<p>Os condomínios utilizam as plataformas <b>BRCondos/AlmahCondos</b> para registro e gestão das ocorrências. Dependendo do condomínio, elas podem ser:</p>'
+      + '<ul><li>✅ Criadas diretamente pelos condôminos na plataforma</li><li>✅ Enviadas pelos síndicos ao escritório por e-mail — e nós registramos no BRCondos/AlmahCondos</li></ul>'
       + '<p>Cada ocorrência é analisada pelo jurídico para verificar se há infração e qual a penalidade aplicável: <b>advertência escrita</b> ou <b>multa</b>.</p>'
     + '</div>'
 
@@ -711,11 +707,11 @@ function viewComece(){
 
     + '<h2 class="section-h"><span class="ic">📋</span> Como as Notificações são Redigidas e Enviadas</h2>'
     + '<div class="steps">'
-      + step(1,'Identificação da infração no BRCondos','Verificamos a ocorrência e identificamos a unidade infratora, data, horário e descrição dos fatos.')
+      + step(1,'Identificação da infração no BRCondos/AlmahCondos','Verificamos a ocorrência e identificamos a unidade infratora, data, horário e descrição dos fatos.')
       + step(2,'Verificação do Regimento Interno','Consultamos os artigos aplicáveis. Sempre incluímos os artigos fixos (direitos e deveres) e o artigo específico da infração.')
       + step(3,'Redação no Google Docs','Seguindo o modelo padrão do escritório e nomenclatura do POP Nº 008.')
       + step(4,'Envio para aprovação','Documento encaminhado para o advogado responsável e/ou síndico(a).')
-      + step(5,'Envio ao condômino via BRCondos','Após aprovada, a notificação é enviada pela plataforma.')
+      + step(5,'Envio ao condômino via BRCondos/AlmahCondos','Após aprovada, a notificação é enviada pela plataforma.')
       + step(6,'Encerramento da ocorrência','Apenas se não houver demanda pendente ou prazo em curso.')
     + '</div>'
 
@@ -979,30 +975,9 @@ function viewAstrea(){
       + '<div class="box" style="margin-bottom:0;"><h2 class="section-h"><span class="ic">✅</span> Como criar uma tarefa</h2>'
         + step(1,'Acesse o caso','Abra o caso ao qual uma tarefa pertence.')
         + step(2,'Nova Tarefa','Dentro do caso, clique em "Tarefas" → "+ Nova Tarefa".')
-        + step(3,'Preenchimento','Título específico, Responsável, Prazo (ver SLA), Descrição e Prioridade.')
+        + step(3,'Preenchimento','Título específico, Responsável, Prazo (ver Matriz de Demandas), Descrição e Prioridade.')
         + step(4,'Vincular ao caso','Confirme o vínculo correto antes de salvar.')
       + '</div>'
-    + '</div>'
-
-    + '<h2 class="section-h"><span class="ic">⏱️</span> SLA — Prazos do escritório</h2>'
-    + '<div class="box">'
-      + '<table class="sla"><thead><tr><th>Atividade</th><th>Volume</th><th>Prazo</th></tr></thead><tbody>'
-      + slaRow('Cadastro de ocorrência','Até 10 cond.','D+1')
-      + slaRow('Cadastro de ocorrência','11 a 20 cond.','D+2')
-      + slaRow('Cadastro de ocorrência','21 a 30 cond.','D+3')
-      + slaRow('Notificação / Multa','Até 10 cond.','D+2')
-      + slaRow('Notificação / Multa','11 a 20 cond.','D+3')
-      + slaRow('Notificação / Multa','21 a 30 cond.','D+4')
-      + slaRow('Reaberta no sistema','—','D+3')
-      + slaRow('Aberta por morador','—','D+2')
-      + slaRow('Resposta a recurso','—','D+3')
-      + slaRow('Agendamento de sessão','—','D+5')
-      + slaRow('Lançamento de julgamento','—','D+10')
-      + slaRow('Notif./Contrato/Parecer simples','—','D+7 (D+5 produção + D+2 aprovação)')
-      + slaRow('Notif./Contrato/Parecer complexo','—','D+12')
-      + slaRow('Distribuição de ações','—','20 dias úteis')
-      + '</tbody></table>'
-      + '<div class="warn gold" style="margin-top:14px;margin-bottom:0;"><span class="ic">⚠️</span><span>Os prazos iniciam apenas após o recebimento de toda a documentação necessária.</span></div>'
     + '</div>'
 
     + '<h2 class="section-h">Cadastro de Ocorrências</h2>'
@@ -1012,10 +987,6 @@ function viewAstrea(){
       + '<li>Crie tarefa vinculada com título: <code>Notificação – [CONDOMÍNIO] – T[X], Apto [XXX] – #[OCORRÊNCIA]</code></li>'
       + '<li>Registre andamentos a cada etapa (elaboração, aprovação, envio).</li>'
     + '</ol></div>';
-}
-
-function slaRow(a,v,p){
-  return '<tr><td>'+a+'</td><td>'+v+'</td><td><span class="pill">'+p+'</span></td></tr>';
 }
 
 function viewBrcondos(){
