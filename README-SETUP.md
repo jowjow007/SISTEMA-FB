@@ -844,7 +844,7 @@ só pedir.
 
 Além da lista pessoal (seção descrita junto com a criação da ferramenta,
 mais acima), quem tem papel `admin` ou `gestor` (ver seção 7) ganha uma
-**lista pré-criada e fixa chamada "📨 Enviar Tarefa"** (cor azul, diferente
+**lista pré-criada e fixa chamada "📨 Envio de Tarefa"** (cor azul, diferente
 das listas normais) em `tools/minhas-anotacoes/` — criada sozinha no
 primeiro login de quem pode enviar (`garantirListaEnviar()`, doc
 `pendGrupos/enviarTarefa_{uid}`, campo `fixa: true`), sem botão nem modal
@@ -855,7 +855,7 @@ sequência. A diferença aparece em cada tarefa cadastrada **dentro dela**:
 no lugar do select "Mover para…", tem um select **"📨 Enviar para…"** com
 todo mundo do `organograma` (menos você) — ao escolher alguém, envia na
 hora (cria o documento em `tarefasEnviadas` e apaga a tarefa da lista
-"Enviar Tarefa", já que ela cumpriu o papel de rascunho). Se a tarefa tinha
+"Envio de Tarefa", já que ela cumpriu o papel de rascunho). Se a tarefa tinha
 uma data de vencimento preenchida, essa data vai junto no envio. Por ser
 `fixa`, essa lista não tem o "✕" de excluir (nem na barra lateral nem na
 coluna do Kanban) — só as tarefas dentro dela podem ser apagadas
@@ -870,11 +870,14 @@ dela (ver a lista virtual "📨 Recebidas" na nota da regra de
 
 Fluxo completo (documento em `tarefasEnviadas`, ver regra na seção 3):
 
-1. **Admin/gestor** cadastra o texto na lista "📨 Enviar Tarefa" (igual a
+1. **Admin/gestor** cadastra o texto na lista "📨 Envio de Tarefa" (igual a
    qualquer lista) e, na própria tarefa, escolhe o destinatário no select
-   "📨 Enviar para…". Nasce com `status: 'pendente'`.
+   "📨 Enviar para…". Abre um modal para **enviar agora** ou **escolher a
+   data de envio** — agendada, a tarefa ganha o campo `enviarEm`
+   (`AAAA-MM-DD`) e só aparece para o destinatário (banner, lista, aviso
+   piscando na aba) a partir desse dia. Nasce com `status: 'pendente'`.
 2. **Destinatário** vê o banner (ou a lista/coluna "📨 Recebidas"), faz o que
-   foi pedido e clica "✓ Concluí" — um modal exige uma justificativa antes
+   foi pedido e clica "✓ Concluir" — um modal exige uma justificativa antes
    de confirmar, aí vira `status: 'aguardando_aprovacao'`. Ele não pode
    editar o texto nem apagar o envio, só marcar como feito.
 3. Quem enviou acompanha tudo isso numa aba própria dentro da mesma

@@ -722,6 +722,13 @@
   }
   .subtab-list .checkbox-row{padding:3px 0;font-size:.72rem;color:var(--muted);}
   .subtab-list .checkbox-row input{width:12px;height:12px;}
+  .register-photo-btns{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0;border-radius:8px;}
+  .register-photo-btns .btn{width:auto;}
+  .login-box .register-photo-btns .btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4);color:#fff;box-shadow:none;margin:0;}
+  .login-box .register-photo-btns .btn:hover{background:rgba(255,255,255,.24);}
+  /* "Tirar foto" só faz sentido em aparelho com câmera/tela de toque */
+  @media (hover:hover) and (pointer:fine){ .register-photo-cam-btn{display:none !important;} }
+  .select-all-row{font-weight:600;color:var(--paper);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:6px;}
   #nu-tabs-list, #edit-tabs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 14px;}
   .sistema-row{display:flex;align-items:flex-start;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);}
   .sistema-row:last-child{border-bottom:none;}
@@ -729,6 +736,9 @@
   .sistema-row .nome{font-size:.86rem;font-weight:600;color:var(--paper);}
   .sistema-row .desc{font-size:.76rem;color:var(--muted);line-height:1.4;margin-top:1px;}
   .sistemas-status-dropdown{min-width:270px;padding:8px 6px;}
+  #sistemas-status-btn.ss-todos{color:#4caf7d;}
+  #sistemas-status-btn.ss-alguns{color:#e8962e;}
+  #sistemas-status-btn.ss-nenhum{color:#e0483d;}
   .sistemas-status-dropdown .ssd-title{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px 8px;font-weight:700;}
   .sistemas-status-row{display:flex;align-items:flex-start;gap:9px;padding:7px 10px;border-radius:7px;}
   .sistemas-status-row:hover{background:var(--panel-2);}
@@ -778,10 +788,11 @@
     width:60px;padding:6px 8px;border-radius:6px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-size:.83rem;
   }
-  .url-input{
+  .url-input,.label-input{
     width:100%;min-width:220px;padding:6px 8px;border-radius:6px;border:1px solid var(--line-strong);
     background:var(--panel-2);color:var(--paper);font-size:.8rem;
   }
+  .label-input{min-width:150px;font-weight:600;}
 
   .modal-backdrop{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;
@@ -1060,7 +1071,12 @@
           <label>Foto (para o mural de aniversariantes)<span class="obrig">*</span></label>
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="register-photo-preview" style="width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
-            <input type="file" id="register-photo" accept="image/*" style="flex:1;min-width:0;font-size:.78rem;color:var(--muted);" required>
+            <div class="register-photo-btns" id="register-photo-btns">
+              <button type="button" class="btn secondary small" id="register-photo-escolher">🖼️ Escolher foto</button>
+              <button type="button" class="btn secondary small register-photo-cam-btn" id="register-photo-tirar">📷 Tirar foto</button>
+            </div>
+            <input type="file" id="register-photo" accept="image/*" hidden>
+            <input type="file" id="register-photo-cam" accept="image/*" capture="user" hidden>
           </div>
         </div>
         <button type="submit" class="btn" id="register-submit">Criar conta</button>
@@ -1134,7 +1150,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v163</span>
+      <span class="version-tag">v164</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1154,10 +1170,9 @@
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
             <span class="globe-pill-label">Clique e veja os dados</span>
             <span class="globe-pill-globe">
-              <svg id="globe-svg" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="500" cy="500" r="495" fill="#000"/>
-                <circle cx="500" cy="500" r="485" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="8"/>
-                <g id="globe-lines"></g>
+              <svg id="globe-svg" viewBox="-22 -22 44 44" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="0" cy="0" r="22" fill="#000"/>
+                <g id="globe-lines" fill="none" stroke-linecap="round" stroke-linejoin="round"></g>
               </svg>
             </span>
           </button>
@@ -1260,6 +1275,7 @@
               <div><label style="font-size:.75rem;color:var(--muted);">Senha temporária</label>
                 <input type="text" id="nu-senha" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);" placeholder="mín. 6 caracteres"></div>
               <div class="full"><label style="font-size:.75rem;color:var(--muted);">Abas liberadas</label>
+                <label class="checkbox-row select-all-row"><input type="checkbox" id="nu-tabs-todas"><span>Selecionar todas</span></label>
                 <div id="nu-tabs-list"></div></div>
             </div>
             <button class="btn" id="nu-criar" style="width:auto;padding:9px 18px;">Criar usuário</button>
@@ -1339,6 +1355,7 @@
   <div class="modal-box">
     <h3>Editar abas</h3>
     <p class="sub" id="edit-tabs-user-label"></p>
+    <label class="checkbox-row select-all-row"><input type="checkbox" id="edit-tabs-todas"><span>Selecionar todas</span></label>
     <div class="list" id="edit-tabs-list"></div>
     <div class="modal-foot">
       <button class="btn secondary" id="edit-tabs-cancelar">Cancelar</button>
@@ -1756,6 +1773,7 @@
   let comprasBadgeSubscribed = false;
   let anotacoesPendentesCount = 0;   // tarefa enviada por outra pessoa, aguardando eu concluir (pisca a aba "Minhas Anotações")
   let anotacoesBadgeSubscribed = false;
+  let anotacoesEnviadasAtencao = 0;   // tarefa que EU enviei sem resposta ou aguardando minha aprovação
 
   // ---------- Erros PT-BR ----------
   function traduzErro(code){
@@ -1822,6 +1840,11 @@
 
   function renderSistemasStatus(){
     const liberados = (currentProfile && currentProfile.sistemasExternos) || [];
+    const qtdOn = SISTEMAS_EXTERNOS.filter(function(s){ return liberados.indexOf(s.id) !== -1; }).length;
+    const estado = qtdOn === SISTEMAS_EXTERNOS.length ? 'todos' : (qtdOn === 0 ? 'nenhum' : 'alguns');
+    els.sistemasStatusBtn.classList.remove('ss-todos', 'ss-nenhum', 'ss-alguns');
+    els.sistemasStatusBtn.classList.add('ss-' + estado);
+    els.sistemasStatusBtn.title = 'Sistemas liberados para você: ' + qtdOn + ' de ' + SISTEMAS_EXTERNOS.length;
     els.sistemasStatusDropdown.innerHTML = '<div class="ssd-title">Sistemas liberados para você</div>'
       + SISTEMAS_EXTERNOS.map(function(s){
           const on = liberados.indexOf(s.id) !== -1;
@@ -2083,14 +2106,21 @@
   }
 
   let registerPhotoDataUrl = null;
-  els.registerPhoto.addEventListener('change', function(){
-    const file = els.registerPhoto.files[0];
-    if (!file) { registerPhotoDataUrl = null; els.registerPhotoPreview.style.backgroundImage = ''; return; }
+  // Duas entradas para a mesma foto: galeria/arquivos ou câmera do celular (capture).
+  const registerPhotoCam = document.getElementById('register-photo-cam');
+  function aoEscolherFotoCadastro(input){
+    const file = input.files[0];
+    if (!file) return;
     resizeImageToDataUrl(file, 220, 0.82).then(function(dataUrl){
       registerPhotoDataUrl = dataUrl;
       els.registerPhotoPreview.style.backgroundImage = 'url(' + dataUrl + ')';
+      document.getElementById('register-photo-escolher').textContent = '🖼️ Trocar foto';
     });
-  });
+  }
+  els.registerPhoto.addEventListener('change', function(){ aoEscolherFotoCadastro(els.registerPhoto); });
+  registerPhotoCam.addEventListener('change', function(){ aoEscolherFotoCadastro(registerPhotoCam); });
+  document.getElementById('register-photo-escolher').addEventListener('click', function(){ els.registerPhoto.click(); });
+  document.getElementById('register-photo-tirar').addEventListener('click', function(){ registerPhotoCam.click(); });
 
   // ---------- Cadastro (auto-atendimento, sem abas por padrão) ----------
   els.registerForm.addEventListener('submit', function(e){
@@ -2131,7 +2161,7 @@
       { el: els.registerBirthdate, ok: !!nascimento },
       { el: els.registerIngresso, ok: !!ingresso },
       { el: els.registerDepto, ok: !!depto },
-      { el: els.registerPhoto, ok: !!registerPhotoDataUrl }
+      { el: document.getElementById('register-photo-btns'), ok: !!registerPhotoDataUrl }
     ];
     const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
     if (vazios.length) {
@@ -2282,44 +2312,60 @@
     comprasBadgeSubscribed = true;
     db.collection('compras').where('status', '==', 'pendente').onSnapshot(function(snap){
       comprasPendentesCount = snap.size;
-      updateGestaoBlink();
+      updateTabBlinks();
     });
   }
 
-  function updateGestaoBlink(){
+  // Um único lugar decide quais abas piscam (antes cada regra apagava o pisca da outra):
+  // Gestão = compra aguardando aprovação (admin); Minhas Anotações = tarefa recebida a
+  // fazer, ou tarefa que eu enviei ainda sem resposta / aguardando minha aprovação;
+  // Chat = conversa com mensagem não lida.
+  function updateTabBlinks(){
     const btns = Array.prototype.slice.call(els.tabstrip.querySelectorAll('.tab-btn'));
     btns.forEach(function(b){
       const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
-      const ehGestao = !!t && /gest[ãa]o/i.test(t.label || '');
-      b.classList.toggle('tab-blink', ehGestao && comprasPendentesCount > 0);
+      const l = (t && t.label) || '';
+      const pisca =
+        (/gest[ãa]o/i.test(l) && comprasPendentesCount > 0) ||
+        (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
+        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
+      b.classList.toggle('tab-blink', !!pisca);
     });
   }
+  const updateGestaoBlink = updateTabBlinks;
+  const updateAnotacoesBlink = updateTabBlinks;
 
-  // Pisca a aba "Minhas Anotações" pra QUALQUER usuário (não só admin) enquanto
-  // houver tarefa enviada por outra pessoa ainda não concluída por ela — para
-  // de piscar assim que ela marcar como feita (ver tools/minhas-anotacoes).
+  function hojeISO(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // tarefa agendada (campo enviarEm) só "chega" para quem recebe a partir daquela data
+  function tarefaJaEnviada(dados){
+    return !dados.enviarEm || dados.enviarEm <= hojeISO();
+  }
+
+  let mhRecebidas = [];
   function subscribeAnotacoesPendentes(){
     if (anotacoesBadgeSubscribed) return;
     anotacoesBadgeSubscribed = true;
     db.collection('tarefasEnviadas').where('destinatarioUid', '==', currentProfile.uid).onSnapshot(function(snap){
-      anotacoesPendentesCount = snap.docs.filter(function(d){
-        const s = d.data().status;
-        return s === 'pendente' || s === 'reprovada';
-      }).length;
-      updateAnotacoesBlink();
+      mhRecebidas = snap.docs.map(function(d){ return d.data(); }).filter(function(r){
+        return tarefaJaEnviada(r) && (r.status === 'pendente' || r.status === 'reprovada');
+      });
+      anotacoesPendentesCount = mhRecebidas.length;
+      updateTabBlinks();
+      renderMobileHomeTasks();
     }, function(){
       anotacoesPendentesCount = 0;
-      updateAnotacoesBlink();
+      updateTabBlinks();
     });
-  }
-
-  function updateAnotacoesBlink(){
-    const btns = Array.prototype.slice.call(els.tabstrip.querySelectorAll('.tab-btn'));
-    btns.forEach(function(b){
-      const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
-      const ehAnotacoes = !!t && /anota/i.test(t.label || '');
-      b.classList.toggle('tab-blink', ehAnotacoes && anotacoesPendentesCount > 0);
-    });
+    db.collection('tarefasEnviadas').where('remetenteUid', '==', currentProfile.uid).onSnapshot(function(snap){
+      anotacoesEnviadasAtencao = snap.docs.filter(function(d){
+        const r = d.data();
+        return tarefaJaEnviada(r) && (r.status === 'pendente' || r.status === 'aguardando_aprovacao');
+      }).length;
+      updateTabBlinks();
+    }, function(){ /* quem não envia tarefa não tem nada aqui */ });
   }
 
   // ---------- Aviso obrigatório: foto de perfil faltando (só para usuários específicos) ----------
@@ -2404,7 +2450,10 @@
     db.collection('tabs').orderBy('order').onSnapshot(function(snap){
       tabsCatalog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       renderTabstrip();
-      if (currentProfile.role === 'admin') renderAdminTabsTable();
+      if (currentProfile.role === 'admin') {
+        corrigirNomesDeAbas();
+        renderAdminTabsTable();
+      }
       renderNewUserTabsChecklist();
     });
   }
@@ -2436,6 +2485,7 @@
     sparkle: '<path d="M8.5 21v-2.3a5.5 5.5 0 1 1 7 0V21"></path><rect x="9.3" y="10.5" width="3.6" height="3.6" rx=".6"></rect><path d="M12 7.2V9M12 15v1.8M7.2 12H9M15 12h1.8M8.6 8.6l1.2 1.2M14.2 14.2l1.2 1.2M8.6 15.4l1.2-1.2M14.2 9.8l1.2-1.2"></path>',
     graduation: '<path d="M2.5 8.3 12 4l9.5 4.3L12 12.6z"></path><circle cx="19.5" cy="8.6" r=".6" fill="currentColor" stroke="none"></circle><line x1="19.5" y1="9.2" x2="19.5" y2="11.5"></line><path d="M4 11c2.5-1 6-1 8 1 2-2 5.5-2 8-1v7.5c-2.5-1-6-1-8 1-2-2-5.5-2-8-1z"></path><line x1="12" y1="12" x2="12" y2="19.5"></line>',
     shieldcheck: '<path d="M12 3.2 19 6v6c0 4.8-3.1 8.6-7 9.8-3.9-1.2-7-5-7-9.8V6z"></path><path d="M9 12l2 2 4-4"></path>',
+    cloudlock: '<path d="M17.5 19H7a4.5 4.5 0 0 1-.9-8.9A6 6 0 0 1 17.6 9 5 5 0 0 1 17.5 19z"></path><rect x="9.4" y="13" width="5.2" height="3.9" rx=".7"></rect><path d="M10.6 13v-1.1a1.4 1.4 0 0 1 2.8 0V13"></path>',
     checkcircle: '<circle cx="12" cy="12" r="9"></circle><path d="M8 12.3 10.8 15 16 9.5"></path>',
     xcircle: '<circle cx="12" cy="12" r="9"></circle><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line>',
     download: '<path d="M12 3.5v11.5"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4.5 18.5h15"></path>',
@@ -2500,7 +2550,7 @@
   }
 
   els.userMenuBtn.innerHTML = iconeSvg('gear');
-  els.sistemasStatusBtn.innerHTML = iconeSvg('shieldcheck');
+  els.sistemasStatusBtn.innerHTML = iconeSvg('cloudlock');
 
   // ---------- Início mobile (dash com atalhos grandes) ----------
   function isMobileViewport(){
@@ -2614,18 +2664,15 @@
           return soma + ((dados.naoLidoPor && dados.naoLidoPor[currentProfile.uid]) || 0);
         }, 0);
         atualizarBadgesMobileHome();
+        updateTabBlinks();
       }, function(){ /* sem acesso ao chat: ignora, badge fica em 0 */ });
     db.collection('pendTarefas').where('ownerUid', '==', currentProfile.uid)
       .onSnapshot(function(snap){
-        mhNotesCount = snap.size;
-        atualizarBadgesMobileHome();
-      }, function(){ /* sem acesso a anotações: ignora, badge fica em 0 */ });
-    db.collection('pendTarefas').where('ownerUid', '==', currentProfile.uid)
-      .orderBy('criadoEm', 'desc').limit(3)
-      .onSnapshot(function(snap){
-        renderMobileHomeTasks(snap.docs.map(function(d){ return d.data(); }));
+        mhMinhasTarefas = snap.docs.map(function(d){ return d.data(); }).filter(function(t){ return !t.concluida; });
+        renderMobileHomeTasks();
       }, function(){ /* sem acesso a anotações: lista fica vazia */ });
   }
+  let mhMinhasTarefas = [];
 
   function tempoRelativo(timestamp){
     if (!timestamp || !timestamp.toDate) return '';
@@ -2640,7 +2687,16 @@
     return 'há ' + dias + ' dias';
   }
 
-  function renderMobileHomeTasks(tarefas){
+  // Início do celular: primeiro as tarefas que alguém me enviou (ainda a fazer), depois
+  // as minhas tarefas abertas mais recentes — no máximo 3 no total.
+  function renderMobileHomeTasks(){
+    mhNotesCount = mhRecebidas.length + mhMinhasTarefas.length;
+    atualizarBadgesMobileHome();
+    const seg = function(t){ return (t && t.seconds) || 0; };
+    const recebidas = mhRecebidas.slice().sort(function(a, b){ return seg(b.criadoEm) - seg(a.criadoEm); })
+      .map(function(r){ return { texto: r.texto, criadoEm: r.criadoEm, de: r.remetenteNome || '' }; });
+    const minhas = mhMinhasTarefas.slice().sort(function(a, b){ return seg(b.criadoEm) - seg(a.criadoEm); });
+    const tarefas = recebidas.concat(minhas).slice(0, 3);
     els.mhTasks.innerHTML = '';
     if (!tarefas.length) {
       els.mhTasks.appendChild(els.mhTasksEmpty);
@@ -2649,9 +2705,10 @@
     tarefas.forEach(function(tf){
       const row = document.createElement('div');
       row.className = 'mh-task-row';
+      const meta = (tf.de !== undefined ? 'Enviada por ' + escapeHtml(tf.de) + ' · ' : '') + tempoRelativo(tf.criadoEm);
       row.innerHTML =
         '<span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>' +
-        '<span class="txt"><span class="nm">' + escapeHtml(tf.texto || '') + '</span><span class="meta">' + tempoRelativo(tf.criadoEm) + '</span></span>';
+        '<span class="txt"><span class="nm">' + escapeHtml(tf.texto || '') + '</span><span class="meta">' + meta + '</span></span>';
       els.mhTasks.appendChild(row);
     });
   }
@@ -2961,11 +3018,52 @@
     iframes[tabId].classList.add('active');
   }
 
+  // Rodinha do mouse sobre um bloco que só rola para o lado (Kanban, faixas de sub-abas,
+  // tabelas largas): rola o próprio bloco, como nos sites grandes. Vale para o Portal e
+  // para cada ferramenta aberta em aba (inclusive páginas embutidas dentro delas).
+  function ativarRolagemNoBloco(doc){
+    if (!doc || doc.__rolagemBloco) return;
+    doc.__rolagemBloco = true;
+    const win = doc.defaultView;
+    doc.addEventListener('wheel', function(e){
+      if (e.ctrlKey || e.shiftKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+      for (let el = e.target; el && el.nodeType === 1 && el !== doc.documentElement; el = el.parentElement) {
+        const st = win.getComputedStyle(el);
+        const rolaV = /(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight + 1;
+        if (rolaV) return; // bloco com rolagem vertical: deixa o navegador rolar normalmente
+        const rolaH = /(auto|scroll)/.test(st.overflowX) && el.scrollWidth > el.clientWidth + 1;
+        if (!rolaH) continue;
+        const max = el.scrollWidth - el.clientWidth;
+        if ((delta > 0 && el.scrollLeft < max - 1) || (delta < 0 && el.scrollLeft > 0)) {
+          el.scrollLeft += delta;
+          e.preventDefault();
+        }
+        return;
+      }
+    }, { passive: false });
+    const ligarFilhos = function(){
+      Array.prototype.forEach.call(doc.querySelectorAll('iframe'), function(f){
+        try { ativarRolagemNoBloco(f.contentDocument); } catch(err) {}
+      });
+    };
+    ligarFilhos();
+    doc.addEventListener('load', function(ev){
+      if (ev.target && ev.target.tagName === 'IFRAME') {
+        try { ativarRolagemNoBloco(ev.target.contentDocument); } catch(err) {}
+      }
+    }, true);
+  }
+  ativarRolagemNoBloco(document);
+
   function ensureIframe(t){
     if (iframes[t.id]) return iframes[t.id];
     const ifr = document.createElement('iframe');
     ifr.src = buildToolUrl(t);
-    ifr.addEventListener('load', function(){ postThemeToIframe(ifr); });
+    ifr.addEventListener('load', function(){
+      postThemeToIframe(ifr);
+      try { ativarRolagemNoBloco(ifr.contentDocument); } catch(e) { /* página de outro site: o navegador não deixa mexer */ }
+    });
     els.content.appendChild(ifr);
     iframes[t.id] = ifr;
     return ifr;
@@ -3034,6 +3132,20 @@
     box.innerHTML = tabsCatalog.map(function(t){
       return '<label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="nu-tab-cb"><span>' + escapeHtml(t.label) + '</span></label>';
     }).join('');
+    sincronizarSelecionarTodas('nu-tabs-todas', '#nu-tabs-list');
+  }
+
+  // "Selecionar todas": marca/desmarca todas as caixas da lista (abas e sub-abas) e
+  // fica marcado sozinho quando o admin marca uma a uma todas as opções.
+  function sincronizarSelecionarTodas(todasId, listaSel){
+    const todas = document.getElementById(todasId);
+    const lista = document.querySelector(listaSel);
+    if (!todas || !lista) return;
+    const caixas = function(){ return Array.prototype.slice.call(lista.querySelectorAll('input[type="checkbox"]')); };
+    const atualizar = function(){ const cs = caixas(); todas.checked = cs.length > 0 && cs.every(function(c){ return c.checked; }); };
+    todas.onchange = function(){ caixas().forEach(function(c){ c.checked = todas.checked; }); };
+    lista.onchange = atualizar;
+    atualizar();
   }
 
   function criarUsuario(){
@@ -3090,6 +3202,7 @@
       document.getElementById('nu-email').value = '';
       document.getElementById('nu-senha').value = '';
       document.querySelectorAll('.nu-tab-cb').forEach(function(c){ c.checked = false; });
+      document.getElementById('nu-tabs-todas').checked = false;
     }).catch(function(err){
       errEl.textContent = traduzErro(err.code);
       errEl.style.display = 'block';
@@ -3175,6 +3288,7 @@
           return html + '</div>';
         }).join('');
       }
+      sincronizarSelecionarTodas('edit-tabs-todas', '#edit-tabs-list');
       els.editTabsBackdrop.classList.add('show');
     });
   };
@@ -3510,6 +3624,21 @@
     });
   }
 
+  // Nomes de aba gravados com erro no Firestore — corrige sozinho quando um admin entra.
+  const CORRECOES_NOME_ABA = [
+    [/^\s*minas anota[cç][oõ]es\s*$/i, 'Minhas Anotações'],
+    [/^\s*criador de documentos\s*$/, 'Criador de Documentos']
+  ];
+  function corrigirNomesDeAbas(){
+    tabsCatalog.forEach(function(t){
+      CORRECOES_NOME_ABA.forEach(function(c){
+        if (c[0].test(t.label || '') && t.label !== c[1]) {
+          db.collection('tabs').doc(t.id).update({ label: c[1] }).catch(function(){});
+        }
+      });
+    });
+  }
+
   function renderAdminTabsTable(){
     const tbody = document.getElementById('tabs-tbody');
     if (!tbody) return;
@@ -3518,7 +3647,7 @@
       const subResumo = subCount ? (subCount + ' sub-aba' + (subCount > 1 ? 's' : '')) : '<span style="color:var(--muted);">nenhuma</span>';
       return '<tr draggable="true" data-tab-id="' + t.id + '">' +
         '<td class="drag-handle" title="Arraste para reordenar">⠿</td>' +
-        '<td>' + escapeHtml(t.label) + '</td>' +
+        '<td><input type="text" class="label-input" value="' + escapeHtml(t.label) + '" data-tab-id="' + t.id + '" title="Clique para renomear a aba"></td>' +
         '<td><input type="text" class="url-input" value="' + escapeHtml(t.url) + '" data-tab-id="' + t.id + '"></td>' +
         '<td><input type="number" class="ordem-input" value="' + t.order + '" data-tab-id="' + t.id + '"></td>' +
         '<td>' + subResumo + '</td>' +
@@ -3530,6 +3659,13 @@
     }).join('');
     ativarEdicaoOrdem(tbody);
     ativarEdicaoUrl(tbody);
+    Array.prototype.slice.call(tbody.querySelectorAll('.label-input')).forEach(function(inp){
+      inp.addEventListener('change', function(){
+        const novo = inp.value.trim();
+        if (!novo) return;
+        db.collection('tabs').doc(inp.dataset.tabId).update({ label: novo });
+      });
+    });
     ativarArrastarTabs(tbody);
   }
 
@@ -3622,68 +3758,64 @@
 (function(){
   var g = document.getElementById('globe-lines');
   if(!g) return;
-  var svg = document.getElementById('globe-svg');
-  var CX=500, CY=500, GR=288;
-  var TILT = 22 * Math.PI / 180;
-  var cosTILT = Math.cos(TILT), sinTILT = Math.sin(TILT);
-  var LATS=5, LONS=8;
-  var angle=0, speed=0.006;
-  var nY = (CY - GR*cosTILT).toFixed(2);
-  var sY = (CY + GR*cosTILT).toFixed(2);
-  var mRy = (GR*cosTILT).toFixed(2);
+  // viewBox em px reais (-22..22): o traço de 1px fica nítido no tamanho exibido
+  var R = 12.6, TILT = 16 * Math.PI / 180, SEG = 72, LATS = 5, LONS = 6;
+  var cT = Math.cos(TILT), sT = Math.sin(TILT);
+  var angle = 0, speed = 0.006;
+  var NS = 'http://www.w3.org/2000/svg';
 
-  /* pre-create latitude ellipses (static — only set once) */
-  var latEls = [];
-  for(var i=1;i<=LATS;i++){
-    var theta = i*Math.PI/(LATS+1);
-    var sinT=Math.sin(theta), cosT=Math.cos(theta);
-    var el=document.createElementNS('http://www.w3.org/2000/svg','ellipse');
-    el.setAttribute('cx',CX);
-    el.setAttribute('cy',(CY - GR*cosT*cosTILT).toFixed(2));
-    el.setAttribute('rx',(GR*sinT).toFixed(2));
-    el.setAttribute('ry',(GR*sinT*sinTILT).toFixed(2));
-    el.setAttribute('fill','none');
-    el.setAttribute('stroke','rgba(255,255,255,0.70)');
-    el.setAttribute('stroke-width','8');
-    g.appendChild(el);
-    latEls.push(el);
+  function mk(tag, attrs){
+    var el = document.createElementNS(NS, tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
   }
+  var back = mk('path', {stroke:'rgba(255,255,255,0.24)', 'stroke-width':'0.7'});
+  var front = mk('path', {stroke:'rgba(255,255,255,0.92)', 'stroke-width':'0.85'});
+  g.appendChild(back);
+  g.appendChild(front);
+  g.appendChild(mk('circle', {cx:0, cy:0, r:R, stroke:'rgba(255,255,255,0.95)', 'stroke-width':'1'}));
 
-  /* pre-create meridian arc paths: 2 per meridian (front + back) */
-  var merPaths = [];
-  for(var i=0;i<LONS;i++){
-    var pFront=document.createElementNS('http://www.w3.org/2000/svg','path');
-    var pBack =document.createElementNS('http://www.w3.org/2000/svg','path');
-    pFront.setAttribute('fill','none'); pFront.setAttribute('stroke-width','9');
-    pBack.setAttribute('fill','none');  pBack.setAttribute('stroke-width','9');
-    g.appendChild(pBack);   /* back drawn first (below front) */
-    g.appendChild(pFront);
-    merPaths.push({front:pFront, back:pBack});
+  // ponto da esfera (lat theta a partir do polo, long phi) girado no eixo Y e inclinado no eixo X
+  function proj(theta, phi){
+    var x = Math.sin(theta) * Math.cos(phi + angle);
+    var y = Math.cos(theta);
+    var z = Math.sin(theta) * Math.sin(phi + angle);
+    return { x: x * R, y: -(y * cT - z * sT) * R, z: y * sT + z * cT };
+  }
+  // separa cada curva em trechos da frente (z>=0) e de trás, cada trecho vira um "M ... L ..."
+  function addCurve(pts, acc){
+    var run = [pts[0]], f = pts[0].z >= 0;
+    function flush(){
+      if (run.length < 2) return;
+      var d = 'M' + run.map(function(p){ return p.x.toFixed(2) + ' ' + p.y.toFixed(2); }).join('L');
+      acc[f ? 'front' : 'back'] += d;
+    }
+    for (var i = 1; i < pts.length; i++){
+      var pf = pts[i].z >= 0;
+      run.push(pts[i]);
+      if (pf !== f){ flush(); run = [pts[i]]; f = pf; }
+    }
+    flush();
   }
 
   function draw(){
-    for(var i=0;i<LONS;i++){
-      var phi = i*Math.PI/LONS + angle;
-      var cosP = Math.cos(phi);
-      var absRx = Math.abs(cosP*GR);
-      var pf = merPaths[i].front, pb = merPaths[i].back;
-      if(absRx < 2){
-        /* edge-on: draw as a vertical line */
-        var ld='M '+CX+' '+nY+' L '+CX+' '+sY;
-        pf.setAttribute('d',ld); pf.setAttribute('stroke','rgba(255,255,255,0.88)');
-        pb.setAttribute('d',''); pb.setAttribute('stroke','none');
-      } else {
-        var rx=absRx.toFixed(2);
-        /* sweep=1 → right arc; sweep=0 → left arc */
-        var fSweep = cosP>=0 ? 1 : 0;
-        var bSweep = 1-fSweep;
-        pf.setAttribute('d','M '+CX+' '+nY+' A '+rx+' '+mRy+' 0 0 '+fSweep+' '+CX+' '+sY);
-        pb.setAttribute('d','M '+CX+' '+nY+' A '+rx+' '+mRy+' 0 0 '+bSweep+' '+CX+' '+sY);
-        pf.setAttribute('stroke','rgba(255,255,255,0.88)');
-        pb.setAttribute('stroke','rgba(255,255,255,0.20)');
-      }
+    var acc = { front: '', back: '' };
+    var i, s, pts;
+    for (i = 1; i <= LATS; i++){
+      var th = i * Math.PI / (LATS + 1);
+      pts = [];
+      for (s = 0; s <= SEG; s++) pts.push(proj(th, s / SEG * 2 * Math.PI));
+      addCurve(pts, acc);
     }
-    angle+=speed;
+    for (i = 0; i < LONS; i++){
+      var ph = i * Math.PI / LONS;
+      pts = [];
+      for (s = 0; s <= SEG; s++) pts.push(proj(s / SEG * 2 * Math.PI, ph));
+      addCurve(pts, acc);
+    }
+    front.setAttribute('d', acc.front);
+    back.setAttribute('d', acc.back);
+    angle += speed;
     requestAnimationFrame(draw);
   }
 

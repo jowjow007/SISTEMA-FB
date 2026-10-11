@@ -138,7 +138,7 @@
     50%{box-shadow:0 0 0 6px rgba(224,120,32,0);}
   }
 
-  /* Lista fixa "Enviar Tarefa" — cor diferente (azul), não excluível */
+  /* Lista fixa "Envio de Tarefa" — cor diferente (azul), não excluível */
   .lista-btn.fixa{border-color:rgba(70,140,190,.5);background:rgba(70,140,190,.10);}
   .lista-btn.fixa:hover{background:rgba(70,140,190,.18);}
   .lista-btn.fixa.active{background:#215a80;border-color:#4a92c4;color:#fff;}
@@ -255,7 +255,7 @@
   }
   .recebida-kanban-card{border-color:rgba(224,120,32,.35);}
 
-  /* Coluna fixa "Enviar Tarefa" no Kanban */
+  /* Coluna fixa "Envio de Tarefa" no Kanban */
   .kanban-col.fixa{border-color:rgba(70,140,190,.5);background:rgba(70,140,190,.06);}
   .kanban-col.fixa .kanban-col-head{border-bottom-color:rgba(70,140,190,.28);}
   .kanban-col.fixa .count{background:rgba(70,140,190,.25);color:#7ec1ec;}
@@ -299,6 +299,22 @@
   .enviada-texto{font-size:.88rem;color:var(--paper);margin-bottom:2px;word-break:break-word;}
   .enviada-meta{font-size:.75rem;color:var(--muted);margin-top:4px;}
   .enviada-acoes{display:flex;gap:8px;margin-top:10px;}
+  .enviada-card.status-agendada .enviada-badge{background:rgba(150,150,170,.16);color:#c8c8d8;border:1px solid rgba(150,150,170,.4);}
+  .enviada-para{font-size:.78rem;color:var(--paper);font-weight:600;flex:0 0 auto;}
+  .enviada-quando{font-size:.74rem;color:var(--muted);flex:0 0 auto;}
+  .enviada-status{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;flex:0 0 auto;
+    background:var(--panel-3);color:var(--muted);}
+  .enviada-status.s-pendente{background:rgba(224,168,32,.16);color:#f0c04d;}
+  .enviada-status.s-aguardando_aprovacao{background:rgba(76,140,154,.18);color:#8fd0e0;}
+  .enviada-status.s-aprovada{background:var(--green-bg);color:#8fd6ab;}
+  .enviada-status.s-reprovada{background:rgba(184,54,46,.18);color:#ffb4ae;}
+  /* pisca (botão "Enviadas" e seção) quando há tarefa enviada sem resposta ou aguardando aprovação */
+  .view-btn.pisca,.sec-head.pisca{animation:enviadasPisca 1.1s ease-in-out infinite;border-radius:8px;}
+  @keyframes enviadasPisca{
+    0%,100%{box-shadow:0 0 0 0 rgba(201,70,60,.6);background-color:transparent;}
+    50%{box-shadow:0 0 0 5px rgba(201,70,60,0);background-color:rgba(201,70,60,.18);}
+  }
+  .quando-opt{display:flex !important;align-items:center;gap:8px;font-size:.86rem !important;color:var(--paper) !important;cursor:pointer;}
 
   .modal-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
@@ -440,6 +456,22 @@
     <div class="modal-foot">
       <button class="btn ghost" id="reprovarCancelar">Cancelar</button>
       <button class="btn" id="reprovarConfirmar">Devolver</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: enviar tarefa agora ou agendar a data de envio -->
+<div class="modal-backdrop" id="agendarBackdrop">
+  <div class="modal">
+    <h3>Enviar tarefa</h3>
+    <p id="agendarResumo"></p>
+    <label class="quando-opt"><input type="radio" name="quandoEnviar" value="agora" checked> Enviar agora</label>
+    <label class="quando-opt"><input type="radio" name="quandoEnviar" value="data"> Escolher a data de envio</label>
+    <input type="date" id="agendarData" class="tarefa-data" style="width:170px;margin:6px 0 0 26px;" disabled>
+    <div class="modal-err" id="agendarErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="agendarCancelar">Cancelar</button>
+      <button class="btn" id="agendarConfirmar">Enviar</button>
     </div>
   </div>
 </div>
@@ -706,9 +738,9 @@
     });
   });
 
-  // ---------- Lista fixa "Enviar Tarefa" (admin/gestor) ----------
+  // ---------- Lista fixa "Envio de Tarefa" (admin/gestor) ----------
   // Em vez de um modal separado, quem pode enviar tarefa (admin/gestor) ganha uma
-  // lista pré-criada e não excluível chamada "Enviar Tarefa": cadastra ali igual a
+  // lista pré-criada e não excluível chamada "Envio de Tarefa": cadastra ali igual a
   // qualquer outra lista (composer com Enter, foco mantido) e, em cada tarefa
   // cadastrada, escolhe pra quem mandar num select — ao escolher, já envia na hora.
   let colegas = []; // diretório (organograma) usado no select "Enviar para..."
@@ -726,12 +758,12 @@
     // caso, e as duas ações já são permitidas pro dono da lista.
     db.collection('pendGrupos').doc(idListaEnviar()).set({
       ownerUid: currentUser.uid,
-      nome: 'Enviar Tarefa',
+      nome: 'Envio de Tarefa',
       emoji: '📨',
       fixa: true,
       criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true }).catch(function(e){
-      console.error('Não foi possível preparar a lista "Enviar Tarefa":', e);
+      console.error('Não foi possível preparar a lista "Envio de Tarefa":', e);
     });
   }
 
@@ -759,19 +791,74 @@
     return out;
   }
 
+  // Ao escolher o destinatário abre o modal "enviar agora / escolher a data". Uma tarefa
+  // agendada (campo enviarEm) já fica gravada, mas só aparece para quem recebe a partir
+  // daquele dia — dá pra cadastrar no fim de semana para chegar só na segunda.
+  let envioPendente = null; // { tarefaId, destinatarioUid }
+  const agendarEls = {
+    backdrop: document.getElementById('agendarBackdrop'),
+    resumo: document.getElementById('agendarResumo'),
+    data: document.getElementById('agendarData'),
+    err: document.getElementById('agendarErr'),
+    confirmar: document.getElementById('agendarConfirmar')
+  };
+  function quandoEnviar(){
+    const r = document.querySelector('input[name="quandoEnviar"]:checked');
+    return r ? r.value : 'agora';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="quandoEnviar"]'), function(r){
+    r.addEventListener('change', function(){
+      agendarEls.data.disabled = quandoEnviar() !== 'data';
+      if (!agendarEls.data.disabled) agendarEls.data.focus();
+    });
+  });
+  document.getElementById('agendarCancelar').addEventListener('click', function(){
+    agendarEls.backdrop.classList.remove('open');
+    envioPendente = null;
+  });
+
   window.__enviarTarefaLista = function(tarefaId, destinatarioUid){
     if (!destinatarioUid) return;
     const t = tarefas.find(function(x){ return x.id === tarefaId; });
     if (!t) return;
     const colega = colegas.find(function(c){ return c.uid === destinatarioUid; });
-    const destinatarioNome = colega ? colega.nome : '';
+    envioPendente = { tarefaId: tarefaId, destinatarioUid: destinatarioUid };
+    agendarEls.resumo.innerHTML = 'Para <b>' + escapeHtml(colega ? colega.nome : '') + '</b>: ' + escapeHtml(t.texto);
+    document.querySelector('input[name="quandoEnviar"][value="agora"]').checked = true;
+    agendarEls.data.disabled = true;
+    agendarEls.data.value = '';
+    agendarEls.data.min = hojeStr();
+    agendarEls.err.textContent = '';
+    agendarEls.backdrop.classList.add('open');
+  };
+
+  agendarEls.confirmar.addEventListener('click', function(){
+    if (!envioPendente) return;
+    let enviarEm = null;
+    if (quandoEnviar() === 'data'){
+      if (!agendarEls.data.value){
+        agendarEls.err.textContent = 'Escolha a data em que a tarefa deve chegar.';
+        return;
+      }
+      if (agendarEls.data.value < hojeStr()){
+        agendarEls.err.textContent = 'A data de envio não pode ser no passado.';
+        return;
+      }
+      if (agendarEls.data.value > hojeStr()) enviarEm = agendarEls.data.value;
+    }
+    const t = tarefas.find(function(x){ return x.id === envioPendente.tarefaId; });
+    if (!t) return;
+    const colega = colegas.find(function(c){ return c.uid === envioPendente.destinatarioUid; });
+    const tarefaId = envioPendente.tarefaId;
+    agendarEls.confirmar.disabled = true;
     db.collection('tarefasEnviadas').add({
       remetenteUid: currentUser.uid,
       remetenteNome: currentUser.displayName,
-      destinatarioUid: destinatarioUid,
-      destinatarioNome: destinatarioNome,
+      destinatarioUid: envioPendente.destinatarioUid,
+      destinatarioNome: colega ? colega.nome : '',
       texto: t.texto,
       dataVencimento: t.dataVencimento || null,
+      enviarEm: enviarEm,
       status: 'pendente',
       criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
       concluidaEm: null,
@@ -780,11 +867,24 @@
       motivoReprovacao: null,
       justificativaConclusao: null
     }).then(function(){
+      agendarEls.backdrop.classList.remove('open');
+      envioPendente = null;
       return db.collection('pendTarefas').doc(tarefaId).delete();
     }).catch(function(e){
-      alert('Não foi possível enviar: ' + e.message);
+      agendarEls.err.textContent = 'Não foi possível enviar: ' + e.message;
+    }).finally(function(){
+      agendarEls.confirmar.disabled = false;
     });
-  };
+  });
+
+  // tarefa agendada só "chega" para quem recebe a partir do dia escolhido
+  function jaEnviada(e){
+    return !e.enviarEm || e.enviarEm <= hojeStr();
+  }
+  // o que precisa da atenção de quem enviou: sem resposta ainda, ou aguardando aprovação
+  function enviadaPedeAtencao(e){
+    return jaEnviada(e) && (e.status === 'pendente' || e.status === 'aguardando_aprovacao');
+  }
 
   window.__abrirConcluirEnvio = function(id){
     concluirEnvioAlvoId = id;
@@ -1105,6 +1205,40 @@
     }
     out += '</div>';
 
+    if (g.fixa) out += enviadasSecaoHtml(g);
+
+    return out;
+  }
+
+  // Na lista "Envio de Tarefa": o que já foi enviado — tarefa, para quem e quando
+  function enviadasSecaoHtml(g){
+    const key = g.id + ':enviadas';
+    const colapsado = !!collapsed[key];
+    const seg = function(t){ return (t && t.seconds) || 0; };
+    const lista = enviadas.slice().sort(function(a,b){ return seg(b.criadoEm) - seg(a.criadoEm); });
+    const atencao = lista.some(enviadaPedeAtencao);
+    let out = '<div class="sec">';
+    out += '<div class="sec-head' + (colapsado ? ' collapsed' : '') + (atencao ? ' pisca' : '') + '" onclick="__toggleSecao(\'' + g.id + '\',\'enviadas\')">';
+    out += '<span class="chevron">▾</span><span class="sec-title">Enviadas (' + lista.length + ')</span>';
+    out += '</div>';
+    if (!colapsado){
+      out += '<div class="sec-list">';
+      if (!lista.length){
+        out += '<div class="sec-empty">Nenhuma tarefa enviada ainda.</div>';
+      } else {
+        out += lista.map(function(e){
+          const agendada = !jaEnviada(e);
+          return '<div class="tarefa-row enviada-row">'
+            + '<div class="tarefa-texto">' + escapeHtml(e.texto) + '</div>'
+            + '<span class="enviada-para">→ ' + escapeHtml(e.destinatarioNome || '') + '</span>'
+            + '<span class="enviada-quando">' + (agendada ? '🕒 chega em ' : '') + dataEnvioTexto(e) + '</span>'
+            + '<span class="enviada-status s-' + (agendada ? 'agendada' : e.status) + '">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>'
+            + '</div>';
+        }).join('');
+      }
+      out += '</div>';
+    }
+    out += '</div>';
     return out;
   }
 
@@ -1232,7 +1366,7 @@
       out += '<span style="font-size:.72rem;color:var(--muted);"><b>Devolvida:</b> ' + escapeHtml(r.motivoReprovacao) + '</span>';
     }
     if (precisaAgir){
-      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluí</button>';
+      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluir</button>';
     } else {
       out += '<span style="font-size:.72rem;color:var(--muted);">Aguardando ' + escapeHtml(r.remetenteNome || 'aprovação') + ' confirmar.</span>';
     }
@@ -1289,7 +1423,7 @@
     }
     out += '</div>';
     if (precisaAgir){
-      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluí</button>';
+      out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluir</button>';
     }
     out += '</div>';
     return out;
@@ -1316,11 +1450,18 @@
     return { pendente: 'Pendente', aguardando_aprovacao: 'Aguardando aprovação', aprovada: 'Concluída ✓', reprovada: 'Devolvida' }[s] || s;
   }
 
+  function dataEnvioTexto(e){
+    if (e.enviarEm) return formatarDataBR(e.enviarEm);
+    return e.criadoEm && e.criadoEm.toDate ? e.criadoEm.toDate().toLocaleDateString('pt-BR') : '';
+  }
+
   function enviadaCardHtml(e){
     const podeExcluir = currentUser.role === 'admin' || e.remetenteUid === currentUser.uid;
-    let out = '<div class="enviada-card status-' + e.status + '">';
-    out += '<div class="enviada-top"><span class="enviada-dest">Para <b>' + escapeHtml(e.destinatarioNome || '') + '</b></span>';
-    out += '<span class="enviada-badge">' + enviadaStatusLabel(e.status) + '</span>';
+    const agendada = !jaEnviada(e);
+    let out = '<div class="enviada-card status-' + (agendada ? 'agendada' : e.status) + '">';
+    out += '<div class="enviada-top"><span class="enviada-dest">Para <b>' + escapeHtml(e.destinatarioNome || '') + '</b>'
+      + ' <span style="color:var(--muted);font-size:.75rem;">· ' + (agendada ? 'chega em ' : 'enviada em ') + dataEnvioTexto(e) + '</span></span>';
+    out += '<span class="enviada-badge">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>';
     if (podeExcluir){
       out += '<button type="button" class="icon-btn danger" onclick="__excluirEnvio(\'' + e.id + '\')" title="Excluir envio">✕</button>';
     }
@@ -1348,8 +1489,9 @@
 
   function renderEnviadas(){
     if (!podeEnviarTarefa()) return;
+    els.viewBtnEnviadas.classList.toggle('pisca', enviadas.some(enviadaPedeAtencao));
     if (!enviadas.length){
-      els.enviadasBoard.innerHTML = '<div class="kanban-empty" style="padding:30px;">Você ainda não enviou nenhuma tarefa. Cadastre na lista 📨 "Enviar Tarefa" e escolha o destinatário em cada item.</div>';
+      els.enviadasBoard.innerHTML = '<div class="kanban-empty" style="padding:30px;">Você ainda não enviou nenhuma tarefa. Cadastre na lista 📨 "Envio de Tarefa" e escolha o destinatário em cada item.</div>';
       return;
     }
     const ordem = { aguardando_aprovacao: 0, pendente: 1, reprovada: 2, aprovada: 3 };
@@ -1414,7 +1556,7 @@
     if (!unsubRecebidas){
       unsubRecebidas = db.collection('tarefasEnviadas').where('destinatarioUid', '==', currentUser.uid)
         .onSnapshot(function(snap){
-          recebidas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+          recebidas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); }).filter(jaEnviada);
           render(); // recebidas também aparece como lista/coluna virtual em Lista e Kanban, não só no banner
         }, function(){ /* sem tarefas enviadas pra mim, ou sem permissão — ignora */ });
     }
@@ -1423,7 +1565,7 @@
       unsubEnviadas = db.collection('tarefasEnviadas').where('remetenteUid', '==', currentUser.uid)
         .onSnapshot(function(snap){
           enviadas = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-          renderEnviadas();
+          render(); // a lista "Envio de Tarefa" também mostra as enviadas, e o botão "Enviadas" pisca
         }, function(){ /* ignora falha silenciosamente */ });
     }
   }

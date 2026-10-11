@@ -78,18 +78,25 @@
     font-family:var(--font-display);font-weight:600;font-size:1.2rem;margin:0;color:var(--paper);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .sidebar-actions-row{display:flex;align-items:center;gap:8px;margin-top:12px;}
+  .sidebar-actions-row{display:flex;align-items:center;gap:6px;margin-top:12px;}
   .btn-novo-pill{
-    flex:0 0 auto;width:125px;height:32px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;
+    flex:0 0 auto;width:117px;height:30px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;
     background-image:url('assets/novo-botao-chat-crop.png');background-repeat:no-repeat;
-    background-size:cover;background-position:center;
+    background-size:100% 100%;background-position:center;background-color:transparent;
   }
   .btn-novo-pill:hover{filter:brightness(1.12);}
+  .btn-etiquetas-wrap{position:relative;flex:0 0 auto;}
+  .btn-etiquetas-side{
+    width:30px;height:30px;border-radius:50%;border:1px solid #c9463c;cursor:pointer;color:#fff;
+    background:linear-gradient(180deg,#5c1a20,#3a0e14);display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .btn-etiquetas-side:hover{filter:brightness(1.25);}
+  .btn-etiquetas-side.on{box-shadow:0 0 0 2px var(--gold);}
   .btn-arquivadas-wrap{position:relative;flex:0 0 auto;}
   .btn-arquivadas-pill{
-    width:124px;height:32px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;background-color:transparent;
+    width:116px;height:30px;border:none;border-radius:20px;cursor:pointer;overflow:hidden;background-color:transparent;
     background-image:url('assets/novo-botao-arquivadas-crop.png');background-repeat:no-repeat;
-    background-size:cover;background-position:center;
+    background-size:100% 100%;background-position:center;
   }
   .btn-arquivadas-pill:hover{filter:brightness(1.3);}
   .btn-arquivadas-pill.on{box-shadow:0 0 0 2px var(--gold);border-radius:20px;}
@@ -157,6 +164,41 @@
     flex:0 0 auto;
   }
   .conv-meta-col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto;}
+  .tag-filter-row .tag-chip .x{margin-left:5px;opacity:.7;}
+
+  /* Fixar / Arquivar direto na lista — só no computador */
+  .conv-quick{display:none;gap:2px;}
+  .conv-quick button{
+    background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;border-radius:6px;
+    padding:2px 4px;display:inline-flex;align-items:center;opacity:.6;
+  }
+  .conv-quick button:hover{opacity:1;color:var(--paper);border-color:var(--line-strong);background:var(--panel-3);}
+  .conv-quick button.on{color:var(--gold);opacity:1;}
+  @media (hover:hover) and (pointer:fine) and (min-width:721px){
+    .conv-quick{display:inline-flex;}
+    /* conversa com mensagem não lida pisca para chamar atenção */
+    .conv-item.nao-lida{animation:convPisca 1.2s ease-in-out infinite;}
+    @keyframes convPisca{0%,100%{background:transparent;}50%{background:rgba(201,70,60,.20);}}
+    .conv-item.nao-lida.active{animation:none;}
+  }
+
+  /* Menu do toque longo (celular) */
+  .acoes-sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:65;}
+  .acoes-sheet-backdrop.open{display:flex;}
+  .acoes-sheet{
+    width:100%;max-width:480px;background:var(--panel);border:1px solid var(--line-strong);border-bottom:none;
+    border-radius:16px 16px 0 0;padding:10px 10px calc(14px + env(safe-area-inset-bottom));
+  }
+  .acoes-sheet .titulo{font-size:.8rem;color:var(--muted);text-align:center;padding:6px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:6px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .acoes-sheet button{
+    width:100%;display:flex;align-items:center;gap:12px;background:none;border:none;color:var(--paper);
+    font-size:.95rem;padding:13px 12px;border-radius:10px;cursor:pointer;text-align:left;
+  }
+  .acoes-sheet button:active{background:var(--panel-2);}
+  .acoes-sheet button.danger{color:#ffb4ae;}
+  .acoes-sheet button.cancelar{justify-content:center;color:var(--muted);margin-top:4px;border-top:1px solid var(--line);border-radius:0;}
+  .conv-item{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 
   /* ---------- thread ---------- */
   .thread{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--ink);}
@@ -314,7 +356,7 @@
   .btn.ghost:hover{border-color:var(--silver);}
 
   .tag-catalog-list{max-height:260px;overflow-y:auto;margin:4px 0 12px;border-top:1px solid var(--line);}
-  .tag-cat-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);}
+  .tag-cat-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer;}
   .tag-cat-row .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto;}
   .tag-cat-row .nome{flex:1;font-size:.84rem;color:var(--paper);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tag-cat-row .acoes{display:flex;gap:2px;flex:0 0 auto;}
@@ -365,6 +407,10 @@
       <div class="tag-filter-row" id="tag-filter-row"></div>
       <div class="sidebar-actions-row">
         <button class="btn-novo-pill" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
+        <div class="btn-etiquetas-wrap">
+          <button class="btn-etiquetas-side" id="btn-etiquetas-side" title="Etiquetas: filtrar conversas e criar novas" aria-label="Etiquetas"></button>
+          <span class="arquivadas-badge" id="etiquetas-filtro-badge" style="display:none;"></span>
+        </div>
         <div class="btn-arquivadas-wrap">
           <button class="btn-arquivadas-pill" id="btn-ver-arquivadas" title="Ver arquivadas" aria-label="Ver arquivadas"></button>
           <span class="arquivadas-badge" id="arquivadas-badge" style="display:none;"></span>
@@ -464,11 +510,16 @@
   </div>
 </div>
 
-<!-- modal: etiquetas -->
+<!-- menu do toque longo numa conversa (celular) -->
+<div class="acoes-sheet-backdrop" id="acoes-sheet-backdrop">
+  <div class="acoes-sheet" id="acoes-sheet"></div>
+</div>
+
+<!-- modal: etiquetas (pelo botão lateral = filtrar e criar; pela conversa = escolher as que valem para ela) -->
 <div class="modal-backdrop" id="tags-backdrop">
   <div class="modal">
-    <h3>Etiquetas</h3>
-    <p class="hint">Etiquetas são só suas — crie quantas quiser, escolha a cor e marque quais valem para esta conversa.</p>
+    <h3 id="tags-modal-titulo">Etiquetas</h3>
+    <p class="hint" id="tags-modal-hint"></p>
     <div class="tag-catalog-list" id="tag-catalog-list"></div>
     <div class="tag-new-form">
       <label id="tag-form-label">Nova etiqueta</label>
@@ -670,6 +721,13 @@
   els.btnArquivar.innerHTML = icoSvg('archive', 13) + ' Arquivar';
   els.btnExcluirConversa.innerHTML = icoSvg('trash', 13) + ' Excluir';
   els.btnEmoji.innerHTML = icoSvg('smiley', 18);
+  // no celular o campo é estreito e "Escreva uma mensagem..." ficava cortado
+  (function(){
+    var mq = window.matchMedia('(max-width: 720px)');
+    var ajustar = function(){ document.getElementById('composer-input').placeholder = mq.matches ? 'Escrever' : 'Escreva uma mensagem...'; };
+    ajustar();
+    if (mq.addEventListener) mq.addEventListener('change', ajustar); else mq.addListener(ajustar);
+  })();
   els.btnEnviar.innerHTML = icoSvg('send', 16);
   els.btnVoltar.innerHTML = icoSvg('chevronLeft', 20);
   if (els.docPreviewIcon) els.docPreviewIcon.innerHTML = icoSvg('document', 20);
@@ -814,21 +872,21 @@
     return lista;
   }
 
+  // Abaixo da busca ficam só as etiquetas usadas como filtro agora (clique no × tira o filtro).
+  // Escolher filtros e criar etiquetas é no botão de etiqueta entre "Nova conversa" e "Arquivadas".
   function renderTagFilterRow(){
-    var ids = Object.keys(catalogoEtiquetas).sort(function(a, b){
-      return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
-    });
-    if (!ids.length){ els.tagFilterRow.innerHTML = ''; return; }
-    els.tagFilterRow.innerHTML = ids.map(function(id){
+    var ativos = Object.keys(tagFilterSelected).filter(function(id){ return tagFilterSelected[id] && catalogoEtiquetas[id]; });
+    var badge = document.getElementById('etiquetas-filtro-badge');
+    badge.textContent = ativos.length;
+    badge.style.display = ativos.length ? 'inline-block' : 'none';
+    document.getElementById('btn-etiquetas-side').classList.toggle('on', ativos.length > 0);
+    els.tagFilterRow.innerHTML = ativos.map(function(id){
       var t = catalogoEtiquetas[id];
-      var ativo = !!tagFilterSelected[id];
-      return '<span class="tag-chip' + (ativo ? ' active' : '') + '" data-filtro="' + id + '" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '</span>';
+      return '<span class="tag-chip active" data-filtro="' + id + '" title="Tirar este filtro" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '<span class="x">×</span></span>';
     }).join('');
     Array.prototype.forEach.call(els.tagFilterRow.querySelectorAll('[data-filtro]'), function(el){
       el.addEventListener('click', function(){
-        var id = el.getAttribute('data-filtro');
-        tagFilterSelected[id] = !tagFilterSelected[id];
-        renderTagFilterRow();
+        delete tagFilterSelected[el.getAttribute('data-filtro')];
         renderConvList();
       });
     });
@@ -866,7 +924,8 @@
       if (c.tipo === 'grupo' && c.ultimaMensagemAutor){
         preview = nomeDe(c.ultimaMensagemAutor) + ': ' + preview;
       }
-      var out = '<div class="conv-item' + (c.id === activeId ? ' active' : '') + '" data-id="' + c.id + '">';
+      var arquivada = tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
+      var out = '<div class="conv-item' + (c.id === activeId ? ' active' : '') + (naoLidas > 0 ? ' nao-lida' : '') + '" data-id="' + c.id + '">';
       out += avatarConversaHtml(c);
       out += '<div class="conv-body">';
       out += '<div class="conv-top-line">';
@@ -881,14 +940,91 @@
       out += '<div class="conv-meta-col">';
       out += '<span class="conv-time">' + formatDiaCurto(c.ultimaMensagemEm) + '</span>';
       if (naoLidas > 0) out += '<span class="unread-badge">' + naoLidas + '</span>';
+      out += '<span class="conv-quick">'
+        + '<button type="button" data-acao="fixar" class="' + (fixada ? 'on' : '') + '" title="' + (fixada ? 'Desafixar' : 'Fixar') + '">' + icoSvg(fixada ? 'starFilled' : 'starOutline', 13) + '</button>'
+        + '<button type="button" data-acao="arquivar" title="' + (arquivada ? 'Desarquivar' : 'Arquivar') + '">' + icoSvg(arquivada ? 'unarchive' : 'archive', 13) + '</button>'
+        + '</span>';
       out += '</div>';
       out += '</div>';
       return out;
     }).join('');
 
     Array.prototype.forEach.call(els.convList.querySelectorAll('.conv-item'), function(el){
-      el.addEventListener('click', function(){ selecionarConversa(el.getAttribute('data-id')); });
+      var id = el.getAttribute('data-id');
+      el.addEventListener('click', function(e){
+        if (toqueLongoAcabou){ toqueLongoAcabou = false; return; }
+        var acao = e.target.closest('[data-acao]');
+        if (acao){
+          e.stopPropagation();
+          if (acao.getAttribute('data-acao') === 'fixar') alternarFixada(id);
+          else alternarArquivada(id);
+          return;
+        }
+        selecionarConversa(id);
+      });
+      ligarToqueLongo(el, id);
     });
+  }
+
+  // ---------------- toque longo numa conversa (celular): fixar, arquivar, etiquetas, excluir ----------------
+  var toqueLongoAcabou = false; // evita que o "click" de fim do toque abra a conversa
+  function ligarToqueLongo(el, id){
+    var timer = null, x0 = 0, y0 = 0;
+    el.addEventListener('touchstart', function(e){
+      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY;
+      timer = setTimeout(function(){
+        timer = null;
+        toqueLongoAcabou = true;
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch(err){} }
+        abrirMenuConversa(id);
+      }, 550);
+    }, { passive: true });
+    el.addEventListener('touchmove', function(e){
+      var t = e.touches[0];
+      if (timer && (Math.abs(t.clientX - x0) > 10 || Math.abs(t.clientY - y0) > 10)) { clearTimeout(timer); timer = null; }
+    }, { passive: true });
+    el.addEventListener('touchend', function(){ if (timer) { clearTimeout(timer); timer = null; } });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+
+  var acoesBackdrop = document.getElementById('acoes-sheet-backdrop');
+  var acoesSheet = document.getElementById('acoes-sheet');
+  var menuAbertoEm = 0;
+  function fecharMenuConversa(){ acoesBackdrop.classList.remove('open'); }
+  acoesBackdrop.addEventListener('click', function(e){
+    // o "click" de quando o dedo sai da tela chega logo depois de abrir — não fecha por causa dele
+    if (e.target === acoesBackdrop && Date.now() - menuAbertoEm > 450) fecharMenuConversa();
+  });
+
+  function abrirMenuConversa(id){
+    var c = conversas.filter(function(x){ return x.id === id; })[0];
+    if (!c) return;
+    var prefs = tagsPorConversa[id] || {};
+    var nome = tituloConversa(c);
+    acoesSheet.innerHTML = '<div class="titulo">' + escapeHtml(nome) + '</div>'
+      + '<button type="button" data-op="fixar">' + icoSvg(prefs.fixada ? 'starFilled' : 'starOutline', 18) + (prefs.fixada ? 'Desafixar' : 'Fixar') + '</button>'
+      + '<button type="button" data-op="arquivar">' + icoSvg(prefs.arquivada ? 'unarchive' : 'archive', 18) + (prefs.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>'
+      + '<button type="button" data-op="etiquetas">' + icoSvg('tag', 18) + 'Colocar etiqueta</button>'
+      + '<button type="button" data-op="excluir" class="danger">' + icoSvg('trash', 18) + 'Excluir</button>'
+      + '<button type="button" data-op="cancelar" class="cancelar">Cancelar</button>';
+    Array.prototype.forEach.call(acoesSheet.querySelectorAll('[data-op]'), function(b){
+      b.addEventListener('click', function(){
+        if (Date.now() - menuAbertoEm < 450) return; // mesmo cuidado do fundo: ignora o toque que abriu o menu
+        var op = b.getAttribute('data-op');
+        fecharMenuConversa();
+        if (op === 'fixar'){
+          if (confirm((prefs.fixada ? 'Desafixar' : 'Fixar') + ' a conversa "' + nome + '"?')) alternarFixada(id);
+        } else if (op === 'arquivar'){
+          if (confirm((prefs.arquivada ? 'Desarquivar' : 'Arquivar') + ' a conversa "' + nome + '"?')) alternarArquivada(id);
+        } else if (op === 'etiquetas'){
+          abrirEtiquetasDaConversa(id);
+        } else if (op === 'excluir'){
+          excluirConversa(id);
+        }
+      });
+    });
+    menuAbertoEm = Date.now();
+    acoesBackdrop.classList.add('open');
   }
 
   els.btnVerArquivadas.addEventListener('click', function(){
@@ -1290,24 +1426,28 @@
 
   // ---------------- pin ----------------
 
-  els.btnPin.addEventListener('click', function(){
-    if (!activeId) return;
-    var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
-    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+  function alternarFixada(id){
+    var atual = tagsPorConversa[id] && tagsPorConversa[id].fixada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
       .set({ fixada: !atual }, { merge: true }).catch(function(e){ alert('Erro: ' + e.message); });
+  }
+  els.btnPin.addEventListener('click', function(){
+    if (activeId) alternarFixada(activeId);
   });
 
   // ---------------- arquivar / excluir ----------------
 
-  els.btnArquivar.addEventListener('click', function(){
-    if (!activeId) return;
-    var atual = tagsPorConversa[activeId] && tagsPorConversa[activeId].arquivada;
-    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
+  function alternarArquivada(id){
+    var atual = tagsPorConversa[id] && tagsPorConversa[id].arquivada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
       .set({ arquivada: !atual }, { merge: true })
       .then(function(){
-        if (!atual) voltarParaListaVazia();
+        if (!atual && activeId === id) voltarParaListaVazia();
       })
       .catch(function(e){ alert('Erro: ' + e.message); });
+  }
+  els.btnArquivar.addEventListener('click', function(){
+    if (activeId) alternarArquivada(activeId);
   });
 
   function voltarParaListaVazia(){
@@ -1319,17 +1459,18 @@
   }
 
   els.btnExcluirConversa.addEventListener('click', function(){
-    if (!activeId) return;
+    if (activeId) excluirConversa(activeId);
+  });
+  function excluirConversa(id){
     var ok = confirm('Excluir esta conversa da sua lista?\n\nEla continua existindo para a outra pessoa (ou para o grupo) — isso só tira ela da SUA lista. Se chegar mensagem nova aqui, a conversa volta a aparecer para você.');
     if (!ok) return;
-    var id = activeId;
     db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
       .set({ excluidaAte: FV.serverTimestamp(), arquivada: false }, { merge: true })
       .then(function(){
         if (activeId === id) voltarParaListaVazia();
       })
       .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
-  });
+  }
 
   // ---------------- editar grupo ----------------
 
@@ -1378,12 +1519,32 @@
 
   // ---------------- etiquetas ----------------
 
-  els.btnEtiquetas.addEventListener('click', function(){
-    if (!activeId) return;
+  // Dois jeitos de abrir o mesmo modal:
+  //  'filtro'  — botão lateral (entre Nova conversa e Arquivadas): filtra a lista, cria, edita e exclui etiquetas;
+  //  'aplicar' — dentro da conversa (ou no toque longo): só marca quais das etiquetas já criadas valem para ela.
+  var tagModalModo = 'filtro';
+  var tagModalConvId = null;
+  var tagNewForm = document.querySelector('.tag-new-form');
+
+  function abrirModalEtiquetas(modo, convId){
+    tagModalModo = modo;
+    tagModalConvId = convId || null;
     resetFormularioEtiqueta();
+    var filtro = modo === 'filtro';
+    document.getElementById('tags-modal-titulo').textContent = filtro ? 'Etiquetas' : 'Etiquetas da conversa';
+    document.getElementById('tags-modal-hint').textContent = filtro
+      ? 'Marque as etiquetas para filtrar a lista de conversas. Aqui você também cria, edita e exclui suas etiquetas (são só suas).'
+      : 'Marque quais etiquetas valem para esta conversa. Para criar uma etiqueta nova, use o botão de etiqueta no menu ao lado de "Nova conversa".';
+    tagNewForm.style.display = filtro ? '' : 'none';
+    els.tagFormSalvar.style.display = filtro ? '' : 'none';
     renderTagsModal();
     els.tagsBackdrop.classList.add('open');
-  });
+  }
+  function abrirEtiquetasDaConversa(id){ if (id) abrirModalEtiquetas('aplicar', id); }
+
+  els.btnEtiquetas.addEventListener('click', function(){ abrirEtiquetasDaConversa(activeId); });
+  document.getElementById('btn-etiquetas-side').innerHTML = icoSvg('tag', 15);
+  document.getElementById('btn-etiquetas-side').addEventListener('click', function(){ abrirModalEtiquetas('filtro'); });
   els.tagsFechar.addEventListener('click', function(){ els.tagsBackdrop.classList.remove('open'); });
 
   function resetFormularioEtiqueta(){
@@ -1413,29 +1574,37 @@
     var ids = Object.keys(catalogoEtiquetas).sort(function(a, b){
       return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
     });
-    var aplicadas = (tagsPorConversa[activeId] && tagsPorConversa[activeId].etiquetasIds) || [];
+    var filtro = tagModalModo === 'filtro';
+    var aplicadas = (tagsPorConversa[tagModalConvId] && tagsPorConversa[tagModalConvId].etiquetasIds) || [];
     if (!ids.length){
-      els.tagCatalogList.innerHTML = '<div class="tag-cat-empty">Você ainda não criou nenhuma etiqueta. Crie a primeira ali embaixo.</div>';
+      els.tagCatalogList.innerHTML = '<div class="tag-cat-empty">' + (filtro
+        ? 'Você ainda não criou nenhuma etiqueta. Crie a primeira ali embaixo.'
+        : 'Nenhuma etiqueta criada ainda. Crie no botão de etiqueta ao lado de "Nova conversa".') + '</div>';
     } else {
       els.tagCatalogList.innerHTML = ids.map(function(id){
         var t = catalogoEtiquetas[id];
-        var marcada = aplicadas.indexOf(id) !== -1;
-        return '<div class="tag-cat-row">' +
+        var marcada = filtro ? !!tagFilterSelected[id] : aplicadas.indexOf(id) !== -1;
+        return '<label class="tag-cat-row">' +
           '<input type="checkbox" data-aplicar="' + id + '" ' + (marcada ? 'checked' : '') + '>' +
           '<span class="dot" style="background:' + t.cor + ';"></span>' +
           '<span class="nome">' + escapeHtml(t.nome) + '</span>' +
-          '<span class="acoes">' +
+          (filtro ? '<span class="acoes">' +
             '<button type="button" data-editar="' + id + '" title="Editar">' + icoSvg('pencil', 13) + '</button>' +
             '<button type="button" data-excluir="' + id + '" title="Excluir">' + icoSvg('trash', 13) + '</button>' +
-          '</span></div>';
+          '</span>' : '') + '</label>';
       }).join('');
     }
 
     Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-aplicar]'), function(chk){
       chk.addEventListener('change', function(){
         var id = chk.getAttribute('data-aplicar');
+        if (filtro){
+          if (chk.checked) tagFilterSelected[id] = true; else delete tagFilterSelected[id];
+          renderConvList();
+          return;
+        }
         var campo = { etiquetasIds: chk.checked ? FV.arrayUnion(id) : FV.arrayRemove(id) };
-        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId).set(campo, { merge: true });
+        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(tagModalConvId).set(campo, { merge: true });
       });
     });
     Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-editar]'), function(btn){
@@ -1496,16 +1665,10 @@
         return catalogoEtiquetas[id].nome === nome;
       })[0];
       if (existente){
-        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
-          .set({ etiquetasIds: FV.arrayUnion(existente) }, { merge: true })
-          .then(resetFormularioEtiqueta);
+        els.tagFormErr.textContent = 'Já existe uma etiqueta com esse nome.';
         return;
       }
       db.collection('chatPrefs').doc(myUid).collection('etiquetas').add({ nome: nome, cor: novaTagCor })
-        .then(function(doc){
-          return db.collection('chatPrefs').doc(myUid).collection('conversas').doc(activeId)
-            .set({ etiquetasIds: FV.arrayUnion(doc.id) }, { merge: true });
-        })
         .then(resetFormularioEtiqueta)
         .catch(function(e){ els.tagFormErr.textContent = 'Erro: ' + e.message; });
     } else {
