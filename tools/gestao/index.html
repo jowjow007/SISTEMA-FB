@@ -110,6 +110,23 @@
 
   #gate{padding:80px 20px;text-align:center;color:var(--muted);}
 
+  /* ---- hub / landing ---- */
+  .hub-view{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 60px;}
+  .hub-title{font-family:var(--font-display);font-size:1.55rem;font-weight:700;margin:0 0 6px;text-align:center;color:var(--paper);}
+  .hub-sub{font-size:.85rem;color:var(--muted);margin:0 0 40px;text-align:center;line-height:1.5;}
+  .hub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;width:100%;max-width:720px;}
+  .hub-card{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:16px;
+    padding:32px 20px 26px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;
+    text-align:center;display:flex;flex-direction:column;align-items:center;
+  }
+  .hub-card:hover{background:var(--panel);border-color:var(--gold);transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.45);}
+  .hub-card-icon{font-size:2.5rem;margin-bottom:16px;line-height:1;}
+  .hub-card-title{font-family:var(--font-display);font-size:1.1rem;font-weight:700;margin:0 0 8px;color:var(--paper);}
+  .hub-card-desc{font-size:.75rem;color:var(--muted);margin:0;line-height:1.5;}
+  .hub-card-arrow{margin-top:18px;font-size:.72rem;color:var(--gold);font-weight:600;letter-spacing:.03em;}
+  @media(max-width:640px){.hub-grid{grid-template-columns:1fr;}}
+
   /* ---- módulo genérico ---- */
   .mod-scroll{flex:1 1 auto;overflow-y:auto;padding:18px 24px 40px;}
   .mod-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
@@ -236,8 +253,32 @@
 <body>
 
 <div id="shell">
-  <nav class="subtabs" id="subtabs-nav"></nav>
-  <div id="panels"></div>
+  <nav class="subtabs" id="subtabs-nav" style="display:none;"></nav>
+  <div id="hub-view" class="hub-view">
+    <h1 class="hub-title">Gestão</h1>
+    <p class="hub-sub">Selecione o módulo que deseja acessar</p>
+    <div class="hub-grid">
+      <div class="hub-card" data-goto="colaboradores">
+        <span class="hub-card-icon">👥</span>
+        <div class="hub-card-title">Colaboradores</div>
+        <div class="hub-card-desc">Organograma, equipe e estrutura do escritório</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+      <div class="hub-card" data-goto="patrimonio">
+        <span class="hub-card-icon">🏷️</span>
+        <div class="hub-card-title">Patrimônio</div>
+        <div class="hub-card-desc">Inventário de bens e equipamentos do escritório</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+      <div class="hub-card" data-goto="compras">
+        <span class="hub-card-icon">🛒</span>
+        <div class="hub-card-title">Controle de Compras</div>
+        <div class="hub-card-desc">Solicitações, aprovações e histórico de aquisições</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+    </div>
+  </div>
+  <div id="panels" style="display:none;"></div>
 </div>
 
 <!-- Modal: novo/editar item de patrimônio -->
@@ -526,8 +567,30 @@
   const ATIVAS = subtabsPermitidas();
   const nav = document.getElementById('subtabs-nav');
   const panelsEl = document.getElementById('panels');
+  const hubView = document.getElementById('hub-view');
   const iframes = {};
   const initedModulo = {};
+
+  /* hub navigation */
+  hubView.addEventListener('click', function(e){
+    const card = e.target.closest('[data-goto]');
+    if (!card) return;
+    hubView.style.display = 'none';
+    panelsEl.style.display = '';
+    nav.style.display = '';
+    selectSubtab(card.dataset.goto);
+  });
+
+  /* back-to-hub button */
+  const backBtn = document.createElement('button');
+  backBtn.innerHTML = '← Início';
+  backBtn.style.cssText = 'color:var(--gold);margin-right:8px;border-right:1px solid var(--line-strong);padding-right:14px;';
+  backBtn.addEventListener('click', function(){
+    nav.style.display = 'none';
+    panelsEl.style.display = 'none';
+    hubView.style.display = '';
+  });
+  nav.appendChild(backBtn);
 
   ATIVAS.forEach(function(t){
     const btn = document.createElement('button');
@@ -1836,7 +1899,7 @@
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
       meuPatrimonioVerTudo = !doc.exists || doc.data().patrimonioVerTudo !== false;
-      selectSubtab(ATIVAS[0].id);
+      /* start on hub — user will choose module */
     });
   });
 

@@ -154,14 +154,61 @@
 
   @media(max-width:640px){
     .video-grid,.doc-grid{grid-template-columns:1fr;}
+    .hub-grid{grid-template-columns:1fr 1fr;}
   }
+
+  /* ---- hub / landing ---- */
+  .hub-view{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 60px;}
+  .hub-title{font-family:var(--font-display);font-size:1.55rem;font-weight:600;margin:0 0 6px;text-align:center;color:var(--paper);}
+  .hub-sub{font-size:.85rem;color:var(--muted);margin:0 0 40px;text-align:center;line-height:1.5;}
+  .hub-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;width:100%;max-width:860px;}
+  .hub-card{
+    background:var(--panel-2);border:1px solid var(--line-strong);border-radius:16px;
+    padding:30px 20px 24px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;
+    text-align:center;display:flex;flex-direction:column;align-items:center;gap:0;
+  }
+  .hub-card:hover{background:var(--panel);border-color:var(--red);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .hub-card-icon{font-size:2.4rem;margin-bottom:16px;line-height:1;}
+  .hub-card-title{font-family:var(--font-display);font-size:1.05rem;font-weight:600;margin:0 0 7px;color:var(--paper);}
+  .hub-card-desc{font-size:.74rem;color:var(--muted);margin:0;line-height:1.5;}
+  .hub-card-arrow{margin-top:18px;font-size:.72rem;color:var(--red-bright);font-weight:600;letter-spacing:.03em;}
 </style>
 </head>
 <body>
 
 <div id="shell">
-  <nav class="subtabs" id="subtabs-nav"></nav>
-  <div id="panels"></div>
+  <nav class="subtabs" id="subtabs-nav" style="display:none;"></nav>
+  <div id="hub-view" class="hub-view">
+    <h1 class="hub-title">Treinamentos</h1>
+    <p class="hub-sub">Escolha onde deseja acessar</p>
+    <div class="hub-grid">
+      <div class="hub-card" data-goto="manual">
+        <span class="hub-card-icon">📖</span>
+        <div class="hub-card-title">Manual</div>
+        <div class="hub-card-desc">Guia completo de uso do portal e dos processos do escritório</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+      <div class="hub-card" data-goto="pop">
+        <span class="hub-card-icon">📋</span>
+        <div class="hub-card-title">POPs</div>
+        <div class="hub-card-desc">Procedimentos Operacionais Padrão com o passo a passo de cada rotina</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+      <div class="hub-card" data-goto="videos">
+        <span class="hub-card-icon">🎬</span>
+        <div class="hub-card-title">Vídeos</div>
+        <div class="hub-card-desc">Tutoriais em vídeo do YouTube e Google Drive</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+      <div class="hub-card" data-goto="documentos">
+        <span class="hub-card-icon">📄</span>
+        <div class="hub-card-title">Documentos</div>
+        <div class="hub-card-desc">Apostilas, formulários e materiais de apoio em PDF</div>
+        <div class="hub-card-arrow">Acessar →</div>
+      </div>
+    </div>
+  </div>
+  <div id="panels" style="display:none;"></div>
 </div>
 
 <div class="video-modal" id="video-modal">
@@ -190,7 +237,18 @@
 
   var nav = document.getElementById('subtabs-nav');
   var panelsEl = document.getElementById('panels');
+  var hubView = document.getElementById('hub-view');
   var iframes = {};
+
+  /* hub navigation */
+  hubView.addEventListener('click', function(e){
+    var card = e.target.closest('[data-goto]');
+    if (!card) return;
+    hubView.style.display = 'none';
+    panelsEl.style.display = '';
+    nav.style.display = '';
+    selectSubtab(card.dataset.goto);
+  });
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
@@ -334,6 +392,17 @@
 
   /* ---------- montagem das sub-abas ---------- */
 
+  /* back-to-hub button */
+  var backBtn = document.createElement('button');
+  backBtn.innerHTML = '← Início';
+  backBtn.style.cssText = 'color:var(--red-bright);margin-right:8px;border-right:1px solid var(--line-strong);padding-right:14px;';
+  backBtn.addEventListener('click', function(){
+    nav.style.display = 'none';
+    panelsEl.style.display = 'none';
+    hubView.style.display = '';
+  });
+  nav.appendChild(backBtn);
+
   SUBTABS.forEach(function(t){
     var btn = document.createElement('button');
     btn.textContent = t.label;
@@ -399,7 +468,7 @@
     }
   }
 
-  selectSubtab(SUBTABS[0].id);
+  /* start on hub */
 })();
 </script>
 </body>
