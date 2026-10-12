@@ -176,10 +176,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     line-height:1.45;
   }
 
-  .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
-  /* rubrica de quem gerou + data (ex.: JSF-11/10/2026), pequena, no canto esquerdo do rodapé */
-  .doc-autor{position:absolute;left:20mm;bottom:22mm;z-index:1;font-family:'Poppins',Arial,sans-serif;font-size:6.5pt;color:#555;letter-spacing:.02em;}
-  /* área de conteúdo texto — margens ajustadas ao timbrado */
+  .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}  /* área de conteúdo texto — margens ajustadas ao timbrado */
   .doc-content{
     z-index:1;
     position:absolute;
@@ -498,17 +495,6 @@ function hojeISOPet(){
 document.getElementById('data-f').value = hojeISOPet();
 document.getElementById('data-f').addEventListener('input', function(){ dataEditadaManualmente = true; });
 
-// Rubrica de quem gera (iniciais + data do dia, ex.: JSF-11/10/2026) — partículas não entram
-function rubricaAutor(){
-  var PART = ['de','da','do','dos','das','e','d'];
-  var nome = (meuNome || (currentUser && currentUser.displayName) || '').trim();
-  var ini = nome.split(/\s+/).filter(function(p){ return p && PART.indexOf(p.toLowerCase()) === -1; })
-    .map(function(p){ return p[0].toUpperCase(); }).join('');
-  var dt = new Date();
-  var data = String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
-  return (ini ? ini+'-' : '') + data;
-}
-
 // ══ FIREBASE AUTH ═════════════════════════════════════════════
 var currentUser = null, isAdmin = false, meuNome = '';
 auth.onAuthStateChanged(function(user){
@@ -812,9 +798,8 @@ function _render(){
     return;
   }
   var pags = paginar(buildBody(d));
-  var rubrica = '<div class="doc-autor">'+esc(rubricaAutor())+'</div>';
   wrap.innerHTML = pags.map(function(html){
-    return '<div class="doc-page">'+BG+rubrica+'<div class="doc-content">'+html+'</div></div>';
+    return '<div class="doc-page">'+BG+'<div class="doc-content">'+html+'</div></div>';
   }).join('');
 }
 
@@ -1275,9 +1260,7 @@ async function gerarDocx(d){
   // async('string') do JSZip trava com este modelo; bytes + TextDecoder funciona
   var docXml = new TextDecoder('utf-8').decode(await zip.file('word/document.xml').async('uint8array'));
   var sect = (docXml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/) || [''])[0];
-  // rubrica de quem gerou (iniciais + data) em letra pequena no fim do documento
-  var rubricaDocx = wP(wRun(rubricaAutor(), {sz:13}), {jc:'left', before:240, after:0, line:240});
-  var corpo = docxBody(d) + rubricaDocx + sect;
+  var corpo = docxBody(d) + sect;
   // replacer em função: evita que "$" no texto (ex.: R$) seja interpretado
   docXml = docXml.replace(/<w:body>[\s\S]*<\/w:body>/, function(){ return '<w:body>' + corpo + '</w:body>'; });
   zip.file('word/document.xml', docXml);
