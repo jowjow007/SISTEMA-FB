@@ -81,34 +81,23 @@
   a{color:inherit;}
   h1,h2,h3{font-family:var(--font-display);}
 
-  /* barra superior: sempre escura, nos dois temas */
+  /* barra de seções: mesmo padrão das abas Gestão e Treinamentos (fonte, tamanho, sublinhado);
+     some na tela inicial (só os cards) e aparece ao entrar numa seção, com "← Início" */
   .topbar{
-    position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;
-    padding:0 18px;min-height:56px;
-    background:linear-gradient(180deg,#30121a 0%,#250b12 100%);
-    border-bottom:1px solid rgba(214,168,104,.38);
-    box-shadow:0 6px 22px rgba(0,0,0,.35);
+    position:sticky;top:0;z-index:6;display:flex;align-items:stretch;
+    background:var(--paper);border-bottom:1px solid var(--card-line);padding:0 14px;
   }
-
-  nav.tabs{flex:0 1 auto;min-width:0;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;align-self:stretch;}
+  html.on-hub .topbar{display:none;}
+  nav.tabs{flex:1 1 auto;min-width:0;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
   nav.tabs::-webkit-scrollbar{height:0;}
   nav.tabs button{
-    position:relative;flex:0 0 auto;background:transparent;border:none;
-    padding:0 7px;font-family:'Fira Sans Condensed',var(--font-body);font-size:.98rem;font-weight:400;color:#d9c3ab;
-    cursor:pointer;white-space:nowrap;transition:color .15s;
+    flex:0 0 auto;background:transparent;border:none;border-bottom:3px solid transparent;
+    padding:12px 14px;font-family:var(--font-body);font-size:.82rem;font-weight:600;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;
   }
-  nav.tabs button::after{
-    content:'';position:absolute;left:7px;right:7px;bottom:11px;height:2px;border-radius:2px;
-    background:linear-gradient(90deg,#e9b46f,#b8432f);opacity:0;transition:opacity .15s;
-  }
-  nav.tabs button:hover{color:#f3e2cb;}
-  nav.tabs button.active{color:#eab36c;}
-  nav.tabs button.active::after{opacity:1;}
-  @media(max-width:700px){
-    .topbar{padding:0 10px;min-height:50px;justify-content:flex-start;}
-    nav.tabs button{font-size:.95rem;padding:0 7px;}
-    nav.tabs button::after{bottom:9px;}
-  }
+  nav.tabs button:hover{color:var(--text);}
+  nav.tabs button.active{color:#c9463c;border-bottom-color:#c9463c;}
+  nav.tabs button.voltar-inicio{color:#c9463c;margin-right:8px;border-right:1px solid var(--card-line);padding-right:14px;}
 
   /* ---- Início (hub com cards) ---- */
   html.on-hub{
@@ -539,10 +528,12 @@ function setGerarView(v){
 /* ---------- render ---------- */
 function renderNav(){
   var nav = document.getElementById('tabs-nav');
-  nav.innerHTML = SECTIONS.map(function(s){
-    var active = s.id === state.section ? ' active' : '';
-    return '<button type="button" class="'+active+'" data-s="'+s.id+'">'+s.label+'</button>';
-  }).join('');
+  // "← Início" volta para os cards (como em Gestão e Treinamentos); o Início não aparece como aba
+  nav.innerHTML = '<button type="button" class="voltar-inicio" data-s="inicio">← Início</button>'
+    + SECTIONS.filter(function(s){ return s.id !== 'inicio'; }).map(function(s){
+      var active = s.id === state.section ? ' active' : '';
+      return '<button type="button" class="'+active+'" data-s="'+s.id+'">'+s.label+'</button>';
+    }).join('');
   Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
     b.addEventListener('click', function(){ go(b.getAttribute('data-s')); });
   });
