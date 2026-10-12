@@ -76,7 +76,7 @@
   .layout{display:grid;grid-template-columns:minmax(360px,460px) 1fr;gap:22px;align-items:start;}
   @media (max-width:1100px){.layout{grid-template-columns:1fr;}}
 
-  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(--hdr-h,76px) + 12px);max-height:calc(100vh - var(--hdr-h,76px) - 24px);overflow:auto;overscroll-behavior:contain;padding-right:6px;}
   @media (max-width:1100px){.form-col{position:static;max-height:none;}}
 
   .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;}
@@ -145,6 +145,10 @@
      rodapé já vêm prontos na própria imagem; o texto é só sobreposto por cima. */
   .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
   .doc-pagenum{position:absolute;right:27mm;bottom:20.5mm;width:14mm;height:9mm;background:#fff;z-index:1;font-size:8pt;font-weight:700;color:#1a1a1a;display:flex;align-items:center;justify-content:center;}
+  /* rubrica de quem gerou + data (ex.: JSF-11/10/2026), pequena, no canto esquerdo do rodapé */
+  .doc-autor{position:absolute;left:20mm;bottom:22mm;height:5mm;z-index:1;font-size:6.5pt;color:#555;display:flex;align-items:center;letter-spacing:.02em;}
+  .doc-autor:empty{display:none;}
+  .nw{white-space:nowrap;}
   .doc-content{position:absolute;z-index:1;top:34mm;left:18mm;right:18mm;bottom:30mm;overflow:hidden;font-size:calc(9.3pt*var(--fit,1));line-height:calc(1.55 - (1 - var(--fit,1))*0.6);}
 
   .blk{margin-bottom:calc(2.6mm*var(--fit,1));text-align:justify;}
@@ -165,7 +169,7 @@
   .box-table{border:1pt solid #1a1a1a;border-radius:1.2mm;overflow:hidden;margin-bottom:2.6mm;}
   .box-row{display:flex;border-top:1pt solid #1a1a1a;}
   .box-row:first-child{border-top:none;}
-  .box-cell{flex:1;padding:1.3mm 2.2mm;border-left:1pt solid #1a1a1a;font-size:8.4pt;}
+  .box-cell{flex:1;padding:calc(1.3mm*var(--fit,1)) 2.2mm;border-left:1pt solid #1a1a1a;font-size:calc(8.4pt*var(--fit,1));}
   .box-cell:first-child{border-left:none;}
   .box-cell b{font-weight:700;}
 
@@ -192,6 +196,7 @@
   <h1>Documentos</h1>
   <p class="sub">Procurações, substabelecimentos, declarações e outros documentos avulsos — preencha os dados e baixe já em PDF, no timbrado do escritório.</p>
 </header>
+<script>/* altura real do cabeçalho: a coluna do formulário gruda logo abaixo dele (com 76px fixos, um subtítulo de 2 linhas escondia o topo) */(function(){var h=document.querySelector('header');if(!h)return;var set=function(){document.documentElement.style.setProperty('--hdr-h',h.offsetHeight+'px');};set();if(window.ResizeObserver)new ResizeObserver(set).observe(h);window.addEventListener('resize',set);})();</script>
 <main>
   <div class="layout">
 
@@ -205,8 +210,8 @@
 
       <div class="card" id="card-historico">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-          <h2>Últimos documentos gerados</h2>
-          <a href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todos →</a>
+          <h2 id="historico-titulo">Últimos documentos gerados</h2>
+          <a href="historico.html" id="historico-ver-todos" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todos →</a>
         </div>
         <p class="desc" id="historico-msg">Faça login no Portal para ver e reaproveitar o histórico da equipe.</p>
         <div id="historico-list"></div>
@@ -393,6 +398,11 @@
       <div class="card" data-tipo-only="termo_repasse" id="tr-card-parcelas" style="display:none;">
         <h2>Parcelas do repasse</h2>
         <p class="desc">Lembrando que os honorários do escritório são sempre descontados primeiro em cada parcela recebida.</p>
+        <div class="field">
+          <label>Quantidade de parcelas</label>
+          <input id="tr-qtd-parcelas" type="number" min="1" max="120" value="1" inputmode="numeric">
+          <div class="hint">Preencha a 1ª parcela: as demais saem com o mesmo valor e vencimento mês a mês — dá pra alterar qualquer uma depois.</div>
+        </div>
         <div id="tr-parcelas-list"></div>
         <button class="btn secondary small" id="btn-add-tr-parcela" type="button">+ Adicionar parcela</button>
         <div class="grid2" style="margin-top:12px;">
@@ -841,17 +851,22 @@ function renderTrAdvogados(){
       inp.addEventListener('input',()=>{ a[inp.dataset.f]=inp.value; scheduleRender(); });
     });
     div.querySelectorAll('[data-settipo]').forEach(btn=>{
-      btn.addEventListener('click',()=>{ a.tipo=btn.dataset.settipo; renderTrAdvogados(); scheduleRender(); });
+      btn.addEventListener('click',()=>{
+        a.tipo=btn.dataset.settipo;
+        // ao escolher "Escritório" já vem com os dados da sociedade (dá pra editar depois)
+        if(a.tipo==='escritorio' && !a.razaoSocial.trim()) preencherTrEscritorio(a);
+        renderTrAdvogados(); scheduleRender();
+      });
     });
     const pe=div.querySelector('[data-preencher-escritorio]');
-    if(pe) pe.addEventListener('click',()=>{
-      a.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS'; a.cnpj='57.704.224/0001-00'; a.oab='17806';
-      renderTrAdvogados(); scheduleRender();
-    });
+    if(pe) pe.addEventListener('click',()=>{ preencherTrEscritorio(a); renderTrAdvogados(); scheduleRender(); });
     const rm=div.querySelector('[data-remove]');
     if(rm) rm.addEventListener('click',()=>{ trAdvogados=trAdvogados.filter(x=>x!==a); renderTrAdvogados(); scheduleRender(); });
     wrap.appendChild(div);
   });
+}
+function preencherTrEscritorio(a){
+  a.razaoSocial='FONSECA E BRAGA SOCIEDADE DE ADVOGADOS'; a.cnpj='57.704.224/0001-00'; a.oab='17806';
 }
 document.getElementById('btn-add-tr-advogado').addEventListener('click',()=>{
   trAdvogados.push(novoTrAdvogado()); renderTrAdvogados(); scheduleRender();
@@ -906,6 +921,38 @@ document.getElementById('tr-modo').addEventListener('change',e=>{
 /* ---------- parcelas do repasse (modo parcelado) ---------- */
 let trParcelas=[];
 function novaTrParcela(){ return {descricao:'', valor:'', data:''}; }
+// Parcelas geradas pela "Quantidade de parcelas" ficam marcadas como automáticas (auto:true)
+// e seguem a 1ª parcela (mesmo valor, vencimento +1 mês cada); ao editar uma delas à mão,
+// ela deixa de ser automática e não é mais sobrescrita.
+function somarMeses(iso, n){
+  if(!iso) return '';
+  const p=iso.split('-').map(Number);
+  const d=new Date(p[0], p[1]-1+n, 1);
+  const ultimoDia=new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  d.setDate(Math.min(p[2], ultimoDia));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function sincronizarParcelasAuto(){
+  const base=trParcelas[0];
+  if(!base) return;
+  trParcelas.forEach((p,i)=>{
+    if(i===0 || !p.auto) return;
+    p.descricao=(i+1)+'ª parcela';
+    p.valor=base.valor;
+    p.data=somarMeses(base.data, i);
+  });
+}
+function ajustarQtdParcelas(qtd){
+  qtd=Math.max(1, Math.min(120, parseInt(qtd,10)||1));
+  if(trParcelas.length===0) trParcelas.push(novaTrParcela());
+  if(qtd>1 && !trParcelas[0].descricao) trParcelas[0].descricao='1ª parcela';
+  while(trParcelas.length<qtd) trParcelas.push(Object.assign(novaTrParcela(), {auto:true}));
+  if(trParcelas.length>qtd) trParcelas=trParcelas.slice(0, qtd);
+  sincronizarParcelasAuto();
+  renderTrParcelas();
+  scheduleRender();
+}
+document.getElementById('tr-qtd-parcelas').addEventListener('change', e=>ajustarQtdParcelas(e.target.value));
 function renderTrParcelas(){
   const wrap=document.getElementById('tr-parcelas-list');
   wrap.innerHTML='';
@@ -923,12 +970,32 @@ function renderTrParcelas(){
       </div>
     `;
     div.querySelectorAll('[data-f]').forEach(inp=>{
-      inp.addEventListener('input',()=>{ p[inp.dataset.f]=inp.value; scheduleRender(); });
+      inp.addEventListener('input',()=>{
+        p[inp.dataset.f]=inp.value;
+        if(idx===0){
+          // mudou a 1ª: atualiza as automáticas na tela sem recriar o campo em edição
+          sincronizarParcelasAuto();
+          trParcelas.forEach((q,j)=>{
+            if(j===0 || !q.auto) return;
+            const blk=wrap.children[j];
+            if(!blk) return;
+            blk.querySelectorAll('[data-f]').forEach(c=>{ c.value=q[c.dataset.f]; });
+          });
+        } else {
+          p.auto=false;
+        }
+        scheduleRender();
+      });
     });
     const rm=div.querySelector('[data-remove]');
-    if(rm) rm.addEventListener('click',()=>{ trParcelas=trParcelas.filter(x=>x!==p); renderTrParcelas(); scheduleRender(); });
+    if(rm) rm.addEventListener('click',()=>{
+      trParcelas=trParcelas.filter(x=>x!==p);
+      document.getElementById('tr-qtd-parcelas').value=trParcelas.length;
+      renderTrParcelas(); scheduleRender();
+    });
     wrap.appendChild(div);
   });
+  document.getElementById('tr-qtd-parcelas').value=trParcelas.length||1;
 }
 document.getElementById('btn-add-tr-parcela').addEventListener('click',()=>{ trParcelas.push(novaTrParcela()); renderTrParcelas(); scheduleRender(); });
 trParcelas.push(novaTrParcela());
@@ -997,7 +1064,16 @@ function reciboQualTexto(o){
 }
 
 /* ---------- coleta e validação ---------- */
+/* Data do documento = sempre o dia de hoje, a não ser que a pessoa mude o campo à mão.
+   (A aba pode ficar aberta por dias e reabrir do histórico trazia a data antiga.) */
+let dataEditadaManualmente=false;
+function hojeISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+document.getElementById('doc-data').addEventListener('input', ()=>{ dataEditadaManualmente=true; });
 function coletarDados(){
+  if(!dataEditadaManualmente) document.getElementById('doc-data').value = hojeISO();
   document.getElementById('tr-valor-extenso').value = valorExtenso(val('tr-valor'));
   document.getElementById('rc-valor-extenso').value = valorExtenso(val('rc-valor'));
   const trTotalParcelado = somaValoresMoeda(trParcelas.map(p=>p.valor));
@@ -1089,28 +1165,31 @@ function validar(d){
   }
   return 'Modelo ainda não disponível.';
 }
+/* Nome do arquivo no padrão do POP nº 008/2023 (o mesmo do Formatar Petições):
+   (PARTE [X PARTE]) – NOME DO DOCUMENTO – [VALOR] – CRIADOR – DD.MM.AA */
+function nomePessoaDoc(p){ return p ? ((p.tipo==='pj' ? p.razaoSocial : p.nome) || '') : ''; }
 function nomeArquivo(d){
-  let base='documento';
-  if(d.tipo==='procuracao'){
-    const o=d.procuracao.outorgantes[0];
-    base = o ? (o.tipo==='pj'?o.razaoSocial:o.nome) : 'procuracao';
+  let partes=[], doc='DOCUMENTO', valor='';
+  if(d.tipo==='procuracao'){ partes=[nomePessoaDoc(d.procuracao.outorgantes[0])]; doc='PROCURAÇÃO'; }
+  if(d.tipo==='substabelecimento'){ partes=[nomePessoaDoc(d.substabelecimento.cliente)]; doc='SUBSTABELECIMENTO'; }
+  if(d.tipo==='hipossuficiencia'){ partes=[d.hipossuficiencia.nome]; doc='DECLARAÇÃO DE HIPOSSUFICIÊNCIA'; }
+  if(d.tipo==='termo_repasse'){
+    partes=[d.termoRepasse.clienteNome]; doc='TERMO DE REPASSE';
+    const v = d.termoRepasse.modo==='parcelada' ? d.termoRepasse.valorParcelado : d.termoRepasse.valor;
+    if(v) valor='R$ '+v;
   }
-  if(d.tipo==='substabelecimento') base=d.substabelecimento.sbsNome||'substabelecimento';
-  if(d.tipo==='hipossuficiencia') base=d.hipossuficiencia.nome||'declaracao';
-  if(d.tipo==='termo_repasse') base=d.termoRepasse.clienteNome||'termo_repasse';
   if(d.tipo==='recibo'){
-    const p=d.recibo.pagador;
-    base = (p.tipo==='pj'?p.razaoSocial:p.nome)||'recibo';
+    partes=[nomePessoaDoc(d.recibo.pagador), nomePessoaDoc(d.recibo.recebedor)]; doc='RECIBO';
+    if(d.recibo.valor) valor='R$ '+d.recibo.valor;
   }
-  return (base||'documento').replace(/[^\p{L}\p{N} ]/gu,'').trim().replace(/\s+/g,'_')||'documento';
-}
-function prefixoArquivo(tipo){
-  if(tipo==='procuracao') return 'Procuracao_';
-  if(tipo==='substabelecimento') return 'Substabelecimento_';
-  if(tipo==='hipossuficiencia') return 'Declaracao_Hipossuficiencia_';
-  if(tipo==='termo_repasse') return 'Termo_Repasse_';
-  if(tipo==='recibo') return 'Recibo_';
-  return 'Documento_';
+  partes=partes.map(s=>String(s||'').trim().toUpperCase()).filter(Boolean);
+  const criador=(String(nomeUsuarioLogado||'').trim().split(/\s+/)[0]||'CRIADOR').toUpperCase();
+  const dt=new Date();
+  const data=String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getFullYear()).slice(2);
+  const pecas=['('+(partes.length ? partes.join(' X ') : 'PARTE')+')', doc];
+  if(valor) pecas.push(valor);
+  pecas.push(criador, data);
+  return pecas.join(' – ').replace(/[\\\/:*?"<>|]/g,'-');
 }
 
 /* ---------- construção dos documentos ---------- */
@@ -1145,7 +1224,7 @@ function buildSubstabelecimento(d){
     C(`<div class="doc-h1">Substabelecimento</div>`),
     C(`<div class="blk">Eu, <strong>${esc(s.sbNome)}</strong>, brasileiro, ${esc(s.sbEstadoCivil)}, advogado, inscrito na OAB/MG sob o nº. ${esc(s.sbOab)}, com escritório profissional localizado na Cidade de ${ESCRITORIO_CIDADE}, Estado de ${ESCRITORIO_ESTADO}, na ${esc(ESCRITORIO_ENDERECO)}, <strong>SUBSTABELEÇO</strong>, ${esc(s.reserva)}, todos os poderes outorgados por ${pessoaTexto(s.cliente)}, nos autos da ${esc(s.tipoAcao)}, Numeração Única ${esc(s.numero)}, movida por <strong>${esc(s.movidaPor)}</strong> em trâmite na ${esc(s.vara)}, à ${esc(s.tratamento)} <strong>${esc(s.sbsNome)}</strong>, ${esc(s.sbsNacionalidade)}, ${esc(s.sbsEstadoCivil)}, advogado(a), inscrito(a) na OAB/MG sob o nº ${esc(s.sbsOab)}, com escritório profissional localizado na Cidade de ${ESCRITORIO_CIDADE}, Estado de ${ESCRITORIO_ESTADO}, na ${esc(ESCRITORIO_ENDERECO)}, para os devidos fins de direito.</div>`),
     C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
-    C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(s.sbNome)}</div><div class="doc">OAB/MG nº ${esc(s.sbOab)}</div></div>`)
+    C(`<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">${esc(s.sbNome)}</div><div class="doc">OAB/MG nº ${esc(s.sbOab)}</div></div>`)
   ];
 }
 
@@ -1157,7 +1236,7 @@ function buildHipossuficiencia(d){
     C(`<div class="blk" style="text-indent:10mm;">Eu, <strong>${esc(h.nome)}</strong>, ${esc(h.nacionalidade)}, ${esc(h.estadoCivil)}${profissoesTxt?', '+profissoesTxt:''}, portador(a) do RG nº ${esc(h.rg)} ${esc(h.rgOrgao)} e CPF/MF nº ${esc(h.cpf)}, residente e domiciliado(a) à ${esc(h.endereco)}. Declaro, para os devidos fins de direito, que sou pobre no sentido legal e não disponho de meios para arcar com os pagamentos de quaisquer despesas judiciais e/ou honorários advocatícios sucumbenciais, sem prejuízos próprio e/ou de minha família.</div>`),
     C(`<div class="blk" style="text-indent:10mm;">Por ser expressão da verdade, assino a presente declaração para fins judiciais.</div>`),
     C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
-    C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(h.nome)}</div><div class="doc">CPF/MF sob o nº. ${esc(h.cpf)}</div></div>`)
+    C(`<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">${esc(h.nome)}</div><div class="doc">CPF/MF sob o nº. ${esc(h.cpf)}</div></div>`)
   ];
 }
 
@@ -1255,8 +1334,8 @@ function buildTermoRepasse(d){
   </div>`));
   blocks.push(C(`<div class="blk" style="margin-top:1mm;"><strong>CONDIÇÃO DE VALIDADE:</strong> O presente termo de quitação somente terá validade após a apresentação do comprovante de pagamento, conforme dados informados neste instrumento.</div>`));
   blocks.push(C(`<div class="blk">Assim, para que produza os devidos efeitos legais, assino o presente termo.</div>`));
-  blocks.push(C(`<div class="blk center" style="margin-top:6mm;">${esc(d.cidadeUf)} ${esc(d.dataExtenso)}.</div>`));
-  blocks.push(C(`<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(t.clienteNome)}</div><div class="doc">CPF nº. ${esc(t.clienteCpf)}</div></div>`));
+  blocks.push(C(`<div class="blk center" style="margin-top:calc(6mm*var(--fit,1));">${esc(d.cidadeUf)} ${esc(d.dataExtenso)}.</div>`));
+  blocks.push(C(`<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">${esc(t.clienteNome)}</div><div class="doc">CPF nº. ${esc(t.clienteCpf)}</div></div>`));
   return blocks;
 }
 
@@ -1269,7 +1348,7 @@ function buildRecibo(d){
     C(`<div class="blk">O referido montante foi quitado em favor ${esc(r.prepRecebedor)} ${reciboQualTexto(r.recebedor)}, e destina-se ${esc(r.motivo)}.</div>`),
     C(`<div class="blk">Pela clareza e exatidão do que aqui se declara, confirmamos que a quitação ocorreu no dia ${esc(d.dataExtenso)}, firmando o presente recibo para que produza seus devidos efeitos legais, dando ao pagador plena e irrevogável quitação quanto ao valor mencionado.</div>`),
     C(`<div class="blk center" style="margin-top:8mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
-    C((()=>{ const s=assinaturaPessoa(r.recebedor); return `<div class="sig-line" style="margin:14mm auto 0;"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`; })())
+    C((()=>{ const s=assinaturaPessoa(r.recebedor); return `<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">${esc(s.nome)}</div><div class="doc">${esc(s.doc)}</div></div>`; })())
   ];
 }
 
@@ -1288,8 +1367,53 @@ function makePageShell(){
   page.className='doc-page';
   page.innerHTML = `<img class="doc-bg" src="../../assets/timbrado-bg.png" alt="">`
     + `<div class="doc-pagenum"></div>`
+    + `<div class="doc-autor"></div>`
     + `<div class="doc-content"></div>`;
   return page;
+}
+
+/* Rubrica no rodapé: iniciais de quem gerou + data do dia (ex.: JSF-11/10/2026).
+   Partículas (de, da, do, dos, das, e) não entram: Hecy Braga de Oliveira -> HBO. */
+let nomeUsuarioLogado='';
+function hojeBR(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function iniciaisDe(nome){
+  const PART=['de','da','do','dos','das','e','d'];
+  return String(nome||'').trim().split(/\s+/).filter(p=>p && PART.indexOf(p.toLowerCase())===-1)
+    .map(p=>p[0].toUpperCase()).join('');
+}
+function rubricaAutor(){
+  const ini=iniciaisDe(nomeUsuarioLogado);
+  return (ini ? ini+'-' : '')+hojeBR();
+}
+
+/* O html2canvas (usado para gerar o PDF) desenhava números longos (CPF, CNPJ, processo,
+   valores) por cima da palavra seguinte quando o número começava uma linha. Manter cada
+   número como um bloco que não quebra resolve. */
+function protegerNumeros(root){
+  if(!root || root.nodeType!==1) return;
+  const walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const alvos=[];
+  while(walker.nextNode()){
+    const t=walker.currentNode;
+    if(/\d[\d.\/\-,]*\d/.test(t.nodeValue) && !(t.parentElement && t.parentElement.classList.contains('nw'))) alvos.push(t);
+  }
+  alvos.forEach(t=>{
+    const frag=document.createDocumentFragment();
+    let resto=t.nodeValue;
+    const re=/\d[\d.\/\-,]*\d/g;
+    let ultimo=0, m;
+    while((m=re.exec(resto))){
+      if(m.index>ultimo) frag.appendChild(document.createTextNode(resto.slice(ultimo, m.index)));
+      const s=document.createElement('span'); s.className='nw'; s.textContent=m[0];
+      frag.appendChild(s);
+      ultimo=m.index+m[0].length;
+    }
+    if(ultimo<resto.length) frag.appendChild(document.createTextNode(resto.slice(ultimo)));
+    t.parentNode.replaceChild(frag, t);
+  });
 }
 
 function paginate(blocks, wrap){
@@ -1304,6 +1428,7 @@ function paginate(blocks, wrap){
     const wrapper=document.createElement('div');
     wrapper.innerHTML=html;
     const node = wrapper.firstElementChild || document.createTextNode(html);
+    protegerNumeros(node);
     content.appendChild(node);
     if(content.scrollHeight > content.clientHeight){
       content.removeChild(node);
@@ -1314,8 +1439,10 @@ function paginate(blocks, wrap){
       content.appendChild(node);
     }
   });
+  const rubrica=rubricaAutor();
   pages.forEach((p,idx)=>{
     p.querySelector('.doc-pagenum').textContent=(idx+1)+'/'+pages.length;
+    p.querySelector('.doc-autor').textContent=rubrica;
   });
   return pages;
 }
@@ -1338,14 +1465,18 @@ function render(){
   const wrap=document.getElementById('doc-pages');
   wrap.style.removeProperty('--fit');
   let pages = paginate(blocks, wrap);
-  // Procuração: se estourou para a 2ª página, reduz fonte/espaçamentos aos poucos até caber em uma só
-  // (piso de 0,80 para não ficar ilegível; abaixo disso segue normalmente em 2+ páginas).
-  if(d.tipo==='procuracao' && pages.length>1){
-    for(const fit of [0.97,0.94,0.91,0.88,0.85,0.82,0.80]){
+  // Procuração e Termo de Repasse: se estourou para a 2ª página, reduz fonte/espaçamentos aos
+  // poucos até caber em uma só (piso para não ficar ilegível; abaixo disso segue em 2+ páginas).
+  if((d.tipo==='procuracao' || d.tipo==='termo_repasse') && pages.length>1){
+    const passos = d.tipo==='termo_repasse'
+      ? [0.97,0.94,0.91,0.88,0.85,0.82,0.80,0.78,0.76,0.74,0.72]
+      : [0.97,0.94,0.91,0.88,0.85,0.82,0.80];
+    const piso = passos[passos.length-1];
+    for(const fit of passos){
       wrap.style.setProperty('--fit', fit);
       const tentativa = paginate(blocks, wrap);
       if(tentativa.length===1){ pages = tentativa; break; }
-      if(fit===0.80){ wrap.style.removeProperty('--fit'); pages = paginate(blocks, wrap); }
+      if(fit===piso){ wrap.style.removeProperty('--fit'); pages = paginate(blocks, wrap); }
     }
   }
   status.textContent = pages.length+' página(s)';
@@ -1379,6 +1510,7 @@ function setTipo(id){
     el.classList.toggle('tipo-hidden', !tipos.includes(id));
   });
   render();
+  if(typeof renderHistoricoDoTipo==='function') renderHistoricoDoTipo();
 }
 setTipo(new URLSearchParams(location.search).get('tipo') || currentTipo);
 
@@ -1478,7 +1610,7 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
   statusEl.textContent='Gerando PDF…';
   render();
   setTimeout(()=>{
-    const filename = prefixoArquivo(d.tipo)+nomeArquivo(d)+'.pdf';
+    const filename = nomeArquivo(d)+'.pdf';
     const pageEls = Array.from(document.querySelectorAll('#doc-pages .doc-page'));
     gerarPdfArquivo(pageEls, filename).then(()=>{ statusEl.textContent='PDF baixado.'; salvarHistorico(d); })
       .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
@@ -1522,7 +1654,8 @@ function preencherAdvogadoDoUsuario(prefix, perfil){
   const ecEl=document.getElementById(prefix+'-estado-civil');
   if(ecEl && perfil.estadoCivil) ecEl.value = ESTADO_CIVIL_CODES[perfil.estadoCivil] || perfil.estadoCivil;
   const nacEl=document.getElementById(prefix+'-nacionalidade');
-  if(nacEl && conhecido.nacionalidade) nacEl.value = conhecido.nacionalidade;
+  const nacionalidade = perfil.nacionalidade || conhecido.nacionalidade;
+  if(nacEl && nacionalidade) nacEl.value = nacionalidade;
   scheduleRender();
 }
 /* ---------- histórico de documentos gerados (Firestore, compartilhado com a equipe) ---------- */
@@ -1579,7 +1712,9 @@ function salvarHistorico(d){
 function preencherFormulario(d){
   setTipo(d.tipo);
   document.getElementById('doc-cidade-uf').value = d.cidadeUf || 'Uberlândia/MG';
-  document.getElementById('doc-data').value = d.dataRaw || '';
+  // documento reaberto do histórico sai com a data de hoje, não a da geração antiga
+  dataEditadaManualmente=false;
+  document.getElementById('doc-data').value = hojeISO();
 
   if(d.tipo==='procuracao'){
     const p = d.procuracao||{};
@@ -1698,10 +1833,23 @@ function preencherFormulario(d){
   document.getElementById('gerar-status').textContent = 'Documento carregado do histórico — revise e gere o PDF novamente se precisar.';
   window.scrollTo({top:0, behavior:'smooth'});
 }
+// Guarda os documentos da equipe e mostra só os 3 últimos do tipo escolhido no momento
+// (procuração mostra procurações, substabelecimento mostra substabelecimentos...).
+var historicoTodos=null; // var (e não let): setTipo() roda antes desta linha no carregamento
+var TITULO_HIST={procuracao:'Últimas procurações', substabelecimento:'Últimos substabelecimentos',
+  hipossuficiencia:'Últimas declarações de hipossuficiência', termo_repasse:'Últimos termos de repasse', recibo:'Últimos recibos'};
+function renderHistoricoDoTipo(){
+  const titulo=document.getElementById('historico-titulo');
+  if(titulo) titulo.textContent = (TITULO_HIST && TITULO_HIST[currentTipo]) || 'Últimos documentos gerados';
+  const link=document.getElementById('historico-ver-todos');
+  if(link) link.href='historico.html?tipo='+encodeURIComponent(currentTipo);
+  if(!historicoTodos) return;
+  renderHistorico(historicoTodos.filter(item=>item.tipo===currentTipo).slice(0,3));
+}
 function renderHistorico(docs){
   const wrap=document.getElementById('historico-list');
   const msg=document.getElementById('historico-msg');
-  if(docs.length===0){ msg.textContent='Nenhum documento gerado ainda.'; wrap.innerHTML=''; return; }
+  if(docs.length===0){ msg.textContent='Nenhum documento deste tipo gerado ainda.'; wrap.innerHTML=''; return; }
   msg.textContent='Clique no nome para carregar os dados de novo no formulário.';
   wrap.innerHTML='';
   docs.forEach(item=>{
@@ -1720,10 +1868,10 @@ function renderHistorico(docs){
 function carregarHistorico(){
   if(!window.__db) return;
   // a coleção é compartilhada com o Contratos: busca mais e filtra só os tipos deste app
-  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(80)
+  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(300)
     .onSnapshot(snap=>{
-      const meus = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo)).slice(0,3);
-      renderHistorico(meus);
+      historicoTodos = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo));
+      renderHistoricoDoTipo();
     }, err=>{
       document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
     });
@@ -1744,6 +1892,7 @@ try{
     window.__db = firebase.firestore();
     firebase.auth().onAuthStateChanged(user=>{
       currentUser = user;
+      if(user && !nomeUsuarioLogado) nomeUsuarioLogado = user.displayName || '';
       if(!user){
         document.getElementById('historico-msg').textContent = 'Faça login no Portal para ver e reaproveitar o histórico da equipe.';
         document.getElementById('historico-list').innerHTML='';
@@ -1759,6 +1908,9 @@ try{
           opcoes.push({uid:doc.id, nome:data.displayName});
         });
         opcoes.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+        // nome de quem está gerando, para a rubrica do rodapé (iniciais + data)
+        nomeUsuarioLogado = (perfisPorUid[user.uid] && perfisPorUid[user.uid].displayName) || user.displayName || '';
+        scheduleRender();
         ['sb-usuario-select','sbs-usuario-select'].forEach(selectId=>{
           const sel = document.getElementById(selectId);
           opcoes.forEach(o=>{
@@ -1792,6 +1944,8 @@ try{
 render();
 // a fonte web (Poppins) pode terminar de carregar depois da primeira paginação; refaz para medir com a fonte real
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+// o negrito da Poppins só baixa quando aparece pela 1ª vez — remede a paginação quando chegar
+if(document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', scheduleRender);
 </script>
 </body>
 </html>

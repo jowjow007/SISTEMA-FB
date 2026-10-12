@@ -87,7 +87,7 @@
   .btn-novo-pill:hover{filter:brightness(1.12);}
   .btn-etiquetas-wrap{position:relative;flex:0 0 auto;}
   .btn-etiquetas-side{
-    width:30px;height:30px;border-radius:50%;border:1px solid #c9463c;cursor:pointer;color:#fff;
+    width:42px;height:30px;border-radius:20px;border:1px solid #c9463c;cursor:pointer;color:#fff;
     background:linear-gradient(180deg,#5c1a20,#3a0e14);display:flex;align-items:center;justify-content:center;padding:0;
   }
   .btn-etiquetas-side:hover{filter:brightness(1.25);}
@@ -199,6 +199,25 @@
   .acoes-sheet button.danger{color:#ffb4ae;}
   .acoes-sheet button.cancelar{justify-content:center;color:var(--muted);margin-top:4px;border-top:1px solid var(--line);border-radius:0;}
   .conv-item{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+
+  /* Seleção de várias conversas (alterar em lote) */
+  .sel-box{
+    flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--silver);align-self:center;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .conv-item.marcada{background:rgba(201,70,60,.14);}
+  .conv-item.marcada .sel-box{background:var(--red);border-color:var(--red);}
+  .lote-bar{display:none;flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:8px 10px calc(8px + env(safe-area-inset-bottom));}
+  .lote-bar.show{display:block;}
+  .lote-top{display:flex;align-items:center;justify-content:space-between;font-size:.82rem;color:var(--paper);font-weight:600;margin-bottom:6px;}
+  .lote-sair{background:none;border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:4px 12px;font-size:.75rem;cursor:pointer;}
+  .lote-acoes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+  .lote-acoes button{
+    display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--panel-2);border:1px solid var(--line-strong);
+    color:var(--paper);border-radius:10px;padding:8px 2px;font-size:.7rem;cursor:pointer;
+  }
+  .lote-acoes button.danger{color:#ffb4ae;}
+  .lote-acoes button:disabled{opacity:.4;cursor:not-allowed;}
 
   /* ---------- thread ---------- */
   .thread{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--ink);}
@@ -408,7 +427,7 @@
       <div class="sidebar-actions-row">
         <button class="btn-novo-pill" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
         <div class="btn-etiquetas-wrap">
-          <button class="btn-etiquetas-side" id="btn-etiquetas-side" title="Etiquetas: filtrar conversas e criar novas" aria-label="Etiquetas"></button>
+          <button class="btn-etiquetas-side" id="btn-etiquetas-side" title="Etiquetas: filtrar conversas e adicionar novas" aria-label="Etiquetas: filtrar e adicionar"></button>
           <span class="arquivadas-badge" id="etiquetas-filtro-badge" style="display:none;"></span>
         </div>
         <div class="btn-arquivadas-wrap">
@@ -418,6 +437,7 @@
       </div>
     </div>
     <div class="conv-list" id="conv-list"></div>
+    <div class="lote-bar" id="lote-bar"></div>
   </aside>
 
   <section class="thread" id="thread">
@@ -691,7 +711,9 @@
     archive: '<rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path><line x1="10" y1="12" x2="14" y2="12"></line>',
     unarchive: '<rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path><path d="M9.5 14.3 12 11.8l2.5 2.5"></path><line x1="12" y1="11.8" x2="12" y2="17"></line>',
     trash: '<polyline points="4 7 6 7 20 7"></polyline><path d="M6 7V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"></path><path d="M6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line>',
-    tag: '<path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.83 0L3 13.83V3h10.83l6.77 6.77a2 2 0 0 1 0 2.83Z"></path><circle cx="8" cy="8" r="1.3"></circle>',
+    tag: '<path d="M3.5 5.2v5.3c0 .5.2 1 .6 1.4l7.9 7.9c.8.8 2 .8 2.8 0l5.4-5.4c.8-.8.8-2 0-2.8L12.3 3.7c-.4-.4-.9-.6-1.4-.6H5.6c-1.2 0-2.1.9-2.1 2.1z"></path><circle cx="8" cy="7.7" r="1.4"></circle>',
+    tagPlus: '<path d="M2.5 4.8v4.9c0 .5.2.9.5 1.2l7.3 7.3c.7.7 1.8.7 2.5 0l4.9-4.9c.7-.7.7-1.8 0-2.5L10.4 3.5c-.3-.3-.8-.5-1.2-.5H4.3c-1 0-1.8.8-1.8 1.8z"></path><circle cx="6.6" cy="6.9" r="1.2"></circle><line x1="19" y1="14.5" x2="19" y2="22"></line><line x1="15.25" y1="18.25" x2="22.75" y2="18.25"></line>',
+    check: '<polyline points="5 12.5 10 17.5 19 7"></polyline>',
     starOutline: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3"></polygon>',
     starFilled: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3" fill="currentColor"></polygon>',
     forward: '<polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path>',
@@ -925,7 +947,9 @@
         preview = nomeDe(c.ultimaMensagemAutor) + ': ' + preview;
       }
       var arquivada = tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
-      var out = '<div class="conv-item' + (c.id === activeId ? ' active' : '') + (naoLidas > 0 ? ' nao-lida' : '') + '" data-id="' + c.id + '">';
+      var marcada = modoSelecao && !!selecionadas[c.id];
+      var out = '<div class="conv-item' + (c.id === activeId && !modoSelecao ? ' active' : '') + (naoLidas > 0 ? ' nao-lida' : '') + (marcada ? ' marcada' : '') + '" data-id="' + c.id + '">';
+      if (modoSelecao) out += '<span class="sel-box">' + (marcada ? icoSvg('check', 14) : '') + '</span>';
       out += avatarConversaHtml(c);
       out += '<div class="conv-body">';
       out += '<div class="conv-top-line">';
@@ -953,6 +977,7 @@
       var id = el.getAttribute('data-id');
       el.addEventListener('click', function(e){
         if (toqueLongoAcabou){ toqueLongoAcabou = false; return; }
+        if (modoSelecao){ alternarSelecao(id); return; }
         var acao = e.target.closest('[data-acao]');
         if (acao){
           e.stopPropagation();
@@ -964,6 +989,7 @@
       });
       ligarToqueLongo(el, id);
     });
+    if (modoSelecao) renderLoteBar();
   }
 
   // ---------------- toque longo numa conversa (celular): fixar, arquivar, etiquetas, excluir ----------------
@@ -976,7 +1002,7 @@
         timer = null;
         toqueLongoAcabou = true;
         if (navigator.vibrate) { try { navigator.vibrate(15); } catch(err){} }
-        abrirMenuConversa(id);
+        if (modoSelecao) alternarSelecao(id); else abrirMenuConversa(id);
       }, 550);
     }, { passive: true });
     el.addEventListener('touchmove', function(e){
@@ -1006,6 +1032,7 @@
       + '<button type="button" data-op="arquivar">' + icoSvg(prefs.arquivada ? 'unarchive' : 'archive', 18) + (prefs.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>'
       + '<button type="button" data-op="etiquetas">' + icoSvg('tag', 18) + 'Colocar etiqueta</button>'
       + '<button type="button" data-op="excluir" class="danger">' + icoSvg('trash', 18) + 'Excluir</button>'
+      + '<button type="button" data-op="selecionar">' + icoSvg('check', 18) + 'Selecionar várias</button>'
       + '<button type="button" data-op="cancelar" class="cancelar">Cancelar</button>';
     Array.prototype.forEach.call(acoesSheet.querySelectorAll('[data-op]'), function(b){
       b.addEventListener('click', function(){
@@ -1020,11 +1047,76 @@
           abrirEtiquetasDaConversa(id);
         } else if (op === 'excluir'){
           excluirConversa(id);
+        } else if (op === 'selecionar'){
+          entrarModoSelecao(id);
         }
       });
     });
     menuAbertoEm = Date.now();
     acoesBackdrop.classList.add('open');
+  }
+
+  // ---------------- seleção de várias conversas (alterar em lote) ----------------
+  var modoSelecao = false;
+  var selecionadas = {}; // conversaId -> true
+  var loteBar = document.getElementById('lote-bar');
+
+  function idsSelecionados(){ return Object.keys(selecionadas).filter(function(k){ return selecionadas[k]; }); }
+  function entrarModoSelecao(idInicial){
+    modoSelecao = true;
+    selecionadas = {};
+    if (idInicial) selecionadas[idInicial] = true;
+    renderConvList();
+    renderLoteBar();
+  }
+  function sairModoSelecao(){
+    modoSelecao = false;
+    selecionadas = {};
+    renderConvList();
+    renderLoteBar();
+  }
+  function alternarSelecao(id){
+    selecionadas[id] = !selecionadas[id];
+    renderConvList();
+    renderLoteBar();
+  }
+  function renderLoteBar(){
+    var ids = idsSelecionados();
+    loteBar.classList.toggle('show', modoSelecao);
+    if (!modoSelecao) return;
+    var todasFixadas = ids.length && ids.every(function(id){ return tagsPorConversa[id] && tagsPorConversa[id].fixada; });
+    var todasArquivadas = ids.length && ids.every(function(id){ return tagsPorConversa[id] && tagsPorConversa[id].arquivada; });
+    loteBar.innerHTML = '<div class="lote-top"><span>' + ids.length + (ids.length === 1 ? ' selecionada' : ' selecionadas') + '</span>'
+      + '<button type="button" data-lote="sair" class="lote-sair">Cancelar</button></div>'
+      + '<div class="lote-acoes">'
+      + '<button type="button" data-lote="fixar"' + (ids.length ? '' : ' disabled') + '>' + icoSvg(todasFixadas ? 'starFilled' : 'starOutline', 18) + '<span>' + (todasFixadas ? 'Desafixar' : 'Fixar') + '</span></button>'
+      + '<button type="button" data-lote="arquivar"' + (ids.length ? '' : ' disabled') + '>' + icoSvg(todasArquivadas ? 'unarchive' : 'archive', 18) + '<span>' + (todasArquivadas ? 'Desarquivar' : 'Arquivar') + '</span></button>'
+      + '<button type="button" data-lote="etiquetas"' + (ids.length ? '' : ' disabled') + '>' + icoSvg('tag', 18) + '<span>Etiqueta</span></button>'
+      + '<button type="button" data-lote="excluir" class="danger"' + (ids.length ? '' : ' disabled') + '>' + icoSvg('trash', 18) + '<span>Excluir</span></button>'
+      + '</div>';
+    Array.prototype.forEach.call(loteBar.querySelectorAll('[data-lote]'), function(b){
+      b.addEventListener('click', function(){
+        var op = b.getAttribute('data-lote');
+        var n = ids.length;
+        var qtd = n + (n === 1 ? ' conversa' : ' conversas');
+        if (op === 'sair') return sairModoSelecao();
+        if (op === 'etiquetas') return abrirModalEtiquetas('aplicar', ids);
+        var campo, pergunta;
+        if (op === 'fixar'){ campo = { fixada: !todasFixadas }; pergunta = (todasFixadas ? 'Desafixar ' : 'Fixar ') + qtd + '?'; }
+        else if (op === 'arquivar'){ campo = { arquivada: !todasArquivadas }; pergunta = (todasArquivadas ? 'Desarquivar ' : 'Arquivar ') + qtd + '?'; }
+        else if (op === 'excluir'){
+          campo = { excluidaAte: FV.serverTimestamp(), arquivada: false };
+          pergunta = 'Excluir ' + qtd + ' da sua lista?\n\nElas continuam existindo para as outras pessoas — isso só tira da SUA lista. Se chegar mensagem nova, a conversa volta a aparecer.';
+        }
+        if (!confirm(pergunta)) return;
+        var batch = db.batch();
+        ids.forEach(function(id){ batch.set(db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id), campo, { merge: true }); });
+        batch.commit().then(function(){
+          if ((op === 'arquivar' || op === 'excluir') && ids.indexOf(activeId) !== -1) voltarParaListaVazia();
+          sairModoSelecao();
+        }).catch(function(e){ alert('Não foi possível concluir: ' + e.message); });
+      });
+    });
   }
 
   els.btnVerArquivadas.addEventListener('click', function(){
@@ -1531,7 +1623,8 @@
     tagModalConvId = convId || null;
     resetFormularioEtiqueta();
     var filtro = modo === 'filtro';
-    document.getElementById('tags-modal-titulo').textContent = filtro ? 'Etiquetas' : 'Etiquetas da conversa';
+    document.getElementById('tags-modal-titulo').textContent = filtro ? 'Etiquetas'
+      : (Array.isArray(convId) ? 'Etiquetas das ' + convId.length + ' conversas selecionadas' : 'Etiquetas da conversa');
     document.getElementById('tags-modal-hint').textContent = filtro
       ? 'Marque as etiquetas para filtrar a lista de conversas. Aqui você também cria, edita e exclui suas etiquetas (são só suas).'
       : 'Marque quais etiquetas valem para esta conversa. Para criar uma etiqueta nova, use o botão de etiqueta no menu ao lado de "Nova conversa".';
@@ -1543,7 +1636,7 @@
   function abrirEtiquetasDaConversa(id){ if (id) abrirModalEtiquetas('aplicar', id); }
 
   els.btnEtiquetas.addEventListener('click', function(){ abrirEtiquetasDaConversa(activeId); });
-  document.getElementById('btn-etiquetas-side').innerHTML = icoSvg('tag', 15);
+  document.getElementById('btn-etiquetas-side').innerHTML = icoSvg('tagPlus', 19);
   document.getElementById('btn-etiquetas-side').addEventListener('click', function(){ abrirModalEtiquetas('filtro'); });
   els.tagsFechar.addEventListener('click', function(){ els.tagsBackdrop.classList.remove('open'); });
 
@@ -1575,7 +1668,12 @@
       return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
     });
     var filtro = tagModalModo === 'filtro';
-    var aplicadas = (tagsPorConversa[tagModalConvId] && tagsPorConversa[tagModalConvId].etiquetasIds) || [];
+    // tagModalConvId pode ser uma conversa ou várias (seleção em lote): marcada = vale para todas
+    var alvos = Array.isArray(tagModalConvId) ? tagModalConvId : (tagModalConvId ? [tagModalConvId] : []);
+    var etiquetasDe = function(id){ return (tagsPorConversa[id] && tagsPorConversa[id].etiquetasIds) || []; };
+    var aplicadas = Object.keys(catalogoEtiquetas).filter(function(tid){
+      return alvos.length && alvos.every(function(id){ return etiquetasDe(id).indexOf(tid) !== -1; });
+    });
     if (!ids.length){
       els.tagCatalogList.innerHTML = '<div class="tag-cat-empty">' + (filtro
         ? 'Você ainda não criou nenhuma etiqueta. Crie a primeira ali embaixo.'
@@ -1604,7 +1702,9 @@
           return;
         }
         var campo = { etiquetasIds: chk.checked ? FV.arrayUnion(id) : FV.arrayRemove(id) };
-        db.collection('chatPrefs').doc(myUid).collection('conversas').doc(tagModalConvId).set(campo, { merge: true });
+        var batch = db.batch();
+        alvos.forEach(function(cid){ batch.set(db.collection('chatPrefs').doc(myUid).collection('conversas').doc(cid), campo, { merge: true }); });
+        batch.commit().catch(function(e){ alert('Erro: ' + e.message); });
       });
     });
     Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-editar]'), function(btn){

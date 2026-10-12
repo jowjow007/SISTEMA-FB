@@ -81,7 +81,7 @@
   .layout{display:grid;grid-template-columns:minmax(360px,460px) 1fr;gap:22px;align-items:start;}
   @media (max-width:1100px){.layout{grid-template-columns:1fr;}}
 
-  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  .form-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(var(--hdr-h,76px) + 12px);max-height:calc(100vh - var(--hdr-h,76px) - 24px);overflow:auto;overscroll-behavior:contain;padding-right:6px;}
   @media (max-width:1100px){.form-col{position:static;max-height:none;}}
 
   .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;}
@@ -180,6 +180,9 @@
   .doc-title{position:relative;z-index:1;text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:.02em;margin:2mm 18mm 5mm;text-transform:uppercase;}
   .doc-pagenum{position:absolute;top:14mm;right:18mm;font-size:8pt;font-weight:600;color:#1a1a1a;z-index:1;}
   .doc-content{position:relative;z-index:1;margin:0 18mm;height:214mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+  .doc-autor{position:absolute;left:18mm;bottom:22mm;z-index:1;font-size:6.5pt;color:#555;letter-spacing:.02em;}
+  .doc-autor:empty{display:none;}
+  .nw{white-space:nowrap;}
   .doc-footer{position:absolute;left:18mm;right:18mm;bottom:10mm;z-index:1;font-size:7.6pt;color:#1a1a1a;text-align:center;border-top:1.4pt solid #8a1f1a;padding-top:2.4mm;}
   .doc-footer .l1{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:1mm;font-weight:600;}
   .doc-footer .l2{display:flex;align-items:center;justify-content:center;gap:5px;color:#333;}
@@ -243,6 +246,7 @@
   <h1>Contratos e Propostas</h1>
   <p class="sub">Gere contratos de honorários e propostas comerciais já com a identidade visual do escritório — preencha os dados e baixe em PDF.</p>
 </header>
+<script>/* altura real do cabeçalho: a coluna do formulário gruda logo abaixo dele (com 76px fixos, um subtítulo de 2 linhas escondia o topo) */(function(){var h=document.querySelector('header');if(!h)return;var set=function(){document.documentElement.style.setProperty('--hdr-h',h.offsetHeight+'px');};set();if(window.ResizeObserver)new ResizeObserver(set).observe(h);window.addEventListener('resize',set);})();</script>
 <main>
   <div class="layout">
 
@@ -1002,7 +1006,23 @@ atualizarSubtipoPP();
 function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 
 /* ---------- coleta de dados do formulário ---------- */
+/* Data do contrato e data de emissão da proposta = sempre hoje, a não ser que a pessoa
+   altere o campo à mão (a aba pode ficar aberta por dias / reabrir do histórico). */
+var datasEditadas = {};
+['f-data','pp-data-emissao'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el) el.addEventListener('input', function(){ datasEditadas[id]=true; });
+});
+function preencherDatasDeHoje(){
+  var d=new Date();
+  var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  ['f-data','pp-data-emissao'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el && !datasEditadas[id]) el.value=iso;
+  });
+}
 function coletarDados(){
+  preencherDatasDeHoje();
   document.getElementById('h-valor-extenso').value = valorExtenso(document.getElementById('h-valor').value);
   document.getElementById('m-valor-extenso').value = valorExtenso(document.getElementById('m-valor').value);
   return {
@@ -1867,6 +1887,7 @@ function docHeaderHtml(){
 }
 function docFooterHtml(pageNum,totalPages){
   return `<div class="doc-pagenum">${pageNum}/${totalPages}</div>
+  <div class="doc-autor"></div>
   <div class="doc-footer">
     <div class="l1"><svg viewBox="0 0 24 24" fill="#8a1f1a"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.3 21 3 13.7 3 4.9 3 4.4 3.4 4 4 4h3.2c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg><span>+55 34 3225-2737</span>
       <svg viewBox="0 0 24 24" fill="#8a1f1a" style="margin-left:6px;"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6H15.7a15.9 15.9 0 00-1.3-4A8 8 0 0118.9 8zM12 4c.8 1.2 1.6 3 2 4H10c.4-1 1.2-2.8 2-4zM4.3 14a8 8 0 010-4h3.1a17 17 0 000 4H4.3zm.8 2h3.2c.3 1.5.8 2.9 1.3 4a8 8 0 01-4.5-4zm3.2-8H5.1a8 8 0 014.5-4c-.5 1.1-1 2.5-1.3 4zM12 20c-.8-1.2-1.6-3-2-4h4c-.4 1-1.2 2.8-2 4zm2.4-6H9.6a14 14 0 010-4h4.8a14 14 0 010 4zm.3 6c.5-1.1 1-2.5 1.3-4h3.2a8 8 0 01-4.5 4zm1.7-6a17 17 0 000-4h3.1a8 8 0 010 4h-3.1z"/></svg><span>www.FONSECAEBRAGA.com.br</span></div>
@@ -1892,6 +1913,7 @@ function paginate(blocks, wrap){
     const wrapper=document.createElement('div');
     wrapper.innerHTML=html;
     const node = wrapper.firstElementChild || document.createTextNode(html);
+    protegerNumeros(node);
     content.appendChild(node);
     if(content.scrollHeight > content.clientHeight){
       content.removeChild(node);
@@ -1902,9 +1924,11 @@ function paginate(blocks, wrap){
       content.appendChild(node);
     }
   });
-  // numera paginas
+  // numera paginas e coloca a rubrica de quem gerou
+  const rubrica=rubricaAutor();
   pages.forEach((p,idx)=>{
     p.querySelector('.doc-pagenum').textContent=(idx+1)+'/'+pages.length;
+    p.querySelector('.doc-autor').textContent=rubrica;
   });
   return pages;
 }
@@ -1921,14 +1945,55 @@ function validar(d){
   if(d.tipo==='proposta_condominio') return d.condominio.razaoSocial.trim()!=='' ? null : 'Preencha a razão social do condomínio.';
   return 'Modelo ainda não disponível.';
 }
+/* Nome do arquivo no padrão do POP nº 008/2023 (o mesmo do Formatar Petições e do
+   Criador de Documentos): (PARTE) – CPSHA [- TIPO] – CRIADOR – DD.MM.AA para contratos
+   de honorários e (PARTE) – PROPOSTA DE HONORÁRIOS – CRIADOR – DD.MM.AA para propostas. */
 function nomeArquivo(d){
-  let base='documento';
-  if(d.tipo==='contrato_pf') base=d.contratantes[0]?d.contratantes[0].nome:'contrato';
-  if(d.tipo==='contrato_pj') base=d.pj.razaoSocial||'contrato';
-  if(d.tipo==='contrato_condominio') base=d.condominio.razaoSocial||'contrato';
-  if(d.tipo==='proposta_pf_pj') base=d.proposta.nome||'proposta';
-  if(d.tipo==='proposta_condominio') base=d.condominio.razaoSocial||'proposta';
-  return base.replace(/[^\p{L}\p{N} ]/gu,'').trim().replace(/\s+/g,'_')||'documento';
+  let parte='', doc='CPSHA';
+  if(d.tipo==='contrato_pf') parte=d.contratantes[0]?d.contratantes[0].nome:'';
+  if(d.tipo==='contrato_pj'){ parte=d.pj.razaoSocial; doc='CPSHA - ASSESSORIA'; }
+  if(d.tipo==='contrato_condominio'){ parte=d.condominio.razaoSocial; doc='CPSHA - ASSESSORIA'; }
+  if(d.tipo==='proposta_pf_pj'){ parte=d.proposta.nome; doc='PROPOSTA DE HONORÁRIOS'; }
+  if(d.tipo==='proposta_condominio'){ parte=d.condominio.razaoSocial; doc='PROPOSTA DE HONORÁRIOS'; }
+  const criador=(String(nomeUsuarioLogado||'').trim().split(/\s+/)[0]||'CRIADOR').toUpperCase();
+  const dt=new Date();
+  const data=String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getFullYear()).slice(2);
+  return ['('+(String(parte||'').trim().toUpperCase()||'PARTE')+')', doc, criador, data].join(' – ').replace(/[\\\/:*?"<>|]/g,'-');
+}
+
+/* Rubrica no rodapé (iniciais de quem gerou + data do dia, ex.: JSF-11/10/2026) */
+let nomeUsuarioLogado='';
+function rubricaAutor(){
+  const PART=['de','da','do','dos','das','e','d'];
+  const ini=String(nomeUsuarioLogado||'').trim().split(/\s+/).filter(p=>p && PART.indexOf(p.toLowerCase())===-1).map(p=>p[0].toUpperCase()).join('');
+  const dt=new Date();
+  const data=String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+  return (ini?ini+'-':'')+data;
+}
+
+/* O html2canvas desenhava números longos (CPF, CNPJ, valores) por cima da palavra
+   seguinte quando o número começava uma linha; manter o número sem quebra resolve. */
+function protegerNumeros(root){
+  if(!root || root.nodeType!==1) return;
+  const walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const alvos=[];
+  while(walker.nextNode()){
+    const t=walker.currentNode;
+    if(/\d[\d.\/\-,]*\d/.test(t.nodeValue) && !(t.parentElement && t.parentElement.classList.contains('nw'))) alvos.push(t);
+  }
+  alvos.forEach(t=>{
+    const frag=document.createDocumentFragment();
+    const txt=t.nodeValue, re=/\d[\d.\/\-,]*\d/g;
+    let ultimo=0, m;
+    while((m=re.exec(txt))){
+      if(m.index>ultimo) frag.appendChild(document.createTextNode(txt.slice(ultimo, m.index)));
+      const s=document.createElement('span'); s.className='nw'; s.textContent=m[0];
+      frag.appendChild(s);
+      ultimo=m.index+m[0].length;
+    }
+    if(ultimo<txt.length) frag.appendChild(document.createTextNode(txt.slice(ultimo)));
+    t.parentNode.replaceChild(frag, t);
+  });
 }
 function buildDocumento(d){
   if(d.tipo==='contrato_pf') return buildContratoPF(d);
@@ -2023,7 +2088,7 @@ document.getElementById('btn-gerar').addEventListener('click',async()=>{
   const erro = validar(d);
   if(erro){ statusEl.textContent=erro; return; }
   statusEl.textContent='Gerando PDF…';
-  const filename = 'Documento_'+nomeArquivo(d)+'.pdf';
+  const filename = nomeArquivo(d)+'.pdf';
   try{
     await gerarPDFdeDados(d, filename);
     statusEl.textContent='PDF baixado.';
@@ -2099,6 +2164,7 @@ function preencherFormulario(d){
   document.getElementById('m-carencia-on').checked = !!m.carenciaOn;
 
   document.getElementById('f-cidade').value = d.cidade||'Uberlândia';
+  datasEditadas = {}; // reaberto do histórico: volta a sair com a data de hoje
   document.getElementById('f-data').value = (d.datasRaw&&d.datasRaw.data)||'';
   document.getElementById('f-foro-ref').value = d.foroRef||'do(a) Contratante';
 
@@ -2117,6 +2183,7 @@ function preencherFormulario(d){
 
   const dr=d.datasRaw||{};
   document.getElementById('pp-data-emissao').value = dr.ppDataEmissao||'';
+  preencherDatasDeHoje();
   document.getElementById('pp-validade').value = dr.ppValidade||'';
 
   render();
@@ -2181,6 +2248,12 @@ function carregarHistorico(){
     }
     document.getElementById('historico-msg').textContent = 'Carregando histórico…';
     carregarHistorico();
+    // nome de quem gera, para a rubrica do rodapé e o "CRIADOR" do nome do arquivo
+    nomeUsuarioLogado = user.displayName || '';
+    window.__db.collection('perfis').doc(user.uid).get().then(s=>{
+      if(s.exists && s.data().displayName) nomeUsuarioLogado = s.data().displayName;
+      scheduleRender();
+    }).catch(()=>{});
   });
 })();
 

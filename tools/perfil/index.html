@@ -181,6 +181,10 @@
       </select>
     </div>
     <div class="field">
+      <label>Nacionalidade<span class="obrig">*</span></label>
+      <input type="text" id="nacionalidade-input" placeholder="Ex: brasileira">
+    </div>
+    <div class="field">
       <label>Telefone<span class="obrig">*</span></label>
       <input type="tel" inputmode="numeric" id="telefone-input" placeholder="(00) 00000-0000" maxlength="15">
     </div>
@@ -352,6 +356,7 @@
       if (perfilDoc.exists) {
         const p = perfilDoc.data();
         if (p.birthDate) els.birthdateInput.value = p.birthDate;
+        if (p.nacionalidade) document.getElementById('nacionalidade-input').value = p.nacionalidade;
         if (p.photoBase64) {
           els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
           fotoJaExistente = true;
@@ -368,6 +373,8 @@
         els.oabInput.value = oabParsed.numero;
         els.oabUfInput.value = oabParsed.uf;
         els.estadoCivilInput.value = u.estadoCivil || '';
+        const nacEl = document.getElementById('nacionalidade-input');
+        if (!nacEl.value && u.nacionalidade) nacEl.value = u.nacionalidade;
         els.telefoneInput.value = formatarTelefone(u.telefone || '');
         els.enderecoInput.value = u.endereco || '';
         els.emailAltInput.value = u.emailAlternativo || '';
@@ -395,6 +402,7 @@
       { el: els.sobrenomeInput, ok: !!sobrenome },
       { el: els.birthdateInput, ok: !!els.birthdateInput.value },
       { el: els.estadoCivilInput, ok: !!els.estadoCivilInput.value },
+      { el: document.getElementById('nacionalidade-input'), ok: !!document.getElementById('nacionalidade-input').value.trim() },
       { el: els.cpfInput, ok: !!cpf },
       { el: els.rgInput, ok: !!rgNumero },
       { el: els.rgOrgaoInput, ok: !!rgOrgao },
@@ -425,6 +433,7 @@
       // outras ferramentas (ex.: Documentos) precisam olhar o OAB de qualquer colega.
       oab: oab,
       estadoCivil: els.estadoCivilInput.value,
+      nacionalidade: document.getElementById('nacionalidade-input').value.trim().toLowerCase(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (novaFotoDataUrl) dados.photoBase64 = novaFotoDataUrl;
@@ -434,6 +443,7 @@
       rg: rg,
       oab: oab,
       estadoCivil: els.estadoCivilInput.value,
+      nacionalidade: document.getElementById('nacionalidade-input').value.trim().toLowerCase(),
       telefone: telefone,
       endereco: endereco,
       emailAlternativo: els.emailAltInput.value.trim()

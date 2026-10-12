@@ -93,7 +93,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .layout{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:22px;align-items:start;}
   @media(max-width:1100px){.layout{grid-template-columns:1fr;}}
 
-  .form-col{display:flex;flex-direction:column;gap:14px;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px;}
+  .form-col{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(var(--hdr-h,76px) + 12px);max-height:calc(100vh - var(--hdr-h,76px) - 24px);overflow:auto;overscroll-behavior:contain;padding-right:6px;}
   @media(max-width:1100px){.form-col{position:static;max-height:none;}}
 
   .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;}
@@ -177,6 +177,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   }
 
   .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
+  /* rubrica de quem gerou + data (ex.: JSF-11/10/2026), pequena, no canto esquerdo do rodapé */
+  .doc-autor{position:absolute;left:20mm;bottom:22mm;z-index:1;font-family:'Poppins',Arial,sans-serif;font-size:6.5pt;color:#555;letter-spacing:.02em;}
   /* área de conteúdo texto — margens ajustadas ao timbrado */
   .doc-content{
     z-index:1;
@@ -248,6 +250,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <button type="button" data-view="nomenclatura">Nomenclatura</button>
   </div>
 </header>
+<script>/* altura real do cabeçalho: a coluna do formulário gruda logo abaixo dele (com 76px fixos, um subtítulo de 2 linhas escondia o topo) */(function(){var h=document.querySelector('header');if(!h)return;var set=function(){document.documentElement.style.setProperty('--hdr-h',h.offsetHeight+'px');};set();if(window.ResizeObserver)new ResizeObserver(set).observe(h);window.addEventListener('resize',set);})();</script>
 <section id="view-nomenclatura" class="nomenclatura-view" hidden></section>
 <main id="view-formatar">
 <div class="layout">
@@ -485,10 +488,26 @@ function meses(n){ return ['janeiro','fevereiro','março','abril','maio','junho'
 function dataExt(iso){ if(!iso) return ''; var p=iso.split('-'); return parseInt(p[2])+' de '+meses(parseInt(p[1])-1)+' de '+p[0]; }
 
 // ══ DATA HOJE ═════════════════════════════════════════════════
-(function(){
+// Sempre a data do dia, a não ser que a pessoa altere o campo à mão (a aba pode ficar
+// aberta por dias e uma petição reaberta do histórico trazia a data antiga).
+var dataEditadaManualmente = false;
+function hojeISOPet(){
   var d = new Date();
-  document.getElementById('data-f').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-})();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+document.getElementById('data-f').value = hojeISOPet();
+document.getElementById('data-f').addEventListener('input', function(){ dataEditadaManualmente = true; });
+
+// Rubrica de quem gera (iniciais + data do dia, ex.: JSF-11/10/2026) — partículas não entram
+function rubricaAutor(){
+  var PART = ['de','da','do','dos','das','e','d'];
+  var nome = (meuNome || (currentUser && currentUser.displayName) || '').trim();
+  var ini = nome.split(/\s+/).filter(function(p){ return p && PART.indexOf(p.toLowerCase()) === -1; })
+    .map(function(p){ return p[0].toUpperCase(); }).join('');
+  var dt = new Date();
+  var data = String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();
+  return (ini ? ini+'-' : '') + data;
+}
 
 // ══ FIREBASE AUTH ═════════════════════════════════════════════
 var currentUser = null, isAdmin = false, meuNome = '';
@@ -765,7 +784,7 @@ function coletar(){
     }),
     pedidos: Array.from(document.querySelectorAll('.ped-row textarea')).map(function(ta){ return ta.value.trim(); }).filter(Boolean),
     local:   document.getElementById('local').value.trim(),
-    data:    document.getElementById('data-f').value,
+    data:    (dataEditadaManualmente ? null : (document.getElementById('data-f').value = hojeISOPet()), document.getElementById('data-f').value),
     sigNome: document.getElementById('sig-nome').value.trim(),
     sigOab:  document.getElementById('sig-oab').value.trim(),
     sigExtra: lerSigExtra(),
@@ -793,8 +812,9 @@ function _render(){
     return;
   }
   var pags = paginar(buildBody(d));
+  var rubrica = '<div class="doc-autor">'+esc(rubricaAutor())+'</div>';
   wrap.innerHTML = pags.map(function(html){
-    return '<div class="doc-page">'+BG+'<div class="doc-content">'+html+'</div></div>';
+    return '<div class="doc-page">'+BG+rubrica+'<div class="doc-content">'+html+'</div></div>';
   }).join('');
 }
 
@@ -1255,7 +1275,9 @@ async function gerarDocx(d){
   // async('string') do JSZip trava com este modelo; bytes + TextDecoder funciona
   var docXml = new TextDecoder('utf-8').decode(await zip.file('word/document.xml').async('uint8array'));
   var sect = (docXml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/) || [''])[0];
-  var corpo = docxBody(d) + sect;
+  // rubrica de quem gerou (iniciais + data) em letra pequena no fim do documento
+  var rubricaDocx = wP(wRun(rubricaAutor(), {sz:13}), {jc:'left', before:240, after:0, line:240});
+  var corpo = docxBody(d) + rubricaDocx + sect;
   // replacer em função: evita que "$" no texto (ex.: R$) seja interpretado
   docXml = docXml.replace(/<w:body>[\s\S]*<\/w:body>/, function(){ return '<w:body>' + corpo + '</w:body>'; });
   zip.file('word/document.xml', docXml);
