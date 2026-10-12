@@ -261,6 +261,15 @@
 
   .quick-add-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(165deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));backdrop-filter:blur(18px);border:1px solid var(--line-strong);border-radius:14px;padding:10px 12px;margin-bottom:14px;}
   :root[data-theme="light"] .quick-add-row{background:var(--panel);}
+  .item-total-preview{font-size:.82rem;font-weight:700;color:var(--gold);white-space:nowrap;min-width:0;}
+  .item-total-preview:empty{display:none;}
+  .data-table tfoot .total-row td{font-weight:700;color:var(--gold);border-top:1px solid var(--line-strong);background:rgba(212,175,106,.06);}
+  .cp-lote-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;border-radius:12px;
+    border:1px solid rgba(212,175,106,.45);background:rgba(212,175,106,.10);font-size:.85rem;color:var(--paper);position:sticky;top:0;z-index:3;}
+  .cp-lote-bar .spacer{flex:1;}
+  .cp-sel-todos{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin:2px 0 8px;cursor:pointer;}
+  .cp-filtros select,.cp-filtros input{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);padding:7px 10px;font-size:.82rem;color-scheme:dark;}
+  :root[data-theme="light"] .cp-filtros select,:root[data-theme="light"] .cp-filtros input{color-scheme:light;}
   .quick-add-row input[type="text"],.quick-add-row input[type="number"]{
     background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
     padding:8px 11px;color:var(--paper);font-size:.84rem;
@@ -769,11 +778,23 @@
       iframes[id] = ifr;
     } else if (t && t.type === 'patrimonio' && !initedModulo.patrimonio) {
       initedModulo.patrimonio = true;
-      initPatrimonio();
+      quandoPerfilPronto(initPatrimonio);
     } else if (t && t.type === 'compras' && !initedModulo.compras) {
       initedModulo.compras = true;
-      initCompras();
+      quandoPerfilPronto(initCompras);
     }
+  }
+
+  // Pelos cards da tela inicial dá para abrir um módulo antes de o perfil (admin? vê todo o
+  // patrimônio?) terminar de carregar — principalmente no celular. Os módulos esperam.
+  let perfilPronto = false;
+  const filaPerfil = [];
+  function quandoPerfilPronto(fn){
+    if (perfilPronto) fn(); else filaPerfil.push(fn);
+  }
+  function marcarPerfilPronto(){
+    perfilPronto = true;
+    while (filaPerfil.length) filaPerfil.shift()();
   }
 
   // ============================================================
@@ -785,6 +806,7 @@
   let patFiltroCategoria = '';
   let patFiltroStatus = '';
   let patFiltroSoMeu = false;
+  let patFiltroResponsavel = '';   // uid do responsável escolhido no filtro ('' = todos)
   let patEditandoId = null;
   let patTransferindoId = null;
   let orgUsuarios = [];   // [{uid, nome}] — espelho de tools/organograma, usado pro seletor de responsável
@@ -826,8 +848,10 @@
         '<select id="pat-filtro-status"><option value="">Todos os status</option>' +
           Object.keys(STATUS_PAT_LABEL).map(function(k){ return '<option value="' + k + '">' + STATUS_PAT_LABEL[k] + '</option>'; }).join('') +
         '</select>' +
+        (meuPatrimonioVerTudo ? '<select id="pat-filtro-responsavel"><option value="">Todos os responsáveis</option></select>' : '') +
         '<span class="spacer"></span>' +
         (meuPatrimonioVerTudo ? '<button type="button" class="btn small" id="pat-toggle-meus">👤 Só o que está comigo</button>' : '') +
+        '<button type="button" class="btn small" id="pat-imprimir-btn">🖨 Imprimir</button>' +
       '</div>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr>' +
         '<th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th><th></th>' +
@@ -848,26 +872,56 @@
     });
     const permissoesBtn = document.getElementById('pat-permissoes-btn');
     if (permissoesBtn) permissoesBtn.addEventListener('click', abrirModalPermissoesPatrimonio);
+    const filtroRespSel = document.getElementById('pat-filtro-responsavel');
+    if (filtroRespSel) filtroRespSel.addEventListener('change', function(e){ patFiltroResponsavel = e.target.value; renderPatrimonio(); });
+    document.getElementById('pat-imprimir-btn').addEventListener('click', imprimirPatrimonio);
 
     db.collection('organograma').onSnapshot(function(snap){
       orgUsuarios = snap.docs.map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() }; })
         .filter(function(u){ return u.nome; })
         .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
+      if (filtroRespSel){
+        filtroRespSel.innerHTML = '<option value="">Todos os responsáveis</option>' +
+          orgUsuarios.map(function(u){ return '<option value="' + u.uid + '"' + (u.uid === patFiltroResponsavel ? ' selected' : '') + '>' + escapeHtml(u.nome) + '</option>'; }).join('');
+      }
+      vincularResponsaveisPorNome();
     });
 
-    db.collection('patrimonio').onSnapshot(function(snap){
+    // Quem só pode ver o próprio patrimônio PRECISA consultar filtrando pelo próprio uid:
+    // a regra do Firestore libera só os itens dele, e uma consulta da coleção inteira é
+    // recusada por completo (era o erro que aparecia para quem tem a visão restrita).
+    const consulta = meuPatrimonioVerTudo
+      ? db.collection('patrimonio')
+      : db.collection('patrimonio').where('responsavelUid', '==', meuUid);
+    consulta.onSnapshot(function(snap){
       patItens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       patCarregado = true;
       renderPatrimonio();
+      vincularResponsaveisPorNome();
     }, function(err){
       document.getElementById('pat-tbody').innerHTML = '<tr><td colspan="8" class="empty-row">Erro ao carregar patrimônio: ' + escapeHtml(err.message) + '</td></tr>';
     });
   }
 
-  function renderPatrimonio(){
-    if (!patCarregado) return;
-    const filtrados = patItens.filter(function(it){
+  // Itens antigos que têm só o NOME do responsável (sem o uid) não aparecem para a própria
+  // pessoa quando ela tem visão restrita. Quando um admin abre o Patrimônio, liga sozinho
+  // o item ao usuário cujo nome bate exatamente (e só se houver um único com esse nome).
+  let vinculoFeito = false;
+  function vincularResponsaveisPorNome(){
+    if (!souAdmin || vinculoFeito || !patCarregado || !orgUsuarios.length) return;
+    vinculoFeito = true;
+    const norm = function(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase(); };
+    patItens.forEach(function(it){
+      if (it.responsavelUid || !it.responsavel) return;
+      const achados = orgUsuarios.filter(function(u){ return norm(u.nome) === norm(it.responsavel); });
+      if (achados.length === 1) db.collection('patrimonio').doc(it.id).update({ responsavelUid: achados[0].uid }).catch(function(){});
+    });
+  }
+
+  function patFiltrados(){
+    return patItens.filter(function(it){
       if (patFiltroSoMeu && it.responsavelUid !== meuUid) return false;
+      if (patFiltroResponsavel && it.responsavelUid !== patFiltroResponsavel) return false;
       if (patFiltroCategoria && it.categoria !== patFiltroCategoria) return false;
       if (patFiltroStatus && it.status !== patFiltroStatus) return false;
       if (patFiltroTexto) {
@@ -876,6 +930,41 @@
       }
       return true;
     }).sort(function(a, b){ return (a.codigo || '').localeCompare(b.codigo || ''); });
+  }
+
+  // Imprime a lista como está filtrada na tela (responsável, categoria, status, busca)
+  function imprimirPatrimonio(){
+    const itens = patFiltrados();
+    const total = itens.reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
+    const resp = patFiltroResponsavel ? (orgUsuarios.find(function(u){ return u.uid === patFiltroResponsavel; }) || {}).nome : '';
+    const filtros = [resp ? 'Responsável: ' + resp : '', patFiltroCategoria ? 'Categoria: ' + patFiltroCategoria : '',
+      patFiltroStatus ? 'Status: ' + (STATUS_PAT_LABEL[patFiltroStatus] || patFiltroStatus) : '', patFiltroTexto ? 'Busca: "' + patFiltroTexto + '"' : '']
+      .filter(Boolean).join(' · ');
+    const linhas = itens.length ? itens.map(function(it){
+      return '<tr><td>' + escapeHtml(it.codigo || '—') + '</td><td>' + escapeHtml(it.nome || '') + (it.marcaModelo ? '<br><small>' + escapeHtml(it.marcaModelo) + '</small>' : '') + '</td>' +
+        '<td>' + escapeHtml(it.categoria || '—') + '</td><td>' + escapeHtml(it.local || '—') + '</td><td>' + escapeHtml(it.responsavel || '—') + '</td>' +
+        '<td style="text-align:right;">' + escapeHtml(formatBRL(it.valor)) + '</td><td>' + escapeHtml(STATUS_PAT_LABEL[it.status] || 'Ativo') + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:#666;">Nenhum item.</td></tr>';
+    const w = window.open('', '_blank');
+    if (!w) { alert('Permita pop-ups para imprimir.'); return; }
+    w.document.write(
+      '<!doctype html><html><head><meta charset="utf-8"><title>Patrimônio — Fonseca e Braga</title><style>' +
+      'body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#222;}h1{font-size:16pt;margin:0 0 2px;}' +
+      '.sub{font-size:9pt;color:#666;margin:0 0 16px;}table{width:100%;border-collapse:collapse;font-size:9.5pt;}' +
+      'th,td{border:1px solid #999;padding:6px 8px;text-align:left;vertical-align:top;}th{background:#eee;}small{color:#666;}' +
+      'tfoot td{font-weight:700;background:#f6f6f6;}</style></head><body>' +
+      '<h1>Patrimônio — Fonseca e Braga</h1>' +
+      '<p class="sub">Gerado em ' + escapeHtml(new Date().toLocaleString('pt-BR')) + (filtros ? ' · ' + escapeHtml(filtros) : '') + ' · ' + itens.length + ' item(ns)</p>' +
+      '<table><thead><tr><th>Código</th><th>Item</th><th>Categoria</th><th>Local</th><th>Responsável</th><th>Valor</th><th>Status</th></tr></thead>' +
+      '<tbody>' + linhas + '</tbody><tfoot><tr><td colspan="5">Total</td><td style="text-align:right;">' + escapeHtml(formatBRL(total)) + '</td><td></td></tr></tfoot></table>' +
+      '<script>window.onload=function(){window.print();};<' + '/script></body></html>'
+    );
+    w.document.close();
+  }
+
+  function renderPatrimonio(){
+    if (!patCarregado) return;
+    const filtrados = patFiltrados();
 
     const valorTotal = patItens.filter(function(it){ return it.status !== 'baixado'; }).reduce(function(acc, it){ return acc + (Number(it.valor) || 0); }, 0);
     const meusItens = patItens.filter(function(it){ return it.responsavelUid === meuUid; });
@@ -1470,7 +1559,8 @@
           '<input type="text" class="item-input" id="cp-nova-item" list="cp-qa-item-hist" placeholder="Primeiro item da lista…" autocomplete="off">' +
           '<datalist id="cp-qa-item-hist"></datalist>' +
           '<input type="number" id="cp-nova-qtd" min="1" value="1" title="Quantidade">' +
-          '<input type="text" inputmode="numeric" class="valor-input" id="cp-nova-valor" placeholder="R$ 0,00 (estimado)">' +
+          '<input type="text" inputmode="numeric" class="valor-input" id="cp-nova-valor" placeholder="R$ 0,00 (valor unitário)">' +
+          '<span class="item-total-preview" id="cp-nova-total"></span>' +
           '<button type="button" class="btn primary" id="cp-nova-criar">+ Criar lista</button>' +
         '</div>' +
         '<div class="msg-err" id="cp-nova-err">Preencha o nome da lista e o primeiro item.</div>' +
@@ -1485,18 +1575,29 @@
           '<button type="button" class="btn small" id="cp-print-aprovadas">🖨 Imprimir lista aprovada</button>' +
           '<button type="button" class="btn small" id="cp-print-reprovadas">🖨 Imprimir lista rejeitada</button>' +
         '</div>' +
+        '<div id="cp-lote-acoes"></div>' +
         '<div id="cp-listas-compras"></div>' +
       '</div>' +
       '<div class="inner-view" id="cp-view-recebidas">' +
         '<div class="section-title first">Aprovadas, aguardando chegada</div>' +
         '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Aprovado por</th><th></th>' +
+          '<th>Item</th><th>Qtd</th><th>Valor total</th><th>Aprovado por</th><th></th>' +
         '</tr></thead><tbody id="cp-tbody-aguardando"></tbody></table></div>' +
-        '<div class="stat-row" id="cp-stats-recebidas"></div>' +
         '<div class="section-title">Compras recebidas</div>' +
-        '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-          '<th>Item</th><th>Valor pago</th><th>Fornecedor</th><th>Nota fiscal</th><th>Chegou em</th>' +
-        '</tr></thead><tbody id="cp-tbody-recebidas"></tbody></table></div>' +
+        '<div class="toolbar cp-filtros">' +
+          '<select id="cp-f-lista"><option value="">Todas as listas</option></select>' +
+          '<select id="cp-f-periodo">' +
+            '<option value="">Todo o período</option><option value="mes">Por mês</option>' +
+            '<option value="ano">Por ano</option><option value="intervalo">Escolher o período</option>' +
+          '</select>' +
+          '<input type="month" id="cp-f-mes" style="display:none;">' +
+          '<select id="cp-f-ano" style="display:none;"></select>' +
+          '<span id="cp-f-intervalo" style="display:none;align-items:center;gap:6px;">' +
+            '<input type="date" id="cp-f-de"> até <input type="date" id="cp-f-ate">' +
+          '</span>' +
+        '</div>' +
+        '<div class="stat-row" id="cp-stats-recebidas"></div>' +
+        '<div id="cp-recebidas-listas"></div>' +
       '</div>';
 
     Array.prototype.forEach.call(document.getElementById('cp-inner-nav').querySelectorAll('button'), function(b){
@@ -1528,10 +1629,13 @@
       const loteId = meuUid + '_' + Date.now().toString(36);
       const btn = document.getElementById('cp-nova-criar');
       btn.disabled = true;
+      const qtdNova = parseInt(document.getElementById('cp-nova-qtd').value, 10) || 1;
+      const unitNovo = moedaParaNumero(novaValorInput.value);
       db.collection('compras').add({
         item: item,
-        quantidade: parseInt(document.getElementById('cp-nova-qtd').value, 10) || 1,
-        valorEstimado: moedaParaNumero(novaValorInput.value),
+        quantidade: qtdNova,
+        valorUnitario: unitNovo,
+        valorEstimado: arred2(unitNovo * qtdNova),   // total do item (unitário × quantidade)
         solicitante: meuNome,
         solicitanteUid: meuUid,
         loteId: loteId,
@@ -1543,6 +1647,7 @@
         novaItemInput.value = '';
         document.getElementById('cp-nova-qtd').value = '1';
         novaValorInput.value = '';
+        document.getElementById('cp-nova-total').textContent = '';
         lotesAbertos[loteId] = true;
         // a lista já nasce aberta e o próximo item se digita direto no campo
         // "adicionar outro item" dela mesma, pra poder ir em Enter, Enter, Enter...
@@ -1554,11 +1659,28 @@
     }
     document.getElementById('cp-nova-criar').addEventListener('click', criarNovaLista);
     novaItemInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') criarNovaLista(); });
+    const atualizarTotalNovo = function(){
+      mostrarTotalItem(document.getElementById('cp-nova-total'), document.getElementById('cp-nova-qtd').value, novaValorInput.value);
+    };
     novaItemInput.addEventListener('input', function(){
       const hist = historicoDoItem(novaItemInput.value);
       if (!hist) return;
       document.getElementById('cp-nova-qtd').value = hist.quantidade;
       novaValorInput.value = numeroParaMoedaInput(hist.valor);
+      atualizarTotalNovo();
+    });
+    document.getElementById('cp-nova-qtd').addEventListener('input', atualizarTotalNovo);
+    novaValorInput.addEventListener('input', atualizarTotalNovo);
+
+    // filtros do total geral das compras recebidas
+    ['cp-f-lista','cp-f-periodo','cp-f-mes','cp-f-ano','cp-f-de','cp-f-ate'].forEach(function(id){
+      document.getElementById(id).addEventListener('change', function(){
+        const per = document.getElementById('cp-f-periodo').value;
+        document.getElementById('cp-f-mes').style.display = per === 'mes' ? '' : 'none';
+        document.getElementById('cp-f-ano').style.display = per === 'ano' ? '' : 'none';
+        document.getElementById('cp-f-intervalo').style.display = per === 'intervalo' ? 'inline-flex' : 'none';
+        renderRecebidas();
+      });
     });
     novaNomeInput.addEventListener('input', function(){
       document.getElementById('cp-nova-err').style.display = 'none';
@@ -1593,10 +1715,26 @@
     const maisRecente = candidatos[0];
     const recebidos = candidatos.filter(function(x){ return x.status === 'recebido' && x.valorPago; })
       .sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
+    // valor devolvido é sempre o UNITÁRIO (o campo da lista agora é valor unitário)
     return {
       quantidade: maisRecente.quantidade || 1,
-      valor: recebidos.length ? recebidos[0].valorPago : (maisRecente.valorEstimado || 0)
+      valor: recebidos.length
+        ? arred2((Number(recebidos[0].valorPago) || 0) / (recebidos[0].quantidade || 1))
+        : valorUnitDe(maisRecente)
     };
+  }
+
+  function arred2(n){ return Math.round((Number(n) || 0) * 100) / 100; }
+  // Itens antigos só têm valorEstimado (total); os novos guardam também o valorUnitario.
+  function valorUnitDe(it){
+    if (it.valorUnitario != null) return Number(it.valorUnitario) || 0;
+    return arred2((Number(it.valorEstimado) || 0) / (it.quantidade || 1));
+  }
+  function mostrarTotalItem(el, qtd, valorTexto){
+    if (!el) return;
+    const unit = moedaParaNumero(valorTexto);
+    const q = parseInt(qtd, 10) || 1;
+    el.textContent = unit ? ('= ' + formatBRL(arred2(unit * q))) : '';
   }
 
   // Rascunhos são salvos no Firestore item a item (status:'rascunho') assim
@@ -1642,25 +1780,27 @@
           '</div>' +
         '</div>' +
         '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
-          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor estimado</th><th></th></tr></thead><tbody>' +
+          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th></th></tr></thead><tbody>' +
             g.itens.map(function(it){
               return '<tr>' +
                 '<td>' + escapeHtml(it.item) + '</td>' +
                 '<td class="num">' + (it.quantidade || 1) + '</td>' +
+                '<td class="num">' + formatBRL(valorUnitDe(it)) + '</td>' +
                 '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
                 '<td class="actions-cell"><button type="button" class="btn small danger" data-rascunho-item-remover="' + it.id + '">Remover</button></td>' +
               '</tr>';
             }).join('') +
-          '</tbody></table>' +
+          '</tbody><tfoot><tr class="total-row"><td colspan="3">Total atual da lista</td><td class="num">' + formatBRL(g.totalEstimado) + '</td><td></td></tr></tfoot></table>' +
           '<div class="quick-add-row" style="margin-top:8px;">' +
             '<input type="text" class="item-input rascunho-add-item" list="cp-qa-item-hist" data-lote="' + g.loteId + '" placeholder="Adicionar outro item…">' +
             '<input type="number" class="rascunho-add-qtd" data-lote="' + g.loteId + '" min="1" value="1">' +
-            '<input type="text" inputmode="numeric" class="valor-input rascunho-add-valor" data-lote="' + g.loteId + '" placeholder="R$ 0,00 (estimado)">' +
+            '<input type="text" inputmode="numeric" class="valor-input rascunho-add-valor" data-lote="' + g.loteId + '" placeholder="R$ 0,00 (valor unitário)">' +
+            '<span class="item-total-preview rascunho-add-total" data-lote="' + g.loteId + '"></span>' +
             '<button type="button" class="btn small" data-rascunho-add-btn="' + g.loteId + '">+ Adicionar</button>' +
           '</div>' +
           '<div class="toolbar" style="margin-top:8px;">' +
             '<span class="spacer"></span>' +
-            '<button type="button" class="btn primary small" data-rascunho-enviar="' + g.loteId + '">📤 Enviar ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' para aprovação</button>' +
+            '<button type="button" class="btn primary small" data-rascunho-enviar="' + g.loteId + '">📤 Enviar ' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' para aprovação · ' + formatBRL(g.totalEstimado) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1685,8 +1825,17 @@
         db.collection('compras').doc(b.dataset.rascunhoItemRemover).delete();
       });
     });
+    const totalDoRascunho = function(loteId){
+      mostrarTotalItem(container.querySelector('.rascunho-add-total[data-lote="' + loteId + '"]'),
+        container.querySelector('.rascunho-add-qtd[data-lote="' + loteId + '"]').value,
+        container.querySelector('.rascunho-add-valor[data-lote="' + loteId + '"]').value);
+    };
     Array.prototype.forEach.call(container.querySelectorAll('.rascunho-add-valor'), function(input){
       ligarMascaraMoeda(input);
+      input.addEventListener('input', function(){ totalDoRascunho(input.dataset.lote); });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('.rascunho-add-qtd'), function(input){
+      input.addEventListener('input', function(){ totalDoRascunho(input.dataset.lote); });
     });
     Array.prototype.forEach.call(container.querySelectorAll('.rascunho-add-item'), function(input){
       input.addEventListener('keydown', function(e){ if (e.key === 'Enter') adicionarItemAoRascunho(input.dataset.lote); });
@@ -1696,6 +1845,7 @@
         const loteId = input.dataset.lote;
         container.querySelector('.rascunho-add-qtd[data-lote="' + loteId + '"]').value = hist.quantidade;
         container.querySelector('.rascunho-add-valor[data-lote="' + loteId + '"]').value = numeroParaMoedaInput(hist.valor);
+        totalDoRascunho(loteId);
       });
     });
     Array.prototype.forEach.call(container.querySelectorAll('[data-rascunho-add-btn]'), function(b){
@@ -1734,10 +1884,13 @@
     if (!item) { itemInput.focus(); return; }
     const lista = cpItens.find(function(x){ return x.loteId === loteId; });
     cpUltimoLoteFocado = loteId;
+    const qtd = parseInt(qtdInput.value, 10) || 1;
+    const unit = moedaParaNumero(valorInput.value);
     db.collection('compras').add({
       item: item,
-      quantidade: parseInt(qtdInput.value, 10) || 1,
-      valorEstimado: moedaParaNumero(valorInput.value),
+      quantidade: qtd,
+      valorUnitario: unit,
+      valorEstimado: arred2(unit * qtd),   // total do item (unitário × quantidade)
       solicitante: meuNome,
       solicitanteUid: meuUid,
       loteId: loteId,
@@ -1757,11 +1910,12 @@
   function enviarListaParaAprovacao(loteId){
     const itens = cpItens.filter(function(x){ return x.loteId === loteId && x.status === 'rascunho'; });
     if (!itens.length) return;
-    if (!confirm('Enviar esta lista (' + itens.length + ' ite' + (itens.length > 1 ? 'ns' : 'm') + ') para aprovação? Depois de enviada, não é mais possível editar.')) return;
+    const totalLista = arred2(itens.reduce(function(acc, x){ return acc + (Number(x.valorEstimado) || 0); }, 0));
+    if (!confirm('Enviar esta lista (' + itens.length + ' ite' + (itens.length > 1 ? 'ns' : 'm') + ', total ' + formatBRL(totalLista) + ') para aprovação? Depois de enviada, não é mais possível editar.')) return;
     const batch = db.batch();
     const agora = firebase.firestore.FieldValue.serverTimestamp();
     itens.forEach(function(it){
-      batch.update(db.collection('compras').doc(it.id), { status: 'pendente', dataEnvio: agora });
+      batch.update(db.collection('compras').doc(it.id), { status: 'pendente', dataEnvio: agora, totalLista: totalLista });
     });
     batch.commit().catch(function(err){ alert('Erro ao enviar a lista: ' + err.message); });
   }
@@ -1824,11 +1978,18 @@
           '</div>' +
         '</div>' +
         '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
-          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor estimado</th><th>Status</th><th></th></tr></thead><tbody>' +
+          (souAdmin && g.pendentes
+            ? '<label class="cp-sel-todos"><input type="checkbox" data-cp-sel-lista="' + g.loteId + '"' +
+                (g.itens.filter(function(x){ return x.status === 'pendente'; }).every(function(x){ return cpSelecionados[x.id]; }) ? ' checked' : '') +
+                '> Selecionar todos os pendentes desta lista</label>'
+            : '') +
+          '<table class="data-table"><thead><tr>' + (souAdmin ? '<th style="width:28px;"></th>' : '') + '<th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>' +
             g.itens.map(function(it){
               return '<tr>' +
+                (souAdmin ? '<td>' + (it.status === 'pendente' ? '<input type="checkbox" data-cp-sel="' + it.id + '"' + (cpSelecionados[it.id] ? ' checked' : '') + '>' : '') + '</td>' : '') +
                 '<td>' + escapeHtml(it.item) + '</td>' +
                 '<td class="num">' + (it.quantidade || 1) + '</td>' +
+                '<td class="num">' + formatBRL(valorUnitDe(it)) + '</td>' +
                 '<td class="num">' + formatBRL(it.valorEstimado) + '</td>' +
                 '<td><span class="pill ' + it.status + '" title="' + escapeHtml(it.status === 'reprovado' && it.motivoReprovacao ? it.motivoReprovacao : '') + '">' + STATUS_CP_LABEL[it.status] + '</span></td>' +
                 '<td class="actions-cell">' +
@@ -1845,10 +2006,26 @@
                 '</td>' +
               '</tr>';
             }).join('') +
-          '</tbody></table>' +
+          '</tbody><tfoot><tr class="total-row"><td colspan="' + (souAdmin ? 4 : 3) + '">Total da lista</td><td class="num">' + formatBRL(g.totalEstimado) + '</td><td colspan="2"></td></tr></tfoot></table>' +
         '</div>' +
       '</div>';
     }).join('');
+
+    // seleção para aprovar/reprovar em lote (só admin, só itens pendentes)
+    Array.prototype.forEach.call(container.querySelectorAll('[data-cp-sel]'), function(cb){
+      cb.addEventListener('change', function(){
+        if (cb.checked) cpSelecionados[cb.dataset.cpSel] = true; else delete cpSelecionados[cb.dataset.cpSel];
+        renderCompras();
+      });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('[data-cp-sel-lista]'), function(cb){
+      cb.addEventListener('change', function(){
+        cpItens.filter(function(x){ return (x.loteId || x.id) === cb.dataset.cpSelLista && x.status === 'pendente'; })
+          .forEach(function(x){ if (cb.checked) cpSelecionados[x.id] = true; else delete cpSelecionados[x.id]; });
+        renderCompras();
+      });
+    });
+    renderBarraLote();
 
     Array.prototype.forEach.call(container.querySelectorAll('[data-cp-excluir-item]'), function(b){
       b.addEventListener('click', function(){
@@ -1869,6 +2046,55 @@
         renderCompras();
       });
     });
+  }
+
+  // Barra "N selecionados · Aprovar · Reprovar" acima das listas (aprovação em lote)
+  let cpSelecionados = {};   // id do item pendente -> true
+  function renderBarraLote(){
+    const barra = document.getElementById('cp-lote-acoes');
+    if (!barra) return;
+    // descarta seleções de itens que já não estão pendentes (decididos por outra pessoa, excluídos)
+    Object.keys(cpSelecionados).forEach(function(id){
+      const it = cpItens.find(function(x){ return x.id === id; });
+      if (!it || it.status !== 'pendente') delete cpSelecionados[id];
+    });
+    const ids = Object.keys(cpSelecionados);
+    if (!souAdmin || !ids.length){ barra.innerHTML = ''; return; }
+    const total = arred2(ids.reduce(function(acc, id){
+      const it = cpItens.find(function(x){ return x.id === id; });
+      return acc + (it ? Number(it.valorEstimado) || 0 : 0);
+    }, 0));
+    barra.innerHTML = '<div class="cp-lote-bar">' +
+      '<span><b>' + ids.length + '</b> ite' + (ids.length > 1 ? 'ns selecionados' : 'm selecionado') + ' · ' + formatBRL(total) + '</span>' +
+      '<span class="spacer"></span>' +
+      '<button type="button" class="btn small primary" id="cp-lote-aprovar">✓ Aprovar selecionados</button>' +
+      '<button type="button" class="btn small danger" id="cp-lote-reprovar">✕ Reprovar selecionados</button>' +
+      '<button type="button" class="btn small" id="cp-lote-limpar">Limpar seleção</button>' +
+    '</div>';
+    document.getElementById('cp-lote-limpar').addEventListener('click', function(){ cpSelecionados = {}; renderCompras(); });
+    document.getElementById('cp-lote-aprovar').addEventListener('click', function(){ decidirEmLote('aprovado'); });
+    document.getElementById('cp-lote-reprovar').addEventListener('click', function(){ decidirEmLote('reprovado'); });
+  }
+  function decidirEmLote(status){
+    const ids = Object.keys(cpSelecionados);
+    if (!ids.length) return;
+    let motivo = '';
+    if (status === 'aprovado'){
+      if (!confirm('Aprovar ' + ids.length + ' ite' + (ids.length > 1 ? 'ns' : 'm') + ' de uma vez?')) return;
+    } else {
+      const r = prompt('Reprovar ' + ids.length + ' ite' + (ids.length > 1 ? 'ns' : 'm') + '. Motivo (opcional, vale para todos):');
+      if (r === null) return;
+      motivo = r.trim();
+    }
+    const batch = db.batch();
+    const agora = firebase.firestore.FieldValue.serverTimestamp();
+    ids.forEach(function(id){
+      const dados = { status: status, aprovadoPor: meuNome, dataAprovacao: agora };
+      if (status === 'reprovado') dados.motivoReprovacao = motivo;
+      batch.update(db.collection('compras').doc(id), dados);
+    });
+    batch.commit().then(function(){ cpSelecionados = {}; renderCompras(); })
+      .catch(function(err){ alert('Não foi possível concluir: ' + err.message); });
   }
 
   function excluirListaCompleta(loteId, nomeLista, qtdItens){
@@ -1907,20 +2133,8 @@
       '</tr>';
     }).join('') : '<tr><td colspan="5" class="empty-row">Nenhuma compra aprovada aguardando chegada.</td></tr>';
 
-    const totalGasto = recebidas.reduce(function(acc, it){ return acc + (Number(it.valorPago) || 0); }, 0);
-    document.getElementById('cp-stats-recebidas').innerHTML =
-      '<div class="stat-card"><div class="n">' + recebidas.length + '</div><div class="l">compras recebidas</div></div>' +
-      '<div class="stat-card"><div class="n">' + formatBRL(totalGasto) + '</div><div class="l">total gasto</div></div>';
-
-    document.getElementById('cp-tbody-recebidas').innerHTML = recebidas.length ? recebidas.map(function(it){
-      return '<tr>' +
-        '<td>' + escapeHtml(it.item) + '</td>' +
-        '<td class="num">' + formatBRL(it.valorPago) + '</td>' +
-        '<td>' + escapeHtml(it.fornecedor || '—') + '</td>' +
-        '<td>' + escapeHtml(it.notaFiscal || '—') + '</td>' +
-        '<td>' + formatDataBR(it.dataChegada) + '</td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="5" class="empty-row">Nenhuma compra recebida ainda.</td></tr>';
+    atualizarOpcoesFiltroRecebidas(recebidas);
+    renderRecebidas();
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-cp-aprovar]'), function(b){
       b.addEventListener('click', function(){
@@ -1945,6 +2159,91 @@
 
   function tsMillis(ts){
     return (ts && ts.toMillis) ? ts.toMillis() : 0;
+  }
+
+  // ---------- Compras recebidas: por lista, com filtro de lista e de período ----------
+  function nomeListaDe(it){ return it.loteNome || ('Solicitação avulsa — ' + (it.item || '')); }
+  function atualizarOpcoesFiltroRecebidas(recebidas){
+    const selLista = document.getElementById('cp-f-lista');
+    const selAno = document.getElementById('cp-f-ano');
+    if (!selLista || !selAno) return;
+    const listaAtual = selLista.value, anoAtual = selAno.value;
+    const listas = {};
+    recebidas.forEach(function(it){ listas[it.loteId || it.id] = nomeListaDe(it); });
+    selLista.innerHTML = '<option value="">Todas as listas</option>' + Object.keys(listas)
+      .sort(function(a, b){ return listas[a].localeCompare(listas[b]); })
+      .map(function(k){ return '<option value="' + escapeHtml(k) + '"' + (k === listaAtual ? ' selected' : '') + '>' + escapeHtml(listas[k]) + '</option>'; }).join('');
+    const anos = {};
+    recebidas.forEach(function(it){ if (it.dataChegada) anos[it.dataChegada.slice(0, 4)] = true; });
+    anos[String(new Date().getFullYear())] = true;
+    selAno.innerHTML = Object.keys(anos).sort().reverse()
+      .map(function(a){ return '<option value="' + a + '"' + (a === anoAtual ? ' selected' : '') + '>' + a + '</option>'; }).join('');
+  }
+  function recebidasFiltradas(){
+    const lista = document.getElementById('cp-f-lista').value;
+    const per = document.getElementById('cp-f-periodo').value;
+    const mes = document.getElementById('cp-f-mes').value;        // AAAA-MM
+    const ano = document.getElementById('cp-f-ano').value;        // AAAA
+    const de = document.getElementById('cp-f-de').value, ate = document.getElementById('cp-f-ate').value;
+    return cpItens.filter(function(it){
+      if (it.status !== 'recebido') return false;
+      if (lista && (it.loteId || it.id) !== lista) return false;
+      const d = it.dataChegada || '';
+      if (per === 'mes' && mes && d.slice(0, 7) !== mes) return false;
+      if (per === 'ano' && ano && d.slice(0, 4) !== ano) return false;
+      if (per === 'intervalo'){
+        if (de && d < de) return false;
+        if (ate && d > ate) return false;
+      }
+      return true;
+    });
+  }
+  let recebidasAbertas = {};   // loteId -> true (lista aberta mostrando os itens)
+  function renderRecebidas(){
+    const wrap = document.getElementById('cp-recebidas-listas');
+    if (!wrap) return;
+    const itens = recebidasFiltradas();
+    const totalGasto = itens.reduce(function(acc, it){ return acc + (Number(it.valorPago) || 0); }, 0);
+    document.getElementById('cp-stats-recebidas').innerHTML =
+      '<div class="stat-card"><div class="n">' + itens.length + '</div><div class="l">compras recebidas</div></div>' +
+      '<div class="stat-card"><div class="n">' + formatBRL(totalGasto) + '</div><div class="l">total gasto (filtro atual)</div></div>';
+    if (!itens.length){
+      wrap.innerHTML = '<div class="empty-row" style="border:1px solid var(--line-strong);border-radius:10px;">Nenhuma compra recebida para esse filtro.</div>';
+      return;
+    }
+    const grupos = {};
+    itens.forEach(function(it){ const k = it.loteId || it.id; (grupos[k] = grupos[k] || []).push(it); });
+    const listas = Object.keys(grupos).map(function(k){
+      const its = grupos[k].slice().sort(function(a, b){ return (b.dataChegada || '').localeCompare(a.dataChegada || ''); });
+      return { chave: k, nome: nomeListaDe(its[0]), itens: its, ultima: its[0].dataChegada || '',
+        total: its.reduce(function(acc, x){ return acc + (Number(x.valorPago) || 0); }, 0) };
+    }).sort(function(a, b){ return b.ultima.localeCompare(a.ultima); });
+    wrap.innerHTML = listas.map(function(g){
+      const aberto = !!recebidasAbertas[g.chave];
+      return '<div class="lote-card">' +
+        '<div class="lote-head" data-receb-toggle="' + escapeHtml(g.chave) + '">' +
+          '<div><div class="lh-nome">' + escapeHtml(g.nome) + '</div>' +
+          '<div class="lh-meta">' + g.itens.length + ' ite' + (g.itens.length > 1 ? 'ns' : 'm') + ' · última chegada ' + formatDataBR(g.ultima) + '</div></div>' +
+          '<div class="lh-right"><span>' + formatBRL(g.total) + '</span><span class="chevron' + (aberto ? ' open' : '') + '">▾</span></div>' +
+        '</div>' +
+        '<div class="lote-body" style="display:' + (aberto ? 'block' : 'none') + ';">' +
+          '<table class="data-table"><thead><tr><th>Item</th><th>Qtd</th><th>Valor pago</th><th>Fornecedor</th><th>Nota fiscal</th><th>Chegou em</th></tr></thead><tbody>' +
+          g.itens.map(function(it){
+            return '<tr><td>' + escapeHtml(it.item) + '</td><td class="num">' + (it.quantidade || 1) + '</td>' +
+              '<td class="num">' + formatBRL(it.valorPago) + '</td><td>' + escapeHtml(it.fornecedor || '—') + '</td>' +
+              '<td>' + escapeHtml(it.notaFiscal || '—') + '</td><td>' + formatDataBR(it.dataChegada) + '</td></tr>';
+          }).join('') +
+          '</tbody><tfoot><tr class="total-row"><td colspan="2">Total da lista</td><td class="num">' + formatBRL(g.total) + '</td><td colspan="3"></td></tr></tfoot></table>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-receb-toggle]'), function(el){
+      el.addEventListener('click', function(){
+        const k = el.dataset.recebToggle;
+        recebidasAbertas[k] = !recebidasAbertas[k];
+        renderRecebidas();
+      });
+    });
   }
 
   function imprimirListaCompras(statusList, titulo){
@@ -2036,7 +2335,11 @@
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
       meuPatrimonioVerTudo = !doc.exists || doc.data().patrimonioVerTudo !== false;
-      /* start on hub — user will choose module */
+      marcarPerfilPronto();
+    }).catch(function(){
+      // sem acesso ao próprio users/{uid}: segue com a visão mais restrita, que nunca dá erro
+      meuPatrimonioVerTudo = false;
+      marcarPerfilPronto();
     });
   });
 
