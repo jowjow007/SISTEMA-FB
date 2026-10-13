@@ -62,6 +62,7 @@
   .sig-line .name{font-weight:700;font-size:9pt;}
   .sig-line .doc{font-size:8.2pt;}
   .sig-line .meta{font-size:6.6pt;color:#555;line-height:1.35;margin-top:.8mm;}
+  .registro-ass{font-size:6.8pt;color:#555;text-align:center;margin-top:3.5mm;line-height:1.4;}
   .rodape-termo{text-align:center;font-size:7.6pt;font-weight:700;margin-top:5mm;}
   .rodape-termo .cod{display:block;font-weight:400;color:#666;font-size:6.6pt;margin-top:.6mm;}
 
@@ -121,6 +122,17 @@
   function label(t){ return '<div class="doc-label">' + t + '</div>'; }
 
   /* ---------- texto de cada termo (fiel aos modelos do escritório) ---------- */
+  // IP e localização gravados no momento da assinatura (só existem em termos assinados)
+  function registroAssinaturaHtml(d){
+    const r = d.registroAssinatura;
+    if (!r) return '';
+    const loc = r.localizacao || {};
+    const local = loc.status === 'ok'
+      ? 'latitude ' + String(loc.lat).replace('.', ',') + ', longitude ' + String(loc.lng).replace('.', ',') + (loc.precisaoM ? ' (precisão aprox. ' + loc.precisaoM + ' m)' : '')
+      : (loc.status || 'não obtida');
+    return '<div class="registro-ass"><b>Registro da assinatura eletrônica</b> — IP: ' + esc(r.ip || 'não obtido') + ' · Localização: ' + esc(local) + '</div>';
+  }
+
   /* ---------- termo de devolução: assina quem recebe de volta (admin ou pessoa autorizada) ---------- */
   function montarDevolucao(d){
     const assinado = paraData(d.assinadoEm) || (d.assinadoEmISO ? new Date(d.assinadoEmISO) : null);
@@ -169,6 +181,7 @@
         '<div class="name">' + v(d.colaboradorNome) + '</div><div class="doc">Devolvido por' + (d.cpf ? ' — CPF ' + esc(d.cpf) : '') + '</div>' +
         '<div class="meta">' + (solicitado ? 'Devolução solicitada pelo Portal em ' + esc(dataBR(solicitado)) + '.' : 'Devolução solicitada pelo Portal.') + '</div></div>' +
     '</div>');
+    if (d.registroAssinatura) b.push(registroAssinaturaHtml(d));
     b.push('<div class="rodape-termo">Documento de controle patrimonial interno — Fonseca e Braga Sociedade de Advogados.' +
       (d.id ? '<span class="cod">Código de verificação do termo: ' + esc(d.id) + (d.termoEntregaId ? ' · termo de entrega: ' + esc(d.termoEntregaId) : '') + '</span>' : '') + '</div>');
     return b;
@@ -307,6 +320,7 @@
     sig += '</div>';
     b.push(sig);
 
+    if (d.registroAssinatura) b.push(registroAssinaturaHtml(d));
     b.push('<div class="rodape-termo">Documento de controle patrimonial interno — Fonseca e Braga Sociedade de Advogados.' +
       (d.id ? '<span class="cod">Código de verificação do termo: ' + esc(d.id) + '</span>' : '') + '</div>');
     return b;

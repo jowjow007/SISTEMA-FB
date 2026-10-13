@@ -1203,7 +1203,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v170</span>
+      <span class="version-tag">v171</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1833,6 +1833,8 @@
   let pendingCount = 0;   // usuários (não-admin) com zero abas liberadas
   let comprasPendentesCount = 0;   // solicitações de compra aguardando aprovação (pisca a aba "Gestão" pro admin)
   let comprasBadgeSubscribed = false;
+  let patAceitePendentes = 0;      // patrimônio enviado para mim aguardando meu aceite (pisca "Gestão")
+  let patDevolucoesPendentes = 0;  // devoluções aguardando recebimento — só p/ admin ou quem cadastra patrimônio
   let anotacoesPendentesCount = 0;   // tarefa enviada por outra pessoa, aguardando eu concluir (pisca a aba "Minhas Anotações")
   let anotacoesBadgeSubscribed = false;
   let anotacoesEnviadasAtencao = 0;   // tarefa que EU enviei sem resposta ou aguardando minha aprovação
@@ -2338,6 +2340,7 @@
     carregarFotoAvatarMobile();
     if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
     subscribeAnotacoesPendentes();
+    subscribePatrimonioPendentes();
     verificarAvisoFotoObrigatoria();
     iniciarPresenca();
   }
@@ -2387,8 +2390,28 @@
     });
   }
 
+  // Pisca a aba "Gestão" quando há patrimônio esperando o MEU aceite, ou (para o admin e quem
+  // cadastra patrimônio) devolução esperando recebimento — ver tools/gestao, Patrimônio.
+  function subscribePatrimonioPendentes(){
+    db.collection('patrimonio').where('pendenteParaUid', '==', currentProfile.uid).onSnapshot(function(snap){
+      patAceitePendentes = snap.size;
+      updateTabBlinks();
+    }, function(){ patAceitePendentes = 0; });
+    const ouvirDevolucoes = function(){
+      db.collection('patrimonio').where('devolucaoPendente', '==', true).onSnapshot(function(snap){
+        patDevolucoesPendentes = snap.size;
+        updateTabBlinks();
+      }, function(){ patDevolucoesPendentes = 0; });
+    };
+    if (currentProfile.role === 'admin') { ouvirDevolucoes(); return; }
+    db.collection('permissoesGestao').doc(currentProfile.uid).get().then(function(p){
+      if (p.exists && p.data().patrimonioCadastro === true) ouvirDevolucoes();
+    }).catch(function(){});
+  }
+
   // Um único lugar decide quais abas piscam (antes cada regra apagava o pisca da outra):
-  // Gestão = compra aguardando aprovação (admin); Minhas Anotações = tarefa recebida a
+  // Gestão = compra aguardando aprovação (admin) ou patrimônio para aceitar/devolução para
+  // receber; Minhas Anotações = tarefa recebida a
   // fazer, ou tarefa que eu enviei ainda sem resposta / aguardando minha aprovação;
   // Chat = conversa com mensagem não lida.
   function updateTabBlinks(){
@@ -2397,7 +2420,7 @@
       const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
       const l = (t && t.label) || '';
       const pisca =
-        (/gest[ãa]o/i.test(l) && comprasPendentesCount > 0) ||
+        (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
         (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
       b.classList.toggle('tab-blink', !!pisca);

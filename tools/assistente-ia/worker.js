@@ -18,10 +18,17 @@
 // conta de serviço e troca por um token de acesso a cada requisição, em
 // vez de só colar uma chave na URL.
 //
+// ATUALIZAÇÃO out/2026: o Google passou a recusar o token da conta de serviço
+// ("Access to Gemini API is restricted with service accounts. Use authorization
+// keys instead"). Agora o Worker usa a chave de API (GEMINI_API_KEY) quando ela
+// existe; o caminho da conta de serviço abaixo ficou só como reserva.
+//
 // Variáveis de ambiente esperadas (configuradas no dashboard, não aqui):
-//   GOOGLE_SA_EMAIL        (Secret, obrigatória) — "client_email" do JSON
+//   GEMINI_API_KEY         (Secret, o caminho atual) — chave criada em
+//                           aistudio.google.com/apikey ("Criar chave de API").
+//   GOOGLE_SA_EMAIL        (Secret, reserva) — "client_email" do JSON
 //                           da conta de serviço baixado no Google Cloud.
-//   GOOGLE_SA_PRIVATE_KEY  (Secret, obrigatória) — "private_key" do mesmo
+//   GOOGLE_SA_PRIVATE_KEY  (Secret, reserva) — "private_key" do mesmo
 //                           JSON (cole com as quebras de linha, incluindo
 //                           "-----BEGIN PRIVATE KEY-----" e "-----END...").
 //   GEMINI_MODEL           (Variável normal, opcional) — ex: "gemini-3.5-flash"
@@ -147,8 +154,13 @@ export default {
       return jsonResponse({ error: 'Método não suportado.' }, 405, origin);
     }
 
-    if (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY) {
-      return jsonResponse({ error: 'Credenciais da conta de serviço não configuradas no Worker.' }, 500, origin);
+    // Desde out/2026 o Google recusa token de conta de serviço no Gemini ("Access to Gemini
+    // API is restricted with service accounts. Use authorization keys instead"): o caminho
+    // certo é uma chave de API (Secret GEMINI_API_KEY), enviada no cabeçalho x-goog-api-key.
+    // A conta de serviço fica só como alternativa para quem ainda não criou a chave.
+    const usaChave = !!env.GEMINI_API_KEY;
+    if (!usaChave && (!env.GOOGLE_SA_EMAIL || !env.GOOGLE_SA_PRIVATE_KEY)) {
+      return jsonResponse({ error: 'Chave do Gemini não configurada no Worker (Secret GEMINI_API_KEY).' }, 500, origin);
     }
 
     var podeUsar;
@@ -168,11 +180,15 @@ export default {
       return jsonResponse({ error: 'Não foi possível ler o corpo da requisição.' }, 400, origin);
     }
 
-    let accessToken;
-    try {
-      accessToken = await getAccessToken(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
-    } catch (e) {
-      return jsonResponse({ error: 'Falha na autenticação com o Google: ' + e.message }, 500, origin);
+    const authHeaders = { 'Content-Type': 'application/json' };
+    if (usaChave) {
+      authHeaders['x-goog-api-key'] = env.GEMINI_API_KEY;
+    } else {
+      try {
+        authHeaders['Authorization'] = 'Bearer ' + await getAccessToken(env.GOOGLE_SA_EMAIL, env.GOOGLE_SA_PRIVATE_KEY);
+      } catch (e) {
+        return jsonResponse({ error: 'Falha na autenticação com o Google: ' + e.message }, 500, origin);
+      }
     }
 
     const model = env.GEMINI_MODEL || 'gemini-3.5-flash';
@@ -182,10 +198,7 @@ export default {
     try {
       geminiResp = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + accessToken
-        },
+        headers: authHeaders,
         body: body
       });
     } catch (e) {

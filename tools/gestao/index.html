@@ -372,6 +372,13 @@
   .sn-obs2{display:block;font-size:.72rem;color:var(--muted);margin-top:3px;}
   .copiado-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;background:#1f1a14;color:#f3e6c8;
     border:1px solid rgba(212,175,106,.5);border-radius:10px;padding:8px 16px;font-size:.82rem;box-shadow:0 10px 24px rgba(0,0,0,.5);}
+  .item-link{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;}
+  .item-link:hover b,.item-link:hover{color:var(--gold);}
+  .hist-atual{border:1px solid var(--line-strong);border-radius:12px;padding:10px 14px;margin:10px 0 14px;font-size:.85rem;background:rgba(212,175,106,.06);}
+  .hist-dados{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 16px;font-size:.8rem;color:var(--muted);margin-bottom:6px;}
+  .hist-dados b{color:var(--paper);font-weight:600;}
+  .hist-ev{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.8rem;}
+  .hist-ev .quando{flex:0 0 118px;color:var(--muted);font-variant-numeric:tabular-nums;}
   .termos-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.82rem;}
   .termos-row .tr-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
 
@@ -530,6 +537,11 @@
         <label>Número de série</label>
         <input type="text" id="pat-serie">
       </div>
+    </div>
+    <div class="field">
+      <label>Acessórios que acompanham</label>
+      <input type="text" id="pat-acessorios" placeholder="Ex: carregador, mouse, capa">
+      <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Vai preenchido sozinho no termo quando o item for enviado a alguém.</div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -714,6 +726,17 @@
   </div>
 </div>
 
+<!-- Modal: ficha do item — com quem está e histórico de quem recebeu/devolveu -->
+<div class="modal-backdrop" id="pat-hist-backdrop">
+  <div class="modal" style="max-width:760px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+      <h3 id="pat-hist-titulo" style="margin-bottom:4px;"></h3>
+      <button type="button" class="btn small" id="pat-hist-fechar">Fechar</button>
+    </div>
+    <div id="pat-hist-corpo"></div>
+  </div>
+</div>
+
 <!-- Modal: quem está com o item pede para devolver -->
 <div class="modal-backdrop" id="pat-devol-backdrop">
   <div class="modal">
@@ -751,57 +774,6 @@
     <div class="modal-foot">
       <button type="button" class="btn" id="perm-cancelar">Cancelar</button>
       <button type="button" class="btn primary" id="perm-salvar">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: nova/editar senha -->
-<div class="modal-backdrop" id="sn-modal-backdrop">
-  <div class="modal">
-    <h3 id="sn-modal-titulo">Nova senha</h3>
-    <div class="field">
-      <label>Sistema *</label>
-      <input type="text" id="sn-sistema" placeholder="Ex: PJE TJMG">
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Usuário / login</label>
-        <input type="text" id="sn-usuario" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Senha</label>
-        <input type="text" id="sn-senha" autocomplete="off" spellcheck="false">
-      </div>
-    </div>
-    <div class="field">
-      <label>Observações / link de acesso</label>
-      <input type="text" id="sn-obs" placeholder="https://…">
-    </div>
-    <div class="field">
-      <label>Observação extra</label>
-      <input type="text" id="sn-obs2">
-    </div>
-    <div class="msg-err" id="sn-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="sn-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="sn-salvar">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: importar senhas de planilha (CSV) -->
-<div class="modal-backdrop" id="sn-import-backdrop">
-  <div class="modal">
-    <h3>Importar planilha de senhas</h3>
-    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;">Envie o arquivo .csv da planilha (no Google Planilhas: Arquivo → Fazer download → CSV). As colunas usadas são SISTEMA, USUÁRIO, SENHA, OBS e a coluna seguinte.</p>
-    <div class="field">
-      <input type="file" id="sn-import-file" accept=".csv,text/csv">
-    </div>
-    <div id="sn-import-preview" style="font-size:.84rem;"></div>
-    <div class="msg-err" id="sn-import-err"></div>
-    <div class="modal-foot">
-      <button type="button" class="btn" id="sn-import-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="sn-import-confirmar" disabled>Importar</button>
     </div>
   </div>
 </div>
@@ -1246,7 +1218,8 @@
     tbody.innerHTML = filtrados.map(function(it){
       return '<tr>' +
         '<td style="font-variant-numeric:tabular-nums;color:var(--muted);">' + escapeHtml(it.codigo || '—') + '</td>' +
-        '<td>' + escapeHtml(it.nome) + (it.marcaModelo ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</td>' +
+        '<td><button type="button" class="item-link" data-pat-hist="' + it.id + '" title="Ver com quem está e o histórico">' + escapeHtml(it.nome) +
+          (it.marcaModelo ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</button></td>' +
         '<td>' + escapeHtml(it.categoria || '—') + '</td>' +
         '<td>' + escapeHtml(it.local || '—') + '</td>' +
         '<td>' + celulaResponsavel(it) + '</td>' +
@@ -1273,13 +1246,16 @@
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-termo]'), function(b){
       b.addEventListener('click', function(){ abrirTermo(b.dataset.patTermo); });
     });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-hist]'), function(b){
+      b.addEventListener('click', function(){ abrirHistorico(patItens.find(function(x){ return x.id === b.dataset.patHist; })); });
+    });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-devolver]'), function(b){
       b.addEventListener('click', function(){ abrirDevolucao(patItens.find(function(x){ return x.id === b.dataset.patDevolver; })); });
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-cancelar-devol]'), function(b){
       b.addEventListener('click', function(){
         if (!confirm('Cancelar o pedido de devolução?')) return;
-        db.collection('patrimonio').doc(b.dataset.patCancelarDevol).update({ devolucao: null, devolucaoPendente: false, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+        db.collection('patrimonio').doc(b.dataset.patCancelarDevol).update({ devolucao: null, devolucaoPendente: false, historico: hist('devolucao_cancelada'), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
           .catch(function(err){ alert('Erro: ' + err.message); });
       });
     });
@@ -1369,6 +1345,7 @@
     document.getElementById('pat-status').value = item ? (item.status || 'ativo') : 'ativo';
     document.getElementById('pat-marca').value = item ? (item.marcaModelo || '') : '';
     document.getElementById('pat-serie').value = item ? (item.numeroSerie || '') : '';
+    document.getElementById('pat-acessorios').value = item ? (item.acessorios || '') : '';
     document.getElementById('pat-local').value = item ? (item.local || '') : '';
     document.getElementById('pat-responsavel-info').textContent = item
       ? ((item.responsavel || 'Sem responsável / estoque') + (item.pendente ? ' — aguardando aceite de ' + item.pendente.paraNome : ''))
@@ -1408,6 +1385,7 @@
       status: document.getElementById('pat-status').value,
       marcaModelo: document.getElementById('pat-marca').value.trim(),
       numeroSerie: document.getElementById('pat-serie').value.trim(),
+      acessorios: document.getElementById('pat-acessorios').value.trim(),
       local: document.getElementById('pat-local').value.trim(),
       dataAquisicao: document.getElementById('pat-data-aquisicao').value || null,
       valor: moedaParaNumero(patValorInput.value),
@@ -1744,6 +1722,11 @@
   // de colaborador (CLT / Estagiário / Associado — definido em Administração > Dados).
   // ============================================================
   const TIPO_COLAB_LABEL = { clt: 'Funcionário CLT', estagiario: 'Estagiário', associado: 'Associado' };
+  // Histórico do item (campo "historico", lista): cada movimento vira um registro com quem fez e quando.
+  // (serverTimestamp não pode ir dentro de lista no Firestore, por isso a hora vai em ISO do aparelho.)
+  function hist(tipo, extra){
+    return firebase.firestore.FieldValue.arrayUnion(Object.assign({ tipo: tipo, emISO: new Date().toISOString(), porUid: meuUid, porNome: meuNome }, extra || {}));
+  }
   const patTransfBackdrop = document.getElementById('pat-transf-backdrop');
   const transfSelect = document.getElementById('pat-transf-select');
   const transfErr = document.getElementById('pat-transf-err');
@@ -1793,7 +1776,7 @@
       pendBox.style.display = 'flex';
       document.getElementById('pat-transf-cancelar-envio').addEventListener('click', function(){
         if (!confirm('Cancelar o envio para ' + (item.pendente.paraNome || '') + '?')) return;
-        db.collection('patrimonio').doc(item.id).update({ pendenteParaUid: null, pendente: null, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+        db.collection('patrimonio').doc(item.id).update({ pendenteParaUid: null, pendente: null, historico: hist('envio_cancelado', { paraNome: item.pendente.paraNome || '' }), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
           .then(fecharModalTransferencia)
           .catch(function(err){ transfErr.textContent = 'Erro ao cancelar: ' + err.message; transfErr.style.display = 'block'; });
       });
@@ -1801,7 +1784,9 @@
       pendBox.style.display = 'none';
       pendBox.innerHTML = '';
     }
-    ['pat-transf-acessorios', 'pat-transf-obs'].forEach(function(id){ document.getElementById(id).value = ''; });
+    // acessórios vêm do cadastro do item (dá para ajustar antes de enviar)
+    document.getElementById('pat-transf-acessorios').value = item.acessorios || '';
+    document.getElementById('pat-transf-obs').value = '';
     document.getElementById('pat-transf-estado').value = 'bom';
     transfErr.style.display = 'none';
     transfSelect.innerHTML = '<option value="__">Carregando usuários…</option>';
@@ -1866,7 +1851,9 @@
     let p;
     if (uid === '') {
       if (!confirm('Devolver este item ao estoque (sem responsável)?')) return;
-      p = ref.update({ responsavelUid: null, responsavel: '', pendenteParaUid: null, pendente: null, termoAtualId: null, devolucao: null, devolucaoPendente: false, atualizadoEm: ts });
+      const atual = patItens.find(function(x){ return x.id === patTransferindoId; }) || {};
+      p = ref.update({ responsavelUid: null, responsavel: '', pendenteParaUid: null, pendente: null, termoAtualId: null, devolucao: null, devolucaoPendente: false,
+        historico: hist('estoque', { deUid: atual.responsavelUid || '', deNome: atual.responsavel || '' }), atualizadoEm: ts });
     } else {
       const u = usuariosElegiveis.find(function(x){ return x.uid === uid; });
       if (!u) return erro('Usuário não encontrado.');
@@ -1883,6 +1870,7 @@
           observacoes: valorCampo('pat-transf-obs'),
           enviadoPorUid: meuUid, enviadoPorNome: meuNome, enviadoEm: ts
         },
+        historico: hist('envio', { paraUid: u.uid, paraNome: u.nome }),
         atualizadoEm: ts
       });
     }
@@ -1961,6 +1949,7 @@
         observacoes: document.getElementById('pat-devol-obs').value.trim(),
         solicitadoEm: firebase.firestore.FieldValue.serverTimestamp()
       },
+      historico: hist('devolucao_solicitada', { estado: document.getElementById('pat-devol-estado').value }),
       atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     }).then(fecharDevolucao).catch(function(err){
       const el = document.getElementById('pat-devol-err');
@@ -1980,8 +1969,31 @@
   let modoAssinatura = 'entrega';   // 'entrega' (quem recebe o bem assina) ou 'devolucao' (quem recebe de volta assina)
   let sigCtx = null, sigDesenhou = false, sigDesenhando = false;
 
+  // Registro da assinatura: IP público (serviço ipify) e localização do aparelho (o navegador
+  // pede permissão). Começa ao abrir a janela, para não atrasar o clique em "Assinar".
+  let registroAssinatura = null;
+  function comTempo(promessa, ms, padrao){
+    return Promise.race([promessa, new Promise(function(r){ setTimeout(function(){ r(padrao); }, ms); })]);
+  }
+  function coletarRegistroAssinatura(){
+    const ip = comTempo(
+      fetch('https://api.ipify.org?format=json', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){ return j.ip || ''; }).catch(function(){ return ''; }),
+      6000, '');
+    const local = !navigator.geolocation ? Promise.resolve({ status: 'indisponível no aparelho' }) : comTempo(new Promise(function(resolve){
+      navigator.geolocation.getCurrentPosition(function(pos){
+        resolve({ status: 'ok', lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)), precisaoM: Math.round(pos.coords.accuracy) });
+      }, function(err){
+        resolve({ status: err && err.code === 1 ? 'não autorizada pelo usuário' : 'não obtida' });
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    }), 16000, { status: 'não obtida (tempo esgotado)' });
+    return Promise.all([ip, local]).then(function(r){
+      return { ip: r[0], localizacao: r[1], dispositivo: String(navigator.userAgent || '').slice(0, 200) };
+    });
+  }
+
   function prepararModalAssinatura(modo, label){
     modoAssinatura = modo;
+    registroAssinatura = coletarRegistroAssinatura();
     aceiteDados = null;
     document.querySelector('#pat-aceite-backdrop h3').textContent = modo === 'devolucao' ? 'Recebimento de devolução' : 'Aceite de patrimônio';
     document.getElementById('pat-aceite-label').textContent = label;
@@ -2127,9 +2139,12 @@
     const cred = firebase.auth.EmailAuthProvider.credential(user.email, senha);
     user.reauthenticateWithCredential(cred).then(function(){
       btn.textContent = 'Registrando…';
+      return comTempo(registroAssinatura || Promise.resolve(null), 8000, null);
+    }).then(function(registro){
       const termoRef = db.collection('termosPatrimonio').doc();
       const ts = firebase.firestore.FieldValue.serverTimestamp();
       const termo = Object.assign({}, aceiteDados, {
+        registroAssinatura: registro || { ip: '', localizacao: { status: 'não obtida' } },
         assinaturaPng: assinaturaPng(),
         assinadoEm: ts,
         assinadoEmISO: new Date().toISOString(),
@@ -2142,13 +2157,17 @@
         batch.update(db.collection('patrimonio').doc(it.id), {
           responsavelUid: null, responsavel: '',
           devolucao: null, devolucaoPendente: false,
-          termoAtualId: null, ultimaDevolucaoTermoId: termoRef.id, atualizadoEm: ts
+          termoAtualId: null, ultimaDevolucaoTermoId: termoRef.id,
+          historico: hist('devolucao_recebida', { deUid: aceiteDados.colaboradorUid, deNome: aceiteDados.colaboradorNome, termoId: termoRef.id }),
+          atualizadoEm: ts
         });
       } else {
         batch.update(db.collection('patrimonio').doc(it.id), {
           responsavelUid: meuUid, responsavel: aceiteDados.colaboradorNome,
           pendenteParaUid: null, pendente: null, ultimaRecusa: null,
-          termoAtualId: termoRef.id, atualizadoEm: ts
+          termoAtualId: termoRef.id,
+          historico: hist('aceite', { termoId: termoRef.id }),
+          atualizadoEm: ts
         });
       }
       return batch.commit().then(function(){ return termoRef.id; });
@@ -2173,6 +2192,7 @@
     db.collection('patrimonio').doc(it.id).update({
       pendenteParaUid: null, pendente: null,
       ultimaRecusa: { porUid: meuUid, porNome: meuNome, em: firebase.firestore.FieldValue.serverTimestamp() },
+      historico: hist('recusa'),
       atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     }).then(fecharAceite).catch(function(err){
       aceiteErr.textContent = 'Erro ao recusar: ' + err.message;
@@ -2215,6 +2235,95 @@
       lista.innerHTML = '<p class="msg-err" style="display:block;">Erro ao carregar os termos: ' + escapeHtml(err.message) + '</p>';
     });
   }
+  // ---------- Ficha do item: com quem está + quem recebeu, quando e quando devolveu ----------
+  const histBackdrop = document.getElementById('pat-hist-backdrop');
+  const HIST_TEXTO = {
+    envio: function(e){ return 'Enviado para <b>' + escapeHtml(e.paraNome || '') + '</b> por ' + escapeHtml(e.porNome || ''); },
+    envio_cancelado: function(e){ return 'Envio para ' + escapeHtml(e.paraNome || '') + ' cancelado por ' + escapeHtml(e.porNome || ''); },
+    aceite: function(e){ return '<b>' + escapeHtml(e.porNome || '') + '</b> recebeu e assinou o termo de entrega'; },
+    recusa: function(e){ return escapeHtml(e.porNome || '') + ' recusou o recebimento'; },
+    devolucao_solicitada: function(e){ return escapeHtml(e.porNome || '') + ' pediu para devolver'; },
+    devolucao_cancelada: function(e){ return escapeHtml(e.porNome || '') + ' cancelou o pedido de devolução'; },
+    devolucao_recebida: function(e){ return 'Devolução de <b>' + escapeHtml(e.deNome || '') + '</b> recebida e assinada por ' + escapeHtml(e.porNome || '') + ' — voltou ao estoque'; },
+    estoque: function(e){ return 'Devolvido ao estoque' + (e.deNome ? ' (estava com ' + escapeHtml(e.deNome) + ')' : '') + ' por ' + escapeHtml(e.porNome || ''); }
+  };
+  function dataHoraBR(iso){
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('pt-BR') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function abrirHistorico(it){
+    if (!it) return;
+    document.getElementById('pat-hist-titulo').textContent = it.nome + ' (' + (it.codigo || '') + ')';
+    const corpo = document.getElementById('pat-hist-corpo');
+    const dado = function(r, v){ return v ? '<div>' + r + ': <b>' + escapeHtml(v) + '</b></div>' : ''; };
+    const cabecalho =
+      '<div class="hist-dados">' + dado('Marca/modelo', it.marcaModelo) + dado('Nº de série', it.numeroSerie) + dado('Categoria', it.categoria) +
+        dado('Local', it.local) + dado('Status', STATUS_PAT_LABEL[it.status] || 'Ativo') + dado('Acessórios', it.acessorios) + '</div>' +
+      '<div class="hist-atual">📍 Hoje está com: <b>' + escapeHtml(it.responsavel || 'ninguém — estoque') + '</b>' +
+        (it.pendente ? '<br>⏳ Enviado para ' + escapeHtml(it.pendente.paraNome || '') + ', aguardando o aceite.' : '') +
+        (it.devolucaoPendente ? '<br>↩ Devolução solicitada em ' + formatDataBR(it.devolucao && it.devolucao.solicitadoEm) + ', aguardando recebimento.' : '') +
+      '</div>';
+    corpo.innerHTML = cabecalho + '<p style="color:var(--muted);font-size:.82rem;">Carregando histórico…</p>';
+    histBackdrop.classList.add('show');
+
+    // Termos assinados (para quem cadastra) completam o histórico de movimentos antigos
+    const termosP = podeCadastrarPat()
+      ? db.collection('termosPatrimonio').where('itemId', '==', it.id).get().then(function(s){ return s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }); }).catch(function(){ return []; })
+      : Promise.resolve([]);
+    termosP.then(function(termos){
+      const eventos = (it.historico || []).slice();
+      const jaTem = {};
+      eventos.forEach(function(e){ if (e.termoId) jaTem[e.termoId] = true; });
+      termos.forEach(function(t){
+        if (jaTem[t.id]) return;
+        if (t.tipoTermo === 'devolucao') eventos.push({ tipo: 'devolucao_recebida', emISO: t.assinadoEmISO, deNome: t.colaboradorNome, porNome: t.recebidoPorNome, termoId: t.id });
+        else eventos.push({ tipo: 'aceite', emISO: t.assinadoEmISO, porNome: t.colaboradorNome, porUid: t.colaboradorUid, termoId: t.id });
+      });
+      eventos.sort(function(a, b){ return String(a.emISO || '').localeCompare(String(b.emISO || '')); });
+
+      // períodos: quem recebeu (aceite) até quando devolveu (devolução recebida / estoque / outra pessoa recebeu)
+      const periodos = [];
+      let aberto = null;
+      eventos.forEach(function(e){
+        if (e.tipo === 'aceite') {
+          if (aberto) { aberto.fim = e.emISO; aberto.como = 'passou para ' + (e.porNome || ''); }
+          aberto = { pessoa: e.porNome, inicio: e.emISO, termoEntrega: e.termoId };
+          periodos.push(aberto);
+        } else if ((e.tipo === 'devolucao_recebida' || e.tipo === 'estoque') && aberto) {
+          aberto.fim = e.emISO;
+          aberto.termoDevol = e.termoId;
+          aberto.como = e.tipo === 'estoque' ? 'devolvido ao estoque' : 'devolução assinada';
+          aberto = null;
+        }
+      });
+      const linkTermo = function(id, rot){ return id ? '<button type="button" class="btn small" data-hist-termo="' + escapeHtml(id) + '">' + rot + '</button>' : ''; };
+      const podeVerTermos = podeCadastrarPat();
+      const tabela = periodos.length
+        ? '<div class="table-wrap"><table class="data-table"><thead><tr><th>Quem recebeu</th><th>Recebeu em</th><th>Devolveu em</th>' + (podeVerTermos ? '<th>Termos</th>' : '') + '</tr></thead><tbody>' +
+            periodos.slice().reverse().map(function(p){
+              return '<tr><td><b>' + escapeHtml(p.pessoa || '—') + '</b></td><td>' + dataHoraBR(p.inicio) + '</td>' +
+                '<td>' + (p.fim ? dataHoraBR(p.fim) + '<br><span style="color:var(--muted);font-size:.72rem;">' + escapeHtml(p.como || '') + '</span>' : '<span style="color:var(--appr-text);">está com a pessoa</span>') + '</td>' +
+                (podeVerTermos ? '<td class="actions-cell">' + linkTermo(p.termoEntrega, '📄 Entrega') + linkTermo(p.termoDevol, '📄 Devolução') + '</td>' : '') + '</tr>';
+            }).join('') + '</tbody></table></div>'
+        : '<p style="color:var(--muted);font-size:.82rem;">Ninguém recebeu este item pelo Portal ainda.</p>';
+      const linha = eventos.length
+        ? eventos.slice().reverse().map(function(e){
+            const f = HIST_TEXTO[e.tipo];
+            return '<div class="hist-ev"><span class="quando">' + dataHoraBR(e.emISO) + '</span><span>' + (f ? f(e) : escapeHtml(e.tipo)) + '</span></div>';
+          }).join('')
+        : '<p style="color:var(--muted);font-size:.82rem;">Sem movimentos registrados.</p>';
+      corpo.innerHTML = cabecalho +
+        '<div class="section-title first">Quem ficou com o item</div>' + tabela +
+        '<div class="section-title">Todos os movimentos</div>' + linha;
+      Array.prototype.forEach.call(corpo.querySelectorAll('[data-hist-termo]'), function(b){
+        b.addEventListener('click', function(){ abrirTermo(b.dataset.histTermo); });
+      });
+    });
+  }
+  document.getElementById('pat-hist-fechar').addEventListener('click', function(){ histBackdrop.classList.remove('show'); });
+  histBackdrop.addEventListener('click', function(e){ if (e.target === histBackdrop) histBackdrop.classList.remove('show'); });
+
   document.getElementById('pat-termos-fechar').addEventListener('click', function(){ termosBackdrop.classList.remove('show'); });
   termosBackdrop.addEventListener('click', function(e){ if (e.target === termosBackdrop) termosBackdrop.classList.remove('show'); });
 
@@ -2320,9 +2429,6 @@
   // As senhas ficam só no Firestore (nunca no código do site, que é público).
   // ============================================================
   const senhasMods = {};   // id da sub-aba -> { t, itens, filtro }
-  let snEditando = null;   // { mod, id|null }
-  let snImportMod = null;
-  let snImportLinhas = [];
 
   function toast(msg){
     const el = document.createElement('div');
@@ -2360,8 +2466,7 @@
         '</p></div>' +
         '<div class="actions-cell">' +
           (souAdmin ? '<button type="button" class="btn small" data-sn-acesso>⚙ Quem tem acesso</button>' : '') +
-          (souAdmin ? '<button type="button" class="btn small" data-sn-importar>📥 Importar planilha</button>' : '') +
-          '<button type="button" class="btn primary" data-sn-nova>+ Nova senha</button>' +
+          '<a class="btn primary" data-sn-planilha target="_blank" rel="noopener" style="display:none;text-decoration:none;">📗 Abrir planilha para alterar</a>' +
         '</div>' +
       '</div>' +
       '<div class="stat-row" data-sn-stats></div>' +
@@ -2370,25 +2475,30 @@
         '<span class="spacer"></span>' +
       '</div>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-        '<th>Sistema</th><th>Usuário</th><th>Senha</th><th>Observações / link</th><th></th>' +
+        '<th>Sistema</th><th>Usuário</th><th>Senha</th><th>Observações / link</th>' +
       '</tr></thead><tbody data-sn-tbody></tbody></table></div>';
 
     scroll.querySelector('[data-sn-busca]').addEventListener('input', function(e){ mod.filtro = e.target.value.trim().toLowerCase(); renderSenhas(mod); });
-    scroll.querySelector('[data-sn-nova]').addEventListener('click', function(){ abrirModalSenha(mod, null); });
     const acessoBtn = scroll.querySelector('[data-sn-acesso]');
     if (acessoBtn) acessoBtn.addEventListener('click', function(){
       abrirModalPermissao(t.perm, 'Quem tem acesso — ' + t.label,
-        'Quem estiver marcado vê, copia, inclui e edita as senhas desta página. Excluir é só com o admin, que sempre tem acesso.');
+        'Quem estiver marcado vê e copia as senhas desta página. Para alterar uma senha, altere na planilha: o Portal atualiza sozinho. O admin sempre tem acesso.');
     });
-    const impBtn = scroll.querySelector('[data-sn-importar]');
-    if (impBtn) impBtn.addEventListener('click', function(){ abrirImportSenhas(mod); });
+
+    // A planilha do Google é a fonte: um script dentro dela grava aqui a cada alteração e todo dia às 20h
+    db.collection('senhasSync').doc(t.colecao).onSnapshot(function(doc){
+      mod.sync = doc.exists ? doc.data() : null;
+      const link = scroll.querySelector('[data-sn-planilha]');
+      if (mod.sync && mod.sync.urlPlanilha) { link.href = mod.sync.urlPlanilha; link.style.display = ''; }
+      renderSenhas(mod);
+    }, function(){});
 
     db.collection(t.colecao).onSnapshot(function(snap){
       mod.itens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       mod.carregado = true;
       renderSenhas(mod);
     }, function(err){
-      scroll.querySelector('[data-sn-tbody]').innerHTML = '<tr><td colspan="5" class="empty-row">' +
+      scroll.querySelector('[data-sn-tbody]').innerHTML = '<tr><td colspan="4" class="empty-row">' +
         (err.code === 'permission-denied' ? 'Sem permissão — as regras novas do Firestore ainda precisam ser publicadas.' : 'Erro ao carregar: ' + escapeHtml(err.message)) + '</td></tr>';
     });
   }
@@ -2411,11 +2521,14 @@
       if (!sa !== !sb) return sa ? -1 : 1;
       return sa.localeCompare(sb, 'pt-BR');
     });
+    const sincEm = mod.sync && mod.sync.atualizadoEm && mod.sync.atualizadoEm.toDate ? mod.sync.atualizadoEm.toDate() : null;
     scroll.querySelector('[data-sn-stats]').innerHTML =
-      '<div class="stat-card"><div class="n">' + mod.itens.length + '</div><div class="l">acessos cadastrados</div></div>';
+      '<div class="stat-card"><div class="n">' + mod.itens.length + '</div><div class="l">acessos cadastrados</div></div>' +
+      '<div class="stat-card"><div class="n" style="font-size:1rem;">' + (sincEm ? escapeHtml(sincEm.toLocaleDateString('pt-BR') + ' ' + String(sincEm.getHours()).padStart(2, '0') + ':' + String(sincEm.getMinutes()).padStart(2, '0')) : '—') + '</div>' +
+        '<div class="l">última atualização da planilha</div></div>';
     if (!filtrados.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">' + (mod.itens.length ? 'Nada encontrado para essa busca.' :
-        (souAdmin ? 'Nenhuma senha cadastrada ainda — use "📥 Importar planilha" ou "+ Nova senha".' : 'Nenhuma senha cadastrada ainda.')) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">' + (mod.itens.length ? 'Nada encontrado para essa busca.' :
+        'Nenhuma senha ainda — a planilha precisa ter o script de atualização instalado (ver instruções do administrador).') + '</td></tr>';
       return;
     }
     tbody.innerHTML = filtrados.map(function(it){
@@ -2426,10 +2539,6 @@
             '<button type="button" class="icon-btn" data-sn-ver="' + it.id + '" title="Mostrar / esconder">👁</button>' +
             '<button type="button" class="icon-btn" data-sn-copiar-senha="' + it.id + '" title="Copiar senha">📋</button></div>' : '<span style="color:var(--muted);">—</span>') + '</td>' +
         '<td class="sn-obs">' + (linkOuTexto(it.obs) || '<span style="color:var(--muted);">—</span>') + (it.obs2 ? '<span class="sn-obs2">' + linkOuTexto(it.obs2) + '</span>' : '') + '</td>' +
-        '<td class="actions-cell">' +
-          '<button type="button" class="btn small" data-sn-editar="' + it.id + '">Editar</button>' +
-          (souAdmin ? '<button type="button" class="btn small danger" data-sn-excluir="' + it.id + '">Excluir</button>' : '') +
-        '</td>' +
       '</tr>';
     }).join('');
     function achar(id){ return mod.itens.find(function(x){ return x.id === id; }); }
@@ -2447,155 +2556,7 @@
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-copiar-usuario]'), function(b){
       b.addEventListener('click', function(){ copiar(achar(b.dataset.snCopiarUsuario).usuario || ''); });
     });
-    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-editar]'), function(b){
-      b.addEventListener('click', function(){ abrirModalSenha(mod, achar(b.dataset.snEditar)); });
-    });
-    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-excluir]'), function(b){
-      b.addEventListener('click', function(){
-        const it = achar(b.dataset.snExcluir);
-        if (!it || !confirm('Excluir o acesso "' + (it.sistema || '') + '"? Não dá para desfazer.')) return;
-        db.collection(mod.t.colecao).doc(it.id).delete().catch(function(err){ alert('Erro ao excluir: ' + err.message); });
-      });
-    });
   }
-
-  const snBackdrop = document.getElementById('sn-modal-backdrop');
-  function abrirModalSenha(mod, it){
-    snEditando = { mod: mod, id: it ? it.id : null };
-    document.getElementById('sn-modal-titulo').textContent = (it ? 'Editar acesso' : 'Nova senha') + ' — ' + mod.t.label;
-    document.getElementById('sn-sistema').value = it ? (it.sistema || '') : '';
-    document.getElementById('sn-usuario').value = it ? (it.usuario || '') : '';
-    document.getElementById('sn-senha').value = it ? (it.senha || '') : '';
-    document.getElementById('sn-obs').value = it ? (it.obs || '') : '';
-    document.getElementById('sn-obs2').value = it ? (it.obs2 || '') : '';
-    document.getElementById('sn-err').style.display = 'none';
-    snBackdrop.classList.add('show');
-  }
-  function fecharModalSenha(){ snBackdrop.classList.remove('show'); snEditando = null; }
-  document.getElementById('sn-cancelar').addEventListener('click', fecharModalSenha);
-  snBackdrop.addEventListener('click', function(e){ if (e.target === snBackdrop) fecharModalSenha(); });
-  document.getElementById('sn-salvar').addEventListener('click', function(){
-    if (!snEditando) return;
-    const errEl = document.getElementById('sn-err');
-    const sistema = document.getElementById('sn-sistema').value.trim();
-    if (!sistema) { errEl.textContent = 'Informe o sistema.'; errEl.style.display = 'block'; return; }
-    const ts = firebase.firestore.FieldValue.serverTimestamp();
-    const dados = {
-      sistema: sistema,
-      usuario: document.getElementById('sn-usuario').value.trim(),
-      senha: document.getElementById('sn-senha').value,
-      obs: document.getElementById('sn-obs').value.trim(),
-      obs2: document.getElementById('sn-obs2').value.trim(),
-      atualizadoEm: ts, atualizadoPor: meuNome
-    };
-    const col = db.collection(snEditando.mod.t.colecao);
-    let p;
-    if (snEditando.id) p = col.doc(snEditando.id).update(dados);
-    else { dados.criadoEm = ts; dados.criadoPorUid = meuUid; p = col.add(dados); }
-    const btn = this;
-    btn.disabled = true;
-    p.then(fecharModalSenha).catch(function(err){
-      errEl.textContent = 'Erro ao salvar: ' + err.message;
-      errEl.style.display = 'block';
-    }).finally(function(){ btn.disabled = false; });
-  });
-
-  // CSV do Google Planilhas: acha a linha de cabeçalho (SISTEMA / SENHA) e lê as linhas abaixo
-  function lerCSV(texto){
-    const linhas = [];
-    let campo = '', linha = [], aspas = false;
-    texto = texto.replace(/^﻿/, '');
-    for (let i = 0; i < texto.length; i++) {
-      const c = texto[i];
-      if (aspas) {
-        if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
-        else campo += c;
-      } else if (c === '"') aspas = true;
-      else if (c === ',') { linha.push(campo); campo = ''; }
-      else if (c === '\n' || c === '\r') {
-        if (c === '\r' && texto[i + 1] === '\n') i++;
-        linha.push(campo); linhas.push(linha); linha = []; campo = '';
-      } else campo += c;
-    }
-    if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
-    return linhas;
-  }
-  function linhasDeSenha(texto){
-    const tab = lerCSV(texto);
-    const norm = function(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase(); };
-    const iCab = tab.findIndex(function(l){ return l.some(function(c){ return norm(c) === 'SISTEMA'; }) && l.some(function(c){ return norm(c) === 'SENHA'; }); });
-    if (iCab === -1) throw new Error('Não achei o cabeçalho com as colunas SISTEMA e SENHA.');
-    const cab = tab[iCab].map(norm);
-    const cSis = cab.indexOf('SISTEMA'), cUsu = cab.indexOf('USUARIO'), cSen = cab.indexOf('SENHA'), cObs = cab.indexOf('OBS');
-    const cObs2 = cObs >= 0 ? cObs + 1 : -1;
-    return tab.slice(iCab + 1).map(function(l){
-      const v = function(i){ return i >= 0 ? String(l[i] || '').trim() : ''; };
-      return { sistema: v(cSis), usuario: v(cUsu), senha: v(cSen), obs: v(cObs), obs2: v(cObs2) };
-    }).filter(function(r){ return r.sistema || r.usuario || r.senha || r.obs || r.obs2; });
-  }
-
-  const snImpBackdrop = document.getElementById('sn-import-backdrop');
-  function abrirImportSenhas(mod){
-    snImportMod = mod;
-    snImportLinhas = [];
-    document.getElementById('sn-import-file').value = '';
-    document.getElementById('sn-import-preview').innerHTML = '';
-    document.getElementById('sn-import-err').style.display = 'none';
-    document.getElementById('sn-import-confirmar').disabled = true;
-    snImpBackdrop.classList.add('show');
-  }
-  function fecharImportSenhas(){ snImpBackdrop.classList.remove('show'); snImportMod = null; }
-  document.getElementById('sn-import-cancelar').addEventListener('click', fecharImportSenhas);
-  document.getElementById('sn-import-file').addEventListener('change', function(){
-    const f = this.files[0];
-    const errEl = document.getElementById('sn-import-err');
-    errEl.style.display = 'none';
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = function(){
-      try {
-        snImportLinhas = linhasDeSenha(String(reader.result));
-        const ja = snImportMod ? snImportMod.itens.length : 0;
-        document.getElementById('sn-import-preview').innerHTML =
-          '<p><b>' + snImportLinhas.length + '</b> acessos encontrados no arquivo. Ex.: ' +
-          escapeHtml(snImportLinhas.slice(0, 4).map(function(r){ return r.sistema || '(sem nome)'; }).join(', ')) + '…</p>' +
-          (ja ? '<p style="color:var(--pend-text);">⚠ Esta página já tem ' + ja + ' acessos. Importar de novo vai duplicar os que já existem.</p>' : '');
-        document.getElementById('sn-import-confirmar').disabled = !snImportLinhas.length;
-      } catch (e) {
-        errEl.textContent = e.message;
-        errEl.style.display = 'block';
-      }
-    };
-    reader.readAsText(f, 'utf-8');
-  });
-  document.getElementById('sn-import-confirmar').addEventListener('click', function(){
-    if (!snImportMod || !snImportLinhas.length) return;
-    const col = db.collection(snImportMod.t.colecao);
-    const btn = this;
-    btn.disabled = true;
-    btn.textContent = 'Importando…';
-    const lotes = [];
-    for (let i = 0; i < snImportLinhas.length; i += 400) lotes.push(snImportLinhas.slice(i, i + 400));
-    lotes.reduce(function(p, lote){
-      return p.then(function(){
-        const batch = db.batch();
-        lote.forEach(function(r){
-          batch.set(col.doc(), Object.assign({}, r, {
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPorUid: meuUid,
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoPor: meuNome
-          }));
-        });
-        return batch.commit();
-      });
-    }, Promise.resolve()).then(function(){
-      toast(snImportLinhas.length + ' acessos importados');
-      fecharImportSenhas();
-    }).catch(function(err){
-      const errEl = document.getElementById('sn-import-err');
-      errEl.textContent = err.code === 'permission-denied' ? 'Sem permissão — publique as regras novas do Firestore.' : 'Erro ao importar: ' + err.message;
-      errEl.style.display = 'block';
-    }).finally(function(){ btn.disabled = false; btn.textContent = 'Importar'; });
-  });
 
   // ============================================================
   // Módulo: Controle de Compras
