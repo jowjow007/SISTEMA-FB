@@ -2,7 +2,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+// iPhone/iPad: dá zoom sozinho ao tocar num campo com letra menor que 16px e a tela fica
+// "maior que o aparelho". maximum-scale=1 só no iOS (lá o zoom com os dedos continua
+// funcionando); no Android não aplica, para não travar o zoom de quem precisa.
+(function(){
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios) document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover');
+})();
+</script>
 <title>Portal Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="manifest" href="./manifest.json">
@@ -111,7 +120,7 @@
   /* ---------- LOGIN ---------- */
   #login-screen, #force-password-screen{
     position:relative;
-    min-height:100vh;display:flex;flex-direction:row;align-items:stretch;
+    min-height:100vh;min-height:100dvh;display:flex;flex-direction:row;align-items:stretch;
     background:#000 url('assets/login-bg.jpg') no-repeat center center;background-size:cover;
   }
   .login-left{
@@ -122,7 +131,9 @@
     position:relative;flex:1 1 48%;min-width:0;
   }
   @media (max-width:860px){
-    #login-screen, #force-password-screen{flex-direction:column;justify-content:center;}
+    /* respeita o entalhe (relógio/bateria) e a barra inferior do iPhone */
+    #login-screen, #force-password-screen{flex-direction:column;justify-content:center;
+      padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);box-sizing:border-box;}
     .login-right{display:none;}
     .login-left{
       flex:0 1 auto;margin:0 auto;width:calc(100% - 32px);max-width:400px;
@@ -131,7 +142,8 @@
       backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
       border:1px solid rgba(255,255,255,.18);border-radius:24px;
       box-shadow:0 20px 50px rgba(0,0,0,.45);
-      max-height:calc(100vh - 32px);overflow-y:auto;
+      max-height:calc(100vh - 32px);
+      max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;
     }
     #force-password-screen{
       flex-direction:column;align-items:center;justify-content:center;text-align:center;
@@ -283,7 +295,8 @@
   .login-box .error-msg{background:rgba(0,0,0,.3);border-color:rgba(255,120,120,.4);color:#ffb4ae;}
 
   /* ---------- APP SHELL ---------- */
-  #app-screen{display:none;height:100vh;flex-direction:column;}
+  /* 100dvh = altura realmente visível (no iPhone 100vh é maior que a tela e cortava o fim) */
+  #app-screen{display:none;height:100vh;height:100dvh;flex-direction:column;}
   #app-update-banner{
     display:none;position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:500;
     align-items:center;gap:12px;background:var(--red);color:#fff;padding:10px 10px 10px 16px;
@@ -707,7 +720,7 @@
   .mh-tile-small .lbl{color:var(--paper);font-size:12.5px;font-weight:600;line-height:1.25;}
 
   #mobile-bottom-nav{
-    display:none;position:absolute;left:14px;right:14px;bottom:14px;z-index:40;
+    display:none;position:absolute;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:40;
     justify-content:space-around;align-items:center;
     background:linear-gradient(135deg,#3d0c14,#8f1d2b 35%,#d4455c 50%,#8f1d2b 65%,#3d0c14);
     border-radius:26px;padding:10px 6px;box-shadow:0 18px 40px rgba(143,29,43,.4);
@@ -893,8 +906,9 @@
     .login-box{padding:22px 18px;}
     #login-theme-toggle{top:auto;bottom:16px;right:16px;padding:6px 8px;}
     #login-theme-toggle .theme-switch-label span:last-child{display:none;}
+    /* o topo desce o tanto do entalhe do iPhone (env(safe-area-inset-top) = 0 nos demais) */
     #topbar{
-      padding:10px 12px;gap:10px;min-height:58px;row-gap:0;flex-wrap:nowrap;justify-content:center;
+      padding:calc(10px + env(safe-area-inset-top)) 12px 10px;gap:10px;min-height:calc(58px + env(safe-area-inset-top));row-gap:0;flex-wrap:nowrap;justify-content:center;
       background:linear-gradient(165deg, #211918 0%, #2a1f1e 65%, transparent 100%);
       background-attachment:fixed;
       border-bottom-color:transparent;
@@ -911,14 +925,15 @@
     #mobile-logout-btn{display:block;width:100%;margin-top:10px;}
     #body-wrap{position:relative;}
     #tabstrip{
-      position:fixed;top:58px;left:0;height:calc(100% - 58px);width:min(78vw,300px);
+      position:fixed;top:calc(58px + env(safe-area-inset-top));left:0;height:calc(100% - 58px - env(safe-area-inset-top));width:min(78vw,300px);
+      padding-bottom:env(safe-area-inset-bottom);box-sizing:border-box;
       transform:translateX(-100%);transition:transform .25s ease;z-index:60;
       box-shadow:2px 0 18px rgba(0,0,0,.5);
     }
     #tabstrip.collapsed{width:min(78vw,300px);}
     #tabstrip.mobile-open{transform:translateX(0);}
     #tabstrip-backdrop{
-      display:block;position:fixed;top:58px;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:55;
+      display:block;position:fixed;top:calc(58px + env(safe-area-inset-top));left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:55;
       opacity:0;pointer-events:none;transition:opacity .2s ease;
     }
     #tabstrip-backdrop.show{opacity:1;pointer-events:auto;}
@@ -929,8 +944,10 @@
     table{display:block;overflow-x:auto;white-space:nowrap;}
     #mobile-bottom-nav{display:flex;}
     body.mobile-tool-open #mobile-bottom-nav{display:none!important;}
+    /* a página aberta para antes da barrinha de "voltar ao início" do iPhone */
+    #content iframe{height:calc(100% - env(safe-area-inset-bottom));}
     #mobile-back-btn, #mobile-refresh-btn, #mobile-history-back-btn{
-      display:none;position:absolute;top:50%;right:14px;transform:translateY(-50%);z-index:3;
+      display:none;position:absolute;top:calc(50% + env(safe-area-inset-top) / 2);right:14px;transform:translateY(-50%);z-index:3;
       width:32px;height:32px;border-radius:50%;padding:0;
       align-items:center;justify-content:center;
       background:rgba(33,25,24,.88);color:var(--paper);
@@ -1186,7 +1203,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v167</span>
+      <span class="version-tag">v168</span>
     </div>
   </div>
   <div id="body-wrap">
