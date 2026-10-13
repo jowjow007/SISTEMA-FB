@@ -306,12 +306,21 @@
       <input type="date" id="edit-nascimento">
     </div>
     <div class="field">
-      <label>Cargo</label>
+      <label>Tipo de usuário</label>
       <select id="edit-papel">
         <option value="membro">Membro</option>
         <option value="admin">Administrador</option>
       </select>
       <p class="field-hint" id="edit-papel-hint">Você não pode alterar o próprio cargo por aqui.</p>
+    </div>
+    <div class="field">
+      <label>Cargo</label>
+      <select id="edit-tipo-colaborador">
+        <option value="">— Não definido —</option>
+        <option value="clt">Colaborador CLT</option>
+        <option value="estagiario">Estagiário</option>
+        <option value="associado">Associado</option>
+      </select>
     </div>
     <div class="field">
       <label>CPF</label>
@@ -456,6 +465,7 @@
     editNascimento: document.getElementById('edit-nascimento'),
     editPapel: document.getElementById('edit-papel'),
     editPapelHint: document.getElementById('edit-papel-hint'),
+    editTipoColaborador: document.getElementById('edit-tipo-colaborador'),
     editCpf: document.getElementById('edit-cpf'),
     editRg: document.getElementById('edit-rg'),
     editRgOrgao: document.getElementById('edit-rg-orgao'),
@@ -551,14 +561,14 @@
     }
     return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
   }
-  function formatarMoeda(v){
+  function formatarCampoMoeda(v){
     const d = apenasDigitos(v);
     if (!d) return '';
     return (parseInt(d, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   function ligarMascaraCPF(input){ input.addEventListener('input', function(){ input.value = formatarCPF(input.value); }); }
   function ligarMascaraTelefone(input){ input.addEventListener('input', function(){ input.value = formatarTelefone(input.value); }); }
-  function ligarMascaraMoeda(input){ input.addEventListener('input', function(){ input.value = formatarMoeda(input.value); }); }
+  function ligarMascaraMoeda(input){ input.addEventListener('input', function(){ input.value = formatarCampoMoeda(input.value); }); }
   function ligarSomenteDigitos(input){ input.addEventListener('input', function(){ input.value = apenasDigitos(input.value); }); }
   function ligarSomenteLetras(input){ input.addEventListener('input', function(){ input.value = apenasLetras(input.value).toUpperCase(); }); }
   function parseRG(v){
@@ -726,6 +736,7 @@
     const ehVocêMesmo = uid === meuUid;
     els.editPapel.disabled = ehVocêMesmo;
     els.editPapelHint.style.display = ehVocêMesmo ? 'block' : 'none';
+    els.editTipoColaborador.value = u.tipoColaborador || '';
 
     els.editCpf.value = formatarCPF(u.cpf || '');
     const rgParsed = parseRG(u.rg);
@@ -741,7 +752,7 @@
     els.editEmailAlt.value = u.emailAlternativo || '';
     els.editIngresso.value = u.dataIngresso || '';
     els.editDepto.value = u.deptoAtual || '';
-    els.editRemuneracao.value = formatarMoeda(u.remuneracao || '');
+    els.editRemuneracao.value = formatarCampoMoeda(u.remuneracao || '');
   }
 
   function abrirModalEdicao(uid){
@@ -924,10 +935,11 @@
     const rgUf = els.editRgUf.value;
     const oabNumero = els.editOab.value.trim();
     const oabUf = els.editOabUf.value;
-    const remuneracaoValor = els.editRemuneracao.value.trim();
+    const remuneracaoValor = formatarCampoMoeda(els.editRemuneracao.value);
     const deptoAtual = els.editDepto.value.trim();
     const dataIngresso = els.editIngresso.value;
     const remuneracao = remuneracaoValor ? ('R$ ' + remuneracaoValor) : '';
+    const tipoColaborador = els.editTipoColaborador.value;
 
     const usersPatch = {
       cpf: els.editCpf.value.trim(),
@@ -940,6 +952,7 @@
       dataIngresso: dataIngresso,
       deptoAtual: deptoAtual,
       remuneracao: remuneracao,
+      tipoColaborador: tipoColaborador,
       role: novoPapel
     };
     if (nomeCompleto) usersPatch.displayName = nomeCompleto;
@@ -958,6 +971,7 @@
       deptoAtual: deptoAtual,
       dataIngresso: dataIngresso,
       remuneracao: remuneracao,
+      tipoColaborador: tipoColaborador,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: meuUid
     };
@@ -1004,6 +1018,7 @@
         deptoAtual: u.deptoAtual || '',
         dataIngresso: u.dataIngresso || '',
         remuneracao: u.remuneracao || '',
+        tipoColaborador: u.tipoColaborador || '',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: meuUid
       }, { merge: true });
