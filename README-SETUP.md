@@ -216,6 +216,13 @@ service cloud.firestore {
                     && request.resource.data.dataIngresso == ''
                     && request.resource.data.remuneracao == '';
     }
+    match /presencaDiaria/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && docId.matches(request.auth.uid + '_.*');
+      allow delete: if isAdmin();
+    }
     function isAprovadorDoCondo(slug) {
       return isSignedIn() &&
         exists(/databases/$(database)/documents/condoAprovadores/$(slug)) &&
