@@ -320,9 +320,39 @@
   .msg-err{color:var(--rej-text);font-size:.8rem;margin-top:6px;display:none;}
   .msg-ok{color:var(--appr-text);font-size:.8rem;margin-top:6px;display:none;}
 
+  /* ---- patrimônio: responsável clicável, envio pendente, aceite com assinatura ---- */
+  .resp-link{background:none;border:none;padding:0;font:inherit;color:var(--gold);cursor:pointer;text-align:left;
+    text-decoration:underline dotted;text-underline-offset:3px;}
+  .resp-link:hover{color:var(--paper);}
+  .resp-pend{display:block;font-size:.7rem;color:var(--pend-text);margin-top:3px;}
+  .pend-info{font-size:.8rem;padding:9px 12px;border-radius:10px;margin-bottom:12px;background:var(--pend-bg);color:var(--pend-text);
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .pend-aceite-box:empty{display:none;}
+  .pend-aceite-box{position:relative;z-index:2;text-align:left;border:1px solid rgba(212,175,106,.55);background:rgba(126,31,44,.35);
+    border-radius:14px;padding:12px 14px;margin:0 auto 18px;max-width:760px;color:var(--paper);backdrop-filter:blur(10px);}
+  :root[data-theme="light"] .pend-aceite-box{background:var(--pend-bg);}
+  .pend-aceite-box .pa-tit{font-weight:700;font-size:.9rem;margin-bottom:6px;}
+  .pend-aceite-box .pa-item{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    padding:7px 0;border-top:1px solid var(--line-strong);font-size:.82rem;}
+  .pend-aceite-box .pa-item:first-of-type{border-top:none;}
+  .pend-aceite-box .pa-meta{font-size:.72rem;color:var(--muted);}
+  #hub-view .pend-aceite-box{color:#f2dcc0;}
+  .modal.modal-largo{max-width:900px;}
+  .termo-frame-wrap{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:#0e0b0b;}
+  .termo-frame-wrap iframe{display:block;width:100%;height:52vh;border:none;}
+  .termo-frame-wrap.alto iframe{height:74vh;}
+  .assinatura-canvas{display:block;width:100%;height:170px;background:#fff;border:1px solid var(--line-strong);border-radius:10px;
+    touch-action:none;cursor:crosshair;}
+  .termos-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.82rem;}
+  .termos-row .tr-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+
   @media(max-width:720px){
     .field-row{flex-direction:column;}
     .mod-scroll{padding:14px 14px 34px;}
+    .termo-frame-wrap iframe{height:44vh;}
+    .termo-frame-wrap.alto iframe{height:70vh;}
+    .modal-backdrop{padding:10px;}
+    .modal{padding:18px 16px;max-height:94vh;}
   }
 </style>
 </head>
@@ -395,6 +425,7 @@
     <div class="hub-inner">
       <h1 class="hub-title">Gestão</h1>
       <p class="hub-sub">Selecione o módulo que deseja acessar</p>
+      <div class="pend-aceite-box"></div>
       <div class="hub-grid">
         <div class="hub-card" data-goto="colaboradores" role="button" tabindex="0">
           <img class="hub-art" src="img/colaboradores.jpg" alt="">
@@ -471,8 +502,8 @@
       </div>
       <div class="field">
         <label>Com quem está (responsável)</label>
-        <select id="pat-responsavel"><option value="">— Sem responsável / estoque —</option></select>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Só aparece aqui quem já está cadastrado no Organograma.</div>
+        <div id="pat-responsavel-info" style="padding:9px 11px;border:1px dashed var(--line-strong);border-radius:8px;font-size:.85rem;"></div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Para mudar, clique no nome do responsável na lista. A pessoa precisa aceitar e assinar o termo.</div>
       </div>
     </div>
     <div class="field-row">
@@ -547,19 +578,88 @@
   </div>
 </div>
 
-<!-- Modal: transferir responsável de um item de patrimônio -->
+<!-- Modal: enviar o item a um novo responsável (ele precisa aceitar e assinar o termo) -->
 <div class="modal-backdrop" id="pat-transf-backdrop">
   <div class="modal">
-    <h3>Transferir responsável</h3>
+    <h3>Responsável pelo patrimônio</h3>
     <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;" id="pat-transf-item-label"></p>
+    <div id="pat-transf-pendente" class="pend-info" style="display:none;"></div>
     <div class="field">
-      <label>Novo responsável</label>
-      <select id="pat-transf-select"><option value="">— Sem responsável / estoque —</option></select>
+      <label>Enviar para</label>
+      <select id="pat-transf-select"><option value="">Carregando usuários…</option></select>
+      <div id="pat-transf-tipo" style="font-size:.74rem;color:var(--muted);margin-top:5px;"></div>
+    </div>
+    <div id="pat-transf-termo">
+      <div class="field-row" id="pat-transf-campos"></div>
+      <div class="field">
+        <label>Acessórios entregues</label>
+        <input type="text" id="pat-transf-acessorios" placeholder="Ex: carregador, mouse, capa">
+      </div>
+      <div class="field">
+        <label>Estado de conservação</label>
+        <select id="pat-transf-estado">
+          <option value="novo">Novo</option>
+          <option value="bom" selected>Bom</option>
+          <option value="regular">Regular</option>
+          <option value="avarias">Com avarias</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Observações do termo</label>
+        <textarea id="pat-transf-obs"></textarea>
+      </div>
+      <p style="font-size:.74rem;color:var(--muted);margin:0;">O bem só passa para a pessoa depois que ela aceitar, confirmar a senha e assinar o termo na Gestão dela.</p>
     </div>
     <div class="msg-err" id="pat-transf-err"></div>
     <div class="modal-foot">
-      <button type="button" class="btn" id="pat-transf-cancelar">Cancelar</button>
-      <button type="button" class="btn primary" id="pat-transf-confirmar">Confirmar transferência</button>
+      <button type="button" class="btn" id="pat-transf-cancelar">Fechar</button>
+      <button type="button" class="btn primary" id="pat-transf-confirmar">Enviar para aceite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: aceitar o patrimônio — prévia do termo + senha + assinatura -->
+<div class="modal-backdrop" id="pat-aceite-backdrop">
+  <div class="modal modal-largo">
+    <h3>Aceite de patrimônio</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;" id="pat-aceite-label"></p>
+    <div class="termo-frame-wrap"><iframe id="pat-aceite-frame" title="Prévia do termo"></iframe></div>
+    <div class="field" style="margin-top:14px;">
+      <label>Sua senha do Portal</label>
+      <input type="password" id="pat-aceite-senha" autocomplete="current-password" placeholder="Digite a mesma senha do login">
+    </div>
+    <div class="field">
+      <label style="display:flex;justify-content:space-between;align-items:center;">Assinatura <button type="button" class="btn small" id="pat-aceite-limpar">Limpar</button></label>
+      <canvas id="pat-aceite-canvas" class="assinatura-canvas"></canvas>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Assine com o dedo ou com o mouse dentro do quadro.</div>
+    </div>
+    <div class="msg-err" id="pat-aceite-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-aceite-fechar">Fechar</button>
+      <button type="button" class="btn danger" id="pat-aceite-recusar">Recusar</button>
+      <button type="button" class="btn primary" id="pat-aceite-assinar">✍ Assinar e aceitar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: consultar um termo assinado (mesmo papel do Criador de Documentos) -->
+<div class="modal-backdrop" id="pat-termo-backdrop" style="z-index:70;">
+  <div class="modal modal-largo" style="display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+      <h3 style="margin:0;">Termo de patrimônio</h3>
+      <button type="button" class="btn small" id="pat-termo-fechar">Fechar</button>
+    </div>
+    <div class="termo-frame-wrap alto"><iframe id="pat-termo-frame" title="Termo"></iframe></div>
+  </div>
+</div>
+
+<!-- Modal: lista de termos assinados -->
+<div class="modal-backdrop" id="pat-termos-backdrop">
+  <div class="modal" style="max-width:720px;">
+    <h3>Termos de patrimônio assinados</h3>
+    <div id="pat-termos-lista" style="margin:6px 0 4px;"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-termos-fechar">Fechar</button>
     </div>
   </div>
 </div>
@@ -809,19 +909,8 @@
   let patFiltroResponsavel = '';   // uid do responsável escolhido no filtro ('' = todos)
   let patEditandoId = null;
   let patTransferindoId = null;
-  let orgUsuarios = [];   // [{uid, nome}] — espelho de tools/organograma, usado pro seletor de responsável
-
-  function optionsResponsavel(uidSelecionado){
-    return '<option value="">— Sem responsável / estoque —</option>' +
-      orgUsuarios.map(function(u){
-        return '<option value="' + u.uid + '"' + (u.uid === uidSelecionado ? ' selected' : '') + '>' + escapeHtml(u.nome) + '</option>';
-      }).join('');
-  }
-  function nomeDoUsuario(uid){
-    if (!uid) return '';
-    const u = orgUsuarios.find(function(x){ return x.uid === uid; });
-    return u ? u.nome : '';
-  }
+  let orgUsuarios = [];   // [{uid, nome}] — espelho de tools/organograma, usado no filtro por responsável
+  let meusPendentes = []; // itens enviados para mim, aguardando meu aceite + assinatura do termo
 
   const STATUS_PAT_LABEL = { ativo: 'Ativo', manutencao: 'Em manutenção', emprestado: 'Emprestado', baixado: 'Baixado / descartado' };
 
@@ -835,10 +924,12 @@
         '</p></div>' +
         '<div class="actions-cell">' +
           (souAdmin ? '<button type="button" class="btn small" id="pat-permissoes-btn">⚙ Quem vê tudo</button>' : '') +
+          '<button type="button" class="btn small" id="pat-termos-btn">📄 Termos assinados</button>' +
           '<button type="button" class="btn small" id="pat-import-btn">📥 Importar NF (XML)</button>' +
           '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
         '</div>' +
       '</div>' +
+      '<div class="pend-aceite-box"></div>' +
       '<div class="stat-row" id="pat-stats"></div>' +
       '<div class="toolbar">' +
         '<input type="text" id="pat-busca" placeholder="Buscar por nome, local, responsável…">' +
@@ -875,6 +966,8 @@
     const filtroRespSel = document.getElementById('pat-filtro-responsavel');
     if (filtroRespSel) filtroRespSel.addEventListener('change', function(e){ patFiltroResponsavel = e.target.value; renderPatrimonio(); });
     document.getElementById('pat-imprimir-btn').addEventListener('click', imprimirPatrimonio);
+    document.getElementById('pat-termos-btn').addEventListener('click', abrirListaTermos);
+    renderPendentesAceite();
 
     db.collection('organograma').onSnapshot(function(snap){
       orgUsuarios = snap.docs.map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() }; })
@@ -988,13 +1081,13 @@
         '<td>' + escapeHtml(it.nome) + (it.marcaModelo ? '<br><span style="color:var(--muted);font-size:.74rem;">' + escapeHtml(it.marcaModelo) + '</span>' : '') + '</td>' +
         '<td>' + escapeHtml(it.categoria || '—') + '</td>' +
         '<td>' + escapeHtml(it.local || '—') + '</td>' +
-        '<td>' + escapeHtml(it.responsavel || '—') + '</td>' +
+        '<td>' + celulaResponsavel(it) + '</td>' +
         '<td class="num">' + formatBRL(it.valor) + '</td>' +
         '<td><span class="pill ' + (it.status || 'ativo') + '">' + (STATUS_PAT_LABEL[it.status] || 'Ativo') + '</span></td>' +
         '<td class="actions-cell">' +
           (it.notaFiscalArquivo ? '<a class="btn small" style="display:inline-block;text-decoration:none;" href="' + it.notaFiscalArquivo + '" download="' + escapeHtml(it.notaFiscalNome || ('NF-' + it.codigo)) + '">📎 Baixar NF</a>' : '') +
+          (it.termoAtualId && (souAdmin || it.responsavelUid === meuUid) ? '<button type="button" class="btn small" data-pat-termo="' + escapeHtml(it.termoAtualId) + '">📄 Termo</button>' : '') +
           '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
-          (souAdmin ? '<button type="button" class="btn small" data-pat-transferir="' + it.id + '">🔄 Transferir</button>' : '') +
           (souAdmin ? '<button type="button" class="btn small danger" data-pat-excluir="' + it.id + '">Excluir</button>' : '') +
         '</td>' +
       '</tr>';
@@ -1003,8 +1096,11 @@
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-editar]'), function(b){
       b.addEventListener('click', function(){ abrirModalPatrimonio(patItens.find(function(x){ return x.id === b.dataset.patEditar; })); });
     });
-    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-transferir]'), function(b){
-      b.addEventListener('click', function(){ abrirModalTransferencia(patItens.find(function(x){ return x.id === b.dataset.patTransferir; })); });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-resp]'), function(b){
+      b.addEventListener('click', function(){ abrirModalTransferencia(patItens.find(function(x){ return x.id === b.dataset.patResp; })); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-termo]'), function(b){
+      b.addEventListener('click', function(){ abrirTermo(b.dataset.patTermo); });
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-excluir]'), function(b){
       b.addEventListener('click', function(){
@@ -1090,7 +1186,9 @@
     document.getElementById('pat-marca').value = item ? (item.marcaModelo || '') : '';
     document.getElementById('pat-serie').value = item ? (item.numeroSerie || '') : '';
     document.getElementById('pat-local').value = item ? (item.local || '') : '';
-    document.getElementById('pat-responsavel').innerHTML = optionsResponsavel(item ? item.responsavelUid : '');
+    document.getElementById('pat-responsavel-info').textContent = item
+      ? ((item.responsavel || 'Sem responsável / estoque') + (item.pendente ? ' — aguardando aceite de ' + item.pendente.paraNome : ''))
+      : 'Estoque — depois de salvar, clique no responsável na lista para enviar a alguém.';
     document.getElementById('pat-data-aquisicao').value = item ? (item.dataAquisicao || '') : '';
     patValorInput.value = item ? numeroParaMoedaInput(item.valor) : '';
     document.getElementById('pat-obs').value = item ? (item.observacoes || '') : '';
@@ -1118,7 +1216,7 @@
     if (!codigo) { errEl.textContent = 'Informe o número da etiqueta (código).'; errEl.style.display = 'block'; return; }
     errEl.style.display = 'none';
 
-    const responsavelUid = document.getElementById('pat-responsavel').value;
+    // o responsável não muda por aqui: só pelo envio + aceite com termo assinado
     const dados = {
       nome: nome,
       codigo: codigo,
@@ -1127,8 +1225,6 @@
       marcaModelo: document.getElementById('pat-marca').value.trim(),
       numeroSerie: document.getElementById('pat-serie').value.trim(),
       local: document.getElementById('pat-local').value.trim(),
-      responsavelUid: responsavelUid || null,
-      responsavel: nomeDoUsuario(responsavelUid),
       dataAquisicao: document.getElementById('pat-data-aquisicao').value || null,
       valor: moedaParaNumero(patValorInput.value),
       observacoes: document.getElementById('pat-obs').value.trim(),
@@ -1148,6 +1244,8 @@
         p = db.collection('patrimonio').doc(patEditandoId).update(dados);
       } else {
         dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+        dados.responsavelUid = null;
+        dados.responsavel = '';
         dados.criadoPor = meuNome;
         dados.criadoPorUid = meuUid;
         p = db.collection('patrimonio').add(dados);
@@ -1456,34 +1554,366 @@
       .finally(function(){ patImportConfirmar.disabled = false; });
   });
 
+  // ============================================================
+  // Responsável pelo patrimônio: o admin clica no nome e envia o item; ele só passa
+  // para a pessoa depois que ELA aceita, confirma a senha e assina o termo do seu tipo
+  // de colaborador (CLT / Estagiário / Associado — definido em Administração > Dados).
+  // ============================================================
+  const TIPO_COLAB_LABEL = { clt: 'Funcionário CLT', estagiario: 'Estagiário', associado: 'Associado' };
   const patTransfBackdrop = document.getElementById('pat-transf-backdrop');
+  const transfSelect = document.getElementById('pat-transf-select');
+  const transfErr = document.getElementById('pat-transf-err');
+  const transfBtn = document.getElementById('pat-transf-confirmar');
+  let usuariosElegiveis = [];
+
+  function celulaResponsavel(it){
+    let extra = '';
+    if (it.pendente) extra = '<span class="resp-pend">⏳ aguardando aceite de ' + escapeHtml(it.pendente.paraNome || '') + '</span>';
+    else if (souAdmin && it.ultimaRecusa) extra = '<span class="resp-pend" style="color:var(--rej-text);">✖ recusado por ' + escapeHtml(it.ultimaRecusa.porNome || '') + ' em ' + formatDataBR(it.ultimaRecusa.em) + '</span>';
+    if (!souAdmin) return (it.responsavel ? escapeHtml(it.responsavel) : '<span style="color:var(--muted);">Estoque</span>') + extra;
+    return '<button type="button" class="resp-link" data-pat-resp="' + it.id + '" title="Clique para mudar o responsável">' +
+      (it.responsavel ? escapeHtml(it.responsavel) : 'Estoque — atribuir') + '</button>' + extra;
+  }
+
+  // Só usuários do Portal podem ser responsáveis (clientes e acessos revogados/pendentes ficam de fora)
+  function carregarUsuariosElegiveis(){
+    return db.collection('users').get().then(function(snap){
+      usuariosElegiveis = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
+        .filter(function(u){ return u.role !== 'cliente' && (u.role === 'admin' || (u.tabs || []).length > 0); })
+        .map(function(u){ return { uid: u.uid, nome: String(u.displayName || u.email || '').trim(), tipo: u.tipoColaborador || '', depto: u.deptoAtual || '' }; })
+        .filter(function(u){ return u.nome; })
+        .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
+      return usuariosElegiveis;
+    });
+  }
 
   function abrirModalTransferencia(item){
-    if (!item) return;
+    if (!item || !souAdmin) return;
     patTransferindoId = item.id;
-    document.getElementById('pat-transf-item-label').textContent = item.nome + ' (' + item.codigo + ') — hoje com: ' + (item.responsavel || 'sem responsável / estoque');
-    document.getElementById('pat-transf-select').innerHTML = optionsResponsavel(item.responsavelUid);
-    document.getElementById('pat-transf-err').style.display = 'none';
+    document.getElementById('pat-transf-item-label').textContent = item.nome + ' (' + item.codigo + ') — hoje com: ' + (item.responsavel || 'ninguém (estoque)');
+    const pendBox = document.getElementById('pat-transf-pendente');
+    if (item.pendente) {
+      pendBox.innerHTML = '<span>⏳ Enviado para <b>' + escapeHtml(item.pendente.paraNome || '') + '</b> em ' + formatDataBR(item.pendente.enviadoEm) + ' — aguardando o aceite.</span>' +
+        '<button type="button" class="btn small danger" id="pat-transf-cancelar-envio">Cancelar envio</button>';
+      pendBox.style.display = 'flex';
+      document.getElementById('pat-transf-cancelar-envio').addEventListener('click', function(){
+        if (!confirm('Cancelar o envio para ' + (item.pendente.paraNome || '') + '?')) return;
+        db.collection('patrimonio').doc(item.id).update({ pendenteParaUid: null, pendente: null, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+          .then(fecharModalTransferencia)
+          .catch(function(err){ transfErr.textContent = 'Erro ao cancelar: ' + err.message; transfErr.style.display = 'block'; });
+      });
+    } else {
+      pendBox.style.display = 'none';
+      pendBox.innerHTML = '';
+    }
+    ['pat-transf-acessorios', 'pat-transf-obs'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('pat-transf-estado').value = 'bom';
+    transfErr.style.display = 'none';
+    transfSelect.innerHTML = '<option value="__">Carregando usuários…</option>';
+    atualizarCamposTransf();
     patTransfBackdrop.classList.add('show');
+    carregarUsuariosElegiveis().then(function(lista){
+      transfSelect.innerHTML = '<option value="__">Escolha o usuário…</option>' +
+        (item.responsavelUid ? '<option value="">— Devolver ao estoque (sem responsável) —</option>' : '') +
+        lista.map(function(u){
+          return '<option value="' + u.uid + '">' + escapeHtml(u.nome) + ' — ' + (TIPO_COLAB_LABEL[u.tipo] || 'sem tipo de colaborador') + '</option>';
+        }).join('');
+      atualizarCamposTransf();
+    }).catch(function(err){
+      transfErr.textContent = 'Erro ao carregar os usuários: ' + err.message;
+      transfErr.style.display = 'block';
+    });
   }
   function fecharModalTransferencia(){ patTransfBackdrop.classList.remove('show'); patTransferindoId = null; }
   document.getElementById('pat-transf-cancelar').addEventListener('click', fecharModalTransferencia);
   patTransfBackdrop.addEventListener('click', function(e){ if (e.target === patTransfBackdrop) fecharModalTransferencia(); });
+  transfSelect.addEventListener('change', atualizarCamposTransf);
 
-  document.getElementById('pat-transf-confirmar').addEventListener('click', function(){
+  function campoTexto(id, rotulo, valor){
+    return '<div class="field"><label>' + rotulo + '</label><input type="text" id="' + id + '" value="' + escapeHtml(valor || '') + '"></div>';
+  }
+  function atualizarCamposTransf(){
+    const uid = transfSelect.value;
+    const item = patItens.find(function(x){ return x.id === patTransferindoId; }) || {};
+    const tipoEl = document.getElementById('pat-transf-tipo');
+    const termoEl = document.getElementById('pat-transf-termo');
+    const camposEl = document.getElementById('pat-transf-campos');
+    transfErr.style.display = 'none';
+    tipoEl.style.color = 'var(--muted)';
+    termoEl.style.display = 'none';
+    transfBtn.disabled = false;
+    transfBtn.textContent = 'Enviar para aceite';
+    if (uid === '__') { tipoEl.textContent = ''; transfBtn.disabled = true; return; }
+    if (uid === '') { tipoEl.textContent = 'O item volta para o estoque na hora (não precisa de termo).'; transfBtn.textContent = 'Devolver ao estoque'; return; }
+    const u = usuariosElegiveis.find(function(x){ return x.uid === uid; });
+    if (!u) return;
+    if (!u.tipo) {
+      tipoEl.style.color = 'var(--rej-text)';
+      tipoEl.textContent = '⚠ ' + u.nome + ' ainda não tem o Tipo de colaborador cadastrado. Defina em Administração → Usuários → Dados antes de enviar o patrimônio.';
+      return;
+    }
+    if (uid === item.responsavelUid) { tipoEl.textContent = 'O item já está com essa pessoa.'; transfBtn.disabled = true; return; }
+    tipoEl.textContent = 'Tipo: ' + TIPO_COLAB_LABEL[u.tipo] + ' — vai assinar o termo de ' + TIPO_COLAB_LABEL[u.tipo].toLowerCase() + '.';
+    if (u.tipo === 'clt') camposEl.innerHTML = campoTexto('pat-transf-cargo', 'Cargo', '') + campoTexto('pat-transf-setor', 'Setor', u.depto);
+    else if (u.tipo === 'estagiario') camposEl.innerHTML = campoTexto('pat-transf-curso', 'Curso', '') + campoTexto('pat-transf-supervisor', 'Setor/supervisor', u.depto);
+    else camposEl.innerHTML = campoTexto('pat-transf-area', 'Área de atuação', u.depto);
+    termoEl.style.display = '';
+  }
+  function valorCampo(id){ const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+  transfBtn.addEventListener('click', function(){
     if (!patTransferindoId) return;
-    const responsavelUid = document.getElementById('pat-transf-select').value;
-    const btn = document.getElementById('pat-transf-confirmar');
-    btn.disabled = true;
-    db.collection('patrimonio').doc(patTransferindoId).update({
-      responsavelUid: responsavelUid || null,
-      responsavel: nomeDoUsuario(responsavelUid),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function(){ fecharModalTransferencia(); }).catch(function(err){
-      document.getElementById('pat-transf-err').textContent = 'Erro ao transferir: ' + err.message;
-      document.getElementById('pat-transf-err').style.display = 'block';
-    }).finally(function(){ btn.disabled = false; });
+    const uid = transfSelect.value;
+    const ref = db.collection('patrimonio').doc(patTransferindoId);
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    function erro(msg){ transfErr.textContent = msg; transfErr.style.display = 'block'; }
+    if (uid === '__') return erro('Escolha para quem enviar o patrimônio.');
+    let p;
+    if (uid === '') {
+      if (!confirm('Devolver este item ao estoque (sem responsável)?')) return;
+      p = ref.update({ responsavelUid: null, responsavel: '', pendenteParaUid: null, pendente: null, termoAtualId: null, atualizadoEm: ts });
+    } else {
+      const u = usuariosElegiveis.find(function(x){ return x.uid === uid; });
+      if (!u) return erro('Usuário não encontrado.');
+      if (!u.tipo) return erro('Não dá para enviar: ' + u.nome + ' ainda não tem o Tipo de colaborador (Funcionário CLT, Estagiário ou Associado). Defina em Administração → Usuários → Dados.');
+      p = ref.update({
+        pendenteParaUid: u.uid,
+        pendente: {
+          paraUid: u.uid, paraNome: u.nome, tipoColaborador: u.tipo,
+          cargo: valorCampo('pat-transf-cargo'), setor: valorCampo('pat-transf-setor'),
+          curso: valorCampo('pat-transf-curso'), supervisor: valorCampo('pat-transf-supervisor'),
+          areaAtuacao: valorCampo('pat-transf-area'),
+          acessorios: valorCampo('pat-transf-acessorios'),
+          estado: document.getElementById('pat-transf-estado').value,
+          observacoes: valorCampo('pat-transf-obs'),
+          enviadoPorUid: meuUid, enviadoPorNome: meuNome, enviadoEm: ts
+        },
+        atualizadoEm: ts
+      });
+    }
+    transfBtn.disabled = true;
+    p.then(fecharModalTransferencia).catch(function(err){ erro('Erro ao salvar: ' + err.message); }).finally(function(){ transfBtn.disabled = false; });
   });
+
+  // ---------- Quem recebe: aviso na Gestão + aceite com senha e assinatura ----------
+  function ouvirPendentesDeAceite(){
+    db.collection('patrimonio').where('pendenteParaUid', '==', meuUid).onSnapshot(function(snap){
+      meusPendentes = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      renderPendentesAceite();
+    }, function(){ /* regra nova ainda não publicada no Firestore: só não mostra o aviso */ });
+  }
+  function renderPendentesAceite(){
+    const n = meusPendentes.length;
+    const html = !n ? '' :
+      '<div class="pa-tit">📦 ' + (n === 1 ? 'Há 1 patrimônio aguardando o seu aceite' : 'Há ' + n + ' patrimônios aguardando o seu aceite') + '</div>' +
+      meusPendentes.map(function(it){
+        return '<div class="pa-item"><div><b>' + escapeHtml(it.nome) + '</b> (' + escapeHtml(it.codigo || '') + ')' +
+          '<div class="pa-meta">Enviado por ' + escapeHtml((it.pendente && it.pendente.enviadoPorNome) || '') + ' em ' + formatDataBR(it.pendente && it.pendente.enviadoEm) + '</div></div>' +
+          '<button type="button" class="btn small primary" data-aceitar="' + it.id + '">Ver termo e aceitar</button></div>';
+      }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.pend-aceite-box'), function(box){
+      box.innerHTML = html;
+      Array.prototype.forEach.call(box.querySelectorAll('[data-aceitar]'), function(b){
+        b.addEventListener('click', function(e){ e.stopPropagation(); abrirAceite(b.dataset.aceitar); });
+        b.addEventListener('keydown', function(e){ e.stopPropagation(); });
+      });
+    });
+  }
+
+  const aceiteBackdrop = document.getElementById('pat-aceite-backdrop');
+  const aceiteErr = document.getElementById('pat-aceite-err');
+  const aceiteFrame = document.getElementById('pat-aceite-frame');
+  const sigCanvas = document.getElementById('pat-aceite-canvas');
+  let aceitandoItem = null;
+  let aceiteDados = null;
+  let sigCtx = null, sigDesenhou = false, sigDesenhando = false;
+
+  function abrirAceite(itemId){
+    const it = meusPendentes.find(function(x){ return x.id === itemId; });
+    if (!it || !it.pendente) return;
+    aceitandoItem = it;
+    aceiteDados = null;
+    document.getElementById('pat-aceite-label').textContent = it.nome + ' (' + (it.codigo || '') + ') — enviado por ' + (it.pendente.enviadoPorNome || '') +
+      '. Confira o termo, digite sua senha do Portal e assine no quadro.';
+    document.getElementById('pat-aceite-senha').value = '';
+    aceiteErr.style.display = 'none';
+    aceiteBackdrop.classList.add('show');
+    prepararCanvas();
+    // CPF e OAB ficam em users/{uid}, que só a própria pessoa (e o admin) consegue ler
+    db.collection('users').doc(meuUid).get().then(function(doc){
+      const u = doc.exists ? doc.data() : {};
+      const p = it.pendente;
+      aceiteDados = {
+        tipoColaborador: p.tipoColaborador, colaboradorUid: meuUid, colaboradorNome: u.displayName || meuNome,
+        cpf: u.cpf || '', oab: u.oab || '',
+        cargo: p.cargo || '', setor: p.setor || '', curso: p.curso || '', supervisor: p.supervisor || '', areaAtuacao: p.areaAtuacao || '',
+        itemId: it.id, codigo: it.codigo || '', equipamento: it.nome || '', marcaModelo: it.marcaModelo || '', numeroSerie: it.numeroSerie || '',
+        acessorios: p.acessorios || '', estado: p.estado || '', observacoes: p.observacoes || '',
+        entreguePorUid: p.enviadoPorUid || '', entreguePorNome: p.enviadoPorNome || '', enviadoEm: p.enviadoEm || null,
+        cidade: 'Uberlândia/MG'
+      };
+      aceiteFrame.onload = function(){
+        try { aceiteFrame.contentWindow.mostrarTermo(aceiteDados); } catch (e) {}
+      };
+      aceiteFrame.src = 'termo-patrimonio.html?preview=1&t=' + Date.now();
+    }).catch(function(err){
+      aceiteErr.textContent = 'Não foi possível carregar seus dados: ' + err.message;
+      aceiteErr.style.display = 'block';
+    });
+  }
+  function fecharAceite(){
+    aceiteBackdrop.classList.remove('show');
+    aceitandoItem = null;
+    aceiteDados = null;
+    aceiteFrame.onload = null;
+    aceiteFrame.src = 'about:blank';
+  }
+  document.getElementById('pat-aceite-fechar').addEventListener('click', fecharAceite);
+
+  // quadro de assinatura (dedo ou mouse)
+  function prepararCanvas(){
+    const r = sigCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    sigCanvas.width = Math.max(1, Math.round(r.width * dpr));
+    sigCanvas.height = Math.max(1, Math.round(r.height * dpr));
+    sigCtx = sigCanvas.getContext('2d');
+    sigCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sigCtx.lineWidth = 2.4;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#13233f';
+    sigDesenhou = false;
+  }
+  function posCanvas(e){ const r = sigCanvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  sigCanvas.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    if (!sigCtx) prepararCanvas();
+    try { sigCanvas.setPointerCapture(e.pointerId); } catch (er) {}
+    sigDesenhando = true;
+    const p = posCanvas(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(p.x, p.y);
+    sigCtx.lineTo(p.x + 0.1, p.y + 0.1);
+    sigCtx.stroke();
+    sigDesenhou = true;
+  });
+  sigCanvas.addEventListener('pointermove', function(e){
+    if (!sigDesenhando) return;
+    e.preventDefault();
+    const p = posCanvas(e);
+    sigCtx.lineTo(p.x, p.y);
+    sigCtx.stroke();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev){
+    sigCanvas.addEventListener(ev, function(){ sigDesenhando = false; });
+  });
+  document.getElementById('pat-aceite-limpar').addEventListener('click', function(e){ e.preventDefault(); prepararCanvas(); });
+
+  // PNG transparente, reduzido para ~600px de largura (fica leve no Firestore)
+  function assinaturaPng(){
+    const larg = Math.min(600, sigCanvas.width);
+    const alt = Math.round(sigCanvas.height * larg / sigCanvas.width);
+    const c = document.createElement('canvas');
+    c.width = larg; c.height = alt;
+    c.getContext('2d').drawImage(sigCanvas, 0, 0, larg, alt);
+    return c.toDataURL('image/png');
+  }
+
+  document.getElementById('pat-aceite-assinar').addEventListener('click', function(){
+    const it = aceitandoItem;
+    const senha = document.getElementById('pat-aceite-senha').value;
+    function erro(msg){ aceiteErr.textContent = msg; aceiteErr.style.display = 'block'; }
+    if (!it || !aceiteDados) return erro('Aguarde o termo carregar.');
+    if (!senha) return erro('Digite sua senha do Portal para assinar.');
+    if (!sigDesenhou) return erro('Faça sua assinatura no quadro.');
+    aceiteErr.style.display = 'none';
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Conferindo senha…';
+    const user = auth.currentUser;
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, senha);
+    user.reauthenticateWithCredential(cred).then(function(){
+      btn.textContent = 'Registrando…';
+      const termoRef = db.collection('termosPatrimonio').doc();
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const termo = Object.assign({}, aceiteDados, {
+        assinaturaPng: assinaturaPng(),
+        assinadoEm: ts,
+        assinadoEmISO: new Date().toISOString(),
+        assinaturaMetodo: 'Assinatura desenhada + confirmação da senha do Portal'
+      });
+      const batch = db.batch();
+      batch.set(termoRef, termo);
+      batch.update(db.collection('patrimonio').doc(it.id), {
+        responsavelUid: meuUid, responsavel: aceiteDados.colaboradorNome,
+        pendenteParaUid: null, pendente: null, ultimaRecusa: null,
+        termoAtualId: termoRef.id, atualizadoEm: ts
+      });
+      return batch.commit().then(function(){ return termoRef.id; });
+    }).then(function(termoId){
+      fecharAceite();
+      abrirTermo(termoId);
+    }).catch(function(err){
+      const c = err && err.code;
+      if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') erro('Senha incorreta.');
+      else if (c === 'auth/too-many-requests') erro('Muitas tentativas com senha errada. Aguarde alguns minutos e tente de novo.');
+      else if (c === 'permission-denied') erro('Sem permissão para registrar o termo — as regras novas do Firestore ainda precisam ser publicadas. Avise o administrador.');
+      else erro('Não foi possível assinar: ' + (err && err.message ? err.message : err));
+    }).finally(function(){
+      btn.disabled = false;
+      btn.textContent = '✍ Assinar e aceitar';
+    });
+  });
+
+  document.getElementById('pat-aceite-recusar').addEventListener('click', function(){
+    const it = aceitandoItem;
+    if (!it || !confirm('Recusar o recebimento de "' + it.nome + '"? O administrador verá a recusa.')) return;
+    db.collection('patrimonio').doc(it.id).update({
+      pendenteParaUid: null, pendente: null,
+      ultimaRecusa: { porUid: meuUid, porNome: meuNome, em: firebase.firestore.FieldValue.serverTimestamp() },
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(fecharAceite).catch(function(err){
+      aceiteErr.textContent = 'Erro ao recusar: ' + err.message;
+      aceiteErr.style.display = 'block';
+    });
+  });
+
+  // ---------- Consultar termos assinados ----------
+  const termoBackdrop = document.getElementById('pat-termo-backdrop');
+  const termoFrame = document.getElementById('pat-termo-frame');
+  function abrirTermo(termoId){
+    termoFrame.src = 'termo-patrimonio.html?termo=' + encodeURIComponent(termoId);
+    termoBackdrop.classList.add('show');
+  }
+  function fecharTermo(){ termoBackdrop.classList.remove('show'); termoFrame.src = 'about:blank'; }
+  document.getElementById('pat-termo-fechar').addEventListener('click', fecharTermo);
+  termoBackdrop.addEventListener('click', function(e){ if (e.target === termoBackdrop) fecharTermo(); });
+
+  const termosBackdrop = document.getElementById('pat-termos-backdrop');
+  function abrirListaTermos(){
+    const lista = document.getElementById('pat-termos-lista');
+    lista.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
+    termosBackdrop.classList.add('show');
+    // admin vê todos; os demais, só os próprios (é o que a regra do Firestore libera)
+    const consulta = souAdmin ? db.collection('termosPatrimonio') : db.collection('termosPatrimonio').where('colaboradorUid', '==', meuUid);
+    consulta.get().then(function(snap){
+      const termos = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); })
+        .sort(function(a, b){ return String(b.assinadoEmISO || '').localeCompare(String(a.assinadoEmISO || '')); });
+      lista.innerHTML = termos.length ? termos.map(function(t){
+        return '<div class="termos-row"><div><b>' + escapeHtml(t.codigo || '') + ' · ' + escapeHtml(t.equipamento || '') + '</b>' +
+          '<div class="tr-meta">' + escapeHtml(t.colaboradorNome || '') + ' · ' + escapeHtml(TIPO_COLAB_LABEL[t.tipoColaborador] || '') +
+          ' · assinado em ' + formatDataBR(t.assinadoEm || (t.assinadoEmISO ? new Date(t.assinadoEmISO) : null)) + '</div></div>' +
+          '<button type="button" class="btn small" data-abrir-termo="' + t.id + '">Abrir</button></div>';
+      }).join('') : '<p style="color:var(--muted);font-size:.85rem;">Nenhum termo assinado ainda.</p>';
+      Array.prototype.forEach.call(lista.querySelectorAll('[data-abrir-termo]'), function(b){
+        b.addEventListener('click', function(){ abrirTermo(b.dataset.abrirTermo); });
+      });
+    }).catch(function(err){
+      lista.innerHTML = '<p class="msg-err" style="display:block;">Erro ao carregar os termos: ' + escapeHtml(err.message) + '</p>';
+    });
+  }
+  document.getElementById('pat-termos-fechar').addEventListener('click', function(){ termosBackdrop.classList.remove('show'); });
+  termosBackdrop.addEventListener('click', function(e){ if (e.target === termosBackdrop) termosBackdrop.classList.remove('show'); });
 
   const patPermissoesBackdrop = document.getElementById('pat-permissoes-backdrop');
 
@@ -2331,6 +2761,7 @@
       return;
     }
     meuUid = user.uid;
+    ouvirPendentesDeAceite();
     db.collection('users').doc(user.uid).get().then(function(doc){
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';

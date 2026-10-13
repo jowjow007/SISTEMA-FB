@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Termo de Patrimônio — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!--
+  Termo de entrega e responsabilidade por patrimônio (CLT / Estagiário / Associado).
+  Mesmo papel do Criador de Documentos: timbrado de fundo, Poppins 9,3pt, A4.
+  - ?termo=<id>  → abre um termo já assinado (coleção termosPatrimonio) para consultar/imprimir/baixar
+  - ?preview=1   → só desenha; a Gestão chama window.mostrarTermo(dados) para a prévia antes de assinar
+-->
+<style>
+  html,body{margin:0;background:#0e0b0b;color:#eee;font-family:'Poppins',Arial,sans-serif;}
+  .barra{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px 12px;background:rgba(14,11,11,.92);border-bottom:1px solid rgba(212,175,106,.22);}
+  .barra button{font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;border-radius:10px;padding:8px 16px;
+    color:#F3E6C8;border:1px solid rgba(212,175,106,.4);background:linear-gradient(155deg,rgba(126,31,44,.75),rgba(90,20,30,.75));}
+  .barra button:disabled{opacity:.5;cursor:default;}
+  .barra .st{font-size:.78rem;color:#bbb;align-self:center;}
+  body.preview .barra{display:none;}
+  #msg{padding:60px 20px;text-align:center;color:#bbb;font-size:.9rem;}
+  #doc-pages-wrap{padding:18px 12px 30px;overflow-x:hidden;}
+  #doc-pages{display:flex;flex-direction:column;align-items:center;gap:24px;}
+
+  /* ---- papel: idêntico ao Criador de Documentos (tools/documentos) ---- */
+  .doc-page{
+    width:210mm;height:297mm;flex:0 0 auto;background:#ffffff;position:relative;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;
+    overflow:hidden;
+  }
+  .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
+  .doc-pagenum{position:absolute;right:27mm;bottom:20.5mm;width:14mm;height:9mm;background:#fff;z-index:1;font-size:8pt;font-weight:700;color:#1a1a1a;display:flex;align-items:center;justify-content:center;}
+  .nw{white-space:nowrap;}
+  .doc-content{position:absolute;z-index:1;top:34mm;left:18mm;right:18mm;bottom:30mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+
+  .blk{margin-bottom:2.6mm;text-align:justify;}
+  .blk.center{text-align:center;}
+  .blk strong{font-weight:700;}
+  .doc-h1{text-align:center;font-weight:700;font-size:11.5pt;text-transform:uppercase;margin:1mm 0 6mm;letter-spacing:.02em;}
+  .doc-firma{text-align:center;font-weight:700;font-size:10pt;margin:0 0 1mm;letter-spacing:.03em;}
+  .doc-label{font-weight:700;margin:3mm 0 1.4mm;}
+  .item{margin-left:6mm;}
+
+  .box-table{border:1pt solid #1a1a1a;border-radius:1.2mm;overflow:hidden;margin-bottom:2.6mm;}
+  .box-row{display:flex;border-top:1pt solid #1a1a1a;}
+  .box-row:first-child{border-top:none;}
+  .box-cell{flex:1;padding:1.3mm 2.2mm;border-left:1pt solid #1a1a1a;font-size:8.4pt;}
+  .box-cell:first-child{border-left:none;}
+  .box-cell b{font-weight:700;}
+
+  .sig-pair{display:flex;justify-content:center;gap:12mm;flex-wrap:wrap;margin-top:4mm;}
+  .sig-line{text-align:center;width:74mm;}
+  .sig-img{height:17mm;display:flex;align-items:flex-end;justify-content:center;}
+  .sig-img img{max-height:17mm;max-width:70mm;}
+  .sig-img .ph{font-size:7pt;color:#999;font-style:italic;padding-bottom:1mm;}
+  .sig-line .rule{border-top:1pt solid #1a1a1a;margin-bottom:1.6mm;}
+  .sig-line .name{font-weight:700;font-size:9pt;}
+  .sig-line .doc{font-size:8.2pt;}
+  .sig-line .meta{font-size:6.6pt;color:#555;line-height:1.35;margin-top:.8mm;}
+  .rodape-termo{text-align:center;font-size:7.6pt;font-weight:700;margin-top:5mm;}
+  .rodape-termo .cod{display:block;font-weight:400;color:#666;font-size:6.6pt;margin-top:.6mm;}
+
+  @media print{
+    @page{ size:A4; margin:0; }
+    html,body{background:#fff;margin:0;padding:0;}
+    .barra{display:none !important;}
+    #doc-pages-wrap{padding:0;}
+    #doc-pages{display:block;gap:0;zoom:1 !important;}
+    .doc-page{box-shadow:none;margin:0;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;}
+    .doc-page:last-child{page-break-after:auto;break-after:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="barra">
+  <button type="button" id="btn-imprimir" disabled>🖨 Imprimir</button>
+  <button type="button" id="btn-pdf" disabled>⬇ Baixar PDF</button>
+  <span class="st" id="st"></span>
+</div>
+<div id="msg">Carregando termo…</div>
+<div id="doc-pages-wrap"><div id="doc-pages"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const params = new URLSearchParams(location.search);
+  const PREVIEW = params.get('preview') === '1';
+  if (PREVIEW) document.body.classList.add('preview');
+
+  const TIPO_LABEL = { clt: 'Colaborador CLT', estagiario: 'Estagiário', associado: 'Advogado associado' };
+  const ESTADOS = [['novo', 'Novo'], ['bom', 'Bom'], ['regular', 'Regular'], ['avarias', 'Com avarias']];
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function v(x){ x = String(x == null ? '' : x).trim(); return x ? esc(x) : '—'; }
+  function dataBR(d){ return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear(); }
+  function dataExtenso(d){ return d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
+  function paraData(t){
+    if (!t) return null;
+    if (t.toDate) return t.toDate();
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function cell(rotulo, valor){ return '<div class="box-cell"><b>' + rotulo + ':</b> ' + valor + '</div>'; }
+  function row(){ return '<div class="box-row">' + Array.prototype.join.call(arguments, '') + '</div>'; }
+  function p(html, cls){ return '<div class="blk' + (cls ? ' ' + cls : '') + '">' + html + '</div>'; }
+  function label(t){ return '<div class="doc-label">' + t + '</div>'; }
+
+  /* ---------- texto de cada termo (fiel aos modelos do escritório) ---------- */
+  function montarBlocos(d){
+    const tipo = d.tipoColaborador;
+    const assinado = paraData(d.assinadoEm) || (d.assinadoEmISO ? new Date(d.assinadoEmISO) : null);
+    const dataRef = assinado || new Date();
+    const b = [];
+
+    b.push('<div class="doc-firma">FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</div>');
+    b.push('<div class="doc-h1">Termo de entrega e responsabilidade por patrimônio — ' + esc((TIPO_LABEL[tipo] || '').toUpperCase()) + '</div>');
+
+    // 1. Identificação
+    if (tipo === 'clt') {
+      b.push(label('1. IDENTIFICAÇÃO DO COLABORADOR'));
+      b.push('<div class="box-table">' +
+        row(cell('Nome', v(d.colaboradorNome))) +
+        row(cell('CPF', v(d.cpf)), cell('Cargo', v(d.cargo))) +
+        row(cell('Setor', v(d.setor)), cell('Data', esc(dataBR(dataRef)))) +
+      '</div>');
+    } else if (tipo === 'estagiario') {
+      b.push(label('1. IDENTIFICAÇÃO DO ESTAGIÁRIO'));
+      b.push('<div class="box-table">' +
+        row(cell('Nome', v(d.colaboradorNome))) +
+        row(cell('CPF', v(d.cpf)), cell('Curso', v(d.curso))) +
+        row(cell('Setor/supervisor', v(d.supervisor))) +
+        row(cell('Data de entrega', esc(dataBR(dataRef)))) +
+      '</div>');
+    } else {
+      b.push(label('1. IDENTIFICAÇÃO DO ASSOCIADO'));
+      b.push('<div class="box-table">' +
+        row(cell('Nome', v(d.colaboradorNome))) +
+        row(cell('CPF', v(d.cpf)), cell('OAB/UF', v(d.oab))) +
+        row(cell('Área de atuação', v(d.areaAtuacao))) +
+        row(cell('Data de entrega', esc(dataBR(dataRef)))) +
+      '</div>');
+    }
+
+    // 2. Patrimônio
+    const estado = ESTADOS.map(function(e){ return '(' + (d.estado === e[0] ? 'X' : '&nbsp;&nbsp;') + ') ' + e[1]; }).join('&nbsp;&nbsp;&nbsp;');
+    b.push(label('2. IDENTIFICAÇÃO DO PATRIMÔNIO'));
+    b.push('<div class="box-table">' +
+      row(cell('Equipamento', v(d.equipamento))) +
+      row(cell('Marca/modelo', v(d.marcaModelo))) +
+      row(cell('Nº patrimônio/QR Code', v(d.codigo)), cell('Nº de série/IMEI', v(d.numeroSerie))) +
+      row(cell('Acessórios entregues', v(d.acessorios))) +
+      row(cell('Estado de conservação', estado)) +
+      row(cell('Observações', v(d.observacoes))) +
+    '</div>');
+
+    // 3. Responsabilidades
+    let itens;
+    if (tipo === 'clt') {
+      b.push(label('3. RESPONSABILIDADES DO COLABORADOR'));
+      b.push(p('O colaborador declara receber o patrimônio acima identificado, pertencente ao escritório, exclusivamente para o desempenho de suas atividades profissionais, comprometendo-se a:'));
+      itens = [
+        'Utilizar o equipamento com zelo, cuidado e exclusivamente para as finalidades autorizadas pelo escritório.',
+        'Não emprestar, transferir, vender, modificar ou permitir o uso por terceiros sem autorização.',
+        'Preservar senhas, informações confidenciais, dados de clientes e documentos profissionais, observando as políticas internas e a LGPD.',
+        'Comunicar imediatamente qualquer defeito, dano, extravio, furto, roubo ou ocorrência que comprometa o patrimônio.',
+        'Não realizar reparos, instalações ou alterações não autorizadas.',
+        'Devolver o equipamento e seus acessórios sempre que solicitado ou no encerramento do vínculo, mediante conferência e assinatura do termo de devolução.'
+      ];
+    } else if (tipo === 'estagiario') {
+      b.push(label('3. RESPONSABILIDADES DO ESTAGIÁRIO'));
+      b.push(p('O estagiário declara receber o patrimônio acima identificado, disponibilizado pelo escritório como instrumento de apoio às atividades previstas em seu Termo de Compromisso de Estágio, comprometendo-se a:'));
+      itens = [
+        'Utilizar o equipamento com cuidado e exclusivamente nas atividades autorizadas e supervisionadas.',
+        'Não emprestar, transferir ou permitir sua utilização por terceiros sem autorização.',
+        'Preservar o sigilo profissional, as informações internas, os dados de clientes e as credenciais de acesso.',
+        'Informar imediatamente ao supervisor qualquer dano, defeito, perda, furto, roubo ou irregularidade.',
+        'Não realizar modificações, instalações ou reparos sem autorização.',
+        'Devolver integralmente o equipamento e seus acessórios quando solicitado ou ao término do estágio.'
+      ];
+    } else {
+      b.push(label('3. CONDIÇÕES DE UTILIZAÇÃO E RESPONSABILIDADE'));
+      b.push(p('O advogado associado declara receber o patrimônio identificado, disponibilizado pelo escritório em caráter de empréstimo gratuito para utilização nas atividades profissionais relacionadas à associação, comprometendo-se a:'));
+      itens = [
+        'Zelar pela conservação e integridade do equipamento, utilizando-o conforme sua finalidade.',
+        'Não ceder, emprestar, alienar, modificar ou permitir sua utilização por terceiros sem autorização expressa.',
+        'Resguardar o sigilo profissional, os dados pessoais, os documentos e as informações confidenciais acessados por meio do equipamento.',
+        'Comunicar imediatamente danos, defeitos, perda, furto, roubo ou qualquer ocorrência relevante.',
+        'Não realizar reparos ou alterações sem autorização prévia.',
+        'Restituir o patrimônio, juntamente com os acessórios, quando solicitado ou no encerramento da associação.'
+      ];
+    }
+    ['I','II','III','IV','V','VI'].forEach(function(r, i){ b.push(p(r + '. ' + itens[i], 'item')); });
+
+    // 4. Danos
+    if (tipo === 'clt') {
+      b.push(label('4. DANOS E EVENTUAL RESSARCIMENTO'));
+      b.push(p('O colaborador não será responsabilizado pelo desgaste natural decorrente do uso regular, nem por defeitos não decorrentes de sua conduta.'));
+      b.push(p('Danos ou perdas decorrentes de dolo ou culpa comprovados poderão gerar obrigação de ressarcimento, observada a legislação aplicável. Eventuais descontos salariais somente poderão ocorrer nas hipóteses permitidas pelo art. 462, § 1º, da CLT, mediante apuração e documentação dos fatos.'));
+    } else if (tipo === 'estagiario') {
+      b.push(label('4. DANOS E EVENTUAL RESSARCIMENTO'));
+      b.push(p('O desgaste natural e os defeitos decorrentes do uso regular não gerarão obrigação de ressarcimento.'));
+      b.push(p('A responsabilidade por danos ou perdas dependerá da apuração da conduta, da existência de dolo ou culpa, do nexo causal e da legislação aplicável. Eventual ressarcimento será tratado em procedimento próprio, sem desconto automático da bolsa-estágio.'));
+    } else {
+      b.push(label('4. RESPONSABILIDADE PATRIMONIAL'));
+      b.push(p('O associado responderá civilmente pelos prejuízos comprovadamente decorrentes de sua conduta dolosa ou culposa, observadas as disposições contratuais e legais aplicáveis.'));
+      b.push(p('O desgaste natural pelo uso regular não constitui dano indenizável. Eventual ressarcimento dependerá de apuração e documentação específica.'));
+      b.push(label('5. NATUREZA DA DISPONIBILIZAÇÃO'));
+      b.push(p('A disponibilização do equipamento constitui instrumento de apoio à atividade profissional, não representando remuneração, transferência de propriedade ou, por si só, alteração da natureza jurídica da relação de associação.'));
+    }
+
+    // Declaração
+    b.push(label((tipo === 'associado' ? '6' : '5') + '. DECLARAÇÃO E ASSINATURAS'));
+    if (tipo === 'clt') b.push(p('Declaro que recebi o patrimônio descrito, conferi suas condições e estou ciente das responsabilidades estabelecidas neste termo.'));
+    else if (tipo === 'estagiario') b.push(p('Declaro que recebi o patrimônio nas condições descritas, compreendi as orientações de utilização e assumo o compromisso de preservá-lo e devolvê-lo quando solicitado.'));
+    else b.push(p('Declaro ter recebido o patrimônio nas condições descritas, comprometendo-me a cumprir as obrigações estabelecidas neste instrumento.'));
+    b.push(p('<strong>Local e data:</strong> ' + esc(d.cidade || 'Uberlândia/MG') + ', ' + esc(dataExtenso(dataRef)) + '.'));
+
+    // Assinaturas
+    const quemAssina = tipo === 'clt' ? 'Colaborador' : tipo === 'estagiario' ? 'Estagiário' : 'Advogado associado';
+    const assinaturaColab = d.assinaturaPng
+      ? '<img src="' + esc(d.assinaturaPng) + '" alt="Assinatura">'
+      : '<span class="ph">(a assinatura entra aqui ao assinar)</span>';
+    const metaColab = assinado
+      ? 'Assinado eletronicamente no Portal em ' + esc(dataBR(assinado)) + ' às ' + esc(String(assinado.getHours()).padStart(2,'0') + ':' + String(assinado.getMinutes()).padStart(2,'0')) + ', com confirmação da senha pessoal.'
+      : 'Assinatura eletrônica com confirmação da senha pessoal do Portal.';
+    const enviado = paraData(d.enviadoEm);
+    let sig = '<div class="sig-pair">' +
+      '<div class="sig-line"><div class="sig-img">' + assinaturaColab + '</div><div class="rule"></div>' +
+        '<div class="name">' + v(d.colaboradorNome) + '</div><div class="doc">' + esc(quemAssina) + (d.cpf ? ' — CPF ' + esc(d.cpf) : '') + '</div>' +
+        '<div class="meta">' + metaColab + '</div></div>' +
+      '<div class="sig-line"><div class="sig-img"></div><div class="rule"></div>' +
+        '<div class="name">' + v(d.entreguePorNome) + '</div><div class="doc">Responsável pela entrega</div>' +
+        '<div class="meta">' + (enviado ? 'Entrega registrada no Portal em ' + esc(dataBR(enviado)) + '.' : 'Entrega registrada no Portal.') + '</div></div>';
+    if (tipo === 'estagiario') {
+      sig += '<div class="sig-line"><div class="sig-img"></div><div class="rule"></div>' +
+        '<div class="name">&nbsp;</div><div class="doc">Responsável legal (quando aplicável)</div></div>';
+    }
+    sig += '</div>';
+    b.push(sig);
+
+    b.push('<div class="rodape-termo">Documento de controle patrimonial interno — Fonseca e Braga Sociedade de Advogados.' +
+      (d.id ? '<span class="cod">Código de verificação do termo: ' + esc(d.id) + '</span>' : '') + '</div>');
+    return b;
+  }
+
+  /* ---------- montagem das páginas (mesma lógica do Criador de Documentos) ---------- */
+  function makePageShell(){
+    const page = document.createElement('div');
+    page.className = 'doc-page';
+    page.innerHTML = '<img class="doc-bg" src="../../assets/timbrado-bg.png" alt=""><div class="doc-pagenum"></div><div class="doc-content"></div>';
+    return page;
+  }
+  // html2canvas desenhava números longos (CPF, código) por cima da palavra seguinte — cada número vira um bloco que não quebra
+  function protegerNumeros(root){
+    if (!root || root.nodeType !== 1) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const alvos = [];
+    while (walker.nextNode()) {
+      const t = walker.currentNode;
+      if (/\d[\d.\/\-,]*\d/.test(t.nodeValue) && !(t.parentElement && t.parentElement.classList.contains('nw'))) alvos.push(t);
+    }
+    alvos.forEach(function(t){
+      const frag = document.createDocumentFragment();
+      const resto = t.nodeValue;
+      const re = /\d[\d.\/\-,]*\d/g;
+      let ultimo = 0, m;
+      while ((m = re.exec(resto))) {
+        if (m.index > ultimo) frag.appendChild(document.createTextNode(resto.slice(ultimo, m.index)));
+        const s = document.createElement('span'); s.className = 'nw'; s.textContent = m[0];
+        frag.appendChild(s);
+        ultimo = m.index + m[0].length;
+      }
+      if (ultimo < resto.length) frag.appendChild(document.createTextNode(resto.slice(ultimo)));
+      t.parentNode.replaceChild(frag, t);
+    });
+  }
+  function paginar(blocos){
+    const wrap = document.getElementById('doc-pages');
+    wrap.style.zoom = 1;
+    wrap.innerHTML = '';
+    const pages = [makePageShell()];
+    wrap.appendChild(pages[0]);
+    let content = pages[0].querySelector('.doc-content');
+    blocos.forEach(function(html){
+      const w = document.createElement('div');
+      w.innerHTML = html;
+      const node = w.firstElementChild;
+      protegerNumeros(node);
+      content.appendChild(node);
+      if (content.scrollHeight > content.clientHeight && content.children.length > 1) {
+        content.removeChild(node);
+        const pg = makePageShell();
+        wrap.appendChild(pg);
+        pages.push(pg);
+        content = pg.querySelector('.doc-content');
+        content.appendChild(node);
+      }
+    });
+    pages.forEach(function(pg, i){ pg.querySelector('.doc-pagenum').textContent = (i + 1) + '/' + pages.length; });
+    ajustarZoom();
+    return pages;
+  }
+
+  // Na tela do celular (ou dentro da janelinha de aceite) a folha A4 diminui para caber na largura
+  function ajustarZoom(){
+    const wrap = document.getElementById('doc-pages');
+    const largura = 210 * 96 / 25.4;
+    const disponivel = document.documentElement.clientWidth - 24;
+    wrap.style.zoom = Math.min(1, disponivel / largura);
+  }
+  window.addEventListener('resize', ajustarZoom);
+
+  let termoAtual = null;
+  window.mostrarTermo = function(dados){
+    termoAtual = dados;
+    document.getElementById('msg').style.display = 'none';
+    paginar(montarBlocos(dados));
+    // a Poppins chega depois e ocupa mais espaço que a fonte reserva: medir de novo, senão
+    // o fim de uma página some escondido em vez de passar para a próxima
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function(){ if (termoAtual === dados) paginar(montarBlocos(dados)); });
+    }
+    document.getElementById('btn-imprimir').disabled = false;
+    document.getElementById('btn-pdf').disabled = false;
+  };
+  if (document.fonts && document.fonts.addEventListener) {
+    document.fonts.addEventListener('loadingdone', function(){ if (termoAtual) paginar(montarBlocos(termoAtual)); });
+  }
+
+  /* ---------- imprimir / PDF ---------- */
+  document.getElementById('btn-imprimir').addEventListener('click', function(){ window.print(); });
+
+  const PDF_OPTS = {margin:0, image:{type:'png'}, html2canvas:{scale:3, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
+  function aguardarFundos(pageEls){
+    return Promise.all(pageEls.map(function(pg){
+      const img = pg.querySelector('.doc-bg');
+      if (!img || (img.complete && img.naturalWidth > 0)) return Promise.resolve();
+      return new Promise(function(res){ img.addEventListener('load', res, {once:true}); img.addEventListener('error', res, {once:true}); });
+    }));
+  }
+  async function gerarPdf(){
+    const wrap = document.getElementById('doc-pages');
+    const pageEls = Array.prototype.slice.call(wrap.querySelectorAll('.doc-page'));
+    wrap.style.zoom = 1;   // a captura precisa da folha no tamanho real
+    try {
+      await aguardarFundos(pageEls);
+      const seed = document.createElement('div');
+      seed.style.cssText = 'width:2px;height:2px;';
+      document.body.appendChild(seed);
+      const pdf = await html2pdf().set(PDF_OPTS).from(seed).toPdf().get('pdf');
+      document.body.removeChild(seed);
+      while (pdf.internal.getNumberOfPages() > 1) pdf.deletePage(pdf.internal.getNumberOfPages());
+      for (let i = 0; i < pageEls.length; i++) {
+        pageEls[i].scrollIntoView({block:'start'});
+        await new Promise(function(r){ setTimeout(r, 30); });
+        const opts = JSON.parse(JSON.stringify(PDF_OPTS));
+        opts.html2canvas.scrollX = 0;
+        opts.html2canvas.scrollY = 0;
+        opts.html2canvas.windowWidth = Math.max(document.documentElement.scrollWidth, pageEls[i].scrollWidth + 100);
+        opts.html2canvas.windowHeight = Math.max(document.documentElement.scrollHeight, pageEls[i].scrollHeight + 200);
+        const canvas = await html2pdf().set(opts).from(pageEls[i]).toCanvas().get('canvas');
+        if (i > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+      pdf.save(nomeArquivo(termoAtual));
+    } finally {
+      ajustarZoom();
+    }
+  }
+  // Padrão de nome do escritório: (PARTE) – DOCUMENTO – CRIADOR – dd.mm.aa
+  function nomeArquivo(d){
+    const dt = paraData(d.assinadoEm) || new Date();
+    const data = String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0') + '.' + String(dt.getFullYear()).slice(2);
+    const criador = (String(d.entreguePorNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
+    return ['(' + String(d.colaboradorNome || 'COLABORADOR').toUpperCase() + ')', 'TERMO DE PATRIMÔNIO', String(d.codigo || '').toUpperCase(), criador, data]
+      .filter(Boolean).join(' – ').replace(/[\\\/:*?"<>|]/g, '-') + '.pdf';
+  }
+  document.getElementById('btn-pdf').addEventListener('click', function(){
+    const btn = this, st = document.getElementById('st');
+    btn.disabled = true;
+    st.textContent = 'Gerando PDF…';
+    gerarPdf().then(function(){ st.textContent = 'PDF baixado.'; })
+      .catch(function(e){ st.textContent = 'Erro ao gerar PDF: ' + e.message; })
+      .finally(function(){ btn.disabled = false; });
+  });
+
+  /* ---------- modo consulta: carrega o termo assinado ---------- */
+  if (PREVIEW) {
+    document.getElementById('msg').textContent = 'Montando a prévia do termo…';
+    return;
+  }
+  const termoId = params.get('termo');
+  if (!termoId) { document.getElementById('msg').textContent = 'Nenhum termo informado.'; return; }
+  if (typeof firebaseConfig === 'undefined') { document.getElementById('msg').textContent = 'Configuração pendente.'; return; }
+  firebase.initializeApp(firebaseConfig);
+  firebase.auth().onAuthStateChanged(function(user){
+    if (!user) { document.getElementById('msg').textContent = 'Faça login no Portal Fonseca e Braga para ver o termo.'; return; }
+    firebase.firestore().collection('termosPatrimonio').doc(termoId).get().then(function(doc){
+      if (!doc.exists) { document.getElementById('msg').textContent = 'Termo não encontrado.'; return; }
+      window.mostrarTermo(Object.assign({ id: doc.id }, doc.data()));
+    }).catch(function(err){
+      document.getElementById('msg').textContent = 'Não foi possível abrir o termo: ' + err.message;
+    });
+  });
+})();
+</script>
+</body>
+</html>
