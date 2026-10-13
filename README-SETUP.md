@@ -269,6 +269,18 @@ service cloud.firestore {
       return isAdmin() ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patrimonioVerTudo != false;
     }
+    function temPermGestao(campo) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/permissoesGestao/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/permissoesGestao/$(request.auth.uid)).data.get(campo, false) == true;
+    }
+    function podeCadastrarPatrimonio() {
+      return isAdmin() || temPermGestao('patrimonioCadastro');
+    }
+    match /permissoesGestao/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
     match /materiaisMarca/{docId} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
@@ -276,23 +288,46 @@ service cloud.firestore {
     }
     match /patrimonio/{itemId} {
       allow read: if isSignedIn() && (podeVerTudoPatrimonio()
+                    || podeCadastrarPatrimonio()
                     || resource.data.responsavelUid == request.auth.uid
                     || resource.data.pendenteParaUid == request.auth.uid);
-      allow create: if isSignedIn()
+      allow create: if podeCadastrarPatrimonio()
                     && request.resource.data.nome is string && request.resource.data.nome.size() > 0
                     && request.resource.data.codigo is string
                     && request.resource.data.criadoPorUid == request.auth.uid;
-      allow update: if isSignedIn();
+      allow update: if podeCadastrarPatrimonio()
+                    || (isSignedIn()
+                        && resource.data.pendenteParaUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['responsavelUid', 'responsavel', 'pendenteParaUid', 'pendente', 'ultimaRecusa', 'termoAtualId', 'atualizadoEm'])
+                        && (request.resource.data.responsavelUid == request.auth.uid
+                            || request.resource.data.responsavelUid == resource.data.responsavelUid))
+                    || (isSignedIn()
+                        && resource.data.responsavelUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['devolucao', 'devolucaoPendente', 'atualizadoEm']));
       allow delete: if isAdmin();
     }
     match /termosPatrimonio/{termoId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.colaboradorUid == request.auth.uid);
+      allow read: if podeCadastrarPatrimonio() || (isSignedIn() && resource.data.colaboradorUid == request.auth.uid);
       allow create: if isSignedIn()
-                    && request.resource.data.colaboradorUid == request.auth.uid
                     && request.resource.data.itemId is string
                     && request.resource.data.assinaturaPng is string
-                    && request.resource.data.assinadoEm == request.time;
+                    && request.resource.data.assinadoEm == request.time
+                    && ((request.resource.data.colaboradorUid == request.auth.uid
+                         && request.resource.data.get('tipoTermo', 'entrega') == 'entrega')
+                        || (podeCadastrarPatrimonio()
+                            && request.resource.data.tipoTermo == 'devolucao'
+                            && request.resource.data.recebidoPorUid == request.auth.uid));
       allow update: if false;
+      allow delete: if isAdmin();
+    }
+    match /senhasDiversas/{docId} {
+      allow read, create, update: if isAdmin() || temPermGestao('senhasDiversas');
+      allow delete: if isAdmin();
+    }
+    match /senhasRestritas/{docId} {
+      allow read, create, update: if isAdmin() || temPermGestao('senhasRestritas');
       allow delete: if isAdmin();
     }
     match /contadores/{contadorId} {
@@ -369,6 +404,8 @@ service cloud.firestore {
 > As regras de `patrimonio`, `contadores` e `compras` (usadas pela ferramenta **Gestão**, sub-abas "Patrimônio" e "Controle de Compras") liberam qualquer usuário logado a cadastrar/editar itens de patrimônio e a abrir solicitações de compra, mas travam as ações financeiras/administrativas para admin. `patrimonio/{itemId}`: cria (com `criadoPorUid` = o próprio uid, e obrigando `nome`/`codigo` preenchidos) e edita um item qualquer logado; só admin apaga (a ferramenta só mostra o botão "Excluir" para admin). **A leitura tem uma restrição condicional, `podeVerTudoPatrimonio()`**: por padrão todo mundo lê o inventário inteiro (`patrimonioVerTudo` ausente ou `true` no próprio `users/{uid}`, ou ser admin); um admin pode restringir uma pessoa específica a só ler os itens em que ela mesma é `responsavelUid` — desmarcando essa pessoa no modal "⚙ Quem vê tudo" da ferramenta (botão que grava `patrimonioVerTudo:false` no `users/{uid}` dela; a escrita nesse campo já é coberta pela regra de `users` sem precisar mudar nada lá, porque o ramo `isAdmin()` de `allow update` de `users` não trava campos). `contadores/{contadorId}` guarda só o contador sequencial (`seq`) usado pra *sugerir* o próximo código (`PAT-0001`, `PAT-0002`, ...) — qualquer logado pode incrementá-lo, já que criar um item de patrimônio depende disso. **O código deixou de ser gerado automaticamente**: desde que o escritório passou a comprar etiquetas colávei numeradas, o campo "Número da etiqueta (código)" no cadastro/edição é digitado à mão, pra bater exatamente com o número físico da etiqueta colada no item — a aba "Etiqueta" (que imprimia uma etiqueta própria do Portal) foi removida. O contador do Firestore só serve mais pra pré-preencher uma sugestão ao abrir "+ Novo item" (ninguém é obrigado a usá-la) e pra reservar códigos sequenciais de verdade durante a importação em lote por NF (onde os itens são criados sem ninguém digitar nada ainda — o código é editado depois, quando a etiqueta física for colada).
 >
 > **Responsável com aceite e termo assinado** (Gestão > Patrimônio): o responsável não muda mais direto. O admin clica no nome do responsável na lista e escolhe um usuário do Portal (clientes e acessos revogados ficam de fora); se a pessoa não tiver `tipoColaborador` (`clt`, `estagiario`, `associado` — campo "Tipo de colaborador" nos Dados cadastrais do painel de Administração, gravado em `users/{uid}` e espelhado em `organograma/{uid}`), o envio é bloqueado com mensagem. O envio grava no item `pendenteParaUid` + `pendente{...}` (dados do termo: cargo/setor, curso/supervisor ou área, acessórios, estado, observações, quem enviou). Quem recebe vê um aviso na Gestão (tela inicial e Patrimônio), abre a prévia do termo do seu tipo, confirma a **senha do Portal** (`reauthenticateWithCredential`) e assina num quadro; só então um `termosPatrimonio/{id}` é criado (com CPF/OAB lidos do próprio `users/{uid}`, a assinatura em PNG e `assinadoEm`) e o item passa para `responsavelUid` dela, com `termoAtualId`. A pessoa também pode recusar (`ultimaRecusa`). Os termos são vistos em `tools/gestao/termo-patrimonio.html` (mesmo timbrado, fonte e tamanho do Criador de Documentos; imprimir/baixar PDF). **Regras novas**: leitura de `patrimonio` também para `pendenteParaUid == uid`, e o bloco `termosPatrimonio` (admin lê tudo, cada um lê os seus; cria só o próprio colaborador; ninguém edita).
+
+> **Permissões da Gestão (`permissoesGestao/{uid}`)** — só o admin grava, cada um lê a sua: `patrimonioCadastro` (cadastrar/editar/importar NF/baixar NF/enviar itens/receber devoluções — botão "⚙ Quem cadastra" no Patrimônio), `senhasDiversas` e `senhasRestritas` (botão "⚙ Quem tem acesso" em cada página de senhas). Ficam fora de `users/{uid}` de propósito: o próprio usuário pode editar campos do seu `users/{uid}`, então uma permissão ali poderia ser concedida por ele mesmo. **Devolução**: quem está com o item pede (`devolucao{...}` + `devolucaoPendente:true` — a regra só deixa o responsável mexer nesses campos); quem cadastra confere, confirma a senha e assina o recebimento, criando um `termosPatrimonio` com `tipoTermo:'devolucao'` e `recebidoPorUid`, e o item volta ao estoque. **Senhas** (`senhasDiversas`, `senhasRestritas`): ler/incluir/editar para admin ou quem tem a permissão; excluir só admin. As senhas nunca vão para o repositório (o site é público): o admin importa o CSV da planilha pela própria tela ("📥 Importar planilha").
 
 > **Importar de Nota Fiscal (XML ou PDF)**, botão na própria aba Patrimônio: lê o arquivo da NF-e direto no navegador — sem IA, sem servidor, sem mandar dado nenhum pra fora. **XML** é lido com `DOMParser` (exato, 100% confiável). **PDF/DANFE** é lido com a biblioteca `pdf.js` (carregada do cdnjs): reconstrói as linhas da tabela de produtos pela posição (x,y) de cada trecho de texto e procura linhas com 2+ valores em R$ — é "melhor esforço", por isso a tela avisa que vale conferir com atenção antes de confirmar. Extrai nome/valor/quantidade de cada produto (mais fornecedor e data de emissão, que viram a observação do item), mostra numa lista pra conferir/ajustar categoria e quantidade, e só então cria os itens no Firestore — cada unidade de uma quantidade >1 vira um item próprio, com seu código e sua etiqueta (ex.: 2 notebooks na mesma nota viram 2 itens `PAT-XXXX` separados). O arquivo original (XML ou PDF, até ~900KB — teto do Firestore por documento) fica anexado em base64 em cada item criado (campo `notaFiscalArquivo`), com um botão "📎 Baixar NF" na lista; o mesmo campo de anexo também existe no modal de editar/criar item manualmente, pra quem quiser guardar a nota de um item cadastrado à mão. Não precisou de regra nova no Firestore: os documentos criados já respeitam a regra de `patrimonio` que já existia (`criadoPorUid` = o próprio uid, `nome`/`codigo` preenchidos). Quando a categoria do item é "Informática", o formulário também mostra campos de versão e chave de licença de Windows e Office (`windowsVersao`, `windowsLicenca`, `officeVersao`, `officeLicenca`) — preenchimento manual, a NF não costuma trazer essa informação estruturada.
 >

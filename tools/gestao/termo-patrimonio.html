@@ -121,7 +121,61 @@
   function label(t){ return '<div class="doc-label">' + t + '</div>'; }
 
   /* ---------- texto de cada termo (fiel aos modelos do escritório) ---------- */
+  /* ---------- termo de devolução: assina quem recebe de volta (admin ou pessoa autorizada) ---------- */
+  function montarDevolucao(d){
+    const assinado = paraData(d.assinadoEm) || (d.assinadoEmISO ? new Date(d.assinadoEmISO) : null);
+    const dataRef = assinado || new Date();
+    const solicitado = paraData(d.devolucaoSolicitadaEm);
+    const b = [];
+    b.push('<div class="doc-firma">FONSECA E BRAGA SOCIEDADE DE ADVOGADOS</div>');
+    b.push('<div class="doc-h1">Termo de devolução de patrimônio</div>');
+
+    b.push(label('1. IDENTIFICAÇÃO DE QUEM DEVOLVE'));
+    b.push('<div class="box-table">' +
+      row(cell('Nome', v(d.colaboradorNome))) +
+      row(cell('CPF', v(d.cpf)), cell('Vínculo', v(TIPO_LABEL[d.tipoColaborador] || ''))) +
+      row(cell('Data da devolução', esc(dataBR(dataRef)))) +
+    '</div>');
+
+    const estado = ESTADOS.map(function(e){ return '(' + (d.estado === e[0] ? 'X' : '&nbsp;&nbsp;') + ') ' + e[1]; }).join('&nbsp;&nbsp;&nbsp;');
+    b.push(label('2. IDENTIFICAÇÃO DO PATRIMÔNIO DEVOLVIDO'));
+    b.push('<div class="box-table">' +
+      row(cell('Equipamento', v(d.equipamento))) +
+      row(cell('Marca/modelo', v(d.marcaModelo))) +
+      row(cell('Nº patrimônio/QR Code', v(d.codigo)), cell('Nº de série/IMEI', v(d.numeroSerie))) +
+      row(cell('Acessórios entregues', v(d.acessorios))) +
+      row(cell('Estado na devolução', estado)) +
+      row(cell('Observações', v(d.observacoes))) +
+    '</div>');
+
+    b.push(label('3. CONFERÊNCIA E RECEBIMENTO'));
+    b.push(p('O escritório, por seu representante abaixo identificado, declara ter recebido de volta o patrimônio acima descrito, conferido no ato da devolução, no estado de conservação assinalado.'));
+    b.push(p('Eventuais avarias, faltas ou divergências identificadas na conferência constam do campo "Observações" e serão apuradas na forma do termo de entrega e da legislação aplicável.'));
+    b.push(p('Com o recebimento, cessa a responsabilidade de quem devolve pela guarda do bem a partir desta data, ressalvadas as ocorrências anteriores eventualmente apuradas.'));
+
+    b.push(label('4. DECLARAÇÃO E ASSINATURAS'));
+    b.push(p('<strong>Local e data:</strong> ' + esc(d.cidade || 'Uberlândia/MG') + ', ' + esc(dataExtenso(dataRef)) + '.'));
+    const assinaturaRec = d.assinaturaPng
+      ? '<img src="' + esc(d.assinaturaPng) + '" alt="Assinatura">'
+      : '<span class="ph">(a assinatura entra aqui ao assinar)</span>';
+    const metaRec = assinado
+      ? 'Recebimento assinado eletronicamente no Portal em ' + esc(dataBR(assinado)) + ' às ' + esc(String(assinado.getHours()).padStart(2,'0') + ':' + String(assinado.getMinutes()).padStart(2,'0')) + ', com confirmação da senha pessoal.'
+      : 'Assinatura eletrônica com confirmação da senha pessoal do Portal.';
+    b.push('<div class="sig-pair">' +
+      '<div class="sig-line"><div class="sig-img">' + assinaturaRec + '</div><div class="rule"></div>' +
+        '<div class="name">' + v(d.recebidoPorNome) + '</div><div class="doc">Recebido por (pelo escritório)</div>' +
+        '<div class="meta">' + metaRec + '</div></div>' +
+      '<div class="sig-line"><div class="sig-img"></div><div class="rule"></div>' +
+        '<div class="name">' + v(d.colaboradorNome) + '</div><div class="doc">Devolvido por' + (d.cpf ? ' — CPF ' + esc(d.cpf) : '') + '</div>' +
+        '<div class="meta">' + (solicitado ? 'Devolução solicitada pelo Portal em ' + esc(dataBR(solicitado)) + '.' : 'Devolução solicitada pelo Portal.') + '</div></div>' +
+    '</div>');
+    b.push('<div class="rodape-termo">Documento de controle patrimonial interno — Fonseca e Braga Sociedade de Advogados.' +
+      (d.id ? '<span class="cod">Código de verificação do termo: ' + esc(d.id) + (d.termoEntregaId ? ' · termo de entrega: ' + esc(d.termoEntregaId) : '') + '</span>' : '') + '</div>');
+    return b;
+  }
+
   function montarBlocos(d){
+    if (d.tipoTermo === 'devolucao') return montarDevolucao(d);
     const tipo = d.tipoColaborador;
     const assinado = paraData(d.assinadoEm) || (d.assinadoEmISO ? new Date(d.assinadoEmISO) : null);
     const dataRef = assinado || new Date();
@@ -386,8 +440,8 @@
   function nomeArquivo(d){
     const dt = paraData(d.assinadoEm) || new Date();
     const data = String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0') + '.' + String(dt.getFullYear()).slice(2);
-    const criador = (String(d.entreguePorNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
-    return ['(' + String(d.colaboradorNome || 'COLABORADOR').toUpperCase() + ')', 'TERMO DE PATRIMÔNIO', String(d.codigo || '').toUpperCase(), criador, data]
+    const criador = (String(d.entreguePorNome || d.recebidoPorNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
+    return ['(' + String(d.colaboradorNome || 'COLABORADOR').toUpperCase() + ')', d.tipoTermo === 'devolucao' ? 'TERMO DE DEVOLUÇÃO DE PATRIMÔNIO' : 'TERMO DE PATRIMÔNIO', String(d.codigo || '').toUpperCase(), criador, data]
       .filter(Boolean).join(' – ').replace(/[\\\/:*?"<>|]/g, '-') + '.pdf';
   }
   document.getElementById('btn-pdf').addEventListener('click', function(){

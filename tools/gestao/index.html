@@ -173,8 +173,15 @@
     color:#3b1d0e;background:linear-gradient(180deg,#f7e2ad 0%,#e3bd77 50%,#c79a54 100%);border-color:#f3d496;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 16px rgba(240,190,110,.55),0 4px 10px rgba(0,0,0,.45);
   }
+  /* 4 cards (com o de Senhas): uma linha só no computador, 2x2 em tela média */
+  .hub-grid.c4{grid-template-columns:repeat(4,1fr);gap:24px;}
+  .hub-grid.c4 .hub-card-title{font-size:1.32rem;}
+  .hub-grid.c4 .hub-card-desc{font-size:1.02rem;}
+  @media(max-width:1180px) and (min-width:861px){
+    .hub-grid.c4{grid-template-columns:repeat(2,1fr);max-width:760px;margin:0 auto;}
+  }
   @media(max-width:860px){
-    .hub-grid{grid-template-columns:1fr;max-width:380px;margin:0 auto;gap:26px;}
+    .hub-grid,.hub-grid.c4{grid-template-columns:1fr;max-width:380px;margin:0 auto;gap:26px;}
     .hub-sub{margin-bottom:36px;}
   }
   /* celular: cada card vira uma faixa (imagem à esquerda, texto à direita) — os 3 cabem sem rolar */
@@ -192,6 +199,17 @@
     .hub-card-title{grid-column:2;grid-row:2;font-size:1.05rem;margin:10px 0 2px;padding:0;}
     .hub-card-desc{grid-column:2;grid-row:3;font-size:.82rem;line-height:1.25;padding:0;margin:0 0 8px;}
     .hub-card-btn{grid-column:2;grid-row:4;justify-self:start;font-size:.85rem;padding:3px 14px;margin-bottom:10px;}
+    /* com 4 cards as faixas ficam mais baixas para todas caberem na tela do celular */
+    .hub-grid.c4{gap:10px;}
+    .hub-grid.c4 .hub-card{grid-template-columns:40% 1fr;}
+    .hub-grid.c4 .hub-card-title{font-size:1rem;margin-top:8px;}
+    .hub-grid.c4 .hub-card-desc{font-size:.78rem;margin-bottom:6px;}
+    .hub-grid.c4 .hub-card-btn{font-size:.8rem;padding:2px 12px;margin-bottom:8px;}
+  }
+  @media(max-width:600px) and (max-height:700px){
+    .hub-view{padding-top:10px;}
+    .hub-title{font-size:1.6rem;}
+    .hub-sub{margin-bottom:12px;}
   }
 
   /* ---- módulo genérico ---- */
@@ -343,6 +361,17 @@
   .termo-frame-wrap.alto iframe{height:74vh;}
   .assinatura-canvas{display:block;width:100%;height:170px;background:#fff;border:1px solid var(--line-strong);border-radius:10px;
     touch-action:none;cursor:crosshair;}
+  /* ---- senhas ---- */
+  .sn-cel{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
+  .sn-cel .sn-txt{word-break:break-all;}
+  .sn-senha{font-family:ui-monospace,Consolas,monospace;letter-spacing:.03em;}
+  .icon-btn{background:transparent;border:1px solid var(--line-strong);border-radius:8px;color:var(--muted);cursor:pointer;
+    padding:3px 7px;font-size:.78rem;line-height:1;flex:0 0 auto;}
+  .icon-btn:hover{color:var(--paper);border-color:rgba(212,175,106,.5);}
+  .sn-obs a{color:var(--gold);word-break:break-all;}
+  .sn-obs2{display:block;font-size:.72rem;color:var(--muted);margin-top:3px;}
+  .copiado-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;background:#1f1a14;color:#f3e6c8;
+    border:1px solid rgba(212,175,106,.5);border-radius:10px;padding:8px 16px;font-size:.82rem;box-shadow:0 10px 24px rgba(0,0,0,.5);}
   .termos-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.82rem;}
   .termos-row .tr-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
 
@@ -443,6 +472,13 @@
           <img class="hub-art" src="img/compras.jpg" alt="">
           <div class="hub-card-title">Controle de Compras</div>
           <div class="hub-card-desc">Solicitações, aprovações e histórico de aquisições</div>
+          <span class="hub-card-btn">Acessar →</span>
+        </div>
+        <!-- só aparece para quem o admin liberou (Senhas diversas e/ou restritas) -->
+        <div class="hub-card" data-goto="senhas" role="button" tabindex="0" id="hub-card-senhas" style="display:none;">
+          <img class="hub-art" src="img/senhas.jpg" alt="">
+          <div class="hub-card-title">Senhas</div>
+          <div class="hub-card-desc">Acessos e senhas dos sistemas do escritório</div>
           <span class="hub-card-btn">Acessar →</span>
         </div>
       </div>
@@ -678,6 +714,98 @@
   </div>
 </div>
 
+<!-- Modal: quem está com o item pede para devolver -->
+<div class="modal-backdrop" id="pat-devol-backdrop">
+  <div class="modal">
+    <h3>Devolver patrimônio</h3>
+    <p style="font-size:.85rem;color:var(--muted);margin-top:-8px;" id="pat-devol-label"></p>
+    <div class="field">
+      <label>Estado de conservação na devolução</label>
+      <select id="pat-devol-estado">
+        <option value="novo">Novo</option>
+        <option value="bom" selected>Bom</option>
+        <option value="regular">Regular</option>
+        <option value="avarias">Com avarias</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Observações (faltas, defeitos, acessórios devolvidos…)</label>
+      <textarea id="pat-devol-obs"></textarea>
+    </div>
+    <p style="font-size:.74rem;color:var(--muted);margin:0;">O item continua com você até o administrador (ou a pessoa autorizada) conferir e assinar o recebimento.</p>
+    <div class="msg-err" id="pat-devol-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pat-devol-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pat-devol-confirmar">Solicitar devolução</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal genérico: quem tem uma permissão da Gestão (cadastrar patrimônio, senhas…) -->
+<div class="modal-backdrop" id="perm-backdrop">
+  <div class="modal">
+    <h3 id="perm-titulo"></h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;" id="perm-desc"></p>
+    <div id="perm-lista" style="max-height:50vh;overflow-y:auto;margin:14px 0;"></div>
+    <div class="msg-err" id="perm-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="perm-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="perm-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: nova/editar senha -->
+<div class="modal-backdrop" id="sn-modal-backdrop">
+  <div class="modal">
+    <h3 id="sn-modal-titulo">Nova senha</h3>
+    <div class="field">
+      <label>Sistema *</label>
+      <input type="text" id="sn-sistema" placeholder="Ex: PJE TJMG">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Usuário / login</label>
+        <input type="text" id="sn-usuario" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="text" id="sn-senha" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="field">
+      <label>Observações / link de acesso</label>
+      <input type="text" id="sn-obs" placeholder="https://…">
+    </div>
+    <div class="field">
+      <label>Observação extra</label>
+      <input type="text" id="sn-obs2">
+    </div>
+    <div class="msg-err" id="sn-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="sn-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="sn-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: importar senhas de planilha (CSV) -->
+<div class="modal-backdrop" id="sn-import-backdrop">
+  <div class="modal">
+    <h3>Importar planilha de senhas</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;">Envie o arquivo .csv da planilha (no Google Planilhas: Arquivo → Fazer download → CSV). As colunas usadas são SISTEMA, USUÁRIO, SENHA, OBS e a coluna seguinte.</p>
+    <div class="field">
+      <input type="file" id="sn-import-file" accept=".csv,text/csv">
+    </div>
+    <div id="sn-import-preview" style="font-size:.84rem;"></div>
+    <div class="msg-err" id="sn-import-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="sn-import-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="sn-import-confirmar" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: registrar chegada -->
 <div class="modal-backdrop" id="cp-cheg-backdrop">
   <div class="modal">
@@ -738,6 +866,11 @@
   let meuNome = '';
   let meuUid = null;
   let meuPatrimonioVerTudo = true;   // false só se um admin restringiu essa pessoa a ver só o próprio patrimônio
+  // Permissões da Gestão que o admin dá a cada pessoa (coleção permissoesGestao/{uid}):
+  // cadastrar/editar patrimônio (e receber devoluções) e ver as senhas diversas / restritas.
+  let minhasPerms = { patrimonioCadastro: false, senhasDiversas: false, senhasRestritas: false };
+  function podeCadastrarPat(){ return souAdmin || minhasPerms.patrimonioCadastro === true; }
+  function temAcesso(campo){ return souAdmin || minhasPerms[campo] === true; }
 
   function escapeHtml(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -788,19 +921,22 @@
   const SUBTABS = [
     { id: 'colaboradores', label: 'Colaboradores', type: 'iframe', url: '../organograma/index.html' },
     { id: 'patrimonio', label: 'Patrimônio', type: 'patrimonio' },
-    { id: 'compras', label: 'Controle de Compras', type: 'compras' }
+    { id: 'compras', label: 'Controle de Compras', type: 'compras' },
+    { id: 'senhas-diversas', label: 'Senhas diversas', type: 'senhas', colecao: 'senhasDiversas', perm: 'senhasDiversas' },
+    { id: 'senhas-restritas', label: 'Senhas restritas', type: 'senhas', colecao: 'senhasRestritas', perm: 'senhasRestritas' }
   ];
 
   // O Portal (index.html raiz) pode restringir quais sub-abas este usuário
   // enxerga, passando ?_subtabs=colaboradores,patrimonio na URL do iframe.
-  // Sem esse parâmetro, mostra tudo.
+  // Sem esse parâmetro, mostra tudo. As de Senhas não dependem disso: aparecem
+  // só para quem o admin liberou dentro da própria Gestão (⚙ Quem tem acesso).
   function subtabsPermitidas(){
     const params = new URLSearchParams(window.location.search);
     const raw = params.get('_subtabs');
     if (!raw) return SUBTABS;
     const permitidas = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-    const filtradas = SUBTABS.filter(function(t){ return permitidas.indexOf(t.id) !== -1; });
-    return filtradas.length ? filtradas : SUBTABS;
+    const filtradas = SUBTABS.filter(function(t){ return t.type === 'senhas' || permitidas.indexOf(t.id) !== -1; });
+    return filtradas.some(function(t){ return t.type !== 'senhas'; }) ? filtradas : SUBTABS;
   }
 
   const ATIVAS = subtabsPermitidas();
@@ -812,15 +948,35 @@
 
   /* hub navigation */
   Array.prototype.forEach.call(hubView.querySelectorAll('[data-goto]'), function(card){
+    if (card.dataset.goto === 'senhas') return;   // controlado por aplicarPermissoesNaTela()
     if (!ATIVAS.some(function(t){ return t.id === card.dataset.goto; })) card.style.display = 'none';
   });
   function openFromHub(e){
     const card = e.target.closest('[data-goto]');
     if (!card) return;
+    let destino = card.dataset.goto;
+    if (destino === 'senhas') {
+      const primeira = ATIVAS.find(function(t){ return t.type === 'senhas' && temAcesso(t.perm); });
+      if (!primeira) return;
+      destino = primeira.id;
+    }
     hubView.style.display = 'none';
     panelsEl.style.display = '';
     nav.style.display = '';
-    selectSubtab(card.dataset.goto);
+    selectSubtab(destino);
+  }
+
+  // Mostra o card/sub-abas de Senhas só para quem tem acesso e ajusta a grade para 4 cards
+  function aplicarPermissoesNaTela(){
+    ATIVAS.forEach(function(t){
+      if (t.type !== 'senhas') return;
+      const btn = nav.querySelector('[data-subtab-id="' + t.id + '"]');
+      if (btn) btn.style.display = temAcesso(t.perm) ? '' : 'none';
+    });
+    const algumaSenha = ATIVAS.some(function(t){ return t.type === 'senhas' && temAcesso(t.perm); });
+    document.getElementById('hub-card-senhas').style.display = algumaSenha ? '' : 'none';
+    const visiveis = Array.prototype.filter.call(hubView.querySelectorAll('.hub-card'), function(c){ return c.style.display !== 'none'; }).length;
+    hubView.querySelector('.hub-grid').classList.toggle('c4', visiveis >= 4);
   }
   hubView.addEventListener('click', openFromHub);
   hubView.addEventListener('keydown', function(e){
@@ -842,6 +998,7 @@
     const btn = document.createElement('button');
     btn.textContent = t.label;
     btn.dataset.subtabId = t.id;
+    if (t.type === 'senhas') btn.style.display = 'none';
     btn.addEventListener('click', function(){ selectSubtab(t.id); });
     nav.appendChild(btn);
 
@@ -850,6 +1007,7 @@
     panel.id = 'panel-' + t.id;
     if (t.type === 'patrimonio') panel.innerHTML = '<div class="mod-scroll" id="pat-scroll"></div>';
     if (t.type === 'compras') panel.innerHTML = '<div class="mod-scroll" id="cp-scroll"></div>';
+    if (t.type === 'senhas') panel.innerHTML = '<div class="mod-scroll" id="sn-scroll-' + t.id + '"></div>';
     panelsEl.appendChild(panel);
   });
 
@@ -882,6 +1040,9 @@
     } else if (t && t.type === 'compras' && !initedModulo.compras) {
       initedModulo.compras = true;
       quandoPerfilPronto(initCompras);
+    } else if (t && t.type === 'senhas' && !initedModulo[t.id]) {
+      initedModulo[t.id] = true;
+      quandoPerfilPronto(function(){ initSenhas(t); });
     }
   }
 
@@ -911,6 +1072,7 @@
   let patTransferindoId = null;
   let orgUsuarios = [];   // [{uid, nome}] — espelho de tools/organograma, usado no filtro por responsável
   let meusPendentes = []; // itens enviados para mim, aguardando meu aceite + assinatura do termo
+  let devolucoesPendentes = []; // itens que alguém pediu para devolver (só para quem cadastra patrimônio)
 
   const STATUS_PAT_LABEL = { ativo: 'Ativo', manutencao: 'Em manutenção', emprestado: 'Emprestado', baixado: 'Baixado / descartado' };
 
@@ -924,9 +1086,10 @@
         '</p></div>' +
         '<div class="actions-cell">' +
           (souAdmin ? '<button type="button" class="btn small" id="pat-permissoes-btn">⚙ Quem vê tudo</button>' : '') +
+          (souAdmin ? '<button type="button" class="btn small" id="pat-cadastro-perm-btn">⚙ Quem cadastra</button>' : '') +
           '<button type="button" class="btn small" id="pat-termos-btn">📄 Termos assinados</button>' +
-          '<button type="button" class="btn small" id="pat-import-btn">📥 Importar NF (XML)</button>' +
-          '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' +
+          (podeCadastrarPat() ? '<button type="button" class="btn small" id="pat-import-btn">📥 Importar NF (XML)</button>' : '') +
+          (podeCadastrarPat() ? '<button type="button" class="btn primary" id="pat-novo-btn">+ Novo item</button>' : '') +
         '</div>' +
       '</div>' +
       '<div class="pend-aceite-box"></div>' +
@@ -967,6 +1130,11 @@
     if (filtroRespSel) filtroRespSel.addEventListener('change', function(e){ patFiltroResponsavel = e.target.value; renderPatrimonio(); });
     document.getElementById('pat-imprimir-btn').addEventListener('click', imprimirPatrimonio);
     document.getElementById('pat-termos-btn').addEventListener('click', abrirListaTermos);
+    const cadPermBtn = document.getElementById('pat-cadastro-perm-btn');
+    if (cadPermBtn) cadPermBtn.addEventListener('click', function(){
+      abrirModalPermissao('patrimonioCadastro', 'Quem cadastra patrimônio',
+        'Quem estiver marcado pode cadastrar, editar, importar NF, baixar NF, enviar itens e receber devoluções (assinando o recebimento). O admin sempre pode.');
+    });
     renderPendentesAceite();
 
     db.collection('organograma').onSnapshot(function(snap){
@@ -1085,9 +1253,12 @@
         '<td class="num">' + formatBRL(it.valor) + '</td>' +
         '<td><span class="pill ' + (it.status || 'ativo') + '">' + (STATUS_PAT_LABEL[it.status] || 'Ativo') + '</span></td>' +
         '<td class="actions-cell">' +
-          (it.notaFiscalArquivo ? '<a class="btn small" style="display:inline-block;text-decoration:none;" href="' + it.notaFiscalArquivo + '" download="' + escapeHtml(it.notaFiscalNome || ('NF-' + it.codigo)) + '">📎 Baixar NF</a>' : '') +
-          (it.termoAtualId && (souAdmin || it.responsavelUid === meuUid) ? '<button type="button" class="btn small" data-pat-termo="' + escapeHtml(it.termoAtualId) + '">📄 Termo</button>' : '') +
-          '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' +
+          (it.notaFiscalArquivo && podeCadastrarPat() ? '<a class="btn small" style="display:inline-block;text-decoration:none;" href="' + it.notaFiscalArquivo + '" download="' + escapeHtml(it.notaFiscalNome || ('NF-' + it.codigo)) + '">📎 Baixar NF</a>' : '') +
+          (it.termoAtualId && (podeCadastrarPat() || it.responsavelUid === meuUid) ? '<button type="button" class="btn small" data-pat-termo="' + escapeHtml(it.termoAtualId) + '">📄 Termo</button>' : '') +
+          (it.responsavelUid === meuUid && !it.devolucaoPendente ? '<button type="button" class="btn small" data-pat-devolver="' + it.id + '">↩ Devolver</button>' : '') +
+          (it.responsavelUid === meuUid && it.devolucaoPendente ? '<button type="button" class="btn small" data-pat-cancelar-devol="' + it.id + '">Cancelar devolução</button>' : '') +
+          (podeCadastrarPat() && it.devolucaoPendente ? '<button type="button" class="btn small primary" data-pat-receber="' + it.id + '">✍ Receber devolução</button>' : '') +
+          (podeCadastrarPat() ? '<button type="button" class="btn small" data-pat-editar="' + it.id + '">Editar</button>' : '') +
           (souAdmin ? '<button type="button" class="btn small danger" data-pat-excluir="' + it.id + '">Excluir</button>' : '') +
         '</td>' +
       '</tr>';
@@ -1101,6 +1272,19 @@
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-termo]'), function(b){
       b.addEventListener('click', function(){ abrirTermo(b.dataset.patTermo); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-devolver]'), function(b){
+      b.addEventListener('click', function(){ abrirDevolucao(patItens.find(function(x){ return x.id === b.dataset.patDevolver; })); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-cancelar-devol]'), function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Cancelar o pedido de devolução?')) return;
+        db.collection('patrimonio').doc(b.dataset.patCancelarDevol).update({ devolucao: null, devolucaoPendente: false, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+          .catch(function(err){ alert('Erro: ' + err.message); });
+      });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-receber]'), function(b){
+      b.addEventListener('click', function(){ abrirRecebimentoDevolucao(b.dataset.patReceber); });
     });
     Array.prototype.forEach.call(tbody.querySelectorAll('[data-pat-excluir]'), function(b){
       b.addEventListener('click', function(){
@@ -1569,14 +1753,25 @@
   function celulaResponsavel(it){
     let extra = '';
     if (it.pendente) extra = '<span class="resp-pend">⏳ aguardando aceite de ' + escapeHtml(it.pendente.paraNome || '') + '</span>';
-    else if (souAdmin && it.ultimaRecusa) extra = '<span class="resp-pend" style="color:var(--rej-text);">✖ recusado por ' + escapeHtml(it.ultimaRecusa.porNome || '') + ' em ' + formatDataBR(it.ultimaRecusa.em) + '</span>';
-    if (!souAdmin) return (it.responsavel ? escapeHtml(it.responsavel) : '<span style="color:var(--muted);">Estoque</span>') + extra;
+    else if (podeCadastrarPat() && it.ultimaRecusa) extra = '<span class="resp-pend" style="color:var(--rej-text);">✖ recusado por ' + escapeHtml(it.ultimaRecusa.porNome || '') + ' em ' + formatDataBR(it.ultimaRecusa.em) + '</span>';
+    if (it.devolucaoPendente) extra += '<span class="resp-pend">↩ devolução solicitada em ' + formatDataBR(it.devolucao && it.devolucao.solicitadoEm) + '</span>';
+    if (!podeCadastrarPat()) return (it.responsavel ? escapeHtml(it.responsavel) : '<span style="color:var(--muted);">Estoque</span>') + extra;
     return '<button type="button" class="resp-link" data-pat-resp="' + it.id + '" title="Clique para mudar o responsável">' +
       (it.responsavel ? escapeHtml(it.responsavel) : 'Estoque — atribuir') + '</button>' + extra;
   }
 
   // Só usuários do Portal podem ser responsáveis (clientes e acessos revogados/pendentes ficam de fora)
   function carregarUsuariosElegiveis(){
+    // Quem cadastra patrimônio sem ser admin não lê users/*: usa o espelho do organograma e
+    // lista só quem já tem Tipo de colaborador (o admin define nos Dados cadastrais)
+    if (!souAdmin) {
+      return db.collection('organograma').get().then(function(snap){
+        usuariosElegiveis = snap.docs.map(function(d){ const x = d.data(); return { uid: d.id, nome: String(x.displayName || '').trim(), tipo: x.tipoColaborador || '', depto: x.deptoAtual || '' }; })
+          .filter(function(u){ return u.nome && u.tipo; })
+          .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
+        return usuariosElegiveis;
+      });
+    }
     return db.collection('users').get().then(function(snap){
       usuariosElegiveis = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
         .filter(function(u){ return u.role !== 'cliente' && (u.role === 'admin' || (u.tabs || []).length > 0); })
@@ -1588,7 +1783,7 @@
   }
 
   function abrirModalTransferencia(item){
-    if (!item || !souAdmin) return;
+    if (!item || !podeCadastrarPat()) return;
     patTransferindoId = item.id;
     document.getElementById('pat-transf-item-label').textContent = item.nome + ' (' + item.codigo + ') — hoje com: ' + (item.responsavel || 'ninguém (estoque)');
     const pendBox = document.getElementById('pat-transf-pendente');
@@ -1671,7 +1866,7 @@
     let p;
     if (uid === '') {
       if (!confirm('Devolver este item ao estoque (sem responsável)?')) return;
-      p = ref.update({ responsavelUid: null, responsavel: '', pendenteParaUid: null, pendente: null, termoAtualId: null, atualizadoEm: ts });
+      p = ref.update({ responsavelUid: null, responsavel: '', pendenteParaUid: null, pendente: null, termoAtualId: null, devolucao: null, devolucaoPendente: false, atualizadoEm: ts });
     } else {
       const u = usuariosElegiveis.find(function(x){ return x.uid === uid; });
       if (!u) return erro('Usuário não encontrado.');
@@ -1702,23 +1897,79 @@
       renderPendentesAceite();
     }, function(){ /* regra nova ainda não publicada no Firestore: só não mostra o aviso */ });
   }
+  // Quem cadastra patrimônio (ou o admin) vê as devoluções esperando a conferência/assinatura
+  function ouvirDevolucoesPendentes(){
+    db.collection('patrimonio').where('devolucaoPendente', '==', true).onSnapshot(function(snap){
+      devolucoesPendentes = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      renderPendentesAceite();
+    }, function(){ /* regra nova ainda não publicada */ });
+  }
   function renderPendentesAceite(){
     const n = meusPendentes.length;
-    const html = !n ? '' :
+    const nd = devolucoesPendentes.length;
+    let html = '';
+    if (n) html +=
       '<div class="pa-tit">📦 ' + (n === 1 ? 'Há 1 patrimônio aguardando o seu aceite' : 'Há ' + n + ' patrimônios aguardando o seu aceite') + '</div>' +
       meusPendentes.map(function(it){
         return '<div class="pa-item"><div><b>' + escapeHtml(it.nome) + '</b> (' + escapeHtml(it.codigo || '') + ')' +
           '<div class="pa-meta">Enviado por ' + escapeHtml((it.pendente && it.pendente.enviadoPorNome) || '') + ' em ' + formatDataBR(it.pendente && it.pendente.enviadoEm) + '</div></div>' +
           '<button type="button" class="btn small primary" data-aceitar="' + it.id + '">Ver termo e aceitar</button></div>';
       }).join('');
+    if (nd) html += (n ? '<div style="height:10px;"></div>' : '') +
+      '<div class="pa-tit">↩ ' + (nd === 1 ? 'Há 1 devolução aguardando recebimento' : 'Há ' + nd + ' devoluções aguardando recebimento') + '</div>' +
+      devolucoesPendentes.map(function(it){
+        return '<div class="pa-item"><div><b>' + escapeHtml(it.nome) + '</b> (' + escapeHtml(it.codigo || '') + ')' +
+          '<div class="pa-meta">Devolvido por ' + escapeHtml((it.devolucao && it.devolucao.porNome) || it.responsavel || '') + ' em ' + formatDataBR(it.devolucao && it.devolucao.solicitadoEm) + '</div></div>' +
+          '<button type="button" class="btn small primary" data-receber="' + it.id + '">Conferir e assinar</button></div>';
+      }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.pend-aceite-box'), function(box){
       box.innerHTML = html;
-      Array.prototype.forEach.call(box.querySelectorAll('[data-aceitar]'), function(b){
-        b.addEventListener('click', function(e){ e.stopPropagation(); abrirAceite(b.dataset.aceitar); });
+      Array.prototype.forEach.call(box.querySelectorAll('[data-aceitar],[data-receber]'), function(b){
+        b.addEventListener('click', function(e){
+          e.stopPropagation();
+          if (b.dataset.aceitar) abrirAceite(b.dataset.aceitar); else abrirRecebimentoDevolucao(b.dataset.receber);
+        });
         b.addEventListener('keydown', function(e){ e.stopPropagation(); });
       });
     });
   }
+
+  // ---------- Devolução: quem está com o item pede; quem cadastra confere e assina ----------
+  const devolBackdrop = document.getElementById('pat-devol-backdrop');
+  let devolvendoId = null;
+  function abrirDevolucao(item){
+    if (!item || item.responsavelUid !== meuUid) return;
+    devolvendoId = item.id;
+    document.getElementById('pat-devol-label').textContent = item.nome + ' (' + (item.codigo || '') + ')';
+    document.getElementById('pat-devol-estado').value = 'bom';
+    document.getElementById('pat-devol-obs').value = '';
+    document.getElementById('pat-devol-err').style.display = 'none';
+    devolBackdrop.classList.add('show');
+  }
+  function fecharDevolucao(){ devolBackdrop.classList.remove('show'); devolvendoId = null; }
+  document.getElementById('pat-devol-cancelar').addEventListener('click', fecharDevolucao);
+  devolBackdrop.addEventListener('click', function(e){ if (e.target === devolBackdrop) fecharDevolucao(); });
+  document.getElementById('pat-devol-confirmar').addEventListener('click', function(){
+    if (!devolvendoId) return;
+    const btn = this;
+    btn.disabled = true;
+    db.collection('patrimonio').doc(devolvendoId).update({
+      devolucaoPendente: true,
+      devolucao: {
+        porUid: meuUid, porNome: meuNome,
+        estado: document.getElementById('pat-devol-estado').value,
+        observacoes: document.getElementById('pat-devol-obs').value.trim(),
+        solicitadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      },
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(fecharDevolucao).catch(function(err){
+      const el = document.getElementById('pat-devol-err');
+      el.textContent = err.code === 'permission-denied'
+        ? 'Sem permissão — as regras novas do Firestore ainda precisam ser publicadas. Avise o administrador.'
+        : 'Erro ao solicitar: ' + err.message;
+      el.style.display = 'block';
+    }).finally(function(){ btn.disabled = false; });
+  });
 
   const aceiteBackdrop = document.getElementById('pat-aceite-backdrop');
   const aceiteErr = document.getElementById('pat-aceite-err');
@@ -1726,24 +1977,69 @@
   const sigCanvas = document.getElementById('pat-aceite-canvas');
   let aceitandoItem = null;
   let aceiteDados = null;
+  let modoAssinatura = 'entrega';   // 'entrega' (quem recebe o bem assina) ou 'devolucao' (quem recebe de volta assina)
   let sigCtx = null, sigDesenhou = false, sigDesenhando = false;
+
+  function prepararModalAssinatura(modo, label){
+    modoAssinatura = modo;
+    aceiteDados = null;
+    document.querySelector('#pat-aceite-backdrop h3').textContent = modo === 'devolucao' ? 'Recebimento de devolução' : 'Aceite de patrimônio';
+    document.getElementById('pat-aceite-label').textContent = label;
+    document.getElementById('pat-aceite-recusar').style.display = modo === 'devolucao' ? 'none' : '';
+    document.getElementById('pat-aceite-assinar').textContent = modo === 'devolucao' ? '✍ Assinar recebimento' : '✍ Assinar e aceitar';
+    document.getElementById('pat-aceite-senha').value = '';
+    aceiteErr.style.display = 'none';
+    aceiteBackdrop.classList.add('show');
+    prepararCanvas();
+  }
+  function mostrarPreviaTermo(){
+    aceiteFrame.onload = function(){
+      try { aceiteFrame.contentWindow.mostrarTermo(aceiteDados); } catch (e) {}
+    };
+    aceiteFrame.src = 'termo-patrimonio.html?preview=1&t=' + Date.now();
+  }
+
+  function abrirRecebimentoDevolucao(itemId){
+    if (!podeCadastrarPat()) return;
+    const it = devolucoesPendentes.find(function(x){ return x.id === itemId; }) || patItens.find(function(x){ return x.id === itemId; });
+    if (!it || !it.devolucaoPendente) return;
+    aceitandoItem = it;
+    const dv = it.devolucao || {};
+    prepararModalAssinatura('devolucao', it.nome + ' (' + (it.codigo || '') + ') — devolvido por ' + (dv.porNome || it.responsavel || '') +
+      '. Confira o item, digite sua senha do Portal e assine o recebimento.');
+    // CPF/tipo de quem devolve vêm do termo de entrega (quem cadastra pode ler os termos)
+    const termoEntrega = it.termoAtualId ? db.collection('termosPatrimonio').doc(it.termoAtualId).get() : Promise.resolve(null);
+    termoEntrega.then(function(doc){
+      const te = doc && doc.exists ? doc.data() : {};
+      aceiteDados = {
+        tipoTermo: 'devolucao', termoEntregaId: it.termoAtualId || '',
+        tipoColaborador: te.tipoColaborador || '', colaboradorUid: it.responsavelUid || dv.porUid || '', colaboradorNome: it.responsavel || dv.porNome || '',
+        cpf: te.cpf || '', oab: te.oab || '',
+        itemId: it.id, codigo: it.codigo || '', equipamento: it.nome || '', marcaModelo: it.marcaModelo || '', numeroSerie: it.numeroSerie || '',
+        acessorios: te.acessorios || '', estado: dv.estado || '', observacoes: dv.observacoes || '',
+        devolucaoSolicitadaEm: dv.solicitadoEm || null,
+        recebidoPorUid: meuUid, recebidoPorNome: meuNome,
+        cidade: 'Uberlândia/MG'
+      };
+      mostrarPreviaTermo();
+    }).catch(function(err){
+      aceiteErr.textContent = 'Não foi possível carregar o termo de entrega: ' + err.message;
+      aceiteErr.style.display = 'block';
+    });
+  }
 
   function abrirAceite(itemId){
     const it = meusPendentes.find(function(x){ return x.id === itemId; });
     if (!it || !it.pendente) return;
     aceitandoItem = it;
-    aceiteDados = null;
-    document.getElementById('pat-aceite-label').textContent = it.nome + ' (' + (it.codigo || '') + ') — enviado por ' + (it.pendente.enviadoPorNome || '') +
-      '. Confira o termo, digite sua senha do Portal e assine no quadro.';
-    document.getElementById('pat-aceite-senha').value = '';
-    aceiteErr.style.display = 'none';
-    aceiteBackdrop.classList.add('show');
-    prepararCanvas();
+    prepararModalAssinatura('entrega', it.nome + ' (' + (it.codigo || '') + ') — enviado por ' + (it.pendente.enviadoPorNome || '') +
+      '. Confira o termo, digite sua senha do Portal e assine no quadro.');
     // CPF e OAB ficam em users/{uid}, que só a própria pessoa (e o admin) consegue ler
     db.collection('users').doc(meuUid).get().then(function(doc){
       const u = doc.exists ? doc.data() : {};
       const p = it.pendente;
       aceiteDados = {
+        tipoTermo: 'entrega',
         tipoColaborador: p.tipoColaborador, colaboradorUid: meuUid, colaboradorNome: u.displayName || meuNome,
         cpf: u.cpf || '', oab: u.oab || '',
         cargo: p.cargo || '', setor: p.setor || '', curso: p.curso || '', supervisor: p.supervisor || '', areaAtuacao: p.areaAtuacao || '',
@@ -1752,10 +2048,7 @@
         entreguePorUid: p.enviadoPorUid || '', entreguePorNome: p.enviadoPorNome || '', enviadoEm: p.enviadoEm || null,
         cidade: 'Uberlândia/MG'
       };
-      aceiteFrame.onload = function(){
-        try { aceiteFrame.contentWindow.mostrarTermo(aceiteDados); } catch (e) {}
-      };
-      aceiteFrame.src = 'termo-patrimonio.html?preview=1&t=' + Date.now();
+      mostrarPreviaTermo();
     }).catch(function(err){
       aceiteErr.textContent = 'Não foi possível carregar seus dados: ' + err.message;
       aceiteErr.style.display = 'block';
@@ -1844,11 +2137,20 @@
       });
       const batch = db.batch();
       batch.set(termoRef, termo);
-      batch.update(db.collection('patrimonio').doc(it.id), {
-        responsavelUid: meuUid, responsavel: aceiteDados.colaboradorNome,
-        pendenteParaUid: null, pendente: null, ultimaRecusa: null,
-        termoAtualId: termoRef.id, atualizadoEm: ts
-      });
+      if (modoAssinatura === 'devolucao') {
+        // conferido e assinado o recebimento: o bem volta para o estoque
+        batch.update(db.collection('patrimonio').doc(it.id), {
+          responsavelUid: null, responsavel: '',
+          devolucao: null, devolucaoPendente: false,
+          termoAtualId: null, ultimaDevolucaoTermoId: termoRef.id, atualizadoEm: ts
+        });
+      } else {
+        batch.update(db.collection('patrimonio').doc(it.id), {
+          responsavelUid: meuUid, responsavel: aceiteDados.colaboradorNome,
+          pendenteParaUid: null, pendente: null, ultimaRecusa: null,
+          termoAtualId: termoRef.id, atualizadoEm: ts
+        });
+      }
       return batch.commit().then(function(){ return termoRef.id; });
     }).then(function(termoId){
       fecharAceite();
@@ -1861,7 +2163,7 @@
       else erro('Não foi possível assinar: ' + (err && err.message ? err.message : err));
     }).finally(function(){
       btn.disabled = false;
-      btn.textContent = '✍ Assinar e aceitar';
+      btn.textContent = modoAssinatura === 'devolucao' ? '✍ Assinar recebimento' : '✍ Assinar e aceitar';
     });
   });
 
@@ -1894,14 +2196,15 @@
     const lista = document.getElementById('pat-termos-lista');
     lista.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
     termosBackdrop.classList.add('show');
-    // admin vê todos; os demais, só os próprios (é o que a regra do Firestore libera)
-    const consulta = souAdmin ? db.collection('termosPatrimonio') : db.collection('termosPatrimonio').where('colaboradorUid', '==', meuUid);
+    // admin e quem cadastra patrimônio veem todos; os demais, só os próprios (é o que a regra do Firestore libera)
+    const consulta = podeCadastrarPat() ? db.collection('termosPatrimonio') : db.collection('termosPatrimonio').where('colaboradorUid', '==', meuUid);
     consulta.get().then(function(snap){
       const termos = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); })
         .sort(function(a, b){ return String(b.assinadoEmISO || '').localeCompare(String(a.assinadoEmISO || '')); });
       lista.innerHTML = termos.length ? termos.map(function(t){
-        return '<div class="termos-row"><div><b>' + escapeHtml(t.codigo || '') + ' · ' + escapeHtml(t.equipamento || '') + '</b>' +
-          '<div class="tr-meta">' + escapeHtml(t.colaboradorNome || '') + ' · ' + escapeHtml(TIPO_COLAB_LABEL[t.tipoColaborador] || '') +
+        return '<div class="termos-row"><div><b>' + (t.tipoTermo === 'devolucao' ? '↩ Devolução' : '📦 Entrega') + ' · ' + escapeHtml(t.codigo || '') + ' · ' + escapeHtml(t.equipamento || '') + '</b>' +
+          '<div class="tr-meta">' + escapeHtml(t.colaboradorNome || '') + (t.tipoColaborador ? ' · ' + escapeHtml(TIPO_COLAB_LABEL[t.tipoColaborador] || '') : '') +
+          (t.tipoTermo === 'devolucao' ? ' · recebido por ' + escapeHtml(t.recebidoPorNome || '') : '') +
           ' · assinado em ' + formatDataBR(t.assinadoEm || (t.assinadoEmISO ? new Date(t.assinadoEmISO) : null)) + '</div></div>' +
           '<button type="button" class="btn small" data-abrir-termo="' + t.id + '">Abrir</button></div>';
       }).join('') : '<p style="color:var(--muted);font-size:.85rem;">Nenhum termo assinado ainda.</p>';
@@ -1958,6 +2261,340 @@
       document.getElementById('pat-permissoes-err').textContent = 'Erro ao salvar: ' + err.message;
       document.getElementById('pat-permissoes-err').style.display = 'block';
     }).finally(function(){ btn.disabled = false; });
+  });
+
+  // ============================================================
+  // Permissões da Gestão (admin escolhe quem): cadastrar patrimônio, senhas diversas, senhas restritas
+  // ============================================================
+  const permBackdrop = document.getElementById('perm-backdrop');
+  let permCampo = null;
+  function abrirModalPermissao(campo, titulo, descricao){
+    if (!souAdmin) return;
+    permCampo = campo;
+    document.getElementById('perm-titulo').textContent = titulo;
+    document.getElementById('perm-desc').textContent = descricao;
+    document.getElementById('perm-err').style.display = 'none';
+    const lista = document.getElementById('perm-lista');
+    lista.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Carregando…</p>';
+    permBackdrop.classList.add('show');
+    Promise.all([db.collection('users').get(), db.collection('permissoesGestao').get()]).then(function(r){
+      const perms = {};
+      r[1].docs.forEach(function(d){ perms[d.id] = d.data(); });
+      const usuarios = r[0].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
+        .filter(function(u){ return u.role !== 'admin' && u.role !== 'cliente'; })
+        .sort(function(a, b){ return (a.displayName || '').localeCompare(b.displayName || ''); });
+      lista.innerHTML = usuarios.length ? usuarios.map(function(u){
+        const marcado = perms[u.uid] && perms[u.uid][campo] === true;
+        return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.85rem;">' +
+          '<input type="checkbox" class="perm-cb" data-uid="' + u.uid + '"' + (marcado ? ' checked' : '') + '>' +
+          '<span>' + escapeHtml(u.displayName || u.email || u.uid) + '</span></label>';
+      }).join('') : '<p style="color:var(--muted);font-size:.85rem;">Nenhum outro usuário cadastrado.</p>';
+    }).catch(function(err){
+      document.getElementById('perm-err').textContent = 'Erro ao carregar: ' + err.message;
+      document.getElementById('perm-err').style.display = 'block';
+    });
+  }
+  function fecharModalPermissao(){ permBackdrop.classList.remove('show'); permCampo = null; }
+  document.getElementById('perm-cancelar').addEventListener('click', fecharModalPermissao);
+  permBackdrop.addEventListener('click', function(e){ if (e.target === permBackdrop) fecharModalPermissao(); });
+  document.getElementById('perm-salvar').addEventListener('click', function(){
+    if (!permCampo) return;
+    const batch = db.batch();
+    Array.prototype.forEach.call(document.querySelectorAll('.perm-cb'), function(cb){
+      const patch = { atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoPor: meuUid };
+      patch[permCampo] = cb.checked;
+      batch.set(db.collection('permissoesGestao').doc(cb.dataset.uid), patch, { merge: true });
+    });
+    const btn = this;
+    btn.disabled = true;
+    batch.commit().then(fecharModalPermissao).catch(function(err){
+      document.getElementById('perm-err').textContent = err.code === 'permission-denied'
+        ? 'Sem permissão — publique as regras novas do Firestore (bloco permissoesGestao).'
+        : 'Erro ao salvar: ' + err.message;
+      document.getElementById('perm-err').style.display = 'block';
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  // ============================================================
+  // Módulo: Senhas (diversas / restritas) — mesmo layout do Patrimônio.
+  // As senhas ficam só no Firestore (nunca no código do site, que é público).
+  // ============================================================
+  const senhasMods = {};   // id da sub-aba -> { t, itens, filtro }
+  let snEditando = null;   // { mod, id|null }
+  let snImportMod = null;
+  let snImportLinhas = [];
+
+  function toast(msg){
+    const el = document.createElement('div');
+    el.className = 'copiado-toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 1600);
+  }
+  function copiar(texto){
+    function fallback(){
+      const ta = document.createElement('textarea');
+      ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('Copiado'); } catch (e) { toast('Não foi possível copiar'); }
+      ta.remove();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(function(){ toast('Copiado'); }, fallback);
+    else fallback();
+  }
+
+  function initSenhas(t){
+    const scroll = document.getElementById('sn-scroll-' + t.id);
+    if (!temAcesso(t.perm)) {
+      scroll.innerHTML = '<div class="empty-row">Você não tem acesso a esta página. Peça ao administrador.</div>';
+      return;
+    }
+    const mod = { t: t, itens: [], filtro: '', carregado: false };
+    senhasMods[t.id] = mod;
+    const restrita = t.perm === 'senhasRestritas';
+    scroll.innerHTML =
+      '<div class="mod-head">' +
+        '<div><h2>' + escapeHtml(t.label) + '</h2><p>' +
+          (restrita ? 'Acessos restritos do escritório — só quem o administrador liberou enxerga esta página.'
+                    : 'Logins e senhas dos sistemas usados no dia a dia do escritório.') +
+        '</p></div>' +
+        '<div class="actions-cell">' +
+          (souAdmin ? '<button type="button" class="btn small" data-sn-acesso>⚙ Quem tem acesso</button>' : '') +
+          (souAdmin ? '<button type="button" class="btn small" data-sn-importar>📥 Importar planilha</button>' : '') +
+          '<button type="button" class="btn primary" data-sn-nova>+ Nova senha</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stat-row" data-sn-stats></div>' +
+      '<div class="toolbar">' +
+        '<input type="text" data-sn-busca placeholder="Buscar por sistema, usuário ou observação…">' +
+        '<span class="spacer"></span>' +
+      '</div>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+        '<th>Sistema</th><th>Usuário</th><th>Senha</th><th>Observações / link</th><th></th>' +
+      '</tr></thead><tbody data-sn-tbody></tbody></table></div>';
+
+    scroll.querySelector('[data-sn-busca]').addEventListener('input', function(e){ mod.filtro = e.target.value.trim().toLowerCase(); renderSenhas(mod); });
+    scroll.querySelector('[data-sn-nova]').addEventListener('click', function(){ abrirModalSenha(mod, null); });
+    const acessoBtn = scroll.querySelector('[data-sn-acesso]');
+    if (acessoBtn) acessoBtn.addEventListener('click', function(){
+      abrirModalPermissao(t.perm, 'Quem tem acesso — ' + t.label,
+        'Quem estiver marcado vê, copia, inclui e edita as senhas desta página. Excluir é só com o admin, que sempre tem acesso.');
+    });
+    const impBtn = scroll.querySelector('[data-sn-importar]');
+    if (impBtn) impBtn.addEventListener('click', function(){ abrirImportSenhas(mod); });
+
+    db.collection(t.colecao).onSnapshot(function(snap){
+      mod.itens = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      mod.carregado = true;
+      renderSenhas(mod);
+    }, function(err){
+      scroll.querySelector('[data-sn-tbody]').innerHTML = '<tr><td colspan="5" class="empty-row">' +
+        (err.code === 'permission-denied' ? 'Sem permissão — as regras novas do Firestore ainda precisam ser publicadas.' : 'Erro ao carregar: ' + escapeHtml(err.message)) + '</td></tr>';
+    });
+  }
+
+  function linkOuTexto(s){
+    s = String(s || '').trim();
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s)) return '<a href="' + escapeHtml(s) + '" target="_blank" rel="noopener">' + escapeHtml(s.length > 60 ? s.slice(0, 57) + '…' : s) + '</a>';
+    return escapeHtml(s);
+  }
+
+  function renderSenhas(mod){
+    const scroll = document.getElementById('sn-scroll-' + mod.t.id);
+    const tbody = scroll.querySelector('[data-sn-tbody]');
+    const filtrados = mod.itens.filter(function(it){
+      if (!mod.filtro) return true;
+      return [it.sistema, it.usuario, it.obs, it.obs2].join(' ').toLowerCase().indexOf(mod.filtro) !== -1;
+    }).sort(function(a, b){
+      const sa = (a.sistema || '').trim(), sb = (b.sistema || '').trim();
+      if (!sa !== !sb) return sa ? -1 : 1;
+      return sa.localeCompare(sb, 'pt-BR');
+    });
+    scroll.querySelector('[data-sn-stats]').innerHTML =
+      '<div class="stat-card"><div class="n">' + mod.itens.length + '</div><div class="l">acessos cadastrados</div></div>';
+    if (!filtrados.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">' + (mod.itens.length ? 'Nada encontrado para essa busca.' :
+        (souAdmin ? 'Nenhuma senha cadastrada ainda — use "📥 Importar planilha" ou "+ Nova senha".' : 'Nenhuma senha cadastrada ainda.')) + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtrados.map(function(it){
+      return '<tr>' +
+        '<td><b>' + escapeHtml(it.sistema || '—') + '</b></td>' +
+        '<td>' + (it.usuario ? '<div class="sn-cel"><span class="sn-txt">' + escapeHtml(it.usuario) + '</span><button type="button" class="icon-btn" data-sn-copiar-usuario="' + it.id + '" title="Copiar usuário">📋</button></div>' : '<span style="color:var(--muted);">—</span>') + '</td>' +
+        '<td>' + (it.senha ? '<div class="sn-cel"><span class="sn-txt sn-senha" data-sn-mascara="' + it.id + '">••••••••</span>' +
+            '<button type="button" class="icon-btn" data-sn-ver="' + it.id + '" title="Mostrar / esconder">👁</button>' +
+            '<button type="button" class="icon-btn" data-sn-copiar-senha="' + it.id + '" title="Copiar senha">📋</button></div>' : '<span style="color:var(--muted);">—</span>') + '</td>' +
+        '<td class="sn-obs">' + (linkOuTexto(it.obs) || '<span style="color:var(--muted);">—</span>') + (it.obs2 ? '<span class="sn-obs2">' + linkOuTexto(it.obs2) + '</span>' : '') + '</td>' +
+        '<td class="actions-cell">' +
+          '<button type="button" class="btn small" data-sn-editar="' + it.id + '">Editar</button>' +
+          (souAdmin ? '<button type="button" class="btn small danger" data-sn-excluir="' + it.id + '">Excluir</button>' : '') +
+        '</td>' +
+      '</tr>';
+    }).join('');
+    function achar(id){ return mod.itens.find(function(x){ return x.id === id; }); }
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-ver]'), function(b){
+      b.addEventListener('click', function(){
+        const it = achar(b.dataset.snVer);
+        const span = tbody.querySelector('[data-sn-mascara="' + b.dataset.snVer + '"]');
+        const oculto = span.textContent === '••••••••';
+        span.textContent = oculto ? (it.senha || '') : '••••••••';
+      });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-copiar-senha]'), function(b){
+      b.addEventListener('click', function(){ copiar(achar(b.dataset.snCopiarSenha).senha || ''); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-copiar-usuario]'), function(b){
+      b.addEventListener('click', function(){ copiar(achar(b.dataset.snCopiarUsuario).usuario || ''); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-editar]'), function(b){
+      b.addEventListener('click', function(){ abrirModalSenha(mod, achar(b.dataset.snEditar)); });
+    });
+    Array.prototype.forEach.call(tbody.querySelectorAll('[data-sn-excluir]'), function(b){
+      b.addEventListener('click', function(){
+        const it = achar(b.dataset.snExcluir);
+        if (!it || !confirm('Excluir o acesso "' + (it.sistema || '') + '"? Não dá para desfazer.')) return;
+        db.collection(mod.t.colecao).doc(it.id).delete().catch(function(err){ alert('Erro ao excluir: ' + err.message); });
+      });
+    });
+  }
+
+  const snBackdrop = document.getElementById('sn-modal-backdrop');
+  function abrirModalSenha(mod, it){
+    snEditando = { mod: mod, id: it ? it.id : null };
+    document.getElementById('sn-modal-titulo').textContent = (it ? 'Editar acesso' : 'Nova senha') + ' — ' + mod.t.label;
+    document.getElementById('sn-sistema').value = it ? (it.sistema || '') : '';
+    document.getElementById('sn-usuario').value = it ? (it.usuario || '') : '';
+    document.getElementById('sn-senha').value = it ? (it.senha || '') : '';
+    document.getElementById('sn-obs').value = it ? (it.obs || '') : '';
+    document.getElementById('sn-obs2').value = it ? (it.obs2 || '') : '';
+    document.getElementById('sn-err').style.display = 'none';
+    snBackdrop.classList.add('show');
+  }
+  function fecharModalSenha(){ snBackdrop.classList.remove('show'); snEditando = null; }
+  document.getElementById('sn-cancelar').addEventListener('click', fecharModalSenha);
+  snBackdrop.addEventListener('click', function(e){ if (e.target === snBackdrop) fecharModalSenha(); });
+  document.getElementById('sn-salvar').addEventListener('click', function(){
+    if (!snEditando) return;
+    const errEl = document.getElementById('sn-err');
+    const sistema = document.getElementById('sn-sistema').value.trim();
+    if (!sistema) { errEl.textContent = 'Informe o sistema.'; errEl.style.display = 'block'; return; }
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    const dados = {
+      sistema: sistema,
+      usuario: document.getElementById('sn-usuario').value.trim(),
+      senha: document.getElementById('sn-senha').value,
+      obs: document.getElementById('sn-obs').value.trim(),
+      obs2: document.getElementById('sn-obs2').value.trim(),
+      atualizadoEm: ts, atualizadoPor: meuNome
+    };
+    const col = db.collection(snEditando.mod.t.colecao);
+    let p;
+    if (snEditando.id) p = col.doc(snEditando.id).update(dados);
+    else { dados.criadoEm = ts; dados.criadoPorUid = meuUid; p = col.add(dados); }
+    const btn = this;
+    btn.disabled = true;
+    p.then(fecharModalSenha).catch(function(err){
+      errEl.textContent = 'Erro ao salvar: ' + err.message;
+      errEl.style.display = 'block';
+    }).finally(function(){ btn.disabled = false; });
+  });
+
+  // CSV do Google Planilhas: acha a linha de cabeçalho (SISTEMA / SENHA) e lê as linhas abaixo
+  function lerCSV(texto){
+    const linhas = [];
+    let campo = '', linha = [], aspas = false;
+    texto = texto.replace(/^﻿/, '');
+    for (let i = 0; i < texto.length; i++) {
+      const c = texto[i];
+      if (aspas) {
+        if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
+        else campo += c;
+      } else if (c === '"') aspas = true;
+      else if (c === ',') { linha.push(campo); campo = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && texto[i + 1] === '\n') i++;
+        linha.push(campo); linhas.push(linha); linha = []; campo = '';
+      } else campo += c;
+    }
+    if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
+    return linhas;
+  }
+  function linhasDeSenha(texto){
+    const tab = lerCSV(texto);
+    const norm = function(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase(); };
+    const iCab = tab.findIndex(function(l){ return l.some(function(c){ return norm(c) === 'SISTEMA'; }) && l.some(function(c){ return norm(c) === 'SENHA'; }); });
+    if (iCab === -1) throw new Error('Não achei o cabeçalho com as colunas SISTEMA e SENHA.');
+    const cab = tab[iCab].map(norm);
+    const cSis = cab.indexOf('SISTEMA'), cUsu = cab.indexOf('USUARIO'), cSen = cab.indexOf('SENHA'), cObs = cab.indexOf('OBS');
+    const cObs2 = cObs >= 0 ? cObs + 1 : -1;
+    return tab.slice(iCab + 1).map(function(l){
+      const v = function(i){ return i >= 0 ? String(l[i] || '').trim() : ''; };
+      return { sistema: v(cSis), usuario: v(cUsu), senha: v(cSen), obs: v(cObs), obs2: v(cObs2) };
+    }).filter(function(r){ return r.sistema || r.usuario || r.senha || r.obs || r.obs2; });
+  }
+
+  const snImpBackdrop = document.getElementById('sn-import-backdrop');
+  function abrirImportSenhas(mod){
+    snImportMod = mod;
+    snImportLinhas = [];
+    document.getElementById('sn-import-file').value = '';
+    document.getElementById('sn-import-preview').innerHTML = '';
+    document.getElementById('sn-import-err').style.display = 'none';
+    document.getElementById('sn-import-confirmar').disabled = true;
+    snImpBackdrop.classList.add('show');
+  }
+  function fecharImportSenhas(){ snImpBackdrop.classList.remove('show'); snImportMod = null; }
+  document.getElementById('sn-import-cancelar').addEventListener('click', fecharImportSenhas);
+  document.getElementById('sn-import-file').addEventListener('change', function(){
+    const f = this.files[0];
+    const errEl = document.getElementById('sn-import-err');
+    errEl.style.display = 'none';
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      try {
+        snImportLinhas = linhasDeSenha(String(reader.result));
+        const ja = snImportMod ? snImportMod.itens.length : 0;
+        document.getElementById('sn-import-preview').innerHTML =
+          '<p><b>' + snImportLinhas.length + '</b> acessos encontrados no arquivo. Ex.: ' +
+          escapeHtml(snImportLinhas.slice(0, 4).map(function(r){ return r.sistema || '(sem nome)'; }).join(', ')) + '…</p>' +
+          (ja ? '<p style="color:var(--pend-text);">⚠ Esta página já tem ' + ja + ' acessos. Importar de novo vai duplicar os que já existem.</p>' : '');
+        document.getElementById('sn-import-confirmar').disabled = !snImportLinhas.length;
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+      }
+    };
+    reader.readAsText(f, 'utf-8');
+  });
+  document.getElementById('sn-import-confirmar').addEventListener('click', function(){
+    if (!snImportMod || !snImportLinhas.length) return;
+    const col = db.collection(snImportMod.t.colecao);
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Importando…';
+    const lotes = [];
+    for (let i = 0; i < snImportLinhas.length; i += 400) lotes.push(snImportLinhas.slice(i, i + 400));
+    lotes.reduce(function(p, lote){
+      return p.then(function(){
+        const batch = db.batch();
+        lote.forEach(function(r){
+          batch.set(col.doc(), Object.assign({}, r, {
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoPorUid: meuUid,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), atualizadoPor: meuNome
+          }));
+        });
+        return batch.commit();
+      });
+    }, Promise.resolve()).then(function(){
+      toast(snImportLinhas.length + ' acessos importados');
+      fecharImportSenhas();
+    }).catch(function(err){
+      const errEl = document.getElementById('sn-import-err');
+      errEl.textContent = err.code === 'permission-denied' ? 'Sem permissão — publique as regras novas do Firestore.' : 'Erro ao importar: ' + err.message;
+      errEl.style.display = 'block';
+    }).finally(function(){ btn.disabled = false; btn.textContent = 'Importar'; });
   });
 
   // ============================================================
@@ -2766,10 +3403,16 @@
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
       meuPatrimonioVerTudo = !doc.exists || doc.data().patrimonioVerTudo !== false;
-      marcarPerfilPronto();
     }).catch(function(){
       // sem acesso ao próprio users/{uid}: segue com a visão mais restrita, que nunca dá erro
       meuPatrimonioVerTudo = false;
+    }).then(function(){
+      return db.collection('permissoesGestao').doc(user.uid).get().then(function(p){
+        if (p.exists) minhasPerms = Object.assign(minhasPerms, p.data());
+      }).catch(function(){ /* regra ainda não publicada: fica sem permissões extras */ });
+    }).then(function(){
+      aplicarPermissoesNaTela();
+      if (podeCadastrarPat()) ouvirDevolucoesPendentes();
       marcarPerfilPronto();
     });
   });
