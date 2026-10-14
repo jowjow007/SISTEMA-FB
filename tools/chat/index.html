@@ -331,6 +331,8 @@
   .msg-quote .autor{font-size:.68rem;font-weight:700;color:var(--gold);}
   .msg-quote .resumo{font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .msg-row.highlight .msg-bubble{outline:2px solid var(--gold);outline-offset:1px;}
+  .msg-link{color:var(--gold);text-decoration:underline;word-break:break-all;}
+  .msg-link:hover{opacity:.8;}
 
   .composer{
     flex:0 0 auto;border-top:1px solid var(--line-strong);background:var(--panel);padding:10px 14px;position:relative;
@@ -918,6 +920,21 @@
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
+  // Escapa o texto e envolve URLs em links clicáveis
+  var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+  function linkify(s){
+    var parts = String(s || '').split(URL_RE);
+    return parts.map(function(p, i){
+      if (i % 2 === 1) {
+        // é uma URL — escapa e envolve em <a>
+        var esc = escapeHtml(p);
+        // encurta label se for muito longa (>55 chars)
+        var label = p.length > 55 ? p.slice(0, 52) + '…' : p;
+        return '<a href="' + esc + '" target="_blank" rel="noopener noreferrer" class="msg-link">' + escapeHtml(label) + '</a>';
+      }
+      return escapeHtml(p);
+    }).join('');
+  }
 
   function hexToRgba(hex, alpha){
     var h = hex.replace('#', '');
@@ -1388,7 +1405,7 @@
           '<div class="tamanho">' + formatBytes(m.documentoTamanho || 0) + '</div>' +
           '</span></a>';
       }
-      if (m.texto) out += '<div>' + escapeHtml(m.texto) + '</div>';
+      if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 14) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 14) + '</button>';
