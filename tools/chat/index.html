@@ -280,15 +280,35 @@
   }
   .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn{opacity:1;}
   .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover{color:var(--paper);}
-  .msg-react-btn{font-size:.85rem;}
+  .msg-react-btn{font-size:.85rem;line-height:1;}
   .react-picker{
-    display:none;position:absolute;background:var(--panel-2);border:1px solid var(--line-strong);
-    border-radius:12px;padding:6px;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.5);
-    grid-template-columns:repeat(6,1fr);gap:2px;width:180px;
+    display:none;position:fixed;background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:14px;z-index:200;box-shadow:0 8px 28px rgba(0,0,0,.6);
+    width:300px;overflow:hidden;flex-direction:column;
   }
-  .react-picker.open{display:grid;}
-  .react-picker button{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px;border-radius:6px;line-height:1;transition:transform .1s;}
-  .react-picker button:hover{background:var(--panel-3);transform:scale(1.25);}
+  .react-picker.open{display:flex;}
+  .react-picker-cats{
+    display:flex;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--line-strong);
+    overflow-x:auto;scrollbar-width:none;flex-shrink:0;
+  }
+  .react-picker-cats::-webkit-scrollbar{display:none;}
+  .react-picker-cats button{
+    background:none;border:none;font-size:1.1rem;cursor:pointer;padding:5px 7px;
+    border-radius:8px 8px 0 0;line-height:1;opacity:.55;transition:opacity .12s,background .12s;
+    flex-shrink:0;
+  }
+  .react-picker-cats button.ativa{opacity:1;background:var(--panel-2);}
+  .react-picker-cats button:hover{opacity:.9;}
+  .react-picker-body{
+    display:grid;grid-template-columns:repeat(9,1fr);gap:1px;padding:6px;
+    max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+  }
+  .react-picker-body button{
+    background:none;border:none;font-size:1.25rem;cursor:pointer;padding:5px 3px;
+    border-radius:6px;line-height:1;transition:transform .1s,background .12s;
+  }
+  .react-picker-body button:hover{background:var(--panel-2);transform:scale(1.3);}
+  .react-picker-vazio{padding:14px;text-align:center;color:var(--muted);font-size:.8rem;grid-column:1/-1;}
   .msg-reacoes{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:0 4px;}
   .reacao-pill{
     display:inline-flex;align-items:center;gap:3px;background:var(--panel-2);border:1px solid var(--line-strong);
@@ -592,7 +612,10 @@
   </div>
 </div>
 
-<div class="react-picker" id="react-picker"></div>
+<div class="react-picker" id="react-picker">
+  <div class="react-picker-cats" id="react-picker-cats"></div>
+  <div class="react-picker-body" id="react-picker-body"></div>
+</div>
 <div class="lightbox-backdrop" id="lightbox">
   <img id="lightbox-img" src="">
 </div>
@@ -707,22 +730,83 @@
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
   var reactTargetId = null;   // id da mensagem aguardando reação
-  var EMOJIS_REACAO = ['👍','❤️','😂','😮','😢','🙏','🔥','👏','✅','💪','🎉','😎'];
-  // popula o picker de reações
+  var reactCatAtiva = 'recentes'; // categoria visível no picker
+
+  // Banco completo de emojis por categoria (estilo WhatsApp)
+  var EMOJI_CATS = [
+    { id:'recentes', ico:'🕐', nome:'Recentes' },
+    { id:'expressoes', ico:'😀', nome:'Expressões' },
+    { id:'pessoas', ico:'🧑', nome:'Pessoas' },
+    { id:'animais', ico:'🐶', nome:'Animais' },
+    { id:'comida', ico:'🍔', nome:'Comida' },
+    { id:'viagem', ico:'✈️', nome:'Viagem' },
+    { id:'atividades', ico:'⚽', nome:'Atividades' },
+    { id:'objetos', ico:'💡', nome:'Objetos' },
+    { id:'simbolos', ico:'❤️', nome:'Símbolos' }
+  ];
+  var EMOJI_BANCO = {
+    expressoes: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
+    pessoas: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃','🦷','👀','👁️','👅','💋','🫦','🦴','🧠','🫀','🫁','👤','👥','🫂','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
+    animais: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪰','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦩','🦢','🦅','🌵','🌲','🌳','🌴','🌱','🌿','☘️','🍀','🎍','🎋','🍃','🍂','🍁','🍄','🌾','💐','🌷','🌹','🥀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌙','⭐','🌟','💫','✨','☄️','🌈','⛅','🌤️','☀️','🌊','💧','❄️','🔥','🌍','🌎','🌏'],
+    comida: ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍑','🍒','🍍','🥭','🥥','🥝','🍅','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🍠','🫘','🌽','🍞','🥐','🥨','🧀','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥙','🧆','🌮','🌯','🫔','🥗','🍝','🍜','🍛','🍣','🍱','🍤','🍙','🍚','🍘','🍥','🥮','🍡','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🍯','🧃','🥤','🧋','☕','🍵','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊'],
+    viagem: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛵','🏍️','🚲','🛴','🚏','✈️','🛩️','🚀','🛸','🚁','🛶','⛵','🚢','🛥️','⛽','🚦','🚥','🗺️','🗼','🗽','🗿','🏰','🏯','🏟️','🎡','🎢','🎠','⛪','🕌','🕍','🛕','⛩️','🕋','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🌃','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🌁'],
+    atividades: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🛹','🛼','🛷','🏹','🎣','🤿','🥊','🥋','🎽','🛶','🎿','⛷️','🏂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎫','🎟️','🎪','🤹','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'],
+    objetos: ['📱','💻','🖥️','🖨️','⌨️','🖱️','🖲️','💽','💾','💿','📀','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🧭','🕰️','⏰','⏱️','⏲️','⌚','⏳','⌛','📡','🔋','🔌','💡','🔦','🕯️','🗑️','🛢️','💰','💵','💴','💶','💷','💳','💎','⚖️','🦯','🔧','🔨','⚒️','🛠️','⛏️','🔩','🪛','🔫','💣','🔪','🗡️','⚔️','🛡️','🪚','🔒','🔓','🔏','🔐','🗝️','🔑','🪤','🔮','📿','💈','🛎️','🧲','🪜','🪞','🛋️','🚪','🛏️','🧸','🪆','🖼️','🧿','🪬','🪄','🎁','🎀','🎊','🎉','🎈','🎏','🎐','🎑','🧧','🎋','🎃','🎄','🎆','🎇','🧨','✨','🎍','🎎'],
+    simbolos: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💝','💟','☮️','✝️','☪️','🕉️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','▶️','⏸️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','💲','❓','❔','❕','❗','〰️','💱','🔚','🔙','🔛','🔜','🔝','🔛']
+  };
+
+  var REACT_RECENTES_KEY = 'react_recentes_v1';
+  function getRecentes(){
+    try { return JSON.parse(localStorage.getItem(REACT_RECENTES_KEY) || '[]'); } catch(e){ return []; }
+  }
+  function addRecente(emoji){
+    var lista = getRecentes().filter(function(e){ return e !== emoji; });
+    lista.unshift(emoji);
+    if (lista.length > 36) lista = lista.slice(0, 36);
+    try { localStorage.setItem(REACT_RECENTES_KEY, JSON.stringify(lista)); } catch(e){}
+  }
+
+  function renderPickerCat(catId){
+    reactCatAtiva = catId;
+    var body = document.getElementById('react-picker-body');
+    var emojis = catId === 'recentes' ? getRecentes() : (EMOJI_BANCO[catId] || []);
+    if (!emojis.length){
+      body.innerHTML = '<div class="react-picker-vazio">Nenhum emoji recente ainda.<br>Use emojis para que apareçam aqui!</div>';
+    } else {
+      body.innerHTML = emojis.map(function(e){
+        return '<button data-emo="' + e + '" title="' + e + '">' + e + '</button>';
+      }).join('');
+      Array.prototype.forEach.call(body.querySelectorAll('button'), function(btn){
+        btn.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          if (!reactTargetId || !activeId) return fecharReactPicker();
+          var emoji = btn.getAttribute('data-emo');
+          addRecente(emoji);
+          toggleReacao(activeId, reactTargetId, emoji);
+          fecharReactPicker();
+        });
+      });
+    }
+    // marcar aba ativa
+    Array.prototype.forEach.call(document.getElementById('react-picker-cats').querySelectorAll('button'), function(b){
+      b.classList.toggle('ativa', b.getAttribute('data-cat') === catId);
+    });
+  }
+
+  // monta as abas de categorias (uma vez)
   (function(){
-    els.reactPicker.innerHTML = EMOJIS_REACAO.map(function(e){
-      return '<button data-emo="' + e + '">' + e + '</button>';
+    var cats = document.getElementById('react-picker-cats');
+    cats.innerHTML = EMOJI_CATS.map(function(c){
+      return '<button data-cat="' + c.id + '" title="' + c.nome + '">' + c.ico + '</button>';
     }).join('');
-    Array.prototype.forEach.call(els.reactPicker.querySelectorAll('button'), function(btn){
+    Array.prototype.forEach.call(cats.querySelectorAll('button'), function(btn){
       btn.addEventListener('click', function(ev){
         ev.stopPropagation();
-        if (!reactTargetId || !activeId) return fecharReactPicker();
-        var emoji = btn.getAttribute('data-emo');
-        toggleReacao(activeId, reactTargetId, emoji);
-        fecharReactPicker();
+        renderPickerCat(btn.getAttribute('data-cat'));
       });
     });
   })();
+
   function fecharReactPicker(){ els.reactPicker.classList.remove('open'); reactTargetId = null; }
   function toggleReacao(convId, msgId, emoji){
     var msgRef = db.collection('conversas').doc(convId).collection('mensagens').doc(msgId);
@@ -1284,7 +1368,7 @@
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 14) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 14) + '</button>';
-      out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">😀</button>';
+      out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">' + icoSvg('smiley', 14) + '</button>';
       out += '</div>';
       var reacoes = m.reacoes || {};
       var pillsHtml = '';
@@ -1333,20 +1417,18 @@
         }
         reactTargetId = id;
         var rect = btn.getBoundingClientRect();
-        var listRect = els.msgList.getBoundingClientRect();
-        var top = rect.bottom - listRect.top + els.msgList.scrollTop + 4;
-        var left = rect.left - listRect.left;
-        // keep within viewport
-        var pickerW = 180;
-        if (left + pickerW > listRect.width) left = listRect.width - pickerW - 4;
-        if (left < 0) left = 0;
+        var pickerW = 300, pickerH = 280;
+        // posição: tenta abrir abaixo, se não couber abre acima
+        var top = rect.bottom + 4;
+        if (top + pickerH > window.innerHeight - 10) top = rect.top - pickerH - 4;
+        var left = rect.left;
+        if (left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
+        if (left < 8) left = 8;
         els.reactPicker.style.top = top + 'px';
         els.reactPicker.style.left = left + 'px';
-        els.reactPicker.style.position = 'absolute';
-        // react-picker is child of body; reposition relative to viewport
-        els.reactPicker.style.position = 'fixed';
-        els.reactPicker.style.top = (rect.bottom + 4) + 'px';
-        els.reactPicker.style.left = left + listRect.left + 'px';
+        // abre com aba de recentes (ou expressões se recentes vazio)
+        var catInicial = getRecentes().length ? 'recentes' : 'expressoes';
+        renderPickerCat(catInicial);
         els.reactPicker.classList.add('open');
       });
     });
