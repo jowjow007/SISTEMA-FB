@@ -274,12 +274,29 @@
   .msg-fwd-label{font-size:.68rem;color:var(--muted);font-style:italic;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px;}
   .msg-photo{max-width:220px;border-radius:10px;display:block;cursor:pointer;margin-bottom:4px;}
   .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;}
-  .msg-fwd-btn,.msg-reply-btn{
+  .msg-fwd-btn,.msg-reply-btn,.msg-react-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .12s;
     padding:2px 4px;display:inline-flex;align-items:center;
   }
-  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn{opacity:1;}
-  .msg-fwd-btn:hover,.msg-reply-btn:hover{color:var(--paper);}
+  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn{opacity:1;}
+  .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover{color:var(--paper);}
+  .msg-react-btn{font-size:.85rem;}
+  .react-picker{
+    display:none;position:absolute;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:12px;padding:6px;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.5);
+    grid-template-columns:repeat(6,1fr);gap:2px;width:180px;
+  }
+  .react-picker.open{display:grid;}
+  .react-picker button{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px;border-radius:6px;line-height:1;transition:transform .1s;}
+  .react-picker button:hover{background:var(--panel-3);transform:scale(1.25);}
+  .msg-reacoes{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:0 4px;}
+  .reacao-pill{
+    display:inline-flex;align-items:center;gap:3px;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:20px;padding:2px 7px;font-size:.78rem;cursor:pointer;transition:background .12s;user-select:none;
+  }
+  .reacao-pill.minha{border-color:var(--gold);background:rgba(200,160,0,.15);}
+  .reacao-pill:hover{background:var(--panel-3);}
+  .reacao-pill .cnt{color:var(--muted);font-size:.72rem;}
   .msg-quote{
     border-left:3px solid var(--gold);background:rgba(255,255,255,.06);border-radius:6px;padding:4px 8px;margin-bottom:6px;
     cursor:pointer;max-width:220px;
@@ -575,6 +592,7 @@
   </div>
 </div>
 
+<div class="react-picker" id="react-picker"></div>
 <div class="lightbox-backdrop" id="lightbox">
   <img id="lightbox-img" src="">
 </div>
@@ -670,6 +688,7 @@
     btnCancelarResposta: document.getElementById('btn-cancelar-resposta'),
     btnEmoji: document.getElementById('btn-emoji'),
     emojiPopover: document.getElementById('emoji-popover'),
+    reactPicker: document.getElementById('react-picker'),
     lightbox: document.getElementById('lightbox'),
     lightboxImg: document.getElementById('lightbox-img')
   };
@@ -687,6 +706,37 @@
   var pickerMode = null;      // 'nova' | 'encaminhar'
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
+  var reactTargetId = null;   // id da mensagem aguardando reação
+  var EMOJIS_REACAO = ['👍','❤️','😂','😮','😢','🙏','🔥','👏','✅','💪','🎉','😎'];
+  // popula o picker de reações
+  (function(){
+    els.reactPicker.innerHTML = EMOJIS_REACAO.map(function(e){
+      return '<button data-emo="' + e + '">' + e + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(els.reactPicker.querySelectorAll('button'), function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        if (!reactTargetId || !activeId) return fecharReactPicker();
+        var emoji = btn.getAttribute('data-emo');
+        toggleReacao(activeId, reactTargetId, emoji);
+        fecharReactPicker();
+      });
+    });
+  })();
+  function fecharReactPicker(){ els.reactPicker.classList.remove('open'); reactTargetId = null; }
+  function toggleReacao(convId, msgId, emoji){
+    var msgRef = db.collection('conversas').doc(convId).collection('mensagens').doc(msgId);
+    msgRef.get().then(function(snap){
+      if (!snap.exists) return;
+      var reacoes = snap.data().reacoes || {};
+      var lista = (reacoes[emoji] || []).slice();
+      var idx = lista.indexOf(myUid);
+      if (idx === -1) lista.push(myUid); else lista.splice(idx, 1);
+      var update = {};
+      update['reacoes.' + emoji] = lista;
+      msgRef.update(update).catch(function(){});
+    });
+  }
   var catalogoEtiquetas = {}; // tagId -> {nome, cor}
   var tagFilterSelected = {}; // tagId -> true (filtro da lista de conversas)
   var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
@@ -1188,6 +1238,7 @@
   }
 
   function renderMensagens(){
+    fecharReactPicker();
     var out = '';
     var ultimoDia = null;
     mensagensCache.forEach(function(m){
@@ -1233,7 +1284,19 @@
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 14) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 14) + '</button>';
+      out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">😀</button>';
       out += '</div>';
+      var reacoes = m.reacoes || {};
+      var pillsHtml = '';
+      Object.keys(reacoes).forEach(function(emoji){
+        var uids = reacoes[emoji] || [];
+        if (!uids.length) return;
+        var minha = uids.indexOf(myUid) !== -1;
+        var nomes = uids.map(function(u){ return nomeDe(u); }).join(', ');
+        pillsHtml += '<span class="reacao-pill' + (minha ? ' minha' : '') + '" data-react-pill="' + m.id + '" data-emoji="' + emoji + '" title="' + escapeHtml(nomes) + '">' +
+          emoji + ' <span class="cnt">' + uids.length + '</span></span>';
+      });
+      if (pillsHtml) out += '<div class="msg-reacoes">' + pillsHtml + '</div>';
       if (own) out += '<div class="msg-time">' + formatHora(m.criadoEm) + '</div>';
       out += '</div>';
       out += '</div>';
@@ -1261,6 +1324,39 @@
         if (msg) iniciarResposta(msg);
       });
     });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react]'), function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = btn.getAttribute('data-react');
+        if (reactTargetId === id && els.reactPicker.classList.contains('open')){
+          return fecharReactPicker();
+        }
+        reactTargetId = id;
+        var rect = btn.getBoundingClientRect();
+        var listRect = els.msgList.getBoundingClientRect();
+        var top = rect.bottom - listRect.top + els.msgList.scrollTop + 4;
+        var left = rect.left - listRect.left;
+        // keep within viewport
+        var pickerW = 180;
+        if (left + pickerW > listRect.width) left = listRect.width - pickerW - 4;
+        if (left < 0) left = 0;
+        els.reactPicker.style.top = top + 'px';
+        els.reactPicker.style.left = left + 'px';
+        els.reactPicker.style.position = 'absolute';
+        // react-picker is child of body; reposition relative to viewport
+        els.reactPicker.style.position = 'fixed';
+        els.reactPicker.style.top = (rect.bottom + 4) + 'px';
+        els.reactPicker.style.left = left + listRect.left + 'px';
+        els.reactPicker.classList.add('open');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react-pill]'), function(pill){
+      pill.addEventListener('click', function(){
+        var id = pill.getAttribute('data-react-pill');
+        var emoji = pill.getAttribute('data-emoji');
+        if (activeId) toggleReacao(activeId, id, emoji);
+      });
+    });
     Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-jump]'), function(el){
       el.addEventListener('click', function(){
         var id = el.getAttribute('data-jump');
@@ -1274,6 +1370,7 @@
   }
 
   els.lightbox.addEventListener('click', function(){ els.lightbox.classList.remove('open'); });
+  document.addEventListener('click', function(){ fecharReactPicker(); });
   els.btnVoltar.addEventListener('click', fecharThreadMobile);
 
   // ---------------- envio de mensagens ----------------
