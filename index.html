@@ -3456,12 +3456,34 @@
   // (subtabs[tab.id] existe e é menor que o total), manda a lista permitida
   // via query string — a ferramenta em si é quem esconde as sub-abas fora da lista.
   // Sem restrição salva = acesso a todas (comportamento de hoje, sem quebrar nada).
+  function urlLocalDaAba(t){
+    if (window.location.protocol !== 'file:') return '';
+    const l = String(t.label || '').toLowerCase();
+    const mapa = [
+      [/matriz.*demanda/, 'tools/matriz-demandas/index.html'],
+      [/painel.*not[ií]cia|not[ií]cia/, 'tools/noticias/index.html'],
+      [/chat/, 'tools/chat/index.html'],
+      [/condom[ií]nio/, 'tools/condominios/index.html'],
+      [/minhas.*anota/, 'tools/minhas-anotacoes/index.html'],
+      [/criador.*document|document/, 'tools/documentos/index.html'],
+      [/calculadora/, 'tools/calculadoras/index.html'],
+      [/sistemas?/, 'tools/sistemas/index.html'],
+      [/gest[aã]o/, 'tools/gestao/index.html'],
+      [/contrato/, 'tools/contratos/index.html'],
+      [/fbs*ia|assistente|intelig[eê]ncia artificial/, 'tools/assistente-ia/index.html'],
+      [/treinamento/, 'tools/treinamentos/index.html']
+    ];
+    for (const item of mapa) if (item[0].test(l)) return item[1];
+    return '';
+  }
+
   function buildToolUrl(t){
-    if (!t.subtabs || !t.subtabs.length) return t.url;
+    const urlBase = urlLocalDaAba(t) || t.url;
+    if (!t.subtabs || !t.subtabs.length) return urlBase;
     const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
-    if (!permitidas || permitidas.length >= t.subtabs.length) return t.url;
-    const sep = t.url.indexOf('?') === -1 ? '?' : '&';
-    return t.url + sep + '_subtabs=' + encodeURIComponent(permitidas.join(','));
+    if (!permitidas || permitidas.length >= t.subtabs.length) return urlBase;
+    const sep = urlBase.indexOf('?') === -1 ? '?' : '&';
+    return urlBase + sep + '_subtabs=' + encodeURIComponent(permitidas.join(','));
   }
 
   function escapeHtml(s){
