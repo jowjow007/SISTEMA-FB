@@ -276,32 +276,39 @@
   .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;}
   .msg-fwd-btn,.msg-reply-btn,.msg-react-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .12s;
-    padding:2px 4px;display:inline-flex;align-items:center;
+    padding:2px 4px;display:inline-flex;align-items:center;overflow:visible;
   }
+  .msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg{overflow:visible;display:block;}
   .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn{opacity:1;}
   .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover{color:var(--paper);}
   .msg-react-btn{font-size:.85rem;line-height:1;}
   .react-picker{
     display:none;position:fixed;background:var(--panel);border:1px solid var(--line-strong);
     border-radius:14px;z-index:200;box-shadow:0 8px 28px rgba(0,0,0,.6);
-    width:300px;overflow:hidden;flex-direction:column;
+    width:310px;overflow:hidden;flex-direction:column;
   }
   .react-picker.open{display:flex;}
-  .react-picker-cats{
-    display:flex;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--line-strong);
-    overflow-x:auto;scrollbar-width:none;flex-shrink:0;
+  .react-picker-header{
+    display:flex;align-items:center;gap:0;border-bottom:1px solid var(--line-strong);flex-shrink:0;
   }
-  .react-picker-cats::-webkit-scrollbar{display:none;}
+  .react-picker-nav{
+    background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 8px;
+    font-size:.8rem;flex-shrink:0;transition:color .12s;line-height:1;
+  }
+  .react-picker-nav:hover{color:var(--paper);}
+  .react-picker-cats{
+    display:flex;gap:1px;padding:5px 2px 0;flex:1;overflow:hidden;
+  }
   .react-picker-cats button{
-    background:none;border:none;font-size:1.1rem;cursor:pointer;padding:5px 7px;
-    border-radius:8px 8px 0 0;line-height:1;opacity:.55;transition:opacity .12s,background .12s;
+    background:none;border:none;font-size:1.05rem;cursor:pointer;padding:5px 6px;
+    border-radius:8px 8px 0 0;line-height:1;opacity:.5;transition:opacity .12s,background .12s;
     flex-shrink:0;
   }
   .react-picker-cats button.ativa{opacity:1;background:var(--panel-2);}
   .react-picker-cats button:hover{opacity:.9;}
   .react-picker-body{
     display:grid;grid-template-columns:repeat(9,1fr);gap:1px;padding:6px;
-    max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+    max-height:230px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
   }
   .react-picker-body button{
     background:none;border:none;font-size:1.25rem;cursor:pointer;padding:5px 3px;
@@ -613,7 +620,11 @@
 </div>
 
 <div class="react-picker" id="react-picker">
-  <div class="react-picker-cats" id="react-picker-cats"></div>
+  <div class="react-picker-header">
+    <button class="react-picker-nav" id="react-cat-prev" title="Categoria anterior">◀</button>
+    <div class="react-picker-cats" id="react-picker-cats"></div>
+    <button class="react-picker-nav" id="react-cat-next" title="Próxima categoria">▶</button>
+  </div>
   <div class="react-picker-body" id="react-picker-body"></div>
 </div>
 <div class="lightbox-backdrop" id="lightbox">
@@ -795,18 +806,29 @@
     });
   }
 
-  // monta as abas de categorias (uma vez)
+  // monta as abas de categorias (uma vez) e configura navegação prev/next
   (function(){
+    // impede que qualquer clique DENTRO do picker feche ele
+    els.reactPicker.addEventListener('click', function(ev){ ev.stopPropagation(); });
+
     var cats = document.getElementById('react-picker-cats');
     cats.innerHTML = EMOJI_CATS.map(function(c){
       return '<button data-cat="' + c.id + '" title="' + c.nome + '">' + c.ico + '</button>';
     }).join('');
     Array.prototype.forEach.call(cats.querySelectorAll('button'), function(btn){
-      btn.addEventListener('click', function(ev){
-        ev.stopPropagation();
+      btn.addEventListener('click', function(){
         renderPickerCat(btn.getAttribute('data-cat'));
       });
     });
+
+    function navCat(dir){
+      var idx = EMOJI_CATS.findIndex(function(c){ return c.id === reactCatAtiva; });
+      if (idx === -1) idx = 0;
+      idx = (idx + dir + EMOJI_CATS.length) % EMOJI_CATS.length;
+      renderPickerCat(EMOJI_CATS[idx].id);
+    }
+    document.getElementById('react-cat-prev').addEventListener('click', function(){ navCat(-1); });
+    document.getElementById('react-cat-next').addEventListener('click', function(){ navCat(1); });
   })();
 
   function fecharReactPicker(){ els.reactPicker.classList.remove('open'); reactTargetId = null; }
