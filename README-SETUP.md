@@ -121,7 +121,7 @@ service cloud.firestore {
                       && request.resource.data.autorUid == request.auth.uid;
         allow update: if isSignedIn()
                       && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor']);
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor','reacoes']);
         allow delete: if false;
       }
     }
