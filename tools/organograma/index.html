@@ -345,6 +345,11 @@
   .resumo-card .label{font-size:11px;color:#8a8a93;}
   .resumo-card .valor{font-size:20px;color:#f0f0f2;}
   .resumo-card .subvalor{font-size:13px;color:#d4a373;}
+  .resumo-card .resumo-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .resumo-card .resumo-icon{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border:1px solid rgba(197,160,89,.35);border-radius:9px;background:rgba(197,160,89,.1);color:#d4a373;}
+  .resumo-card .resumo-icon svg{width:17px;height:17px;}
+  .resumo-card .valor,.resumo-card .subvalor{display:flex;align-items:center;gap:7px;}
+  .resumo-card .valor svg,.resumo-card .subvalor svg{width:15px;height:15px;flex:0 0 15px;color:#c5a059;}
   .organograma-root{width:min(100%,650px);margin:0 auto 74px;}
   .organograma-root::after{bottom:-55px;font-size:1.6rem;}
   .root-card,.org-branch{background:#140e11;border:1.5px solid rgba(197,160,89,.35);border-radius:18px;box-shadow:0 15px 40px rgba(0,0,0,.5);}
@@ -378,6 +383,14 @@
   .org-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:0;overflow:visible;pointer-events:none;}
   .org-tree .organograma-root,.org-tree .org-branches{position:relative;z-index:1;}
   .org-tree .organograma-root::after,.org-tree .org-branch::before,.org-tree .org-branches::before,.org-tree .org-branches::after{display:none;content:none;}
+  .avatar-photo{appearance:none;padding:0;cursor:zoom-in;}
+  .avatar-photo:focus-visible{outline:2px solid var(--gold);outline-offset:3px;}
+  #photo-backdrop{z-index:30;background:rgba(0,0,0,.88);}
+  .photo-box{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);}
+  .photo-box img{display:block;width:min(75vw,500px);max-height:calc(100vh - 110px);object-fit:contain;border:1px solid rgba(197,160,89,.45);border-radius:12px;background:#140e11;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+  .photo-box p{margin:0;color:var(--paper);font-size:.88rem;text-align:center;}
+  .photo-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid rgba(255,255,255,.45);border-radius:50%;background:rgba(15,10,12,.85);color:#fff;font-size:24px;line-height:1;cursor:pointer;}
+  .photo-close:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
   #detail-backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(4px);}
   #detail-backdrop .modal-box{max-width:400px;background:linear-gradient(180deg,#16161a,#101013);border-right:3px solid #8b0000;border-radius:12px;padding:24px;}
   #detail-titulo{font-size:20px;color:#fff;}
@@ -603,6 +616,14 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="photo-backdrop" role="dialog" aria-modal="true" aria-labelledby="photo-title">
+  <div class="photo-box">
+    <button type="button" class="photo-close" id="photo-close" aria-label="Fechar foto">&times;</button>
+    <img id="photo-image" alt="">
+    <p id="photo-title"></p>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -672,6 +693,10 @@
     detailTempoAno: document.getElementById('detail-tempo-ano'),
     detailTempoTotal: document.getElementById('detail-tempo-total'),
     detailFechar: document.getElementById('detail-fechar'),
+    photoBackdrop: document.getElementById('photo-backdrop'),
+    photoImage: document.getElementById('photo-image'),
+    photoTitle: document.getElementById('photo-title'),
+    photoClose: document.getElementById('photo-close'),
   };
 
   const SISTEMAS_EXTERNOS = [
@@ -808,6 +833,19 @@
     return d ? parseInt(d, 10) / 100 : 0;
   }
 
+  function iconeResumo(tipo){
+    const desenhos = {
+      clt:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>',
+      estagiario:'<path d="m2 9 10-5 10 5-10 5L2 9Zm4 2v5c3.5 3 8.5 3 12 0v-5M22 9v6"/>',
+      associado:'<circle cx="9" cy="8" r="3"/><path d="M2 20v-2a7 7 0 0 1 14 0v2H2Zm15-14a3 3 0 0 1 0 6m2 8h3v-2a6 6 0 0 0-4-5.7"/>',
+      socio:'<path d="M12 2 3 6v6c0 5 3.5 8 9 10 5.5-2 9-5 9-10V6l-9-4Z"/><path d="m12 7 1.5 3 3.3.5-2.4 2.4.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.4 3.3-.5L12 7Z"/>',
+      total:'<circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20v-2a6 6 0 0 1 12 0v2H2Zm14 0h6v-2a5 5 0 0 0-6-4.9"/>',
+      pessoas:'<circle cx="12" cy="7" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2H5Z"/>',
+      moeda:'<circle cx="12" cy="12" r="9"/><path d="M15 8.5c-1-1-5-1.5-6 .5-1.5 3 5 2 6 5 .7 2-3.5 3-6 1.5M12 6v12"/>'
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + desenhos[tipo] + '</svg>';
+  }
+
   function renderResumo(pessoas){
     const categorias = [
       { chave:'clt', label:'Colaborador(a) CLT' },
@@ -822,14 +860,14 @@
     const cards = categorias.map(function(cat){
       const grupo = pessoas.filter(function(p){ return normalizarTexto(p.tipoColaborador) === cat.chave; });
       const valor = grupo.reduce(function(soma, p){ return soma + valorRemuneracao(p.remuneracao); }, 0);
-      return '<div class="resumo-card"><div class="label">' + escapeHtml(cat.label) + '</div>' +
-        '<div class="valor">' + grupo.length + (grupo.length === 1 ? ' pessoa' : ' pessoas') + '</div>' +
-        '<div class="subvalor">' + formatarMoeda(valor) + '</div></div>';
+      return '<div class="resumo-card"><div class="resumo-top"><div class="label">' + escapeHtml(cat.label) + '</div><span class="resumo-icon">' + iconeResumo(cat.chave) + '</span></div>' +
+        '<div class="valor">' + iconeResumo('pessoas') + '<span>' + grupo.length + (grupo.length === 1 ? ' pessoa' : ' pessoas') + '</span></div>' +
+        '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(valor) + '</span></div></div>';
     }).join('');
     const semCategoria = pessoas.filter(function(p){ return !categorias.some(function(cat){ return normalizarTexto(p.tipoColaborador) === cat.chave; }); }).length;
-    els.resumo.innerHTML = cards + '<div class="resumo-card"><div class="label">Total</div>' +
-      '<div class="valor">' + total.quantidade + (total.quantidade === 1 ? ' pessoa' : ' pessoas') + '</div>' +
-      '<div class="subvalor">' + formatarMoeda(total.valor) + (semCategoria ? ' · ' + semCategoria + ' sem categoria' : '') + '</div></div>';
+    els.resumo.innerHTML = cards + '<div class="resumo-card"><div class="resumo-top"><div class="label">Total</div><span class="resumo-icon">' + iconeResumo('total') + '</span></div>' +
+      '<div class="valor">' + iconeResumo('pessoas') + '<span>' + total.quantidade + (total.quantidade === 1 ? ' pessoa' : ' pessoas') + '</span></div>' +
+      '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(total.valor) + (semCategoria ? ' · ' + semCategoria + ' sem categoria' : '') + '</span></div></div>';
   }
 
   function classificarDepartamento(depto){
@@ -991,7 +1029,7 @@
     const foto = perfisMap[p.uid] && perfisMap[p.uid].photoBase64;
     const dot = '<span class="presence-dot' + (estaOnline(p.uid) ? ' online' : '') + '"></span>';
     const avatarInner = foto
-      ? '<div class="avatar" style="background-image:url(' + foto + ')">' + dot + '</div>'
+      ? '<button type="button" class="avatar avatar-photo" data-action="photo" aria-label="Ampliar foto de ' + escapeHtml(p.displayName || 'colaborador') + '" title="Clique para ampliar a foto" style="background-image:url(' + foto + ')">' + dot + '</button>'
       : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + dot + '</div>';
     const ingresso = p.dataIngresso
       ? formatarData(p.dataIngresso) + '<div class="tempo">' + tempoDeCasa(p.dataIngresso) + '</div>'
@@ -1225,6 +1263,33 @@
   function fecharDetalhe(){
     els.detailBackdrop.classList.remove('show');
   }
+  let focoFotoAnterior = null;
+  function abrirFoto(uid){
+    const foto = perfisMap[uid] && perfisMap[uid].photoBase64;
+    if (!foto) return;
+    const nome = (organogramaMap[uid] || {}).displayName || 'Colaborador';
+    focoFotoAnterior = document.activeElement;
+    els.photoImage.src = foto;
+    els.photoImage.alt = 'Foto de ' + nome;
+    els.photoTitle.textContent = nome;
+    els.photoBackdrop.classList.add('show');
+    els.photoClose.focus();
+  }
+  function fecharFoto(){
+    els.photoBackdrop.classList.remove('show');
+    els.photoImage.removeAttribute('src');
+    if (focoFotoAnterior && focoFotoAnterior.isConnected) focoFotoAnterior.focus();
+    focoFotoAnterior = null;
+  }
+  els.photoClose.addEventListener('click', fecharFoto);
+  els.photoBackdrop.addEventListener('click', function(e){
+    if (e.target === els.photoBackdrop) fecharFoto();
+  });
+  document.addEventListener('keydown', function(e){
+    if (!els.photoBackdrop.classList.contains('show')) return;
+    if (e.key === 'Escape') fecharFoto();
+    if (e.key === 'Tab') { e.preventDefault(); els.photoClose.focus(); }
+  });
   els.detailFechar.addEventListener('click', fecharDetalhe);
   els.detailBackdrop.addEventListener('click', function(e){
     if (e.target === els.detailBackdrop) fecharDetalhe();
@@ -1245,6 +1310,7 @@
     const action = e.target.closest('[data-action]');
     if (action) {
       e.stopPropagation();
+      if (action.dataset.action === 'photo') abrirFoto(card.dataset.uid);
       if (action.dataset.action === 'edit') abrirModalEdicao(card.dataset.uid);
       if (action.dataset.action === 'remove') window.__orgRemover(card.dataset.uid, (organogramaMap[card.dataset.uid] || {}).displayName || '');
       return;
