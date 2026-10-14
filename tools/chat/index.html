@@ -288,34 +288,32 @@
     width:310px;overflow:hidden;flex-direction:column;
   }
   .react-picker.open{display:flex;}
-  .react-picker-header{
-    display:flex;align-items:center;gap:0;border-bottom:1px solid var(--line-strong);flex-shrink:0;
+  .react-picker-search{padding:8px 8px 0;flex-shrink:0;}
+  .react-picker-search input{
+    width:100%;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line-strong);
+    border-radius:8px;padding:6px 10px;color:var(--paper);font-size:.82rem;outline:none;
   }
-  .react-picker-nav{
-    background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 8px;
-    font-size:.8rem;flex-shrink:0;transition:color .12s;line-height:1;
+  .react-picker-search input::placeholder{color:var(--muted);}
+  .react-picker-search input:focus{border-color:var(--gold);}
+  .react-picker-tabs{
+    display:flex;gap:0;padding:6px 8px 0;flex-shrink:0;border-bottom:1px solid var(--line-strong);
   }
-  .react-picker-nav:hover{color:var(--paper);}
-  .react-picker-cats{
-    display:flex;gap:1px;padding:5px 2px 0;flex:1;overflow:hidden;
+  .react-picker-tabs button{
+    flex:1;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 4px;
+    font-size:.78rem;border-radius:8px 8px 0 0;transition:background .12s,color .12s;
   }
-  .react-picker-cats button{
-    background:none;border:none;font-size:1.05rem;cursor:pointer;padding:5px 6px;
-    border-radius:8px 8px 0 0;line-height:1;opacity:.5;transition:opacity .12s,background .12s;
-    flex-shrink:0;
-  }
-  .react-picker-cats button.ativa{opacity:1;background:var(--panel-2);}
-  .react-picker-cats button:hover{opacity:.9;}
+  .react-picker-tabs button.ativa{background:var(--panel-2);color:var(--paper);font-weight:600;}
+  .react-picker-tabs button:hover{color:var(--paper);}
   .react-picker-body{
     display:grid;grid-template-columns:repeat(9,1fr);gap:1px;padding:6px;
-    max-height:230px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+    max-height:240px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
   }
   .react-picker-body button{
     background:none;border:none;font-size:1.25rem;cursor:pointer;padding:5px 3px;
     border-radius:6px;line-height:1;transition:transform .1s,background .12s;
   }
   .react-picker-body button:hover{background:var(--panel-2);transform:scale(1.3);}
-  .react-picker-vazio{padding:14px;text-align:center;color:var(--muted);font-size:.8rem;grid-column:1/-1;}
+  .react-picker-vazio{padding:16px;text-align:center;color:var(--muted);font-size:.8rem;grid-column:1/-1;}
   .msg-reacoes{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:0 4px;}
   .reacao-pill{
     display:inline-flex;align-items:center;gap:3px;background:var(--panel-2);border:1px solid var(--line-strong);
@@ -622,10 +620,10 @@
 </div>
 
 <div class="react-picker" id="react-picker">
-  <div class="react-picker-header">
-    <button class="react-picker-nav" id="react-cat-prev" title="Categoria anterior">◀</button>
-    <div class="react-picker-cats" id="react-picker-cats"></div>
-    <button class="react-picker-nav" id="react-cat-next" title="Próxima categoria">▶</button>
+  <div class="react-picker-search"><input type="text" id="react-search" placeholder="🔍 Pesquisar emoji…" autocomplete="off"></div>
+  <div class="react-picker-tabs">
+    <button data-tab="favoritos" class="ativa">⭐ Favoritos</button>
+    <button data-tab="todos">😀 Todos</button>
   </div>
   <div class="react-picker-body" id="react-picker-body"></div>
 </div>
@@ -743,21 +741,7 @@
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
   var reactTargetId = null;   // id da mensagem aguardando reação
-  var reactCatAtiva = 'recentes'; // categoria visível no picker
-
-  // Banco completo de emojis por categoria (estilo WhatsApp)
-  var EMOJI_CATS = [
-    { id:'recentes',   ico:'🕐', nome:'Recentes' },
-    { id:'expressoes', ico:'😀', nome:'Expressões' },
-    { id:'pessoas',    ico:'🧑', nome:'Pessoas' },
-    { id:'animais',    ico:'🐶', nome:'Animais' },
-    { id:'comida',     ico:'🍔', nome:'Comida' },
-    { id:'viagem',     ico:'✈️', nome:'Viagem' },
-    { id:'atividades', ico:'⚽', nome:'Atividades' },
-    { id:'objetos',    ico:'💡', nome:'Objetos' },
-    { id:'simbolos',   ico:'❤️', nome:'Símbolos' },
-    { id:'negocios',   ico:'💼', nome:'Negócios' }
-  ];
+  var reactTabAtiva = 'favoritos'; // 'favoritos' | 'todos'
   var EMOJI_BANCO = {
     expressoes: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
     pessoas: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃','🦷','👀','👁️','👅','💋','🫦','🦴','🧠','🫀','🫁','👤','👥','🫂','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
@@ -770,6 +754,86 @@
     negocios: ['✅','❎','✔️','☑️','🔲','🔳','📌','📍','📎','🖇️','📏','📐','✂️','🗃️','🗄️','🗑️','📁','📂','🗂️','📋','📄','📃','📑','📊','📈','📉','📆','📅','🗒️','🗓️','📇','📌','📍','🔖','🏷️','💼','👔','👗','🤝','🤜','🤛','👊','👋','🙏','💪','🧠','💡','🔍','🔎','🔒','🔓','🔑','🗝️','🔧','🔨','⚙️','🛠️','⛏️','🔩','🪛','⚖️','📡','💻','🖥️','⌨️','🖱️','🖨️','📱','📲','☎️','📞','📟','📠','📺','📷','📸','📹','🎥','📽️','🎬','💾','💿','📀','🔋','🔌','💡','🕯️','💰','💵','💴','💶','💷','💸','💳','💹','📤','📥','📦','📧','📨','📩','📪','📫','📬','📭','📮','🗳️','✉️','📝','✏️','✒️','🖊️','🖋️','🗺️','🏢','🏬','🏦','🏥','🏨','🏪','🏫','🏭','🏗️','🚀','🛸','⏰','⏱️','⏲️','⌚','⏳','⌛','🔔','🔕','📣','📢','🗣️','💬','💭','🗯️','🌐','🔗','📡','🧭','🎯','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎫','🎟️','🎪','🎭','🎨','🎤','🎧','🎼','📻','🎙️','🎚️','🎛️','🚦','🔐','🛡️','🚨','⚡','🌟','💫','✨','🔥','💥','🌊','🎆','🎇','🧨']
   };
 
+  // Lista plana única (todas as categorias, sem duplicatas)
+  var TODOS_EMOJIS = (function(){
+    var seen = {}, result = [];
+    var keys = ['expressoes','pessoas','animais','comida','viagem','atividades','objetos','simbolos','negocios'];
+    keys.forEach(function(k){
+      (EMOJI_BANCO[k] || []).forEach(function(e){ if (!seen[e]){ seen[e]=1; result.push(e); } });
+    });
+    return result;
+  })();
+
+  // Mapa de nomes em português para pesquisa
+  var EMOJI_NOMES = {
+    '😀':'feliz sorriso','😃':'sorrindo animado','😄':'gargalhada','😁':'sorrindo dentes',
+    '😆':'rindo','😅':'suando rindo','🤣':'caindo de rir rolando','😂':'chorando de rir',
+    '🙂':'levemente sorrindo','😉':'piscando','😊':'envergonhado feliz','😇':'anjo',
+    '🥰':'apaixonado coração','😍':'olhos de coração amor','🤩':'estrelas nos olhos',
+    '😘':'beijo mandando','😗':'beijo boca','😚':'beijo fechado','😙':'beijo sorrindo',
+    '😋':'gostoso delicioso comendo','😛':'língua de fora','😜':'piscando língua',
+    '🤪':'louco maluco','😝':'língua olho fechado','🤑':'dinheiro cifrão','🤗':'abraço',
+    '🤭':'mão na boca surpresa','🤫':'silêncio shhh','🤔':'pensando reflexivo',
+    '🤐':'boca fechada zíper','🤨':'sobrancelha levantada','😐':'neutro sem expressão',
+    '😑':'irritado sem graça','😶':'sem boca','😏':'satisfeito irônico',
+    '😒':'não gostei aborrecido','🙄':'olhos revirados','😬':'sorriso forçado',
+    '🤥':'mentindo nariz','😔':'pensativo triste','😪':'com sono bocejando',
+    '🤤':'babando delícia','😴':'dormindo','😷':'máscara doente','🤒':'termômetro doente',
+    '🤕':'curativo machucado','🤢':'enjoado náusea','🤮':'vomitando','🤧':'espirrando',
+    '🥵':'quente calor suando','🥶':'frio congelando','🥴':'tonto zonzo','😵':'tonto atordoado',
+    '🤯':'explodindo cabeça chocado','🤠':'cowboy chapéu','🥳':'festa comemorando',
+    '😎':'óculos legal bacana','🤓':'nerd óculos','🧐':'monóculo curioso',
+    '😕':'confuso','😟':'preocupado','🙁':'ligeiramente triste','☹️':'triste',
+    '😮':'surpreso boca aberta','😯':'chocado','😲':'espantado','😳':'corado envergonhado',
+    '🥺':'suplica por favor','😦':'surpreso assustado','😨':'medo assustado',
+    '😰':'suando nervoso ansioso','😥':'aliviado triste','😢':'chorando lágrima',
+    '😭':'chorando muito','😱':'gritando medo','😖':'frustrado confuso','😣':'esforçando',
+    '😞':'desapontado','😓':'suando trabalho','😩':'cansado exausto','😫':'exausto',
+    '🥱':'bocejando sono','😤':'vapor nariz bravo','😡':'com raiva vermelho',
+    '😠':'zangado','🤬':'xingando palavrão','😈':'diabinho malvado','👿':'bravo malvado',
+    '💀':'caveira morte','☠️':'caveira ossos perigo','💩':'cocô engraçado',
+    '🤡':'palhaço','👹':'monstro','👻':'fantasma assombração','👽':'alien extraterrestre',
+    '🤖':'robô tecnologia',
+    '👋':'acenando olá tchau','👍':'joinha positivo bom','👎':'negativo ruim',
+    '👏':'palmas parabéns','🙏':'obrigado rezando por favor','💪':'força músculo',
+    '✊':'punho firmeza','🤝':'aperto de mão acordo parceria','✌️':'paz vitória dois',
+    '🤞':'dedos cruzados sorte','👀':'olhos olhando','🧠':'cérebro inteligência',
+    '❤️':'coração amor vermelho','🧡':'coração laranja','💛':'coração amarelo',
+    '💚':'coração verde','💙':'coração azul','💜':'coração roxo','🖤':'coração preto',
+    '💔':'coração partido','💕':'corações','💞':'corações girando','💓':'coração batendo',
+    '💗':'coração crescendo','💖':'coração brilhando','💝':'coração laço',
+    '🎉':'festa confete parabéns','🎊':'confete celebração','🎈':'balão festa',
+    '🎂':'bolo aniversário','🎁':'presente','🏆':'troféu campeão vencedor',
+    '🥇':'medalha ouro primeiro','🥈':'medalha prata segundo','🥉':'medalha bronze terceiro',
+    '⭐':'estrela','🌟':'estrela brilhante','🔥':'fogo quente trending',
+    '✅':'ok confirmado certo marcado','❌':'errado não x','⚠️':'atenção alerta cuidado',
+    '💯':'cem por cento perfeito','‼️':'atenção importante','❓':'dúvida pergunta',
+    '❗':'exclamação importante','🚀':'foguete lançamento startup',
+    '💡':'ideia lâmpada iluminação','🔍':'busca pesquisa lupa','🔎':'lupa pesquisa',
+    '📌':'fixado marcado pin','📍':'localização local','📋':'prancheta lista',
+    '📊':'gráfico barras estatística','📈':'gráfico subindo crescendo',
+    '📉':'gráfico caindo diminuindo','📅':'calendário data','📆':'calendário',
+    '⏰':'alarme hora despertador','⏱️':'cronômetro tempo','⌚':'relógio',
+    '💼':'maleta trabalho negócio','💰':'dinheiro dinheiro saco','💵':'nota dólar',
+    '💳':'cartão crédito pagamento','💸':'dinheiro voando','💹':'gráfico yene alta',
+    '📧':'email mensagem','📨':'recebido envelope','📩':'email entrada',
+    '📤':'enviado saída','📥':'recebido entrada','📦':'caixa pacote entrega',
+    '✏️':'lápis escrita','✒️':'caneta tinta','📝':'anotação bloco',
+    '📄':'documento papel','📃':'página documento','📑':'marcadores documento',
+    '🔒':'cadeado trancado segurança','🔓':'desbloqueado aberto','🔑':'chave acesso',
+    '🗝️':'chave antiga','⚙️':'engrenagem configuração','🔧':'chave ferramenta',
+    '🔨':'martelo','🛠️':'ferramentas','⚖️':'balança justiça','🖥️':'computador monitor',
+    '💻':'notebook laptop','📱':'celular smartphone','☎️':'telefone','📞':'ligação',
+    '🎯':'alvo objetivo meta','🏢':'prédio empresa escritório','🌐':'global internet mundo',
+    '🔗':'link corrente','📡':'antena sinal','🎤':'microfone apresentação',
+    '🎧':'fone ouvido música','🔔':'sino notificação alerta','📣':'megafone anúncio',
+    '💬':'mensagem chat conversa','💭':'pensamento balão','🗣️':'falando apresentando',
+    '🚗':'carro','✈️':'avião viagem voo','🍕':'pizza','🍔':'hambúrguer','☕':'café',
+    '🍺':'cerveja','🥂':'brinde comemoração','🎵':'música nota','🎶':'notas musicais',
+    '🌹':'rosa flor amor','🌻':'girassol','🌈':'arco íris','☀️':'sol',
+    '🌙':'lua noite','❄️':'neve frio','🌊':'onda mar praia'
+  };
+
   var REACT_RECENTES_KEY = 'react_recentes_v1';
   function getRecentes(){
     try { return JSON.parse(localStorage.getItem(REACT_RECENTES_KEY) || '[]'); } catch(e){ return []; }
@@ -777,63 +841,78 @@
   function addRecente(emoji){
     var lista = getRecentes().filter(function(e){ return e !== emoji; });
     lista.unshift(emoji);
-    if (lista.length > 36) lista = lista.slice(0, 36);
+    if (lista.length > 54) lista = lista.slice(0, 54);
     try { localStorage.setItem(REACT_RECENTES_KEY, JSON.stringify(lista)); } catch(e){}
   }
 
-  function renderPickerCat(catId){
-    reactCatAtiva = catId;
+  function renderPickerBody(emojis, vazio){
     var body = document.getElementById('react-picker-body');
-    var emojis = catId === 'recentes' ? getRecentes() : (EMOJI_BANCO[catId] || []);
     if (!emojis.length){
-      body.innerHTML = '<div class="react-picker-vazio">Nenhum emoji recente ainda.<br>Use emojis para que apareçam aqui!</div>';
-    } else {
-      body.innerHTML = emojis.map(function(e){
-        return '<button data-emo="' + e + '" title="' + e + '">' + e + '</button>';
-      }).join('');
-      Array.prototype.forEach.call(body.querySelectorAll('button'), function(btn){
-        btn.addEventListener('click', function(ev){
-          ev.stopPropagation();
-          if (!reactTargetId || !activeId) return fecharReactPicker();
-          var emoji = btn.getAttribute('data-emo');
-          addRecente(emoji);
-          toggleReacao(activeId, reactTargetId, emoji);
-          fecharReactPicker();
-        });
-      });
+      body.innerHTML = '<div class="react-picker-vazio">' + (vazio || 'Nenhum resultado.') + '</div>';
+      return;
     }
-    // marcar aba ativa
-    Array.prototype.forEach.call(document.getElementById('react-picker-cats').querySelectorAll('button'), function(b){
-      b.classList.toggle('ativa', b.getAttribute('data-cat') === catId);
+    body.innerHTML = emojis.map(function(e){
+      var nome = EMOJI_NOMES[e] || '';
+      return '<button data-emo="' + e + '" title="' + escapeHtml(nome || e) + '">' + e + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(body.querySelectorAll('button'), function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        if (!reactTargetId || !activeId) return fecharReactPicker();
+        var emoji = btn.getAttribute('data-emo');
+        addRecente(emoji);
+        toggleReacao(activeId, reactTargetId, emoji);
+        fecharReactPicker();
+      });
     });
   }
 
-  // monta as abas de categorias (uma vez) e configura navegação prev/next
-  (function(){
-    // impede que qualquer clique DENTRO do picker feche ele
-    els.reactPicker.addEventListener('click', function(ev){ ev.stopPropagation(); });
+  function atualizarPicker(){
+    var q = (document.getElementById('react-search').value || '').trim().toLowerCase();
+    if (q) {
+      // pesquisa em todos os emojis pelo nome
+      var resultado = TODOS_EMOJIS.filter(function(e){
+        var n = (EMOJI_NOMES[e] || '').toLowerCase();
+        return n.indexOf(q) !== -1 || e === q;
+      });
+      renderPickerBody(resultado, 'Nenhum emoji encontrado para "' + escapeHtml(q) + '".');
+    } else if (reactTabAtiva === 'favoritos') {
+      var fav = getRecentes();
+      renderPickerBody(fav, 'Você ainda não usou nenhum emoji.<br>Escolha na aba Todos e eles aparecerão aqui.');
+    } else {
+      renderPickerBody(TODOS_EMOJIS);
+    }
+    // marcar aba ativa
+    Array.prototype.forEach.call(document.querySelectorAll('.react-picker-tabs button'), function(b){
+      b.classList.toggle('ativa', b.getAttribute('data-tab') === reactTabAtiva);
+    });
+  }
 
-    var cats = document.getElementById('react-picker-cats');
-    cats.innerHTML = EMOJI_CATS.map(function(c){
-      return '<button data-cat="' + c.id + '" title="' + c.nome + '">' + c.ico + '</button>';
-    }).join('');
-    Array.prototype.forEach.call(cats.querySelectorAll('button'), function(btn){
+  // configura picker (uma vez)
+  (function(){
+    els.reactPicker.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    Array.prototype.forEach.call(document.querySelectorAll('.react-picker-tabs button'), function(btn){
       btn.addEventListener('click', function(){
-        renderPickerCat(btn.getAttribute('data-cat'));
+        reactTabAtiva = btn.getAttribute('data-tab');
+        document.getElementById('react-search').value = '';
+        atualizarPicker();
       });
     });
-
-    function navCat(dir){
-      var idx = EMOJI_CATS.findIndex(function(c){ return c.id === reactCatAtiva; });
-      if (idx === -1) idx = 0;
-      idx = (idx + dir + EMOJI_CATS.length) % EMOJI_CATS.length;
-      renderPickerCat(EMOJI_CATS[idx].id);
-    }
-    document.getElementById('react-cat-prev').addEventListener('click', function(){ navCat(-1); });
-    document.getElementById('react-cat-next').addEventListener('click', function(){ navCat(1); });
+    document.getElementById('react-search').addEventListener('input', function(ev){
+      ev.stopPropagation();
+      atualizarPicker();
+    });
+    document.getElementById('react-search').addEventListener('keydown', function(ev){
+      ev.stopPropagation();
+    });
   })();
 
-  function fecharReactPicker(){ els.reactPicker.classList.remove('open'); reactTargetId = null; }
+  function fecharReactPicker(){
+    els.reactPicker.classList.remove('open');
+    reactTargetId = null;
+    var s = document.getElementById('react-search');
+    if (s) s.value = '';
+  }
   function toggleReacao(convId, msgId, emoji){
     var msgRef = db.collection('conversas').doc(convId).collection('mensagens').doc(msgId);
     msgRef.get().then(function(snap){
@@ -1467,9 +1546,10 @@
         if (left < 8) left = 8;
         els.reactPicker.style.top = top + 'px';
         els.reactPicker.style.left = left + 'px';
-        // abre com aba de recentes (ou expressões se recentes vazio)
-        var catInicial = getRecentes().length ? 'recentes' : 'expressoes';
-        renderPickerCat(catInicial);
+        // abre sempre na aba favoritos; limpa pesquisa
+        reactTabAtiva = 'favoritos';
+        document.getElementById('react-search').value = '';
+        atualizarPicker();
         els.reactPicker.classList.add('open');
       });
     });
