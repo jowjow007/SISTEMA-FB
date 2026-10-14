@@ -374,6 +374,10 @@
   .org-branch .card .foot,.root-card .card .foot{margin-top:auto;padding-top:10px;opacity:1;}
   .org-branch .card .foot .btn,.root-card .card .foot .btn{flex:1;justify-content:center;padding:6px 10px;font-size:11px;border-radius:20px;background:#241c20;color:#e5e7eb;}
   .org-branch .card .foot .danger-outline,.root-card .card .foot .danger-outline{background:#42121a;border-color:rgba(239,68,68,.2);color:#f87171;}
+  .org-tree{position:relative;isolation:isolate;}
+  .org-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:0;overflow:visible;pointer-events:none;}
+  .org-tree .organograma-root,.org-tree .org-branches{position:relative;z-index:1;}
+  .org-tree .organograma-root::after,.org-tree .org-branch::before,.org-tree .org-branches::before,.org-tree .org-branches::after{display:none;content:none;}
   #detail-backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(4px);}
   #detail-backdrop .modal-box{max-width:400px;background:linear-gradient(180deg,#16161a,#101013);border-right:3px solid #8b0000;border-radius:12px;padding:24px;}
   #detail-titulo{font-size:20px;color:#fff;}
@@ -869,10 +873,80 @@
       '</section>';
   }
 
+  let conexoesObserver;
+  function atualizarConexoes(){
+    const arvore = els.secoes.querySelector('.org-tree');
+    if (!arvore) return;
+    const svg = arvore.querySelector('.org-connectors');
+    const raiz = arvore.querySelector('.root-card');
+    const juridico = arvore.querySelector('.org-branch-juridico');
+    const condominio = arvore.querySelector('.org-branch-condominio');
+    const secretaria = arvore.querySelector('.org-branch-secretaria');
+    if (!svg || !raiz || !juridico || !condominio || !secretaria) return;
+
+    const base = arvore.getBoundingClientRect();
+    const retangulo = function(elemento){
+      const r = elemento.getBoundingClientRect();
+      return {left:r.left-base.left,right:r.right-base.left,top:r.top-base.top,bottom:r.bottom-base.top,
+        centerX:(r.left+r.right)/2-base.left,centerY:(r.top+r.bottom)/2-base.top,width:r.width,height:r.height};
+    };
+    const r = retangulo(raiz), j = retangulo(juridico), c = retangulo(condominio), s = retangulo(secretaria);
+    const largura = Math.max(1, Math.ceil(base.width));
+    const altura = Math.max(1, Math.ceil(base.height));
+    svg.setAttribute('viewBox', '0 0 ' + largura + ' ' + altura);
+    const caminho = function(d){ return '<path d="' + d + '"/>'; };
+    const ponto = function(x,y){ return '<circle cx="' + x + '" cy="' + y + '" r="3.5"/>'; };
+    const terminal = function(y){ return y - 8; };
+    let caminhos = '';
+    let pontos = '';
+
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      [[r,j],[j,c],[c,s]].forEach(function(par){
+        caminhos += caminho('M ' + par[0].centerX + ' ' + par[0].bottom + ' V ' + terminal(par[1].top));
+        pontos += ponto(par[0].centerX, par[0].bottom);
+      });
+    } else {
+      [[r.left,r.centerY,j.left+j.width*.28,j.top,-1],
+       [r.right,r.centerY,c.right-c.width*.28,c.top,1]].forEach(function(ligacao){
+        const x0=ligacao[0],y0=ligacao[1],x1=ligacao[2],y1=terminal(ligacao[3]),lado=ligacao[4];
+        const raio=Math.min(14,Math.abs(x1-x0)/2,Math.max(0,(y1-y0)/2));
+        caminhos += caminho('M '+x0+' '+y0+' H '+(x1-lado*raio)+' Q '+x1+' '+y0+' '+x1+' '+(y0+raio)+' V '+y1);
+        pontos += ponto(x0,y0);
+      });
+      caminhos += caminho('M '+r.centerX+' '+r.bottom+' V '+terminal(s.top));
+      pontos += ponto(r.centerX,r.bottom);
+      [[j,j.left+j.width*.25,s.left],[c,c.right-c.width*.25,s.right]].forEach(function(ligacao){
+        const origem=ligacao[0],xInicio=ligacao[1],xFim=ligacao[2];
+        const yFim=s.top+s.height*.55;
+        const sentido=Math.sign(xFim-xInicio) || 1;
+        const raio=Math.min(18,Math.abs(xFim-xInicio)/2,Math.max(0,(yFim-origem.bottom)/2));
+        caminhos += caminho('M '+xInicio+' '+origem.bottom+' V '+(yFim-raio)+' Q '+xInicio+' '+yFim+' '+(xInicio+sentido*raio)+' '+yFim+' H '+(xFim-sentido*8));
+        pontos += ponto(xInicio,origem.bottom);
+      });
+    }
+    svg.innerHTML = '<defs><marker id="org-arrow" viewBox="0 0 8 8" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#bfa15f"/></marker></defs>' +
+      '<g fill="none" stroke="#bfa15f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#org-arrow)">' + caminhos + '</g>' +
+      '<g fill="#bfa15f">' + pontos + '</g>';
+  }
+
+  function observarConexoes(){
+    if (conexoesObserver) conexoesObserver.disconnect();
+    const arvore = els.secoes.querySelector('.org-tree');
+    if (!arvore) return;
+    if (window.ResizeObserver) {
+      conexoesObserver = new ResizeObserver(function(){ requestAnimationFrame(atualizarConexoes); });
+      arvore.querySelectorAll('.organograma-root,.org-branch').forEach(function(painel){ conexoesObserver.observe(painel); });
+    }
+    requestAnimationFrame(atualizarConexoes);
+  }
+  window.addEventListener('resize', atualizarConexoes);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(atualizarConexoes);
+
   function render(){
     const uids = Object.keys(organogramaMap);
 
     if (uids.length === 0) {
+      if (conexoesObserver) conexoesObserver.disconnect();
       els.secoes.innerHTML = '';
       els.resumo.innerHTML = '';
       els.empty.style.display = 'block';
@@ -894,14 +968,16 @@
       ramos[ramo].push(Object.assign({uid: uid}, d));
     });
 
-    els.secoes.innerHTML = '<section class="organograma-root"><div class="root-card"><div class="title">Diretoria Jurídica</div><div class="sub">' + ramos.diretoria.length + (ramos.diretoria.length === 1 ? ' colaborador' : ' colaboradores') + '</div>' +
+    els.secoes.innerHTML = '<div class="org-tree"><svg class="org-connectors" aria-hidden="true"></svg>' +
+      '<section class="organograma-root"><div class="root-card"><div class="title">Diretoria Jurídica</div><div class="sub">' + ramos.diretoria.length + (ramos.diretoria.length === 1 ? ' colaborador' : ' colaboradores') + '</div>' +
       (ramos.diretoria.length ? '<div class="grid">' + ramos.diretoria.map(renderCard).join('') + '</div>' : '') + '</div></section>' +
       '<div class="org-branches">' +
         renderPainel('Jurídico', ramos.juridico, 'org-branch-juridico') +
         renderPainel('Condomínio', ramos.condominio, 'org-branch-condominio') +
         renderPainel('Secretaria', ramos.secretaria, 'org-branch-secretaria') +
-      '</div>';
+      '</div></div>';
 
+    observarConexoes();
     atualizarSyncHint();
   }
 
