@@ -355,7 +355,7 @@
     animation:gearDotPulse 1.2s ease-in-out infinite;pointer-events:none;
   }
   .gear-notif-dot.show{display:block;}
-  #user-menu-btn{position:relative;}
+  #user-menu-btn{position:relative;overflow:visible;}
   @keyframes gearDotPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.35);opacity:.7;}}
   .user-menu-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
   .user-menu-dropdown{
@@ -2349,7 +2349,8 @@
     subscribeTabsCatalog();
     subscribeMobileHomeBadges();
     carregarFotoAvatarMobile();
-    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); subscribeSugestoesPendentes(); }
+    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
+    subscribeSugestoesPendentes();
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
     verificarAvisoFotoObrigatoria();
@@ -2401,14 +2402,20 @@
     });
   }
 
-  // Pisca a aba "Sugestões" para admins quando há sugestões abertas aguardando tratamento.
+  // Ponto vermelho na engrenagem quando há sugestões abertas — apenas para admins.
   function subscribeSugestoesPendentes(){
     if (sugestoesBadgeSubscribed) return;
     sugestoesBadgeSubscribed = true;
-    db.collection('sugestoes').where('status', '==', 'aberta').onSnapshot(function(snap){
-      sugestoesPendentesCount = snap.size;
+    function atualizarPontoGear(n){
+      sugestoesPendentesCount = n;
+      var dot = document.getElementById('gear-notif-dot');
+      var ehAdmin = currentProfile && currentProfile.role === 'admin';
+      if (dot) dot.classList.toggle('show', ehAdmin && n > 0);
       updateTabBlinks();
-    }, function(){ sugestoesPendentesCount = 0; });
+    }
+    db.collection('sugestoes').where('status', '==', 'aberta').onSnapshot(function(snap){
+      atualizarPontoGear(snap.size);
+    }, function(e){ atualizarPontoGear(0); });
   }
 
   // Pisca a aba "Gestão" quando há patrimônio esperando o MEU aceite, ou (para o admin e quem

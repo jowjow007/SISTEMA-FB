@@ -328,32 +328,52 @@ async function enrichImages(){
   if(changed) saveImgCache(cache);
 }
 
+function xmlText(el, tag){
+  const node = el.getElementsByTagName(tag)[0];
+  return node ? node.textContent.trim() : "";
+}
+
+async function fetchFeedFromProxy(feedUrl, proxyPrefix){
+  const res = await withTimeout(fetch(proxyPrefix + encodeURIComponent(feedUrl)), 10000);
+  if(!res.ok) throw new Error("proxy http " + res.status);
+  const text = await res.text();
+  // allOrigins devolve JSON; corsproxy devolve texto puro
+  let xmlStr;
+  try { xmlStr = JSON.parse(text).contents; } catch(e){ xmlStr = text; }
+  if(!xmlStr) throw new Error("sem conteúdo");
+  return xmlStr;
+}
+
 async function fetchFeed(feedConfig){
   try{
-    // allOrigins: proxy CORS gratuito e sem limite de requisições
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedConfig.url)}`;
-    const res = await withTimeout(fetch(proxyUrl), 10000);
-    if(!res.ok) throw new Error("rss http error");
-    const data = await res.json();
-    if(!data.contents) throw new Error("rss empty");
+    let xmlStr;
+    try {
+      xmlStr = await fetchFeedFromProxy(feedConfig.url, "https://api.allorigins.win/get?url=");
+    } catch(e1){
+      xmlStr = await fetchFeedFromProxy(feedConfig.url, "https://corsproxy.io/?");
+    }
     const parser = new DOMParser();
-    const xml = parser.parseFromString(data.contents, "text/xml");
-    const items = Array.from(xml.querySelectorAll("item")).slice(0, CONFIG.itemsPerFeed);
+    const xml = parser.parseFromString(xmlStr, "text/xml");
+    const items = Array.from(xml.getElementsByTagName("item")).slice(0, CONFIG.itemsPerFeed);
     if(!items.length) throw new Error("rss sem itens");
     return items.map(it => {
-      const rawDesc = it.querySelector("description")?.textContent || it.querySelector("content\\:encoded")?.textContent || "";
+      const rawDesc = xmlText(it, "description") || xmlText(it, "content:encoded");
       const lede = stripHtml(rawDesc);
-      const title = stripHtml(it.querySelector("title")?.textContent || "");
+      const title = stripHtml(xmlText(it, "title"));
       const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== title.toLowerCase();
-      const encUrl = it.querySelector("enclosure")?.getAttribute("url") || "";
+      // <link> em RSS é texto direto; em Atom é atributo href
+      const linkEl = it.getElementsByTagName("link")[0];
+      const link = linkEl ? (linkEl.textContent.trim() || linkEl.getAttribute("href") || "") : "";
+      const encEl = it.getElementsByTagName("enclosure")[0];
+      const encUrl = encEl ? (encEl.getAttribute("url") || "") : "";
       return {
         title,
         category: feedConfig.category,
         source: feedConfig.label,
-        link: it.querySelector("link")?.textContent || it.querySelector("link")?.nextSibling?.nodeValue || "",
+        link,
         image: encUrl || extractImageFromHtml(rawDesc) || "",
         lede: ledeUsable ? lede.slice(0, 160) : "",
-        pubDate: it.querySelector("pubDate")?.textContent || "",
+        pubDate: xmlText(it, "pubDate") || xmlText(it, "published"),
       };
     });
   } catch(e){
