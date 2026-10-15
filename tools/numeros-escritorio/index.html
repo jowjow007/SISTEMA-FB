@@ -413,6 +413,7 @@
     <button class="tab-btn" data-tab="juizo">Juízo &amp; Ação</button>
     <button class="tab-btn" data-tab="efetividade">Efetividade</button>
     <button class="tab-btn" data-tab="qualidade">Qualidade de Cadastro</button>
+    <button class="tab-btn" data-tab="agenda">Agenda — Astrea</button>
   </div>
 </nav>
 
@@ -929,6 +930,12 @@
 </div>
 <!-- /tab-panel qualidade -->
 
+<div class="tab-panel" data-panel="agenda" data-panel-title="Agenda — Astrea">
+  <div id="astrea-status-ne" style="font-size:.78rem;color:var(--muted);margin-bottom:8px;"></div>
+  <div id="astrea-corpo-ne"><div style="color:var(--muted);padding:24px 0;">Carregando…</div></div>
+</div>
+<!-- /tab-panel agenda -->
+
 </main>
 
 <footer>
@@ -1303,6 +1310,100 @@ STATS.qualidade.piores.forEach(p => {
   tr.innerHTML = `<td>${p.titulo || "—"}</td><td>${p.cliente || "—"}</td><td>${p.tipo}</td><td><b>${p.camposFaltando}</b></td>`;
   qTbody.appendChild(tr);
 });
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  if (!window.firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey === 'COLE_AQUI_SUA_API_KEY') return;
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  let agendaInited = false;
+
+  function initAgenda() {
+    if (agendaInited) return;
+    agendaInited = true;
+
+    const statusEl = document.getElementById('astrea-status-ne');
+    const corpoEl  = document.getElementById('astrea-corpo-ne');
+    const hoje = new Date();
+    const docId = hoje.getFullYear() + '-' +
+      String(hoje.getMonth()+1).padStart(2,'0') + '-' +
+      String(hoje.getDate()).padStart(2,'0');
+
+    db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
+      if (!snap.exists) {
+        if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
+        if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda hoje. O robô roda às 07h.</div>';
+        return;
+      }
+      const d = snap.data();
+      const ts = d.atualizadoEm
+        ? (typeof d.atualizadoEm.toDate === 'function' ? d.atualizadoEm.toDate() : new Date(d.atualizadoEm))
+        : null;
+      if (statusEl) statusEl.textContent = 'Atualizado ' +
+        (ts ? ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '') +
+        ' · ' + (d.total || 0) + ' itens';
+
+      const registros = d.registros || [];
+      const colunas   = d.colunas  || (registros.length ? Object.keys(registros[0]) : []);
+
+      if (!registros.length) {
+        if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum item em aberto.</div>';
+        return;
+      }
+
+      // Agrupa por coluna "Tipo" se existir
+      const colTipo = colunas.find(c => /^tipo$/i.test(c));
+      const grupos  = {};
+      const semGrupo = [];
+      registros.forEach(r => {
+        const g = colTipo ? (r[colTipo] || 'Outros') : null;
+        if (g) { if (!grupos[g]) grupos[g] = []; grupos[g].push(r); }
+        else semGrupo.push(r);
+      });
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      function renderTabela(rows) {
+        if (!rows.length) return '';
+        const cols = colunas.filter(c => c !== colTipo);
+        let h = '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
+          cols.map(c => '<th>' + esc(c) + '</th>').join('') +
+          '</tr></thead><tbody>';
+        rows.forEach(r => {
+          h += '<tr>' + cols.map(c => '<td>' + esc(r[c] != null ? r[c] : '—') + '</td>').join('') + '</tr>';
+        });
+        return h + '</tbody></table></div>';
+      }
+
+      let html = '';
+      if (semGrupo.length) html += renderTabela(semGrupo);
+      Object.keys(grupos).sort().forEach(g => {
+        html += '<h3 style="margin:20px 0 8px;font-size:.95rem;color:var(--muted)">' + esc(g) +
+          ' <span style="font-weight:400">(' + grupos[g].length + ')</span></h3>' +
+          renderTabela(grupos[g]);
+      });
+      if (corpoEl) corpoEl.innerHTML = html;
+    }, function(err) {
+      if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--red-bright)">Erro: ' + err.message + '</div>';
+    });
+  }
+
+  // Inicializa quando o usuário clicar na aba Agenda
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      if (btn.dataset.tab === 'agenda') initAgenda();
+    });
+  });
+})();
 </script>
 
 </body>

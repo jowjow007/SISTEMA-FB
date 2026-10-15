@@ -1211,7 +1211,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v171</span>
+      <span class="version-tag">v172</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3402,9 +3402,17 @@
   function buildToolUrl(t){
     if (!t.subtabs || !t.subtabs.length) return t.url;
     const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
-    if (!permitidas || permitidas.length >= t.subtabs.length) return t.url;
+    if (!permitidas) return t.url;
+    // Filtra apenas as IDs que existem de facto nas subabas registadas
+    const idsValidos = t.subtabs.map(function(s){ return s.id; });
+    const permitidasValidas = permitidas.filter(function(id){ return idsValidos.indexOf(id) !== -1; });
+    // Se todas as subabas registadas estão permitidas, não restringe
+    if (permitidasValidas.length >= t.subtabs.length) {
+      const sep = t.url.indexOf('?') === -1 ? '?' : '&';
+      return t.url + sep + '_v=' + permitidasValidas.slice().sort().join('_');
+    }
     const sep = t.url.indexOf('?') === -1 ? '?' : '&';
-    return t.url + sep + '_subtabs=' + encodeURIComponent(permitidas.join(','));
+    return t.url + sep + '_subtabs=' + encodeURIComponent(permitidasValidas.join(',')) + '&_v=' + permitidasValidas.slice().sort().join('_');
   }
 
   function escapeHtml(s){
