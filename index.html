@@ -1838,6 +1838,8 @@
   let patDevolucoesPendentes = 0;  // devoluções aguardando recebimento — só p/ admin ou quem cadastra patrimônio
   let anotacoesPendentesCount = 0;   // tarefa enviada por outra pessoa, aguardando eu concluir (pisca a aba "Minhas Anotações")
   let anotacoesBadgeSubscribed = false;
+  let sugestoesPendentesCount = 0;   // sugestões com status 'aberta' — pisca a aba "Sugestões" para admins
+  let sugestoesBadgeSubscribed = false;
   let anotacoesEnviadasAtencao = 0;   // tarefa que EU enviei sem resposta ou aguardando minha aprovação
 
   // ---------- Erros PT-BR ----------
@@ -2339,7 +2341,7 @@
     subscribeTabsCatalog();
     subscribeMobileHomeBadges();
     carregarFotoAvatarMobile();
-    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
+    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); subscribeSugestoesPendentes(); }
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
     verificarAvisoFotoObrigatoria();
@@ -2391,6 +2393,16 @@
     });
   }
 
+  // Pisca a aba "Sugestões" para admins quando há sugestões abertas aguardando tratamento.
+  function subscribeSugestoesPendentes(){
+    if (sugestoesBadgeSubscribed) return;
+    sugestoesBadgeSubscribed = true;
+    db.collection('sugestoes').where('status', '==', 'aberta').onSnapshot(function(snap){
+      sugestoesPendentesCount = snap.size;
+      updateTabBlinks();
+    }, function(){ sugestoesPendentesCount = 0; });
+  }
+
   // Pisca a aba "Gestão" quando há patrimônio esperando o MEU aceite, ou (para o admin e quem
   // cadastra patrimônio) devolução esperando recebimento — ver tools/gestao, Patrimônio.
   function subscribePatrimonioPendentes(){
@@ -2423,7 +2435,8 @@
       const pisca =
         (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
-        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
+        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0) ||
+        (/sugest/i.test(l) && sugestoesPendentesCount > 0);
       b.classList.toggle('tab-blink', !!pisca);
     });
   }
