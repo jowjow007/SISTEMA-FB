@@ -372,27 +372,43 @@ function parseXmlItems(xmlStr, feedConfig){
   });
 }
 
-const WORKER_RSS = "https://portal-fb-gemini.jowjow07.workers.dev/rss";
+async function tryProxy(feedUrl, timeoutMs){
+  // Dispara 3 proxies ao mesmo tempo e usa o primeiro que responder com XML válido
+  function rss2json(){
+    return fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.json() : Promise.reject("rss2json status"))
+      .then(d => {
+        if(d.status !== "ok" || !d.items || !d.items.length) throw new Error("rss2json vazio");
+        return {fmt:"json", data:d};
+      });
+  }
+  function allOrigins(){
+    return fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.json() : Promise.reject("allorigins status"))
+      .then(d => {
+        if(!d.contents || d.contents.length < 100) throw new Error("allorigins vazio");
+        return {fmt:"xml", xml:d.contents};
+      });
+  }
+  function corsproxy(){
+    return fetch(`https://corsproxy.io/?${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.text() : Promise.reject("corsproxy status"))
+      .then(t => {
+        if(!t || t.length < 100) throw new Error("corsproxy vazio");
+        return {fmt:"xml", xml:t};
+      });
+  }
+  const timer = new Promise((_, rej) => setTimeout(() => rej("timeout"), timeoutMs));
+  return Promise.any([rss2json(), allOrigins(), corsproxy(), timer.catch(e => Promise.reject(e))]);
+}
 
 async function fetchFeed(feedConfig){
-  // Tentativa 1: Worker próprio como proxy (sem limite, sem CORS)
   try{
-    const url = `${WORKER_RSS}?url=${encodeURIComponent(feedConfig.url)}`;
-    const res = await withTimeout(fetch(url), 10000);
-    if(res.ok){
-      const text = await res.text();
-      const items = parseXmlItems(text, feedConfig);
+    const result = await tryProxy(feedConfig.url, 12000);
+    if(result.fmt === "json") return parseRss2JsonItems(result.data, feedConfig);
+    if(result.fmt === "xml"){
+      const items = parseXmlItems(result.xml, feedConfig);
       if(items.length) return items;
-    }
-  }catch(e){}
-  // Tentativa 2: rss2json como fallback
-  try{
-    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedConfig.url)}`;
-    const res = await withTimeout(fetch(url), 8000);
-    if(res.ok){
-      const data = await res.json();
-      if(data.status === "ok" && data.items && data.items.length)
-        return parseRss2JsonItems(data, feedConfig);
     }
   }catch(e){}
   return [];
