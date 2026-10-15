@@ -349,6 +349,8 @@
     background:transparent;border:none;color:var(--muted);cursor:pointer;transition:background .15s,color .15s;padding:0;
   }
   .user-menu-btn:hover,.user-menu-btn.open,.user-menu-btn.is-active-source{background:var(--panel-2);color:var(--paper);}
+  .user-menu-btn.gear-blink{animation:gearBlink 1.1s ease-in-out infinite;color:var(--paper);}
+  @keyframes gearBlink{0%,100%{background:transparent;}50%{background:rgba(201,70,60,.22);}}
   .user-menu-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
   .user-menu-dropdown{
     position:absolute;top:calc(100% + 10px);right:0;min-width:210px;background:var(--panel);
@@ -2435,10 +2437,13 @@
       const pisca =
         (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
-        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0) ||
-        (/sugest/i.test(l) && sugestoesPendentesCount > 0);
+        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
       b.classList.toggle('tab-blink', !!pisca);
     });
+    // "Sugestões" fica no menu da engrenagem (não no tabstrip) — pisca o botão gear
+    if (els.userMenuBtn) {
+      els.userMenuBtn.classList.toggle('gear-blink', sugestoesPendentesCount > 0);
+    }
   }
   const updateGestaoBlink = updateTabBlinks;
   const updateAnotacoesBlink = updateTabBlinks;
