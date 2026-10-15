@@ -372,8 +372,20 @@ function parseXmlItems(xmlStr, feedConfig){
   });
 }
 
+const WORKER_RSS = "https://portal-fb-gemini.jowjow07.workers.dev/rss";
+
 async function fetchFeed(feedConfig){
-  // Tentativa 1: rss2json (converte RSS→JSON automaticamente)
+  // Tentativa 1: Worker próprio como proxy (sem limite, sem CORS)
+  try{
+    const url = `${WORKER_RSS}?url=${encodeURIComponent(feedConfig.url)}`;
+    const res = await withTimeout(fetch(url), 10000);
+    if(res.ok){
+      const text = await res.text();
+      const items = parseXmlItems(text, feedConfig);
+      if(items.length) return items;
+    }
+  }catch(e){}
+  // Tentativa 2: rss2json como fallback
   try{
     const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedConfig.url)}`;
     const res = await withTimeout(fetch(url), 8000);
@@ -381,18 +393,6 @@ async function fetchFeed(feedConfig){
       const data = await res.json();
       if(data.status === "ok" && data.items && data.items.length)
         return parseRss2JsonItems(data, feedConfig);
-    }
-  }catch(e){}
-  // Tentativa 2: allOrigins como proxy CORS + parse XML manual
-  try{
-    const url = `https://api.allorigins.win/get?url=${encodeURIComponent(feedConfig.url)}`;
-    const res = await withTimeout(fetch(url), 10000);
-    if(res.ok){
-      const data = await res.json();
-      if(data.contents){
-        const items = parseXmlItems(data.contents, feedConfig);
-        if(items.length) return items;
-      }
     }
   }catch(e){}
   return [];

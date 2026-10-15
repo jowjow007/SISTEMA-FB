@@ -150,6 +150,27 @@ export default {
       return jsonResponse({ error: 'Origem não autorizada.' }, 403, origin);
     }
 
+    // ── Proxy RSS (GET /rss?url=...) ──────────────────────────────────────
+    const reqUrl = new URL(request.url);
+    if (request.method === 'GET' && reqUrl.pathname === '/rss') {
+      const feedUrl = reqUrl.searchParams.get('url');
+      if (!feedUrl) return jsonResponse({ error: 'Parâmetro url ausente.' }, 400, origin);
+      try {
+        const resp = await fetch(feedUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PortalFB/1.0)' },
+          redirect: 'follow'
+        });
+        const text = await resp.text();
+        return new Response(text, {
+          status: resp.status,
+          headers: Object.assign({ 'Content-Type': 'application/xml; charset=utf-8' }, corsHeaders(origin))
+        });
+      } catch (e) {
+        return jsonResponse({ error: 'Falha ao buscar feed: ' + e.message }, 502, origin);
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     if (request.method !== 'POST') {
       return jsonResponse({ error: 'Método não suportado.' }, 405, origin);
     }
