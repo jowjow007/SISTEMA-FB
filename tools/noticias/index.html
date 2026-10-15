@@ -330,23 +330,30 @@ async function enrichImages(){
 
 async function fetchFeed(feedConfig){
   try{
-    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedConfig.url)}`;
-    const res = await withTimeout(fetch(apiUrl), 8000);
+    // allOrigins: proxy CORS gratuito e sem limite de requisições
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedConfig.url)}`;
+    const res = await withTimeout(fetch(proxyUrl), 10000);
     if(!res.ok) throw new Error("rss http error");
     const data = await res.json();
-    if(data.status !== "ok" || !data.items || !data.items.length) throw new Error("rss empty");
-    return data.items.slice(0, CONFIG.itemsPerFeed).map(it => {
-      const rawDesc = it.description || it.content || "";
+    if(!data.contents) throw new Error("rss empty");
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(data.contents, "text/xml");
+    const items = Array.from(xml.querySelectorAll("item")).slice(0, CONFIG.itemsPerFeed);
+    if(!items.length) throw new Error("rss sem itens");
+    return items.map(it => {
+      const rawDesc = it.querySelector("description")?.textContent || it.querySelector("content\\:encoded")?.textContent || "";
       const lede = stripHtml(rawDesc);
-      const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== (it.title || "").toLowerCase();
+      const title = stripHtml(it.querySelector("title")?.textContent || "");
+      const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== title.toLowerCase();
+      const encUrl = it.querySelector("enclosure")?.getAttribute("url") || "";
       return {
-        title: stripHtml(it.title || ""),
+        title,
         category: feedConfig.category,
         source: feedConfig.label,
-        link: it.link,
-        image: it.thumbnail || (it.enclosure && it.enclosure.link) || extractImageFromHtml(rawDesc) || "",
+        link: it.querySelector("link")?.textContent || it.querySelector("link")?.nextSibling?.nodeValue || "",
+        image: encUrl || extractImageFromHtml(rawDesc) || "",
         lede: ledeUsable ? lede.slice(0, 160) : "",
-        pubDate: it.pubDate,
+        pubDate: it.querySelector("pubDate")?.textContent || "",
       };
     });
   } catch(e){
