@@ -1328,7 +1328,8 @@ STATS.qualidade.piores.forEach(p => {
   const corpoNe = document.getElementById('astrea-corpo-ne');
 
   if (!firebase.apps.length) firebase.initializeApp(_fbCfg);
-  const db = firebase.firestore();
+  const db   = firebase.firestore();
+  const auth = firebase.auth();
 
   let agendaInited = false;
 
@@ -1338,11 +1339,19 @@ STATS.qualidade.piores.forEach(p => {
 
     const statusEl = document.getElementById('astrea-status-ne');
     const corpoEl  = document.getElementById('astrea-corpo-ne');
-    const hoje = new Date();
-    const docId = hoje.getFullYear() + '-' +
-      String(hoje.getMonth()+1).padStart(2,'0') + '-' +
-      String(hoje.getDate()).padStart(2,'0');
-    db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
+
+    // Aguarda auth ser restaurada do localStorage (pode demorar ~1s)
+    const unsubAuth = auth.onAuthStateChanged(function(user) {
+      unsubAuth(); // ouve só uma vez
+      if (!user) {
+        if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Faça login no portal para ver a agenda.</div>';
+        return;
+      }
+      const hoje = new Date();
+      const docId = hoje.getFullYear() + '-' +
+        String(hoje.getMonth()+1).padStart(2,'0') + '-' +
+        String(hoje.getDate()).padStart(2,'0');
+      db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
       if (!snap.exists) {
         if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
         if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda hoje. O robô roda às 07h.</div>';
@@ -1399,9 +1408,10 @@ STATS.qualidade.piores.forEach(p => {
           renderTabela(grupos[g]);
       });
       if (corpoEl) corpoEl.innerHTML = html;
-    }, function(err) {
-      if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--red-bright)">Erro: ' + err.message + '</div>';
-    });
+      }, function(err) {
+        if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--red-bright)">Erro: ' + err.message + '</div>';
+      });
+    }); // fim onAuthStateChanged
   }
 
   // Inicializa imediatamente (não espera clique)
