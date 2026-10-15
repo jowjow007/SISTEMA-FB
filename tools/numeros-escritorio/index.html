@@ -1318,9 +1318,16 @@ STATS.qualidade.piores.forEach(p => {
 <script src="../../firebase-config.js"></script>
 <script>
 (function(){
-  if (!window.firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey === 'COLE_AQUI_SUA_API_KEY') return;
+  const corpoNe = document.getElementById('astrea-corpo-ne');
+  function dbg(msg) { if (corpoNe) corpoNe.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.85rem">' + msg + '</div>'; }
+
+  dbg('Passo 1: script iniciado');
+  if (!window.firebaseConfig) { dbg('ERRO: firebase-config.js não carregou'); return; }
+  if (firebaseConfig.apiKey === 'COLE_AQUI_SUA_API_KEY') { dbg('ERRO: apiKey não configurada'); return; }
+  dbg('Passo 2: config OK — inicializando Firebase...');
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  dbg('Passo 3: Firebase inicializado — conectando Firestore...');
 
   let agendaInited = false;
 
@@ -1335,6 +1342,7 @@ STATS.qualidade.piores.forEach(p => {
       String(hoje.getMonth()+1).padStart(2,'0') + '-' +
       String(hoje.getDate()).padStart(2,'0');
 
+    if (corpoEl) corpoEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.85rem">Passo 4: consultando astreaDiario/' + docId + '…</div>';
     db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
       if (!snap.exists) {
         if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
