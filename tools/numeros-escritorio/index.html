@@ -941,7 +941,19 @@
 <!-- /tab-panel qualidade -->
 
 <div class="tab-panel" data-panel="agenda" data-panel-title="Agenda — Astrea">
-  <div id="astrea-status-ne" style="font-size:.78rem;color:var(--muted);margin-bottom:16px;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div id="astrea-status-ne" style="font-size:.78rem;color:var(--muted)"></div>
+    <div id="ag-robo-wrap" style="display:none">
+      <button id="ag-robo-btn" onclick="agDisparar()"
+        style="background:var(--panel-2);border:1px solid var(--line-strong);color:var(--paper);
+               font-size:.74rem;font-weight:600;padding:6px 14px;border-radius:8px;cursor:pointer;
+               display:flex;align-items:center;gap:7px;font-family:var(--font-body);transition:background .15s">
+        <svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+        Executar robô agora
+      </button>
+      <div id="ag-robo-status" style="font-size:.72rem;color:var(--muted);margin-top:4px;text-align:right"></div>
+    </div>
+  </div>
   <div id="astrea-corpo-ne"><div style="color:var(--muted);padding:24px 0;">Carregando…</div></div>
 </div>
 <!-- /tab-panel agenda -->
@@ -1705,6 +1717,65 @@ STATS.qualidade.piores.forEach(p => {
       });
     });
   }
+
+  // -- Botão de disparo do robô (só admin) --
+  let _roboUnsub = null;
+
+  function iniciarMonitorRobo() {
+    if (_roboUnsub) return;
+    _roboUnsub = db.collection('astreaTrigger').doc('pedido').onSnapshot(function(snap) {
+      const statusEl = document.getElementById('ag-robo-status');
+      const btn      = document.getElementById('ag-robo-btn');
+      if (!statusEl || !btn) return;
+      if (!snap.exists) {
+        statusEl.textContent = '';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        return;
+      }
+      const s = snap.data().status || '';
+      const msgs = {
+        pendente:   '⏳ Aguardando o computador do escritório…',
+        executando: '⚙️ Robô em execução…',
+        concluido:  '✅ Importação concluída!',
+        erro:       '❌ Erro na importação — veja o log do computador.',
+      };
+      statusEl.textContent = msgs[s] || s;
+      const ocupado = s === 'pendente' || s === 'executando';
+      btn.disabled = ocupado;
+      btn.style.opacity = ocupado ? '0.5' : '1';
+      if (s === 'concluido' || s === 'erro') {
+        // limpa o documento após 8s para liberar o botão
+        setTimeout(function() {
+          db.collection('astreaTrigger').doc('pedido').delete().catch(()=>{});
+        }, 8000);
+      }
+    });
+  }
+
+  window.agDisparar = function() {
+    const btn = document.getElementById('ag-robo-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    db.collection('astreaTrigger').doc('pedido').set({
+      status:       'pendente',
+      solicitadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(function(err) {
+      const s = document.getElementById('ag-robo-status');
+      if (s) s.textContent = 'Erro: ' + err.message;
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    });
+  };
+
+  // Verifica se o usuário atual é admin para mostrar o botão
+  auth.onAuthStateChanged(function(user) {
+    if (!user) return;
+    db.collection('users').doc(user.uid).get().then(function(doc) {
+      if (doc.exists && doc.data().role === 'admin') {
+        const wrap = document.getElementById('ag-robo-wrap');
+        if (wrap) { wrap.style.display = 'block'; iniciarMonitorRobo(); }
+      }
+    }).catch(function(){});
+  });
 
   initAgenda();
   document.querySelectorAll('.tab-btn').forEach(btn => {
