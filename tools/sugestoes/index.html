@@ -140,6 +140,9 @@
     margin-top:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
     padding:8px 10px;font-size:.82rem;color:var(--paper);white-space:pre-wrap;
   }
+  .motivo-box.verde{border-color:rgba(76,154,106,.35);background:rgba(76,154,106,.07);}
+  .motivo-box.vazio{font-style:italic;color:var(--muted);}
+  .add-obs-btn{margin-top:6px;}
 
   .modal-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
@@ -163,6 +166,34 @@
   @media(max-width:560px){
     .toolbar .status{width:100%;margin-left:0;text-align:left;order:5;}
   }
+
+  /* Popup de notificação ao autor */
+  .notif-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
+    z-index:60;padding:20px;
+  }
+  .notif-backdrop.open{display:flex;}
+  .notif-box{
+    background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;max-width:480px;
+    width:100%;max-height:80vh;overflow-y:auto;
+  }
+  .notif-box h3{margin:0 0 4px;font-family:var(--font-display);font-size:1.05rem;color:var(--paper);}
+  .notif-box .notif-sub{margin:0 0 14px;font-size:.8rem;color:var(--muted);}
+  .notif-item{
+    border:1px solid var(--line-strong);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel-2);
+  }
+  .notif-item:last-child{margin-bottom:0;}
+  .notif-item-status{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;}
+  .notif-item-status.implantada{color:var(--green);}
+  .notif-item-status.excluida{color:#ffb4ae;}
+  .notif-item-texto{font-size:.85rem;color:var(--muted);white-space:pre-wrap;margin-bottom:6px;
+    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .notif-item-obs{
+    font-size:.82rem;color:var(--paper);background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:6px;padding:7px 9px;white-space:pre-wrap;
+  }
+  .notif-item-obs.verde{border-color:rgba(76,154,106,.35);background:rgba(76,154,106,.07);}
+  .notif-box-foot{display:flex;justify-content:flex-end;margin-top:14px;}
 </style>
 </head>
 <body>
@@ -201,10 +232,51 @@
   </div>
 </main>
 
+<!-- Popup: notificação ao autor -->
+<div class="notif-backdrop" id="notifBackdrop">
+  <div class="notif-box">
+    <h3>Novidades nas suas sugestões</h3>
+    <p class="notif-sub">As seguintes sugestões suas foram analisadas:</p>
+    <div id="notifList"></div>
+    <div class="notif-box-foot">
+      <button class="btn" id="notifFechar">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: aceitar (justificativa opcional) -->
+<div class="modal-backdrop" id="aceitarBackdrop">
+  <div class="modal">
+    <h3>Marcar como implantada</h3>
+    <p>Opcional: explique como ou quando será implantada. Ficará visível para toda a equipe.</p>
+    <textarea id="aceitarTexto" maxlength="1000" placeholder="Ex.: Será implementada na próxima atualização do sistema..."></textarea>
+    <div class="modal-err" id="aceitarErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="aceitarCancelar">Cancelar</button>
+      <button class="btn" id="aceitarConfirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: observação pós-aceite -->
+<div class="modal-backdrop" id="obsBackdrop">
+  <div class="modal">
+    <h3>Observação sobre a implantação</h3>
+    <p>Adicione ou edite uma nota sobre como foi implantada. Ficará visível para toda a equipe.</p>
+    <textarea id="obsTexto" maxlength="1000" placeholder="Ex.: Concluído em outubro de 2026, disponível na aba de Gestão..."></textarea>
+    <div class="modal-err" id="obsErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="obsCancelar">Cancelar</button>
+      <button class="btn" id="obsConfirmar">Salvar observação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: excluir (motivo obrigatório) -->
 <div class="modal-backdrop" id="motivoBackdrop">
   <div class="modal">
     <h3>Motivo da exclusão</h3>
-    <p>Esse motivo ficará visível para toda a equipe junto com a sugestão.</p>
+    <p>Obrigatório — ficará visível para toda a equipe junto com a sugestão.</p>
     <textarea id="motivoTexto" maxlength="1000" placeholder="Explique por que essa sugestão não será implantada..."></textarea>
     <div class="modal-err" id="motivoErr"></div>
     <div class="modal-foot">
@@ -243,6 +315,16 @@
     enviarBtn: document.getElementById('enviarBtn'),
     empty: document.getElementById('empty'),
     list: document.getElementById('list'),
+    aceitarBackdrop: document.getElementById('aceitarBackdrop'),
+    aceitarTexto: document.getElementById('aceitarTexto'),
+    aceitarErr: document.getElementById('aceitarErr'),
+    aceitarCancelar: document.getElementById('aceitarCancelar'),
+    aceitarConfirmar: document.getElementById('aceitarConfirmar'),
+    obsBackdrop: document.getElementById('obsBackdrop'),
+    obsTexto: document.getElementById('obsTexto'),
+    obsErr: document.getElementById('obsErr'),
+    obsCancelar: document.getElementById('obsCancelar'),
+    obsConfirmar: document.getElementById('obsConfirmar'),
     motivoBackdrop: document.getElementById('motivoBackdrop'),
     motivoTexto: document.getElementById('motivoTexto'),
     motivoErr: document.getElementById('motivoErr'),
@@ -254,6 +336,8 @@
   let allSugestoes = [];
   let currentView = 'abertas';
   let motivoAlvoId = null;
+  let aceitarAlvoId = null;
+  let obsAlvoId = null;
   let unsubscribe = null;
 
   function escapeHtml(s){
@@ -325,14 +409,68 @@
   });
 
   window.__marcarImplantada = function(id){
-    if (!confirm('Marcar esta sugestão como implantada?')) return;
-    db.collection('sugestoes').doc(id).update({
+    aceitarAlvoId = id;
+    els.aceitarTexto.value = '';
+    els.aceitarErr.textContent = '';
+    els.aceitarBackdrop.classList.add('open');
+    setTimeout(function(){ els.aceitarTexto.focus(); }, 50);
+  };
+
+  els.aceitarCancelar.addEventListener('click', function(){
+    els.aceitarBackdrop.classList.remove('open');
+    aceitarAlvoId = null;
+  });
+
+  els.aceitarConfirmar.addEventListener('click', function(){
+    if (!aceitarAlvoId) return;
+    const obs = els.aceitarTexto.value.trim();
+    els.aceitarConfirmar.disabled = true;
+    var upd = {
       status: 'implantada',
       motivoExclusao: null,
       decididoPor: currentProfile.displayName || currentProfile.email,
       decididoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(function(e){ alert('Erro: ' + e.message); });
+    };
+    if (obs) upd.motivoImplantacao = obs;
+    db.collection('sugestoes').doc(aceitarAlvoId).update(upd).then(function(){
+      els.aceitarBackdrop.classList.remove('open');
+      aceitarAlvoId = null;
+    }).catch(function(e){
+      els.aceitarErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.aceitarConfirmar.disabled = false;
+    });
+  });
+
+  window.__abrirObservacao = function(id){
+    obsAlvoId = id;
+    var s = allSugestoes.find(function(x){ return x.id === id; });
+    els.obsTexto.value = (s && s.motivoImplantacao) || '';
+    els.obsErr.textContent = '';
+    els.obsBackdrop.classList.add('open');
+    setTimeout(function(){ els.obsTexto.focus(); }, 50);
   };
+
+  els.obsCancelar.addEventListener('click', function(){
+    els.obsBackdrop.classList.remove('open');
+    obsAlvoId = null;
+  });
+
+  els.obsConfirmar.addEventListener('click', function(){
+    if (!obsAlvoId) return;
+    const obs = els.obsTexto.value.trim();
+    els.obsConfirmar.disabled = true;
+    db.collection('sugestoes').doc(obsAlvoId).update({
+      motivoImplantacao: obs || firebase.firestore.FieldValue.delete()
+    }).then(function(){
+      els.obsBackdrop.classList.remove('open');
+      obsAlvoId = null;
+    }).catch(function(e){
+      els.obsErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.obsConfirmar.disabled = false;
+    });
+  });
 
   window.__excluirPermanente = function(id){
     if (!confirm('Excluir esta sugestão PERMANENTEMENTE?\n\nEla some do histórico para todo mundo e não pode ser recuperada. Use isso só para lixo/teste — para recusar uma sugestão de verdade, use "Marcar como excluída" (com motivo).')) return;
@@ -395,6 +533,17 @@
       if (s.status === 'excluida' && s.motivoExclusao){
         out += '<div class="motivo-box">' + escapeHtml(s.motivoExclusao) + '</div>';
       }
+      if (s.status === 'implantada'){
+        if (s.motivoImplantacao){
+          out += '<div class="motivo-box verde">' + escapeHtml(s.motivoImplantacao) + '</div>';
+        } else {
+          out += '<div class="motivo-box vazio">Nenhuma observação sobre a implantação.</div>';
+        }
+        if (isAdmin){
+          out += '<button class="btn ghost add-obs-btn" onclick="__abrirObservacao(\'' + s.id + '\')">' +
+            (s.motivoImplantacao ? 'Editar observação' : 'Adicionar observação') + '</button>';
+        }
+      }
     }
     if (isAdmin){
       out += '<div class="sug-danger"><button class="btn ghost danger" onclick="__excluirPermanente(\'' + s.id + '\')">Excluir permanentemente</button></div>';
@@ -434,6 +583,50 @@
       });
   }
 
+  var notifBackdrop = document.getElementById('notifBackdrop');
+  var notifList = document.getElementById('notifList');
+  var notifFechar = document.getElementById('notifFechar');
+
+  notifFechar.addEventListener('click', function(){
+    notifBackdrop.classList.remove('open');
+  });
+
+  function verificarNotificacoes(uid){
+    // Lê quais IDs o usuário já viu (armazenado no perfil dele em users/{uid})
+    var vistoRef = db.collection('users').doc(uid);
+    db.collection('sugestoes')
+      .where('autorUid', '==', uid)
+      .get().then(function(snap){
+        if (snap.empty) return;
+        return vistoRef.get().then(function(userDoc){
+          var vistos = (userDoc.exists && userDoc.data().sugestoesNotificadas) || [];
+          var pendentes = snap.docs.filter(function(d){
+            return d.data().status !== 'aberta' && vistos.indexOf(d.id) === -1;
+          });
+          if (!pendentes.length) return;
+          notifList.innerHTML = pendentes.map(function(d){
+            var s = d.data();
+            var implantada = s.status === 'implantada';
+            var obs = implantada ? s.motivoImplantacao : s.motivoExclusao;
+            var labelStatus = implantada ? 'Implantada ✓' : 'Não será implantada';
+            var html = '<div class="notif-item">';
+            html += '<div class="notif-item-status ' + s.status + '">' + labelStatus + '</div>';
+            html += '<div class="notif-item-texto">' + escapeHtml(s.texto || '') + '</div>';
+            if (obs){
+              html += '<div class="notif-item-obs' + (implantada ? ' verde' : '') + '">' + escapeHtml(obs) + '</div>';
+            }
+            html += '</div>';
+            return html;
+          }).join('');
+          notifBackdrop.classList.add('open');
+          // Marca como vistos no perfil do usuário
+          var novosIds = pendentes.map(function(d){ return d.id; });
+          var merged = vistos.concat(novosIds);
+          vistoRef.update({ sugestoesNotificadas: merged }).catch(function(){});
+        });
+      }).catch(function(){});
+  }
+
   auth.onAuthStateChanged(function(user){
     if (!user){
       els.gate.style.display = 'block';
@@ -452,6 +645,7 @@
       els.gate.style.display = 'none';
       els.appBox.style.display = 'block';
       startListening();
+      verificarNotificacoes(user.uid);
     });
   });
 
