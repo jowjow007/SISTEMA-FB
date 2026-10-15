@@ -344,6 +344,16 @@
   }
   .print-btn:hover + .print-btn-label{opacity:1;}
 
+  /* ---------- Agenda Astrea ---------- */
+  .ag-ftag{
+    background:none;border:1px solid var(--line-strong);color:var(--muted);
+    font-size:.74rem;font-weight:600;padding:5px 12px;border-radius:20px;
+    cursor:pointer;transition:background .12s,color .12s,border-color .12s;
+    font-family:var(--font-body);
+  }
+  .ag-ftag:hover{background:var(--panel-2);}
+  .ag-ftag.ag-ftag-ativo{background:var(--panel-2);color:var(--paper);border-color:var(--paper);}
+
   @media print{
     :root{
       --ink:#ffffff; --panel:#ffffff; --panel-2:#f4f2f0; --panel-3:#ece9e6;
@@ -931,7 +941,7 @@
 <!-- /tab-panel qualidade -->
 
 <div class="tab-panel" data-panel="agenda" data-panel-title="Agenda — Astrea">
-  <div id="astrea-status-ne" style="font-size:.78rem;color:var(--muted);margin-bottom:8px;"></div>
+  <div id="astrea-status-ne" style="font-size:.78rem;color:var(--muted);margin-bottom:16px;"></div>
   <div id="astrea-corpo-ne"><div style="color:var(--muted);padding:24px 0;">Carregando…</div></div>
 </div>
 <!-- /tab-panel agenda -->
@@ -1333,6 +1343,208 @@ STATS.qualidade.piores.forEach(p => {
 
   let agendaInited = false;
 
+  // Paleta de cores por tipo de atividade
+  const TIPO_COR = {
+    'Audiência':      '#3987e5',
+    'Prazo':          '#d95926',
+    'Tarefa':         '#199e70',
+    'Reunião':        '#c98500',
+    'Publicação':     '#9085e9',
+    'Protocolo':      '#d55181',
+    'Perícia':        '#4caf3f',
+    'Outros':         '#9c908b',
+  };
+  function corParaTipo(t) {
+    for (const k of Object.keys(TIPO_COR)) {
+      if (t && t.toLowerCase().includes(k.toLowerCase())) return TIPO_COR[k];
+    }
+    return TIPO_COR['Outros'];
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function col(registros, ...nomes) {
+    // encontra o nome real da coluna por substring case-insensitive
+    if (!registros.length) return null;
+    const keys = Object.keys(registros[0]);
+    for (const n of nomes) {
+      const found = keys.find(k => k.toLowerCase().includes(n.toLowerCase()));
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function miniBar(nome, valor, max, cor) {
+    const pct = max ? (valor / max * 100).toFixed(1) : 0;
+    return '<div style="display:grid;grid-template-columns:160px 1fr 48px;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)">' +
+      '<div style="font-size:.78rem;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(nome) + '</div>' +
+      '<div style="height:8px;background:var(--panel-2);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + cor + ';border-radius:4px"></div></div>' +
+      '<div style="font-size:.76rem;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums"><b style="color:var(--paper)">' + valor + '</b></div>' +
+      '</div>';
+  }
+
+  function renderRelatorio(registros) {
+    const corpoEl = document.getElementById('astrea-corpo-ne');
+    if (!corpoEl) return;
+
+    const cTipo  = col(registros, 'tipo') || col(registros, 'Tipo');
+    const cData  = col(registros, 'data') || col(registros, 'Data');
+    const cHora  = col(registros, 'hora') || col(registros, 'Hora');
+    const cResp  = col(registros, 'responsável', 'responsavel') || col(registros, 'Responsável');
+    const cTitPr = col(registros, 'título do processo', 'titulo do processo', 'processo/caso');
+    const cNum   = col(registros, 'número do processo', 'numero do processo');
+    const cJuizo = col(registros, 'juízo', 'juizo');
+    const cTit   = col(registros, 'título', 'titulo');
+
+    // -- Contagem por tipo --
+    const porTipo = {};
+    registros.forEach(r => {
+      const t = (cTipo ? r[cTipo] : null) || 'Outros';
+      porTipo[t] = (porTipo[t] || 0) + 1;
+    });
+    const tiposOrdenados = Object.entries(porTipo).sort((a,b) => b[1]-a[1]);
+    const maxTipo = tiposOrdenados[0]?.[1] || 1;
+
+    // -- Contagem por responsável --
+    const porResp = {};
+    registros.forEach(r => {
+      const resp = (cResp ? r[cResp] : null) || 'Não atribuído';
+      const nomes = String(resp).split(/[,;\/]+/).map(s => s.trim()).filter(Boolean);
+      nomes.forEach(n => { porResp[n] = (porResp[n] || 0) + 1; });
+    });
+    const respsOrdenados = Object.entries(porResp).sort((a,b) => b[1]-a[1]).slice(0, 15);
+    const maxResp = respsOrdenados[0]?.[1] || 1;
+
+    // -- Distribuição por data (próximos 60 dias) --
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const porSemana = {};
+    let vencidos = 0, hoje7 = 0, hoje30 = 0;
+    registros.forEach(r => {
+      const ds = cData ? r[cData] : null;
+      if (!ds) return;
+      const d = new Date(ds); d.setHours(0,0,0,0);
+      const diff = Math.round((d - hoje) / 86400000);
+      if (diff < 0) vencidos++;
+      else if (diff <= 7) hoje7++;
+      else if (diff <= 30) hoje30++;
+      // agrupa por semana
+      const sem = Math.floor(diff / 7);
+      if (sem >= -1 && sem <= 8) {
+        porSemana[sem] = (porSemana[sem] || 0) + 1;
+      }
+    });
+
+    // -- KPIs principais --
+    const kpis = [
+      { label: 'Total em aberto', valor: registros.length, icon: '#ic-layers', cor: 'var(--red-bright)' },
+      { label: 'Vencidos / atrasados', valor: vencidos, icon: '#ic-alert', cor: '#d95926' },
+      { label: 'Próximos 7 dias', valor: hoje7, icon: '#ic-scale', cor: '#c98500' },
+      { label: 'Próximos 30 dias', valor: hoje30, icon: '#ic-folder', cor: '#3987e5' },
+    ];
+
+    let html = '';
+
+    // KPI row
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px">';
+    kpis.forEach(k => {
+      html += '<div class="kpi" style="border-color:rgba(255,255,255,0.08)">' +
+        '<div class="kpi-icon" style="background:rgba(255,255,255,0.06);color:' + k.cor + '">' +
+          '<svg class="icon"><use href="' + k.icon + '"/></svg></div>' +
+        '<div class="kpi-value">' + k.valor.toLocaleString('pt-BR') + '</div>' +
+        '<div class="kpi-label">' + esc(k.label) + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    // Filtro rápido por tipo
+    html += '<div id="ag-filtros" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">' +
+      '<button onclick="agFiltro(\'\')" id="ag-f-todos" class="ag-ftag ag-ftag-ativo">Todos (' + registros.length + ')</button>';
+    tiposOrdenados.forEach(([t, n]) => {
+      const cor = corParaTipo(t);
+      html += '<button onclick="agFiltro(\'' + esc(t.replace(/'/g,"\\'")) + '\')" id="ag-f-' + esc(t.replace(/\s/g,'_')) + '" class="ag-ftag" style="border-color:' + cor + ';color:' + cor + '">' + esc(t) + ' (' + n + ')</button>';
+    });
+    html += '</div>';
+
+    // Grid: gráficos lado a lado
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px">';
+
+    // Bloco tipos
+    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:12px">Distribuição por tipo</h3>';
+    tiposOrdenados.forEach(([t, n]) => { html += miniBar(t, n, maxTipo, corParaTipo(t)); });
+    html += '</div>';
+
+    // Bloco responsáveis
+    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:12px">Itens por responsável</h3>';
+    respsOrdenados.forEach(([r, n]) => { html += miniBar(r, n, maxResp, 'var(--red-bright)'); });
+    html += '</div>';
+
+    html += '</div>'; // fim grid
+
+    // Tabela completa
+    const colsExibir = [cTipo, cData, cHora, cResp, cTitPr || cTit, cNum, cJuizo].filter(Boolean);
+    const headLabels = {
+      [cTipo]:       'Tipo',
+      [cData]:       'Data',
+      [cHora]:       'Hora',
+      [cResp]:       'Responsável',
+      [cTitPr||cTit]:'Processo / Atendimento',
+      [cNum]:        'Nº Processo',
+      [cJuizo]:      'Juízo',
+    };
+
+    html += '<div class="areas-chart" style="padding:20px 22px 16px">' +
+      '<h3 style="font-family:var(--font-display);font-size:1rem;margin:0 0 14px">Todos os itens</h3>' +
+      '<div style="overflow-x:auto" id="ag-tabela-wrap"><table class="areas-table" id="ag-tabela"><thead><tr>' +
+      colsExibir.map(c => '<th>' + esc(headLabels[c] || c) + '</th>').join('') +
+      '</tr></thead><tbody id="ag-tbody"></tbody></table></div></div>';
+
+    corpoEl.innerHTML = html;
+
+    // Preenche tabela
+    window._agRegistros = registros;
+    window._agColsExibir = colsExibir;
+    window._agCTipo = cTipo;
+    window._agCorParaTipo = corParaTipo;
+    agFiltro('');
+  }
+
+  window.agFiltro = function(tipo) {
+    const regs = window._agRegistros || [];
+    const cols = window._agColsExibir || [];
+    const cTipo = window._agCTipo;
+    const corFn = window._agCorParaTipo || (()=>'#9c908b');
+
+    // atualiza botões
+    document.querySelectorAll('.ag-ftag').forEach(b => b.classList.remove('ag-ftag-ativo'));
+    const btnId = tipo ? 'ag-f-' + tipo.replace(/\s/g,'_') : 'ag-f-todos';
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('ag-ftag-ativo');
+
+    const filtrados = tipo ? regs.filter(r => (cTipo ? r[cTipo] : '') === tipo) : regs;
+    const tbody = document.getElementById('ag-tbody');
+    if (!tbody) return;
+
+    let rows = '';
+    filtrados.forEach(r => {
+      const t = (cTipo ? r[cTipo] : '') || '';
+      const cor = corFn(t);
+      rows += '<tr>';
+      cols.forEach((c, i) => {
+        const v = r[c] != null ? r[c] : '—';
+        if (i === 0 && cTipo) {
+          rows += '<td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:700;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '44">' + esc(v) + '</span></td>';
+        } else {
+          rows += '<td>' + esc(v) + '</td>';
+        }
+      });
+      rows += '</tr>';
+    });
+    tbody.innerHTML = rows;
+  };
+
   function initAgenda() {
     if (agendaInited) return;
     agendaInited = true;
@@ -1340,9 +1552,8 @@ STATS.qualidade.piores.forEach(p => {
     const statusEl = document.getElementById('astrea-status-ne');
     const corpoEl  = document.getElementById('astrea-corpo-ne');
 
-    // Aguarda auth ser restaurada do localStorage (pode demorar ~1s)
     const unsubAuth = auth.onAuthStateChanged(function(user) {
-      unsubAuth(); // ouve só uma vez
+      unsubAuth();
       if (!user) {
         if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Faça login no portal para ver a agenda.</div>';
         return;
@@ -1352,72 +1563,33 @@ STATS.qualidade.piores.forEach(p => {
         String(hoje.getMonth()+1).padStart(2,'0') + '-' +
         String(hoje.getDate()).padStart(2,'0');
       db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
-      if (!snap.exists) {
-        if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
-        if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda hoje. O robô roda às 07h.</div>';
-        return;
-      }
-      const d = snap.data();
-      const ts = d.atualizadoEm
-        ? (typeof d.atualizadoEm.toDate === 'function' ? d.atualizadoEm.toDate() : new Date(d.atualizadoEm))
-        : null;
-      if (statusEl) statusEl.textContent = 'Atualizado ' +
-        (ts ? ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '') +
-        ' · ' + (d.total || 0) + ' itens';
+        if (!snap.exists) {
+          if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
+          if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda hoje. O robô roda às 07h.</div>';
+          return;
+        }
+        const d = snap.data();
+        const ts = d.atualizadoEm
+          ? (typeof d.atualizadoEm.toDate === 'function' ? d.atualizadoEm.toDate() : new Date(d.atualizadoEm))
+          : null;
+        if (statusEl) statusEl.textContent =
+          'Importado em ' + (d.data || docId) +
+          (ts ? ' às ' + ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '') +
+          ' · ' + (d.total || 0).toLocaleString('pt-BR') + ' itens em aberto · Fonte: Astrea';
 
-      const registros = d.registros || [];
-      const colunas   = d.colunas  || (registros.length ? Object.keys(registros[0]) : []);
-
-      if (!registros.length) {
-        if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum item em aberto.</div>';
-        return;
-      }
-
-      // Agrupa por coluna "Tipo" se existir
-      const colTipo = colunas.find(c => /^tipo$/i.test(c));
-      const grupos  = {};
-      const semGrupo = [];
-      registros.forEach(r => {
-        const g = colTipo ? (r[colTipo] || 'Outros') : null;
-        if (g) { if (!grupos[g]) grupos[g] = []; grupos[g].push(r); }
-        else semGrupo.push(r);
-      });
-
-      function esc(s) {
-        return String(s == null ? '' : s)
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      }
-
-      function renderTabela(rows) {
-        if (!rows.length) return '';
-        const cols = colunas.filter(c => c !== colTipo);
-        let h = '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
-          cols.map(c => '<th>' + esc(c) + '</th>').join('') +
-          '</tr></thead><tbody>';
-        rows.forEach(r => {
-          h += '<tr>' + cols.map(c => '<td>' + esc(r[c] != null ? r[c] : '—') + '</td>').join('') + '</tr>';
-        });
-        return h + '</tbody></table></div>';
-      }
-
-      let html = '';
-      if (semGrupo.length) html += renderTabela(semGrupo);
-      Object.keys(grupos).sort().forEach(g => {
-        html += '<h3 style="margin:20px 0 8px;font-size:.95rem;color:var(--muted)">' + esc(g) +
-          ' <span style="font-weight:400">(' + grupos[g].length + ')</span></h3>' +
-          renderTabela(grupos[g]);
-      });
-      if (corpoEl) corpoEl.innerHTML = html;
+        const registros = d.registros || [];
+        if (!registros.length) {
+          if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum item em aberto.</div>';
+          return;
+        }
+        renderRelatorio(registros);
       }, function(err) {
         if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--red-bright)">Erro: ' + err.message + '</div>';
       });
-    }); // fim onAuthStateChanged
+    });
   }
 
-  // Inicializa imediatamente (não espera clique)
   initAgenda();
-
-  // Também inicializa ao clicar (caso seja a primeira vez)
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       if (btn.dataset.tab === 'agenda') initAgenda();
