@@ -1483,6 +1483,14 @@ STATS.qualidade.piores.forEach(p => {
 
     html += '</div>'; // fim grid
 
+    // -- Gráfico de evolução semanal (lê astreaDelta) --
+    html += '<div class="month-card" id="ag-evo-wrap" style="margin-bottom:28px">' +
+      '<h3 style="font-size:.95rem;margin-bottom:4px">Evolução semanal por responsável</h3>' +
+      '<p style="font-size:.74rem;color:var(--muted);margin:0 0 14px">Tarefas que <b style="color:#199e70">entraram</b> e <b style="color:#d95926">saíram</b> do relatório por semana · acumula a partir do 2º dia de importação</p>' +
+      '<div id="ag-evo-chart"><div style="color:var(--muted);font-size:.8rem">Carregando histórico…</div></div>' +
+      '</div>';
+    setTimeout(function(){ carregarEvolucao(db); }, 100);
+
     // Tabela completa
     const colsExibir = [cTipo, cData, cHora, cResp, cTitPr || cTit, cNum, cJuizo].filter(Boolean);
     const headLabels = {
@@ -1544,6 +1552,115 @@ STATS.qualidade.piores.forEach(p => {
     });
     tbody.innerHTML = rows;
   };
+
+  function carregarEvolucao(db) {
+    const wrap = document.getElementById('ag-evo-chart');
+    if (!wrap) return;
+
+    // Lê últimos 35 dias de astreaDelta
+    db.collection('astreaDelta')
+      .orderBy('data', 'desc')
+      .limit(35)
+      .get()
+      .then(function(snap) {
+        if (snap.empty) {
+          wrap.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:8px 0">Dados disponíveis a partir do 2º dia de importação (amanhã).</div>';
+          return;
+        }
+
+        // Agrupa por semana ISO (YYYY-Www)
+        const semanas = {}; // {semKey: {novos:{resp:n}, concluidos:{resp:n}}}
+        snap.forEach(function(doc) {
+          const d = doc.data();
+          const dt = new Date(d.data + 'T12:00:00');
+          const semKey = isoWeek(dt);
+          if (!semanas[semKey]) semanas[semKey] = { novos: {}, concluidos: {} };
+          const s = semanas[semKey];
+          Object.entries(d.novosPorResponsavel || {}).forEach(([r, n]) => {
+            s.novos[r] = (s.novos[r] || 0) + n;
+          });
+          Object.entries(d.concluidosPorResponsavel || {}).forEach(([r, n]) => {
+            s.concluidos[r] = (s.concluidos[r] || 0) + n;
+          });
+        });
+
+        const semsOrdenadas = Object.keys(semanas).sort();
+        // Todos os responsáveis mencionados
+        const todosResp = new Set();
+        semsOrdenadas.forEach(s => {
+          Object.keys(semanas[s].novos).forEach(r => todosResp.add(r));
+          Object.keys(semanas[s].concluidos).forEach(r => todosResp.add(r));
+        });
+        const resps = Array.from(todosResp).sort();
+
+        // Palheta de cores por responsável
+        const cores = ['#3987e5','#199e70','#c98500','#9085e9','#d55181','#4caf3f','#e66767','#d95926'];
+        const corResp = {};
+        resps.forEach((r, i) => { corResp[r] = cores[i % cores.length]; });
+
+        // Calcula máximo para escala
+        let maxVal = 1;
+        semsOrdenadas.forEach(s => {
+          resps.forEach(r => {
+            maxVal = Math.max(maxVal,
+              semanas[s].novos[r] || 0,
+              semanas[s].concluidos[r] || 0);
+          });
+        });
+
+        // Renderiza tabela de barras por semana
+        let h = '';
+        // Legenda de responsáveis
+        h += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
+        resps.forEach(r => {
+          h += '<span style="font-size:.72rem;display:flex;align-items:center;gap:5px">' +
+            '<span style="width:10px;height:10px;border-radius:3px;background:' + corResp[r] + ';display:inline-block"></span>' +
+            esc(r) + '</span>';
+        });
+        h += '</div>';
+
+        semsOrdenadas.forEach(s => {
+          h += '<div style="margin-bottom:14px">';
+          h += '<div style="font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:6px;letter-spacing:.03em">' + esc(s) + '</div>';
+          resps.forEach(r => {
+            const cor = corResp[r];
+            const nov = semanas[s].novos[r] || 0;
+            const con = semanas[s].concluidos[r] || 0;
+            if (!nov && !con) return;
+            const pNov = (nov / maxVal * 100).toFixed(1);
+            const pCon = (con / maxVal * 100).toFixed(1);
+            h += '<div style="display:grid;grid-template-columns:140px 1fr;align-items:center;gap:8px;margin-bottom:4px">' +
+              '<div style="font-size:.74rem;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r) + '</div>' +
+              '<div style="display:flex;flex-direction:column;gap:2px">' +
+                '<div style="display:flex;align-items:center;gap:6px">' +
+                  '<div style="height:7px;flex:1;background:var(--panel-2);border-radius:3px;overflow:hidden">' +
+                    '<div style="height:100%;width:' + pNov + '%;background:#199e70;border-radius:3px"></div></div>' +
+                  '<span style="font-size:.68rem;color:#199e70;width:28px;text-align:right">+' + nov + '</span>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:6px">' +
+                  '<div style="height:7px;flex:1;background:var(--panel-2);border-radius:3px;overflow:hidden">' +
+                    '<div style="height:100%;width:' + pCon + '%;background:#d95926;border-radius:3px"></div></div>' +
+                  '<span style="font-size:.68rem;color:#d95926;width:28px;text-align:right">−' + con + '</span>' +
+                '</div>' +
+              '</div></div>';
+          });
+          h += '</div>';
+        });
+
+        wrap.innerHTML = h;
+      })
+      .catch(function(err) {
+        if (wrap) wrap.innerHTML = '<div style="color:var(--muted);font-size:.8rem">' + esc(err.message) + '</div>';
+      });
+  }
+
+  function isoWeek(d) {
+    const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
+    const y = dt.getUTCFullYear();
+    const w = Math.ceil(((dt - new Date(Date.UTC(y, 0, 1))) / 86400000 + 1) / 7);
+    return y + '-S' + String(w).padStart(2, '0');
+  }
 
   function initAgenda() {
     if (agendaInited) return;
