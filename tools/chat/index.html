@@ -742,6 +742,7 @@
   var tagsPorConversa = {}; // conversaId -> {etiquetas:[], fixada:bool}
   var activeId = null;
   var mensagensCache = [];
+  var primeiraRenderConversa = false;
   var unsubMensagens = null;
   var novaFotoDataUrl = null;
   var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
@@ -1400,6 +1401,7 @@
 
   function selecionarConversa(id){
     activeId = id;
+    primeiraRenderConversa = true;
     cancelarResposta();
     var prefsAtual = tagsPorConversa[id];
     if (prefsAtual && prefsAtual.excluidaAte){
@@ -1513,8 +1515,23 @@
       out += '</div>';
       out += '</div>';
     });
-    els.msgList.innerHTML = out;
-    els.msgList.scrollTop = els.msgList.scrollHeight;
+    var listEl = els.msgList;
+    // Na primeira carga da conversa, vai sempre ao fim
+    // Nas atualizações seguintes (nova msg, reação, leitura), preserva posição se o
+    // usuário estiver lendo mensagens antigas (mais de 120px acima do fim)
+    var deveIrAoFim = primeiraRenderConversa ||
+      (listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120);
+    var scrollAntes = listEl.scrollTop;
+    var alturaAntes = listEl.scrollHeight;
+    primeiraRenderConversa = false;
+
+    listEl.innerHTML = out;
+
+    if (deveIrAoFim) {
+      listEl.scrollTop = listEl.scrollHeight;
+    } else {
+      listEl.scrollTop = scrollAntes + (listEl.scrollHeight - alturaAntes);
+    }
 
     Array.prototype.forEach.call(els.msgList.querySelectorAll('.msg-photo'), function(img){
       img.addEventListener('click', function(){
