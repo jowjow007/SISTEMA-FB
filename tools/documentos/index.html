@@ -9,7 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
+var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googleusercontent.com";
 (function(){
   try{
     var t = localStorage.getItem('fb-portal-theme');
@@ -379,9 +381,9 @@
       </div>
 
       <div class="card" data-tipo-only="termo_repasse" id="tr-card-valor-unica">
-        <h2>Valor do repasse</h2>
+        <h2>Valor total</h2>
         <div class="grid2">
-          <div class="field"><label>Valor do repasse (R$)</label><input id="tr-valor" placeholder="10.918,92" data-mask="money" inputmode="numeric"></div>
+          <div class="field"><label>Valor total (R$)</label><input id="tr-valor" placeholder="10.918,92" data-mask="money" inputmode="numeric"></div>
           <div class="field"><label>Valor por extenso</label><input id="tr-valor-extenso" readonly></div>
         </div>
         <div class="field">
@@ -472,6 +474,15 @@
         </div>
       </div>
 
+      <div class="card" data-tipo-only="termo_repasse" id="tr-card-resumo">
+        <h2>Resumo do repasse</h2>
+        <div class="grid3">
+          <div class="field"><label>Valor total (R$)</label><input id="tr-resumo-total" readonly tabindex="-1"></div>
+          <div class="field"><label>Honorários (R$)</label><input id="tr-resumo-honorarios" readonly tabindex="-1"></div>
+          <div class="field"><label>Valor do repasse líquido (R$)</label><input id="tr-valor-liquido" readonly tabindex="-1" style="font-weight:700;color:var(--ok,#199e70);"></div>
+        </div>
+      </div>
+
       <div class="card" data-tipo-only="termo_repasse">
         <h2>Quitação</h2>
         <div class="field">
@@ -555,8 +566,16 @@
         </div>
       </div>
 
-      <div class="card">
-        <button class="btn" id="btn-gerar" type="button" style="width:100%">Gerar e baixar PDF</button>
+      <div class="card" id="card-exportar">
+        <h2>Exportar</h2>
+        <p class="desc" id="desc-exportar-docs" style="display:none;">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" id="btn-gerar" type="button">Gerar PDF</button>
+          <button class="btn green" id="btn-docs" type="button" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="currentColor" stroke-width="2" points="14 2 14 8 20 8"/></svg>
+            Abrir no Docs
+          </button>
+        </div>
         <p class="hint" id="gerar-status" style="margin-top:10px;"></p>
       </div>
 
@@ -572,6 +591,14 @@
 
   </div>
 </main>
+
+<!-- notificação docs criado -->
+<div id="docs-notif" style="position:fixed;bottom:24px;right:24px;z-index:200;background:var(--panel,#1e1e1e);border:1px solid var(--line-strong,#3a3a3a);border-radius:12px;padding:16px 20px;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;">
+  <button id="docs-notif-close" style="float:right;background:none;border:none;color:var(--muted,#888);cursor:pointer;font-size:1.1rem;padding:0;margin-left:8px;">&times;</button>
+  <p style="font-weight:600;font-size:.88rem;margin:0 0 6px;">Documento criado no Google Docs</p>
+  <p style="font-size:.78rem;color:var(--muted,#888);margin:0;">Clique para abrir e fazer os ajustes finais:</p>
+  <a id="docs-link" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;color:var(--ok,#199e70);font-size:.8rem;word-break:break-all;"></a>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -1074,8 +1101,17 @@ function coletarDados(){
   // ou do valor do repasse/avença (modo parcela única) — nunca digitado à mão.
   const trBaseHonorarios = val('tr-modo')==='parcelada' ? trTotalParcelado : somaValoresMoeda([val('tr-valor')]);
   const trPercentualNum = parseFloat(val('tr-hon-percentual').replace(',','.'));
-  document.getElementById('tr-hon-percentual-valor').value =
-    (!isNaN(trPercentualNum) && trBaseHonorarios>0) ? fmtMoedaBr(trBaseHonorarios*trPercentualNum/100) : '';
+  const trHonPercentualValor = (!isNaN(trPercentualNum) && trBaseHonorarios>0) ? trBaseHonorarios*trPercentualNum/100 : 0;
+  document.getElementById('tr-hon-percentual-valor').value = trHonPercentualValor>0 ? fmtMoedaBr(trHonPercentualValor) : '';
+  // calcula valor líquido (honorários percentuais descontados)
+  const trHonTipo = val('tr-hon-tipo');
+  let trHonValorNum = 0;
+  if(trHonTipo==='percentual'||trHonTipo==='percentual_reembolso') trHonValorNum = trHonPercentualValor;
+  if(trHonTipo==='saldo_entrada') trHonValorNum = somaValoresMoeda([val('tr-hon-saldo-valor')]);
+  const trValorLiquido = trBaseHonorarios>0 ? trBaseHonorarios-trHonValorNum : 0;
+  document.getElementById('tr-resumo-total').value = trBaseHonorarios>0 ? fmtMoedaBr(trBaseHonorarios) : '';
+  document.getElementById('tr-resumo-honorarios').value = trHonValorNum>0 ? fmtMoedaBr(trHonValorNum) : '';
+  document.getElementById('tr-valor-liquido').value = trValorLiquido>0 ? fmtMoedaBr(trValorLiquido) : '';
   return {
     tipo: currentTipo,
     cidadeUf: val('doc-cidade-uf'),
@@ -1122,6 +1158,7 @@ function coletarDados(){
       detalharAvenca: document.getElementById('tr-detalhar-avenca').checked, avenca: trAvenca,
       honTipo: val('tr-hon-tipo'),
       honPercentual: val('tr-hon-percentual'), honPercentualValor: val('tr-hon-percentual-valor'),
+      valorLiquido: document.getElementById('tr-valor-liquido').value,
       honReembolsoValor: val('tr-hon-reembolso-valor'), honReembolsoDesc: val('tr-hon-reembolso-desc'),
       honSaldoValor: val('tr-hon-saldo-valor'), honSaldoDesc: val('tr-hon-saldo-desc'),
       obsHonorarios: document.getElementById('tr-obs-honorarios').value.trim(),
@@ -1165,9 +1202,15 @@ function nomeArquivo(d){
   if(d.tipo==='substabelecimento'){ partes=[nomePessoaDoc(d.substabelecimento.cliente)]; doc='SUBSTABELECIMENTO'; }
   if(d.tipo==='hipossuficiencia'){ partes=[d.hipossuficiencia.nome]; doc='DECLARAÇÃO DE HIPOSSUFICIÊNCIA'; }
   if(d.tipo==='termo_repasse'){
-    partes=[d.termoRepasse.clienteNome]; doc='TERMO DE REPASSE';
-    const v = d.termoRepasse.modo==='parcelada' ? d.termoRepasse.valorParcelado : d.termoRepasse.valor;
-    if(v) valor='R$ '+v;
+    // formato especial: CLIENTE - TERMO DE REPASSE - R$ [valor líquido] - NÚMERO DO PROCESSO
+    const tr=d.termoRepasse;
+    const nome=(tr.clienteNome||'CLIENTE').trim().toUpperCase();
+    const vLiq=tr.valorLiquido||(tr.modo==='parcelada'?tr.valorParcelado:tr.valor)||'';
+    const num=(tr.numeroProcesso||'').trim();
+    const partes2=[nome,'TERMO DE REPASSE'];
+    if(vLiq) partes2.push('R$ '+vLiq);
+    if(num) partes2.push(num);
+    return partes2.join(' - ').replace(/[\\\/:*?"<>|]/g,'-');
   }
   if(d.tipo==='recibo'){
     partes=[nomePessoaDoc(d.recibo.pagador), nomePessoaDoc(d.recibo.recebedor)]; doc='RECIBO';
@@ -1282,7 +1325,8 @@ function buildTermoRepasse(d){
         <div class="box-cell"><b>VALOR DAS CUSTAS JÁ PAGAS:</b> R$ ${esc(t.custasPagas)}</div>
         <div class="box-cell"><b>SEGREDO DE JUSTIÇA:</b> ${esc(t.segredoJustica)}</div>
       </div>
-      <div class="box-row"><div class="box-cell"><b>VALOR ${parcelado?'TOTAL DO REPASSE (PARCELADO)':'DO REPASSE'}:</b> R$ ${esc(valorPrincipal)} (${esc(valorExtensoPrincipal)})</div></div>
+      <div class="box-row"><div class="box-cell"><b>VALOR TOTAL:</b> R$ ${esc(valorPrincipal)} (${esc(valorExtensoPrincipal)})</div></div>
+      ${t.valorLiquido?`<div class="box-row"><div class="box-cell"><b>VALOR DO REPASSE LÍQUIDO:</b> R$ ${esc(t.valorLiquido)}</div></div>`:''}
     </div>`)
   ];
   if(!parcelado){
@@ -1500,6 +1544,11 @@ function setTipo(id){
     const tipos = el.dataset.tipoOnly.split(' ');
     el.classList.toggle('tipo-hidden', !tipos.includes(id));
   });
+  // botão Docs só aparece para Termo de Repasse (tem gerador docx)
+  const btnDocs=document.getElementById('btn-docs');
+  const descDocs=document.getElementById('desc-exportar-docs');
+  if(btnDocs){ btnDocs.style.display=id==='termo_repasse'?'':'none'; }
+  if(descDocs){ descDocs.style.display=id==='termo_repasse'?'':'none'; }
   render();
   if(typeof renderHistoricoDoTipo==='function') renderHistoricoDoTipo();
 }
@@ -1607,6 +1656,209 @@ document.getElementById('btn-gerar').addEventListener('click',()=>{
       .catch(err=>{ statusEl.textContent='Erro ao gerar PDF: '+err.message; });
   }, 60);
 });
+
+/* ══ GOOGLE OAUTH (Docs + Drive) ═══════════════════════════════ */
+const DOCS_SCOPE_DOC = 'https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file';
+let gTokenClientDoc=null, gAccessTokenDoc=null, gTokenResolveDoc=null, gTokenRejectDoc=null;
+var G_TOKEN_KEY_DOC = 'fb-documentos-gtoken';
+try{
+  var _saved=JSON.parse(localStorage.getItem(G_TOKEN_KEY_DOC)||'null');
+  if(_saved && _saved.exp > Date.now()+60000) gAccessTokenDoc=_saved.token;
+}catch(e){}
+
+function loadGISDoc(cb){
+  if(window.google && google.accounts){ cb(); return; }
+  const s=document.createElement('script');
+  s.src='https://accounts.google.com/gsi/client';
+  s.onload=cb;
+  document.head.appendChild(s);
+}
+function ensureGTokenDoc(){
+  return new Promise(function(resolve,reject){
+    if(gAccessTokenDoc){ resolve(true); return; }
+    loadGISDoc(function(){
+      if(!gTokenClientDoc){
+        gTokenClientDoc=google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: DOCS_SCOPE_DOC,
+          callback: function(resp){
+            if(resp.error){ if(gTokenRejectDoc) gTokenRejectDoc(new Error(resp.error)); return; }
+            gAccessTokenDoc=resp.access_token;
+            try{ localStorage.setItem(G_TOKEN_KEY_DOC,JSON.stringify({token:gAccessTokenDoc,exp:Date.now()+(resp.expires_in||3600)*1000})); }catch(e){}
+            if(gTokenResolveDoc){ gTokenResolveDoc(true); gTokenResolveDoc=null; }
+          }
+        });
+      }
+      gTokenResolveDoc=resolve; gTokenRejectDoc=reject;
+      var email=currentUser&&currentUser.email;
+      gTokenClientDoc.requestAccessToken(email?{prompt:'',login_hint:email}:{prompt:''});
+    });
+  });
+}
+function invalidarGTokenDoc(){
+  gAccessTokenDoc=null;
+  try{ localStorage.removeItem(G_TOKEN_KEY_DOC); }catch(e){}
+}
+async function gFetchDoc(url,opts){
+  opts=opts||{};
+  var headers=Object.assign({'Authorization':'Bearer '+gAccessTokenDoc},opts.headers||{});
+  var body=opts.body;
+  if(opts.json){ headers['Content-Type']='application/json'; body=JSON.stringify(opts.json); }
+  var r=await fetch(url,{method:opts.method||'GET',headers:headers,body:body});
+  if(!r.ok){
+    var txt=await r.text();
+    var err=new Error('Google respondeu '+r.status+': '+txt.slice(0,300));
+    err.status=r.status;
+    if(r.status===403&&/has not been used|is disabled/i.test(txt))
+      err.message='Uma API do Google não está ativada (Docs ou Drive). Ative no Google Cloud Console, projeto "Portal FB - Gmail".';
+    throw err;
+  }
+  return r.json();
+}
+async function criarDocTimbradoDoc(titulo,docxBlob){
+  var boundary='fbdoc'+Date.now();
+  var meta={name:titulo,mimeType:'application/vnd.google-apps.document'};
+  var body=new Blob([
+    '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n',
+    '--'+boundary+'\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
+    docxBlob,'\r\n--'+boundary+'--'
+  ]);
+  var res=await gFetchDoc('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {method:'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body:body});
+  return res.id;
+}
+
+/* ══ GERADOR DOCX PARA DOCUMENTOS ══════════════════════════════ */
+var _modeloDocxBlobDoc=null;
+var W_FONT_DOC='<w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic" w:eastAsia="Century Gothic" w:cs="Century Gothic"/>';
+function xmlEscD(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function wRunD(t,o){
+  o=o||{}; var sz=o.sz||24;
+  return '<w:r><w:rPr>'+W_FONT_DOC+(o.b?'<w:b/><w:bCs/>':'')+(o.u?'<w:u w:val="single"/>':'')
+    +'<w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/></w:rPr><w:t xml:space="preserve">'+xmlEscD(t)+'</w:t></w:r>';
+}
+function wParaD(runs,o){
+  o=o||{}; var ppr='';
+  ppr+='<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?200:o.after)+'" w:line="'+(o.line||360)+'" w:lineRule="auto"/>';
+  if(o.ind) ppr+='<w:ind '+o.ind+'/>';
+  ppr+='<w:jc w:val="'+(o.jc||'both')+'"/>';
+  return '<w:p><w:pPr>'+ppr+'</w:pPr>'+(runs||'')+'</w:p>';
+}
+function extractRunsD(el,opts){
+  opts=opts||{}; var runs='';
+  Array.from(el.childNodes).forEach(function(n){
+    if(n.nodeType===3){ var t=n.textContent; if(t.trim()||t) runs+=wRunD(t,opts); }
+    else if(n.nodeName==='STRONG'||n.nodeName==='B') runs+=wRunD(n.textContent,Object.assign({},opts,{b:true}));
+    else if(n.nodeName==='BR') runs+='<w:r><w:br/></w:r>';
+    else runs+=extractRunsD(n,opts);
+  });
+  return runs;
+}
+function boxTableToWordXml(el){
+  var x='';
+  Array.from(el.querySelectorAll('.box-row')).forEach(function(row){
+    var cells=Array.from(row.querySelectorAll('.box-cell'));
+    var cols=cells.length||1;
+    var larg=Math.round(8640/cols);
+    var borda=['top','left','bottom','right','insideH','insideV'].map(function(s){
+      return '<w:'+s+' w:val="single" w:sz="6" w:space="0" w:color="1A1A1A"/>'; }).join('');
+    x+='<w:tbl><w:tblPr><w:tblW w:w="'+(larg*cols)+'" w:type="dxa"/><w:jc w:val="left"/><w:tblBorders>'+borda+'</w:tblBorders>'
+      +'<w:tblCellMar><w:left w:w="113" w:type="dxa"/><w:right w:w="113" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>';
+    cells.forEach(function(){ x+='<w:gridCol w:w="'+larg+'"/>'; });
+    x+='</w:tblGrid><w:tr>';
+    cells.forEach(function(c){
+      x+='<w:tc><w:tcPr><w:tcW w:w="'+larg+'" w:type="dxa"/></w:tcPr>'
+        +wParaD(extractRunsD(c,{}),{jc:'left',after:0,line:276})+'</w:tc>';
+    });
+    x+='</w:tr></w:tbl>';
+  });
+  return x+wParaD('',{after:0});
+}
+function docxBodyDocumento(blocks){
+  const RECUO='w:left="0" w:firstLine="709"';
+  var x='';
+  blocks.forEach(function(block){
+    var tmp=document.createElement('div');
+    tmp.innerHTML=block.html;
+    var el=tmp.firstElementChild;
+    if(!el) return;
+    var cls=el.className||'';
+    if(cls.includes('doc-h1')){
+      var u=cls.includes('underline');
+      x+=wParaD(wRunD(el.textContent||'',{b:true,sz:28,u:u}),{jc:'center',after:240,line:276,before:0});
+    } else if(cls.includes('box-table')){
+      x+=boxTableToWordXml(el);
+    } else if(cls.includes('sig-line')){
+      x+=wParaD('',{after:2880,before:0});
+      var nm=el.querySelector('.name'); var dc=el.querySelector('.doc');
+      if(nm) x+=wParaD(wRunD(nm.textContent,{b:true}),{jc:'center',after:0,line:276});
+      if(dc) x+=wParaD(wRunD(dc.textContent,{}),{jc:'center',after:0,line:276});
+    } else if(cls.includes('blk')){
+      var jc=cls.includes('center')?'center':'both';
+      var ind=(jc==='both')?RECUO:'';
+      var runs=extractRunsD(el,{});
+      x+=wParaD(runs,{jc:jc,ind:ind,after:160});
+    } else if(cls.includes('bullet')){
+      x+=wParaD(extractRunsD(el,{}),{ind:'w:left="709" w:hanging="354"',after:120,line:276});
+    }
+  });
+  return x;
+}
+async function gerarDocxDocumento(d){
+  if(typeof JSZip==='undefined') throw new Error('Biblioteca JSZip não carregou. Recarregue a página.');
+  if(!_modeloDocxBlobDoc){
+    var mr=await fetch('../../assets/modelo-timbrado.docx');
+    if(!mr.ok) throw new Error('Modelo timbrado não encontrado.');
+    _modeloDocxBlobDoc=await mr.blob();
+  }
+  var blocks=buildDocumento(d);
+  var zip=await JSZip.loadAsync(await _modeloDocxBlobDoc.arrayBuffer());
+  var docXml=new TextDecoder('utf-8').decode(await zip.file('word/document.xml').async('uint8array'));
+  var sect=(docXml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)||[''])[0];
+  var corpo=docxBodyDocumento(blocks)+sect;
+  docXml=docXml.replace(/<w:body>[\s\S]*<\/w:body>/,function(){ return '<w:body>'+corpo+'</w:body>'; });
+  zip.file('word/document.xml',docXml);
+  return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+
+/* ══ HANDLER BTN-DOCS ══════════════════════════════════════════ */
+document.getElementById('btn-docs').addEventListener('click', async function(){
+  const btn=this, statusEl=document.getElementById('gerar-status');
+  btn.disabled=true;
+  statusEl.style.color='var(--muted)';
+  statusEl.textContent='Autenticando com Google…';
+  statusEl.style.display='block';
+  try{
+    await ensureGTokenDoc();
+    const d=coletarDados();
+    const erro=validar(d);
+    if(erro){ statusEl.style.color='var(--err,#e05555)'; statusEl.textContent=erro; btn.disabled=false; return; }
+    statusEl.textContent='Montando documento com timbrado…';
+    const docTitle=nomeArquivo(d);
+    const docxBlob=await gerarDocxDocumento(d);
+    statusEl.textContent='Enviando ao Google Docs…';
+    let docId;
+    try{ docId=await criarDocTimbradoDoc(docTitle,docxBlob); }
+    catch(e){
+      if(e.status===401){ invalidarGTokenDoc(); await ensureGTokenDoc(); docId=await criarDocTimbradoDoc(docTitle,docxBlob); }
+      else throw e;
+    }
+    const url='https://docs.google.com/document/d/'+docId+'/edit';
+    statusEl.style.color='var(--ok,#199e70)';
+    statusEl.textContent='Documento criado!';
+    document.getElementById('docs-link').href=url;
+    document.getElementById('docs-link').textContent=url;
+    document.getElementById('docs-notif').style.display='block';
+    salvarHistorico(d);
+  }catch(err){
+    var msg=err.message||String(err);
+    statusEl.style.color='var(--err,#e05555)';
+    statusEl.textContent='Erro: '+msg;
+    if(msg.includes('API')||msg.includes('403')||msg.includes('popup')) alert(msg);
+  }
+  btn.disabled=false;
+});
+document.getElementById('docs-notif-close').addEventListener('click',function(){ document.getElementById('docs-notif').style.display='none'; });
 
 /* ---------- data de hoje pré-preenchida (todos os tipos usam o mesmo campo) ---------- */
 (function(){
