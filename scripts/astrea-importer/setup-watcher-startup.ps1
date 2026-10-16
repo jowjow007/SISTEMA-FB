@@ -88,6 +88,6 @@ Start-Sleep -Seconds 3
 $state = (Get-ScheduledTask -TaskName $TaskName).State
 Write-Host "Estado da tarefa: $state"
 Write-Host ""
-Write-Host "Para ver o log:   notepad '$LogPath'"
-Write-Host "Para parar:       Stop-ScheduledTask  -TaskName '$TaskName'"
-Write-Host "Para remover:     Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
+Write-Host "Para ver o log:   notepad $LogPath"
+Write-Host "Para parar:       Stop-ScheduledTask  -TaskName $TaskName"
+Write-Host "Para remover:     Unregister-ScheduledTask -TaskName $TaskName -Confirm:false"
