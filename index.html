@@ -511,8 +511,9 @@
   #company-modal-box .cm-row:last-child{border-bottom:none;}
   #company-modal-box dt{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);min-width:110px;padding-top:2px;flex-shrink:0;}
   #company-modal-box dd{font-size:.82rem;color:var(--paper);margin:0;flex:1;word-break:break-word;}
-  #company-modal-box .cm-copy{background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;border-radius:4px;font-size:.7rem;opacity:.7;transition:opacity .15s;}
+  #company-modal-box .cm-copy{background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;border-radius:4px;font-size:.7rem;opacity:.7;transition:opacity .15s,color .15s,background .15s;}
   #company-modal-box .cm-copy:hover{opacity:1;color:var(--gold);}
+  #company-modal-box .cm-copy.copiado{opacity:1;color:#199e70 !important;}
   #company-modal-box .cm-section{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);padding:14px 0 6px;border-bottom:1px solid var(--line-strong);}
   #company-modal-box .cm-actions{display:flex;gap:8px;margin-top:16px;}
   /* celular: título em cima e valor logo abaixo (a coluna fixa de 110px deixava o valor longe do título) */
@@ -1247,14 +1248,14 @@
           <p class="sub">Jonathan Silva Fonseca Soc. Ind. de Advogados</p>
           <dl>
             <div class="cm-section">Identificação</div>
-            <div class="cm-row"><dt>CNPJ</dt><dd>57.704.224/0001-00 <button class="cm-copy" onclick="navigator.clipboard.writeText('57.704.224/0001-00')" title="Copiar">⧉</button></dd></div>
+            <div class="cm-row"><dt>CNPJ</dt><dd>57.704.224/0001-00 <button class="cm-copy" onclick="fbCopiar(this,'57.704.224/0001-00')" title="Copiar">⧉</button></dd></div>
             <div class="cm-row"><dt>OAB</dt><dd>17806</dd></div>
             <div class="cm-row"><dt>Insc. Municipal</dt><dd>686.608-00</dd></div>
             <div class="cm-row"><dt>Simples Nacional</dt><dd>Sim</dd></div>
 
             <div class="cm-section">Contato</div>
-            <div class="cm-row"><dt>E-mail</dt><dd>contato@fonsecaebraga.com.br <button class="cm-copy" onclick="navigator.clipboard.writeText('contato@fonsecaebraga.com.br')" title="Copiar">⧉</button></dd></div>
-            <div class="cm-row"><dt>Telefone</dt><dd>+55 32 2525-2737 <button class="cm-copy" onclick="navigator.clipboard.writeText('+5532252737')" title="Copiar">⧉</button></dd></div>
+            <div class="cm-row"><dt>E-mail</dt><dd>contato@fonsecaebraga.com.br <button class="cm-copy" onclick="fbCopiar(this,'contato@fonsecaebraga.com.br')" title="Copiar">⧉</button></dd></div>
+            <div class="cm-row"><dt>Telefone</dt><dd>+55 32 2525-2737 <button class="cm-copy" onclick="fbCopiar(this,'+5532252737')" title="Copiar">⧉</button></dd></div>
             <div class="cm-row"><dt>Site</dt><dd>www.fonsecaebraga.com.br</dd></div>
             <div class="cm-row"><dt>Endereço</dt><dd>Rua Senador Salgado Filho, 426 — Tabajaras, Uberlândia/MG — CEP 38400-236</dd></div>
 
@@ -1262,11 +1263,11 @@
             <div class="cm-row"><dt>Banco</dt><dd>Banco Cora SCFI — 403</dd></div>
             <div class="cm-row"><dt>Tipo</dt><dd>Conta Corrente</dd></div>
             <div class="cm-row"><dt>Agência</dt><dd>0001</dd></div>
-            <div class="cm-row"><dt>Conta</dt><dd>5319591-6 <button class="cm-copy" onclick="navigator.clipboard.writeText('5319591-6')" title="Copiar">⧉</button></dd></div>
-            <div class="cm-row"><dt>Chave PIX</dt><dd>57704224000100 <button class="cm-copy" onclick="navigator.clipboard.writeText('57704224000100')" title="Copiar">⧉</button></dd></div>
+            <div class="cm-row"><dt>Conta</dt><dd>5319591-6 <button class="cm-copy" onclick="fbCopiar(this,'5319591-6')" title="Copiar">⧉</button></dd></div>
+            <div class="cm-row"><dt>Chave PIX</dt><dd>57704224000100 <button class="cm-copy" onclick="fbCopiar(this,'57704224000100')" title="Copiar">⧉</button></dd></div>
           </dl>
           <div class="cm-actions">
-            <button type="button" class="btn secondary" id="company-modal-copy-bank" onclick="navigator.clipboard.writeText('Banco Cora SCFI - 403\nAgência: 0001\nConta: 5319591-6\nChave PIX: 57704224000100')">Copiar dados bancários</button>
+            <button type="button" class="btn secondary" id="company-modal-copy-bank" onclick="fbCopiar(this,'Banco Cora SCFI - 403\nAgência: 0001\nConta: 5319591-6\nChave PIX: 57704224000100','Dados bancários copiados!')">Copiar dados bancários</button>
             <button type="button" class="btn secondary" id="company-modal-close">Fechar</button>
           </div>
         </div>
@@ -3260,6 +3261,21 @@
   els.mobileLogoutBtn.addEventListener('click', function(){
     auth.signOut();
   });
+
+  window.fbCopiar = function(btn, texto, labelOk) {
+    navigator.clipboard.writeText(texto).then(function() {
+      var orig = btn.innerHTML;
+      var origTitle = btn.title || '';
+      btn.classList.add('copiado');
+      btn.innerHTML = labelOk || '✓';
+      btn.title = 'Copiado!';
+      setTimeout(function() {
+        btn.classList.remove('copiado');
+        btn.innerHTML = orig;
+        btn.title = origTitle;
+      }, 1800);
+    });
+  };
 
   els.companyBadgeBtn.addEventListener('click', function(){
     els.companyModalBackdrop.classList.add('show');
