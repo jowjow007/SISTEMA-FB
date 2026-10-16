@@ -1398,164 +1398,366 @@ STATS.qualidade.piores.forEach(p => {
       '</div>';
   }
 
+  function agLegendaTipo(tipo) {
+    const desc = {
+      'Audiência':  'Audiências judiciais, conciliações, depoimentos e sessões de julgamento',
+      'Prazo':      'Prazos processuais e legais com data fatal — máxima prioridade',
+      'Tarefa':     'Tarefas internas do escritório a serem executadas pelo time',
+      'Reunião':    'Reuniões com clientes, partes, peritos ou terceiros',
+      'Publicação': 'Publicações no DJE / DJEN, intimações eletrônicas e diários',
+      'Protocolo':  'Petições, documentos e peças a protocolar ou entregar',
+      'Perícia':    'Perícias técnicas, avaliações e diligências externas',
+      'Outros':     'Demais atividades não enquadradas nos tipos acima',
+    };
+    for (const k of Object.keys(desc)) {
+      if (tipo && tipo.toLowerCase().includes(k.toLowerCase())) return desc[k];
+    }
+    return 'Atividade diversa';
+  }
+
   function renderRelatorio(registros) {
     const corpoEl = document.getElementById('astrea-corpo-ne');
     if (!corpoEl) return;
 
-    const cTipo  = col(registros, 'tipo') || col(registros, 'Tipo');
-    const cData  = col(registros, 'data') || col(registros, 'Data');
-    const cHora  = col(registros, 'hora') || col(registros, 'Hora');
-    const cResp  = col(registros, 'responsável', 'responsavel') || col(registros, 'Responsável');
+    const cTipo    = col(registros, 'tipo');
+    const cData    = col(registros, 'data');
+    const cHora    = col(registros, 'hora');
+    const cResp    = col(registros, 'responsável', 'responsavel');
+    const cCriador = col(registros, 'criado por', 'criador', 'autor da atividade', 'autor');
+    const cStatus  = col(registros, 'situação', 'situacao', 'status');
     const cTitPr = col(registros, 'título do processo', 'titulo do processo', 'processo/caso');
     const cNum   = col(registros, 'número do processo', 'numero do processo');
     const cJuizo = col(registros, 'juízo', 'juizo');
     const cTit   = col(registros, 'título', 'titulo');
 
-    // -- Contagem por tipo --
-    const porTipo = {};
+    // ── Cálculos ──────────────────────────────────────────────
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const porTipo = {}, porResp = {}, porCriador = {}, porStatus = {};
+    const vencidosPorResp = {};
+    let vencidos = 0, crit3 = 0, prox7 = 0, prox30 = 0;
+    const urgentes = [], maisAntigas = [];
+
     registros.forEach(r => {
       const t = (cTipo ? r[cTipo] : null) || 'Outros';
       porTipo[t] = (porTipo[t] || 0) + 1;
-    });
-    const tiposOrdenados = Object.entries(porTipo).sort((a,b) => b[1]-a[1]);
-    const maxTipo = tiposOrdenados[0]?.[1] || 1;
 
-    // -- Contagem por responsável --
-    const porResp = {};
-    registros.forEach(r => {
       const resp = (cResp ? r[cResp] : null) || 'Não atribuído';
-      const nomes = String(resp).split(/[,;\/]+/).map(s => s.trim()).filter(Boolean);
-      nomes.forEach(n => { porResp[n] = (porResp[n] || 0) + 1; });
-    });
-    const respsOrdenados = Object.entries(porResp).sort((a,b) => b[1]-a[1]).slice(0, 15);
-    const maxResp = respsOrdenados[0]?.[1] || 1;
+      String(resp).split(/[,;\/]+/).map(s => s.trim()).filter(Boolean).forEach(n => {
+        porResp[n] = (porResp[n] || 0) + 1;
+      });
 
-    // -- Distribuição por data (próximos 60 dias) --
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const porSemana = {};
-    let vencidos = 0, hoje7 = 0, hoje30 = 0;
-    registros.forEach(r => {
+      if (cCriador) {
+        const c = r[cCriador] || 'Não informado';
+        porCriador[c] = (porCriador[c] || 0) + 1;
+      }
+      if (cStatus) {
+        const s = r[cStatus] || 'Não definido';
+        porStatus[s] = (porStatus[s] || 0) + 1;
+      }
+
       const ds = cData ? r[cData] : null;
       if (!ds) return;
       const d = new Date(ds); d.setHours(0,0,0,0);
       const diff = Math.round((d - hoje) / 86400000);
-      if (diff < 0) vencidos++;
-      else if (diff <= 7) hoje7++;
-      else if (diff <= 30) hoje30++;
-      // agrupa por semana
-      const sem = Math.floor(diff / 7);
-      if (sem >= -1 && sem <= 8) {
-        porSemana[sem] = (porSemana[sem] || 0) + 1;
-      }
+      if (diff < 0) {
+        vencidos++;
+        urgentes.push(Object.assign({}, r, {_diff: diff}));
+        maisAntigas.push(Object.assign({}, r, {_diff: diff}));
+        String(resp).split(/[,;\/]+/).map(s => s.trim()).filter(Boolean).forEach(n => {
+          vencidosPorResp[n] = (vencidosPorResp[n] || 0) + 1;
+        });
+      } else if (diff <= 3) { crit3++; urgentes.push(Object.assign({}, r, {_diff: diff})); }
+      else if (diff <= 7)  prox7++;
+      else if (diff <= 30) prox30++;
     });
 
-    // -- KPIs principais --
-    const kpis = [
-      { label: 'Total em aberto', valor: registros.length, icon: '#ic-layers', cor: 'var(--red-bright)' },
-      { label: 'Vencidos / atrasados', valor: vencidos, icon: '#ic-alert', cor: '#d95926' },
-      { label: 'Próximos 7 dias', valor: hoje7, icon: '#ic-scale', cor: '#c98500' },
-      { label: 'Próximos 30 dias', valor: hoje30, icon: '#ic-folder', cor: '#3987e5' },
-    ];
+    urgentes.sort((a,b) => a._diff - b._diff);
+    maisAntigas.sort((a,b) => a._diff - b._diff);
+
+    const tiposOrd   = Object.entries(porTipo).sort((a,b) => b[1]-a[1]);
+    const respsOrd   = Object.entries(porResp).sort((a,b) => b[1]-a[1]).slice(0,12);
+    const criadOrd   = Object.entries(porCriador).sort((a,b) => b[1]-a[1]).slice(0,10);
+    const statusOrd  = Object.entries(porStatus).sort((a,b) => b[1]-a[1]);
+    const maxTipo    = tiposOrd[0]?.[1] || 1;
+    const maxResp    = respsOrd[0]?.[1] || 1;
+    const maxCriad   = criadOrd[0]?.[1] || 1;
+    const maxStatus  = statusOrd[0]?.[1] || 1;
+    const emRevisao  = cStatus ? registros.filter(r => String(r[cStatus]||'').toLowerCase().includes('revis')).length : 0;
+    const titPrincipal = cTitPr || cTit || '';
 
     let html = '';
 
-    // KPI row
-    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px">';
-    kpis.forEach(k => {
-      html += '<div class="kpi" style="border-color:rgba(255,255,255,0.08)">' +
-        '<div class="kpi-icon" style="background:rgba(255,255,255,0.06);color:' + k.cor + '">' +
+    // ── LEGENDA ────────────────────────────────────────────────
+    html += '<details style="margin-bottom:20px">' +
+      '<summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--paper);padding:12px 16px;' +
+        'background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;' +
+        'display:flex;align-items:center;gap:8px;list-style:none;-webkit-appearance:none">' +
+        '<svg style="width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>' +
+        'Legenda — significado de cada cor e ícone' +
+        '<span style="font-size:.72rem;color:var(--muted);font-weight:400;margin-left:auto">▶ clique para expandir</span>' +
+      '</summary>' +
+      '<div style="padding:18px;border:1px solid var(--line-strong);border-top:none;border-radius:0 0 10px 10px;background:var(--panel)">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">' +
+
+          // Coluna 1: cores por tipo
+          '<div>' +
+            '<div style="font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Cores — tipo de atividade</div>' +
+            Object.entries(TIPO_COR).map(function(entry) {
+              const tipo = entry[0], cor = entry[1];
+              return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">' +
+                '<span style="display:inline-flex;padding:2px 10px;border-radius:4px;font-size:.72rem;font-weight:700;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '44;white-space:nowrap;flex:0 0 auto">' + esc(tipo) + '</span>' +
+                '<span style="font-size:.75rem;color:var(--muted);line-height:1.35">' + agLegendaTipo(tipo) + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+
+          // Coluna 2: ícones de status
+          '<div>' +
+            '<div style="font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Ícones — o que significam</div>' +
+            [
+              ['⚠️', 'Dados de outro dia — importação de hoje ainda não disponível'],
+              ['⏳', 'Aguardando robô — computador do escritório ainda não respondeu'],
+              ['⚙️', 'Robô em execução — importando dados do Astrea agora'],
+              ['✅', 'Importação concluída com sucesso'],
+              ['❌', 'Erro na importação — verifique o log no escritório'],
+              ['🔴', 'Item vencido — data já passou sem conclusão'],
+              ['🟡', 'Item crítico — vence em até 3 dias'],
+              ['🟢', 'Item no prazo — mais de 3 dias de folga'],
+              ['📋', 'Distribuição por tipo de atividade'],
+              ['👤', 'Atividades agrupadas por responsável'],
+              ['✍️', 'Atividades agrupadas por quem criou'],
+              ['⏱️', 'Itens vencidos há mais tempo — os mais atrasados'],
+              ['📈', 'Evolução semanal — entradas e saídas por responsável'],
+            ].map(function(row) {
+              return '<div style="display:flex;align-items:flex-start;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)">' +
+                '<span style="font-size:.9rem;flex:0 0 22px;text-align:center">' + row[0] + '</span>' +
+                '<span style="font-size:.75rem;color:var(--muted);line-height:1.4">' + esc(row[1]) + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</details>';
+
+    // ── KPIs ───────────────────────────────────────────────────
+    const kpiList = [
+      {label:'Total em aberto',       valor:registros.length, icon:'#ic-layers', cor:'var(--red-bright)', sub:'atividades na agenda'},
+      {label:'Vencidos / atrasados',  valor:vencidos,         icon:'#ic-alert',  cor:'#d95926',          sub:'data já passou'},
+      {label:'Críticos (≤ 3 dias)',   valor:crit3,            icon:'#ic-alert',  cor:'#c98500',          sub:'atenção imediata'},
+      {label:'Próximos 7 dias',       valor:prox7,            icon:'#ic-scale',  cor:'#3987e5',          sub:'planejamento semanal'},
+      {label:'Próximos 30 dias',      valor:prox30,           icon:'#ic-folder', cor:'#199e70',          sub:'horizonte do mês'},
+    ];
+    if (emRevisao > 0) kpiList.push({label:'Em revisão', valor:emRevisao, icon:'#ic-pen', cor:'#9085e9', sub:'aguardando aprovação'});
+
+    const kpiCols = Math.min(kpiList.length, 5);
+    html += '<div style="display:grid;grid-template-columns:repeat(' + kpiCols + ',1fr);gap:12px;margin-bottom:22px">';
+    kpiList.forEach(function(k) {
+      html += '<div class="kpi" style="padding:15px 16px 13px">' +
+        '<div class="kpi-icon" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.06);color:' + k.cor + ';margin-bottom:10px">' +
           '<svg class="icon"><use href="' + k.icon + '"/></svg></div>' +
-        '<div class="kpi-value">' + k.valor.toLocaleString('pt-BR') + '</div>' +
+        '<div class="kpi-value" style="font-size:1.65rem">' + k.valor.toLocaleString('pt-BR') + '</div>' +
         '<div class="kpi-label">' + esc(k.label) + '</div>' +
-        '</div>';
+        '<div class="kpi-foot">' + esc(k.sub) + '</div>' +
+      '</div>';
     });
     html += '</div>';
 
-    // Filtro rápido por tipo
+    // ── PRAZOS FATAIS ─────────────────────────────────────────
+    if (urgentes.length) {
+      html += '<div style="background:linear-gradient(135deg,rgba(217,89,38,0.12),rgba(184,54,46,0.08));border:1px solid rgba(201,70,60,0.4);border-radius:14px;padding:18px 20px;margin-bottom:22px">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">' +
+          '<svg style="width:18px;height:18px;stroke:#d95926;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto" viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 9.5v4.2M12 17h.01"/></svg>' +
+          '<span style="font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--paper)">' +
+            '🔴 Prazos Fatais — ' + vencidos + ' vencido' + (vencidos!==1?'s':'') +
+            (crit3 > 0 ? ', 🟡 ' + crit3 + ' crítico' + (crit3!==1?'s':'') + ' (≤ 3 dias)' : '') +
+          '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:5px">';
+      urgentes.slice(0,15).forEach(function(r) {
+        const diff = r._diff;
+        const venc = diff < 0;
+        const bc = venc ? '#d95926' : '#c98500';
+        const bg = venc ? 'rgba(217,89,38,0.10)' : 'rgba(201,133,0,0.10)';
+        const badge = venc
+          ? '<span style="background:#d9592622;color:#d95926;border:1px solid #d9592644;padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;white-space:nowrap;flex:0 0 auto">' + Math.abs(diff) + 'd atrás</span>'
+          : '<span style="background:#c9850022;color:#c98500;border:1px solid #c9850044;padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:700;white-space:nowrap;flex:0 0 auto">' + (diff===0?'HOJE':diff+'d') + '</span>';
+        const tipo = (cTipo ? r[cTipo] : '') || '';
+        const cor  = corParaTipo(tipo);
+        const titulo = (titPrincipal ? r[titPrincipal] : '') || (cNum ? r[cNum] : '') || '—';
+        const resp  = (cResp ? r[cResp] : '') || '';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:' + bg + ';border:1px solid ' + bc + '33">' +
+          badge +
+          '<span style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:.68rem;font-weight:700;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '44;flex:0 0 auto">' + esc(tipo||'—') + '</span>' +
+          '<span style="font-size:.78rem;color:var(--paper);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(titulo) + '">' + esc(titulo) + '</span>' +
+          (resp ? '<span style="font-size:.72rem;color:var(--muted);white-space:nowrap;flex:0 0 auto">' + esc(resp) + '</span>' : '') +
+        '</div>';
+      });
+      if (urgentes.length > 15) {
+        html += '<div style="font-size:.74rem;color:var(--muted);text-align:center;padding:6px">… e mais ' + (urgentes.length-15) + ' itens</div>';
+      }
+      html += '</div></div>';
+    }
+
+    // ── FILTRO POR TIPO ────────────────────────────────────────
     html += '<div id="ag-filtros" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">' +
       '<button onclick="agFiltro(\'\')" id="ag-f-todos" class="ag-ftag ag-ftag-ativo">Todos (' + registros.length + ')</button>';
-    tiposOrdenados.forEach(([t, n]) => {
+    tiposOrd.forEach(function(entry) {
+      const t = entry[0], n = entry[1];
       const cor = corParaTipo(t);
       html += '<button onclick="agFiltro(\'' + esc(t.replace(/'/g,"\\'")) + '\')" id="ag-f-' + esc(t.replace(/\s/g,'_')) + '" class="ag-ftag" style="border-color:' + cor + ';color:' + cor + '">' + esc(t) + ' (' + n + ')</button>';
     });
     html += '</div>';
 
-    // Grid: gráficos lado a lado
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px">';
+    // ── GRID: TIPO | RESPONSÁVEL ───────────────────────────────
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">';
 
-    // Bloco tipos
-    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:12px">Distribuição por tipo</h3>';
-    tiposOrdenados.forEach(([t, n]) => { html += miniBar(t, n, maxTipo, corParaTipo(t)); });
+    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:12px">📋 Distribuição por tipo</h3>';
+    tiposOrd.forEach(function(entry) { html += miniBar(entry[0], entry[1], maxTipo, corParaTipo(entry[0])); });
     html += '</div>';
 
-    // Bloco responsáveis
-    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:12px">Itens por responsável</h3>';
-    respsOrdenados.forEach(([r, n]) => { html += miniBar(r, n, maxResp, 'var(--red-bright)'); });
+    html += '<div class="month-card"><h3 style="font-size:.95rem;margin-bottom:4px">👤 Atividades por responsável</h3>' +
+      '<p style="font-size:.72rem;color:var(--muted);margin:0 0 12px">Total (barra) · <span style="color:#d95926">🔴 = vencidos</span></p>';
+    respsOrd.forEach(function(entry) {
+      const r = entry[0], n = entry[1];
+      const venc = vencidosPorResp[r] || 0;
+      const pct = (n / maxResp * 100).toFixed(1);
+      html += '<div style="display:grid;grid-template-columns:150px 1fr 72px;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)">' +
+        '<div style="font-size:.78rem;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(r) + '">' + esc(r) + '</div>' +
+        '<div style="height:8px;background:var(--panel-2);border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--red-bright);border-radius:4px"></div></div>' +
+        '<div style="font-size:.75rem;color:var(--muted);text-align:right"><b style="color:var(--paper)">' + n + '</b>' +
+          (venc ? ' <span style="color:#d95926;font-size:.68rem">🔴' + venc + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    });
     html += '</div>';
+    html += '</div>'; // fim grid tipo|responsável
 
-    html += '</div>'; // fim grid
+    // ── POR CRIADOR (se disponível) ────────────────────────────
+    if (criadOrd.length > 0) {
+      html += '<div class="month-card" style="margin-bottom:18px"><h3 style="font-size:.95rem;margin-bottom:12px">✍️ Atividades por quem criou</h3>';
+      criadOrd.forEach(function(entry) { html += miniBar(entry[0], entry[1], maxCriad, 'var(--gold)'); });
+      html += '</div>';
+    }
 
-    // -- Gráfico de evolução semanal (lê astreaDelta) --
+    // ── POR STATUS (se disponível) ─────────────────────────────
+    if (statusOrd.length > 0) {
+      html += '<div class="month-card" style="margin-bottom:18px"><h3 style="font-size:.95rem;margin-bottom:12px">🔄 Distribuição por situação</h3>';
+      statusOrd.forEach(function(entry) {
+        const s = entry[0], n = entry[1];
+        const sl = String(s).toLowerCase();
+        const cor = sl.includes('revis') ? '#9085e9' : sl.includes('pend') ? '#c98500' : sl.includes('atras') ? '#d95926' : sl.includes('conclu') ? '#199e70' : 'var(--silver)';
+        html += miniBar(s, n, maxStatus, cor);
+      });
+      html += '</div>';
+    }
+
+    // ── MAIS ANTIGAS EM ABERTO ─────────────────────────────────
+    if (maisAntigas.length > 0) {
+      html += '<div style="background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px 20px;margin-bottom:18px">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">' +
+          '<svg style="width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;flex:0 0 auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' +
+          '<span style="font-family:var(--font-display);font-weight:700;font-size:.95rem;color:var(--paper)">⏱️ Paradas há mais tempo — itens vencidos mais antigos</span>' +
+        '</div>' +
+        '<div style="overflow-x:auto"><table class="areas-table">' +
+          '<thead><tr><th>Atraso</th><th>Tipo</th><th>Processo / Atendimento</th><th>Responsável</th>' +
+          (cData ? '<th>Data</th>' : '') + '</tr></thead><tbody>';
+      maisAntigas.slice(0,10).forEach(function(r) {
+        const diff = r._diff;
+        const tipo = (cTipo ? r[cTipo] : '') || '—';
+        const cor  = corParaTipo(tipo);
+        const titulo = (titPrincipal ? r[titPrincipal] : '') || (cNum ? r[cNum] : '') || '—';
+        const resp  = (cResp ? r[cResp] : '') || '—';
+        const data  = (cData ? r[cData] : '') || '';
+        html += '<tr>' +
+          '<td><b style="color:#d95926">' + Math.abs(diff) + 'd</b></td>' +
+          '<td><span style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:.68rem;font-weight:700;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '44">' + esc(tipo) + '</span></td>' +
+          '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(titulo) + '</td>' +
+          '<td>' + esc(resp) + '</td>' +
+          (cData ? '<td style="white-space:nowrap">' + esc(data) + '</td>' : '') +
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // ── EVOLUÇÃO SEMANAL ───────────────────────────────────────
     html += '<div class="month-card" id="ag-evo-wrap" style="margin-bottom:28px">' +
-      '<h3 style="font-size:.95rem;margin-bottom:4px">Evolução semanal por responsável</h3>' +
+      '<h3 style="font-size:.95rem;margin-bottom:4px">📈 Evolução semanal por responsável</h3>' +
       '<p style="font-size:.74rem;color:var(--muted);margin:0 0 14px">Tarefas que <b style="color:#199e70">entraram</b> e <b style="color:#d95926">saíram</b> do relatório por semana · acumula a partir do 2º dia de importação</p>' +
       '<div id="ag-evo-chart"><div style="color:var(--muted);font-size:.8rem">Carregando histórico…</div></div>' +
-      '</div>';
+    '</div>';
     setTimeout(function(){ carregarEvolucao(db); }, 100);
 
-    // Tabela completa
-    const colsExibir = [cTipo, cData, cHora, cResp, cTitPr || cTit, cNum, cJuizo].filter(Boolean);
-    const headLabels = {
-      [cTipo]:       'Tipo',
-      [cData]:       'Data',
-      [cHora]:       'Hora',
-      [cResp]:       'Responsável',
-      [cTitPr||cTit]:'Processo / Atendimento',
-      [cNum]:        'Nº Processo',
-      [cJuizo]:      'Juízo',
-    };
+    // ── TABELA COMPLETA ────────────────────────────────────────
+    const colsExibir = [cTipo, cData, cHora, cResp, cCriador, cTitPr||cTit, cNum, cJuizo, cStatus].filter(Boolean);
+    const headLabels = {};
+    if (cTipo)         headLabels[cTipo]          = 'Tipo';
+    if (cData)         headLabels[cData]           = 'Data';
+    if (cHora)         headLabels[cHora]           = 'Hora';
+    if (cResp)         headLabels[cResp]           = 'Responsável';
+    if (cCriador)      headLabels[cCriador]        = 'Criado por';
+    if (cTitPr||cTit)  headLabels[cTitPr||cTit]   = 'Processo / Atendimento';
+    if (cNum)          headLabels[cNum]            = 'Nº Processo';
+    if (cJuizo)        headLabels[cJuizo]          = 'Juízo';
+    if (cStatus)       headLabels[cStatus]         = 'Situação';
 
     html += '<div class="areas-chart" style="padding:20px 22px 16px">' +
-      '<h3 style="font-family:var(--font-display);font-size:1rem;margin:0 0 14px">Todos os itens</h3>' +
+      '<h3 style="font-family:var(--font-display);font-size:1rem;margin:0 0 14px">📄 Todos os itens</h3>' +
       '<div style="overflow-x:auto" id="ag-tabela-wrap"><table class="areas-table" id="ag-tabela"><thead><tr>' +
-      colsExibir.map(c => '<th>' + esc(headLabels[c] || c) + '</th>').join('') +
+      colsExibir.map(function(c) { return '<th>' + esc(headLabels[c] || c) + '</th>'; }).join('') +
       '</tr></thead><tbody id="ag-tbody"></tbody></table></div></div>';
 
     corpoEl.innerHTML = html;
 
-    // Preenche tabela
-    window._agRegistros = registros;
-    window._agColsExibir = colsExibir;
-    window._agCTipo = cTipo;
-    window._agCorParaTipo = corParaTipo;
+    window._agRegistros    = registros;
+    window._agColsExibir   = colsExibir;
+    window._agCTipo        = cTipo;
+    window._agCData        = cData;
+    window._agCorParaTipo  = corParaTipo;
     agFiltro('');
   }
 
   window.agFiltro = function(tipo) {
-    const regs = window._agRegistros || [];
-    const cols = window._agColsExibir || [];
+    const regs  = window._agRegistros   || [];
+    const cols  = window._agColsExibir  || [];
     const cTipo = window._agCTipo;
-    const corFn = window._agCorParaTipo || (()=>'#9c908b');
+    const cData = window._agCData;
+    const corFn = window._agCorParaTipo || (function(){return '#9c908b';});
 
-    // atualiza botões
-    document.querySelectorAll('.ag-ftag').forEach(b => b.classList.remove('ag-ftag-ativo'));
+    document.querySelectorAll('.ag-ftag').forEach(function(b) { b.classList.remove('ag-ftag-ativo'); });
     const btnId = tipo ? 'ag-f-' + tipo.replace(/\s/g,'_') : 'ag-f-todos';
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.add('ag-ftag-ativo');
 
-    const filtrados = tipo ? regs.filter(r => (cTipo ? r[cTipo] : '') === tipo) : regs;
+    const filtrados = tipo ? regs.filter(function(r) { return (cTipo ? r[cTipo] : '') === tipo; }) : regs;
     const tbody = document.getElementById('ag-tbody');
     if (!tbody) return;
 
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+
     let rows = '';
-    filtrados.forEach(r => {
-      const t = (cTipo ? r[cTipo] : '') || '';
+    filtrados.forEach(function(r) {
+      const t   = (cTipo ? r[cTipo] : '') || '';
       const cor = corFn(t);
-      rows += '<tr>';
-      cols.forEach((c, i) => {
+      // cor de fundo baseada em data
+      let rowBg = '';
+      if (cData && r[cData]) {
+        const d = new Date(r[cData]); d.setHours(0,0,0,0);
+        const diff = Math.round((d - hoje) / 86400000);
+        if (diff < 0)      rowBg = 'background:rgba(217,89,38,0.07)';
+        else if (diff <= 3) rowBg = 'background:rgba(201,133,0,0.07)';
+      }
+      rows += '<tr' + (rowBg ? ' style="' + rowBg + '"' : '') + '>';
+      cols.forEach(function(c, i) {
         const v = r[c] != null ? r[c] : '—';
         if (i === 0 && cTipo) {
           rows += '<td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:700;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '44">' + esc(v) + '</span></td>';
+        } else if (c === cData && r[c]) {
+          const d = new Date(r[c]); d.setHours(0,0,0,0);
+          const diff = Math.round((d - hoje) / 86400000);
+          const dot = diff < 0 ? '<span style="color:#d95926;font-weight:700" title="' + Math.abs(diff) + ' dias atrás">🔴 </span>'
+            : diff <= 3 ? '<span style="color:#c98500;font-weight:700" title="' + diff + ' dias">🟡 </span>'
+            : '';
+          rows += '<td style="white-space:nowrap">' + dot + esc(v) + '</td>';
         } else {
           rows += '<td>' + esc(v) + '</td>';
         }
