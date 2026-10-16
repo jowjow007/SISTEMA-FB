@@ -100,6 +100,12 @@ service cloud.firestore {
                     && (request.resource.data.status == 'implantada'
                         ? request.resource.data.motivoExclusao == null
                         : (request.resource.data.motivoExclusao is string && request.resource.data.motivoExclusao.size() > 0));
+      // Admin pode editar/remover observação em sugestão já implantada
+      allow update: if isAdmin()
+                    && resource.data.status == 'implantada'
+                    && request.resource.data.texto == resource.data.texto
+                    && request.resource.data.autorUid == resource.data.autorUid
+                    && request.resource.data.status == 'implantada';
       allow delete: if isAdmin();
     }
     match /conversas/{conversaId} {

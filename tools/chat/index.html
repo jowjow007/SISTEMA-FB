@@ -273,7 +273,9 @@
   .msg-row.other .msg-bubble{background:none;border:none;padding:0 4px;}
   .msg-fwd-label{font-size:.68rem;color:var(--muted);font-style:italic;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px;}
   .msg-photo{max-width:220px;border-radius:10px;display:block;cursor:pointer;margin-bottom:4px;}
-  .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;}
+  .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:3px;justify-content:flex-end;}
+  .tick{font-size:.72rem;line-height:1;color:var(--muted);}
+  .tick.lido{color:#4fc3f7;}
   .msg-fwd-btn,.msg-reply-btn,.msg-react-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .12s;
     padding:2px 4px;display:inline-flex;align-items:center;overflow:visible;
@@ -642,6 +644,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 <script src="../../firebase-config.js"></script>
 <script>
 (function(){
@@ -657,6 +660,17 @@
   var auth = firebase.auth();
   var db = firebase.firestore();
   var FV = firebase.firestore.FieldValue;
+  var storage = firebase.storage();
+
+  function uploadParaStorage(blob, caminho){
+    return new Promise(function(resolve, reject){
+      var ref = storage.ref(caminho);
+      var task = ref.put(blob);
+      task.on('state_changed', null, reject, function(){
+        ref.getDownloadURL().then(resolve).catch(reject);
+      });
+    });
+  }
 
   var els = {
     gate: document.getElementById('gate'),
@@ -744,7 +758,7 @@
   var mensagensCache = [];
   var primeiraRenderConversa = false;
   var unsubMensagens = null;
-  var novaFotoDataUrl = null;
+  var novaFotoUrl = null;       // URL do Storage após upload (ou null)
   var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
   var pickerMode = null;      // 'nova' | 'encaminhar'
   var pickerSelected = {};    // uid -> true (modo nova)
@@ -1484,11 +1498,14 @@
       if (m.encaminhada){
         out += '<div class="msg-fwd-label">' + icoSvg('forward', 11) + ' Encaminhada de ' + escapeHtml(m.encaminhadaDeAutorNome || 'alguém') + '</div>';
       }
-      if (m.tipo === 'foto' && m.fotoBase64){
-        out += '<img class="msg-photo" src="' + m.fotoBase64 + '" data-full="' + m.fotoBase64 + '">';
+      if (m.tipo === 'foto'){
+        var fotoSrc = m.fotoUrl || m.fotoBase64 || '';
+        if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '">';
       }
-      if (m.tipo === 'documento' && m.documentoBase64){
-        out += '<a class="msg-doc" href="' + m.documentoBase64 + '" download="' + escapeHtml(m.documentoNome || 'documento') + '">' +
+      if (m.tipo === 'documento'){
+        var docHref = m.documentoUrl || m.documentoBase64 || '#';
+        var docAttr = m.documentoUrl ? 'target="_blank" rel="noopener"' : ('download="' + escapeHtml(m.documentoNome || 'documento') + '"');
+        out += '<a class="msg-doc" href="' + docHref + '" ' + docAttr + '>' +
           '<span class="icone">' + icoSvg('document', 22) + '</span><span class="info">' +
           '<div class="nome">' + escapeHtml(m.documentoNome || 'Documento') + '</div>' +
           '<div class="tamanho">' + formatBytes(m.documentoTamanho || 0) + '</div>' +
@@ -1511,7 +1528,16 @@
           emoji + ' <span class="cnt">' + uids.length + '</span></span>';
       });
       if (pillsHtml) out += '<div class="msg-reacoes">' + pillsHtml + '</div>';
-      if (own) out += '<div class="msg-time">' + formatHora(m.criadoEm) + '</div>';
+      if (own){
+        var conv = conversas.filter(function(x){ return x.id === activeId; })[0];
+        var outros = conv ? (conv.participantes || []).filter(function(u){ return u !== myUid; }) : [];
+        var lidaPor = m.lidaPor || [];
+        var todosLeram = outros.length > 0 && outros.every(function(u){ return lidaPor.indexOf(u) !== -1; });
+        var tick = todosLeram
+          ? '<span class="tick lido" title="Lida">✓✓</span>'
+          : '<span class="tick" title="Enviada">✓</span>';
+        out += '<div class="msg-time">' + formatHora(m.criadoEm) + tick + '</div>';
+      }
       out += '</div>';
       out += '</div>';
     });
@@ -1605,12 +1631,12 @@
   // ---------------- envio de mensagens ----------------
 
   function limparComposerFoto(){
-    novaFotoDataUrl = null;
+    novaFotoUrl = null;
     els.photoPreviewRow.classList.remove('show');
     els.fotoInput.value = '';
   }
 
-  function comprimirFoto(file){
+  function comprimirParaBlob(file){
     return new Promise(function(resolve, reject){
       var reader = new FileReader();
       reader.onerror = reject;
@@ -1618,24 +1644,39 @@
         var img = new Image();
         img.onerror = reject;
         img.onload = function(){
-          function tentativa(maxDim, quality){
+          function reduzir(maxDim, quality){
             var w = img.width, h = img.height;
             if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
             else { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
             var canvas = document.createElement('canvas');
             canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            return canvas.toDataURL('image/jpeg', quality);
+            return canvas;
           }
-          var dataUrl = tentativa(1000, 0.72);
-          if (dataUrl.length > 700000) dataUrl = tentativa(700, 0.6);
-          if (dataUrl.length > 700000) dataUrl = tentativa(500, 0.5);
-          if (dataUrl.length > 700000) { reject(new Error('Imagem muito grande mesmo após compressão. Tente outra foto.')); return; }
-          resolve(dataUrl);
+          var canvas = reduzir(1200, 0.82);
+          canvas.toBlob(function(blob){
+            if (!blob){ reject(new Error('Não foi possível processar a imagem.')); return; }
+            if (blob.size > 800 * 1024){
+              canvas = reduzir(800, 0.72);
+              canvas.toBlob(function(b2){
+                resolve(b2 || blob);
+              }, 'image/jpeg', 0.72);
+            } else {
+              resolve(blob);
+            }
+          }, 'image/jpeg', 0.82);
         };
         img.src = reader.result;
       };
       reader.readAsDataURL(file);
+    });
+  }
+
+  function comprimirFoto(file){
+    return comprimirParaBlob(file).then(function(blob){
+      var ext = 'jpg';
+      var caminho = 'chat/' + myUid + '/' + Date.now() + '_foto.' + ext;
+      return uploadParaStorage(blob, caminho);
     });
   }
 
@@ -1661,22 +1702,37 @@
   }
 
   els.btnAnexar.addEventListener('click', function(){ els.fotoInput.click(); });
+  function processarFotoParaEnvio(file){
+    // Mostra preview local imediato; faz upload ao Storage em paralelo
+    var localUrl = URL.createObjectURL(file);
+    limparComposerDoc();
+    novaFotoUrl = null; // ainda fazendo upload
+    els.photoPreviewImg.src = localUrl;
+    els.photoPreviewRow.classList.add('show');
+    els.btnEnviar.disabled = true;
+    els.btnEnviar.title = 'Enviando imagem…';
+    comprimirFoto(file).then(function(url){
+      novaFotoUrl = url;
+      els.photoPreviewImg.src = url;
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+    }).catch(function(err){
+      limparComposerFoto();
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+      alert(err.message || 'Não foi possível enviar a imagem.');
+    });
+  }
+
   els.fotoInput.addEventListener('change', function(){
     var file = els.fotoInput.files[0];
     if (!file) return;
-    comprimirFoto(file).then(function(dataUrl){
-      limparComposerDoc();
-      novaFotoDataUrl = dataUrl;
-      els.photoPreviewImg.src = dataUrl;
-      els.photoPreviewRow.classList.add('show');
-    }).catch(function(err){
-      alert(err.message || 'Não foi possível processar a imagem.');
-      els.fotoInput.value = '';
-    });
+    processarFotoParaEnvio(file);
+    els.fotoInput.value = '';
   });
   els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
 
-  var LIMITE_DOCUMENTO_BYTES = 500 * 1024;
+  var LIMITE_DOCUMENTO_BYTES = 10 * 1024 * 1024; // 10 MB via Storage
 
   function formatBytes(n){
     if (n < 1024) return n + ' B';
@@ -1690,18 +1746,17 @@
     els.docInput.value = '';
   }
 
-  function lerDocumento(file){
+  function fazerUploadDocumento(file){
     return new Promise(function(resolve, reject){
       if (file.size > LIMITE_DOCUMENTO_BYTES){
-        reject(new Error('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 500 KB. Tente um arquivo menor.'));
+        reject(new Error('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.'));
         return;
       }
-      var reader = new FileReader();
-      reader.onerror = reject;
-      reader.onload = function(){
-        resolve({ dataUrl: reader.result, nome: file.name, tipo: file.type || '', tamanho: file.size });
-      };
-      reader.readAsDataURL(file);
+      var ext = file.name.split('.').pop() || 'bin';
+      var caminho = 'chat/' + myUid + '/' + Date.now() + '_doc.' + ext;
+      uploadParaStorage(file, caminho).then(function(url){
+        resolve({ storageUrl: url, dataUrl: null, nome: file.name, tipo: file.type || '', tamanho: file.size });
+      }).catch(reject);
     });
   }
 
@@ -1709,16 +1764,30 @@
   els.docInput.addEventListener('change', function(){
     var file = els.docInput.files[0];
     if (!file) return;
-    lerDocumento(file).then(function(doc){
-      limparComposerFoto();
-      novoDocumento = doc;
-      els.docPreviewNome.textContent = doc.nome;
-      els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
-      els.docPreviewRow.classList.add('show');
-    }).catch(function(err){
-      alert(err.message || 'Não foi possível anexar o documento.');
+    if (file.size > LIMITE_DOCUMENTO_BYTES){
+      alert('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.');
       els.docInput.value = '';
+      return;
+    }
+    limparComposerFoto();
+    novoDocumento = { storageUrl: null, dataUrl: null, nome: file.name, tipo: file.type || '', tamanho: file.size };
+    els.docPreviewNome.textContent = file.name;
+    els.docPreviewTamanho.textContent = formatBytes(file.size) + ' — enviando…';
+    els.docPreviewRow.classList.add('show');
+    els.btnEnviar.disabled = true;
+    els.btnEnviar.title = 'Enviando arquivo…';
+    fazerUploadDocumento(file).then(function(doc){
+      novoDocumento = doc;
+      els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+    }).catch(function(err){
+      limparComposerDoc();
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+      alert(err.message || 'Não foi possível enviar o arquivo.');
     });
+    els.docInput.value = '';
   });
   els.btnRemoverDoc.addEventListener('click', limparComposerDoc);
 
@@ -1778,6 +1847,23 @@
       enviarMensagem();
     }
   });
+
+  // Colar imagem do clipboard (Print Screen, Recorte do Windows, Paint)
+  els.composerInput.addEventListener('paste', function(e){
+    if (!activeId) return;
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (var i = 0; i < items.length; i++){
+      if (items[i].type.indexOf('image') !== -1){
+        e.preventDefault();
+        var file = items[i].getAsFile();
+        if (!file) return;
+        processarFotoParaEnvio(file);
+        return;
+      }
+    }
+  });
+
   els.btnEnviar.addEventListener('click', enviarMensagem);
 
   function postMessageTo(conversaId, msgData, preview){
@@ -1805,14 +1891,16 @@
   function enviarMensagem(){
     if (!activeId) return;
     var texto = els.composerInput.value.trim();
-    if (!texto && !novaFotoDataUrl && !novoDocumento) return;
+    if (!texto && !novaFotoUrl && !novoDocumento) return;
     els.btnEnviar.disabled = true;
-    var tipo = novoDocumento ? 'documento' : (novaFotoDataUrl ? 'foto' : 'texto');
+    var tipo = novoDocumento ? 'documento' : (novaFotoUrl ? 'foto' : 'texto');
     var msgData = {
       autorUid: myUid,
       tipo: tipo,
       texto: texto || null,
-      fotoBase64: novaFotoDataUrl || null,
+      fotoUrl: novaFotoUrl || null,
+      fotoBase64: null,
+      documentoUrl: novoDocumento ? novoDocumento.storageUrl : null,
       documentoBase64: novoDocumento ? novoDocumento.dataUrl : null,
       documentoNome: novoDocumento ? novoDocumento.nome : null,
       documentoTipo: novoDocumento ? novoDocumento.tipo : null,
@@ -2346,7 +2434,9 @@
       autorUid: myUid,
       tipo: forwardMsg.tipo,
       texto: forwardMsg.texto || null,
+      fotoUrl: forwardMsg.fotoUrl || null,
       fotoBase64: forwardMsg.fotoBase64 || null,
+      documentoUrl: forwardMsg.documentoUrl || null,
       documentoBase64: forwardMsg.documentoBase64 || null,
       documentoNome: forwardMsg.documentoNome || null,
       documentoTipo: forwardMsg.documentoTipo || null,
