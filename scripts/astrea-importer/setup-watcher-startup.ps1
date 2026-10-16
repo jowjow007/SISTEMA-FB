@@ -1,56 +1,46 @@
 # setup-watcher-startup.ps1
-# Registra o watcher para iniciar automaticamente com o Windows (sem janela visível).
+# Registra o watcher para iniciar automaticamente com o Windows (sem janela).
 # Execute UMA vez como Administrador:
-#   Right-click → Executar como Administrador
-#
-# Ou no terminal elevado:
+#   Right-click -> Executar como Administrador
+# Ou:
 #   powershell -ExecutionPolicy Bypass -File "C:\Users\FB\portal-fb\scripts\astrea-importer\setup-watcher-startup.ps1"
 
 $ErrorActionPreference = "Stop"
 
-# ── Caminhos ──────────────────────────────────────────────────
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Localiza pythonw.exe (roda sem janela) a partir do Python 3.12
+# Localiza pythonw.exe do Python 3.12 (roda sem janela)
 $PythonwExe = $null
 try {
     $pyExe = (& py -3.12 -c "import sys; print(sys.executable)" 2>$null)
     if ($pyExe) {
-        $candidate = Join-Path (Split-Path $pyExe) "pythonw.exe"
-        if (Test-Path $candidate) { $PythonwExe = $candidate }
+        $cand = Join-Path (Split-Path $pyExe) "pythonw.exe"
+        if (Test-Path $cand) { $PythonwExe = $cand }
     }
 } catch {}
 if (-not $PythonwExe) {
     try {
         $pyExe = (Get-Command python -ErrorAction Stop).Source
-        $candidate = Join-Path (Split-Path $pyExe) "pythonw.exe"
-        if (Test-Path $candidate) { $PythonwExe = $candidate }
+        $cand = Join-Path (Split-Path $pyExe) "pythonw.exe"
+        if (Test-Path $cand) { $PythonwExe = $cand }
     } catch {}
 }
 if (-not $PythonwExe) {
-    Write-Host "❌ pythonw.exe não encontrado. Verifique se o Python 3.12 está instalado." -ForegroundColor Red
+    Write-Host "ERRO: pythonw.exe nao encontrado. Verifique o Python 3.12."
     exit 1
 }
 
 $WatcherPath = "$ScriptDir\watcher.py"
-$LogPath     = "$ScriptDir\log-watcher.txt"
 $TaskName    = "AstreaWatcher"
 
-Write-Host "Usando: $PythonwExe"
+Write-Host "Python: $PythonwExe"
 Write-Host "Script: $WatcherPath"
 
-# ── Ação ──────────────────────────────────────────────────────
-# pythonw.exe não suporta redirecionamento via linha de argumento;
-# usamos um wrapper .vbs para capturar o log silenciosamente.
-$VbsPath = "$ScriptDir\inicia-watcher.vbs"
-$VbsContent = @"
-Set oShell = CreateObject("WScript.Shell")
-oShell.Run """$PythonwExe"" ""$WatcherPath"" >> ""$LogPath"" 2>&1", 0, False
-"@
-Set-Content -Path $VbsPath -Value $VbsContent -Encoding UTF8
+$Action = New-ScheduledTaskAction `
+    -Execute $PythonwExe `
+    -Argument "`"$WatcherPath`"" `
+    -WorkingDirectory $ScriptDir
 
-# ── Gatilho: ao fazer logon ────────────────────────────────────
-$Action  = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$VbsPath`""
 $Trigger = New-ScheduledTaskTrigger -AtLogOn
 
 $Settings = New-ScheduledTaskSettingsSet `
@@ -60,7 +50,6 @@ $Settings = New-ScheduledTaskSettingsSet `
     -RestartInterval (New-TimeSpan -Minutes 5) `
     -RestartCount 3
 
-# ── Registra (ou atualiza) ────────────────────────────────────
 $Existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($Existing) {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
@@ -72,22 +61,19 @@ Register-ScheduledTask `
     -Action $Action `
     -Trigger $Trigger `
     -Settings $Settings `
-    -Description "Watcher do robô Astrea — aguarda comandos do portal (sem janela)" `
+    -Description "Watcher do robo Astrea - aguarda comandos do portal" `
     -RunLevel Highest | Out-Null
 
 Write-Host ""
-Write-Host "✅ Tarefa '$TaskName' criada com sucesso!" -ForegroundColor Green
-Write-Host "   Vai iniciar automaticamente a cada login."
+Write-Host "OK: Tarefa $TaskName criada com sucesso!"
+Write-Host "    Vai iniciar automaticamente a cada login."
 Write-Host ""
-
-# ── Inicia agora ──────────────────────────────────────────────
-Write-Host "Iniciando watcher agora..." -ForegroundColor Cyan
+Write-Host "Iniciando agora..."
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 3
 
 $state = (Get-ScheduledTask -TaskName $TaskName).State
-Write-Host "Estado da tarefa: $state"
+Write-Host "Estado: $state"
 Write-Host ""
-Write-Host "Para ver o log:   notepad $LogPath"
-Write-Host "Para parar:       Stop-ScheduledTask  -TaskName $TaskName"
-Write-Host "Para remover:     Unregister-ScheduledTask -TaskName $TaskName -Confirm:false"
+Write-Host "Log em: $ScriptDir\log-watcher.txt"
+Write-Host "Parar:  Stop-ScheduledTask -TaskName $TaskName"

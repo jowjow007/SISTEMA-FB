@@ -23,6 +23,12 @@ from dotenv import load_dotenv
 BASE = Path(__file__).parent
 load_dotenv(BASE / "credenciais.env")
 
+# Quando roda via pythonw.exe (sem console), redireciona saida para arquivo
+if sys.stdout is None or sys.stderr is None:
+    _lf = open(BASE / "log-watcher.txt", "a", encoding="utf-8", buffering=1)
+    sys.stdout = _lf
+    sys.stderr = _lf
+
 FIREBASE_API_KEY = "AIzaSyAWClOREaOXYupgzN3t2eJCddm8FcQTjfE"
 FIREBASE_PROJECT = "sistema-fb-4cce5"
 ROBO_EMAIL       = os.getenv("FIREBASE_ROBO_EMAIL", "")
