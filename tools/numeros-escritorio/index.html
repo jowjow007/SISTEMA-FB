@@ -1693,8 +1693,31 @@ STATS.qualidade.piores.forEach(p => {
         String(hoje.getDate()).padStart(2,'0');
       db.collection('astreaDiario').doc(docId).onSnapshot(function(snap) {
         if (!snap.exists) {
-          if (statusEl) statusEl.textContent = 'Aguardando importação de hoje (' + docId + ')…';
-          if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda hoje. O robô roda às 07h.</div>';
+          // Sem importação hoje — carrega a mais recente disponível
+          if (statusEl) statusEl.textContent = 'Sem importação hoje (' + docId + ') — buscando última disponível…';
+          db.collection('astreaDiario').orderBy('data', 'desc').limit(1).get().then(function(qs) {
+            if (qs.empty) {
+              if (statusEl) statusEl.textContent = 'Nenhuma importação encontrada.';
+              if (corpoEl)  corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum dado importado ainda. O robô roda às 07h ou use o botão acima.</div>';
+              return;
+            }
+            const d = qs.docs[0].data();
+            const ts = d.atualizadoEm
+              ? (typeof d.atualizadoEm.toDate === 'function' ? d.atualizadoEm.toDate() : new Date(d.atualizadoEm))
+              : null;
+            if (statusEl) statusEl.textContent =
+              '⚠️ Última importação: ' + (d.data || qs.docs[0].id) +
+              (ts ? ' às ' + ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '') +
+              ' · ' + (d.total || 0).toLocaleString('pt-BR') + ' itens · Fonte: Astrea';
+            const registros = d.registros || [];
+            if (!registros.length) {
+              if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--muted);padding:24px 0;">Nenhum item em aberto.</div>';
+              return;
+            }
+            renderRelatorio(registros);
+          }).catch(function(err) {
+            if (corpoEl) corpoEl.innerHTML = '<div style="color:var(--red-bright)">Erro ao buscar última importação: ' + err.message + '</div>';
+          });
           return;
         }
         const d = snap.data();
