@@ -245,11 +245,21 @@ def processar_arquivo(caminho: Path) -> list[dict]:
     # Remove linhas totalmente vazias
     df = df.dropna(how="all")
 
-    # Converte datas para string ISO para poder gravar no Firestore
+    # Converte datas para string ISO para poder gravar no Firestore.
+    # O Astrea exporta "dd/mm/aaaa" (e "dd/mm/aaaa - hh:mm" na criação): o formato é
+    # explícito para o pandas não inverter dia e mês quando a 1ª linha tem dia <= 12.
+    def _datas_iso(serie):
+        if str(serie.dtype).startswith("datetime"):
+            return serie.dt.strftime("%Y-%m-%d")
+        txt = serie.astype("string").str.strip()
+        br = pd.to_datetime(txt.str.slice(0, 10), format="%d/%m/%Y", errors="coerce")
+        resto = pd.to_datetime(txt.where(br.isna()), dayfirst=True, errors="coerce")
+        return br.fillna(resto).dt.strftime("%Y-%m-%d")
+
     for col in df.columns:
-        if df[col].dtype == "datetime64[ns]" or "data" in col.lower() or "date" in col.lower():
+        if str(df[col].dtype).startswith("datetime") or "data" in col.lower() or "date" in col.lower():
             try:
-                df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
+                df[col] = _datas_iso(df[col])
             except Exception:
                 pass
 
