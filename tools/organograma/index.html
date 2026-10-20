@@ -307,6 +307,16 @@
   .detail-patrimonio-item .cod{color:var(--muted);font-size:.72rem;}
   .detail-patrimonio-item .valor{color:var(--gold);font-weight:600;white-space:nowrap;}
   .detail-tempo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .depto-section.sem-depto .depto-title{border-color:#c9463c;animation:semDeptoPisca 1.1s ease-in-out infinite;}
+  @keyframes semDeptoPisca{0%,100%{background:rgba(201,70,60,.06);}50%{background:rgba(201,70,60,.28);}}
+  @media (prefers-reduced-motion:reduce){.depto-section.sem-depto .depto-title{animation:none;background:rgba(201,70,60,.18);}}
+  .tempo-busca{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;margin-top:12px;}
+  .tempo-busca label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#8a8a93;}
+  .tempo-busca input,.tempo-busca select{padding:7px 9px;border-radius:7px;border:1px solid #333;background:#1c1c22;color:#fff;font:inherit;font-size:13px;color-scheme:dark;}
+  #detail-backdrop .tempo-resultado{margin-top:10px;display:block;}
+  .tempo-dias{margin-top:8px;max-height:180px;overflow-y:auto;font-size:12.5px;border:1px solid #333;border-radius:8px;}
+  .tempo-dias div{display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #2a2a30;color:#ddd;}
+  .tempo-dias div:last-child{border-bottom:0;}
   .tempo-cell{
     background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;
     display:flex;flex-direction:column;gap:2px;
@@ -574,8 +584,13 @@
     </div>
     <div class="field">
       <label>Departamento</label>
-      <input type="text" id="edit-depto" list="deptos-existentes" placeholder="Ex: Cível">
-      <datalist id="deptos-existentes"></datalist>
+      <select id="edit-depto">
+        <option value="">— Sem departamento —</option>
+        <option value="Diretoria Jurídica">Diretoria Jurídica</option>
+        <option value="Condomínio">Condomínio</option>
+        <option value="Jurídico">Jurídico</option>
+        <option value="Secretaria">Secretaria</option>
+      </select>
     </div>
     <div class="field">
       <label>Data de ingresso</label>
@@ -616,11 +631,21 @@
     <div class="detail-section">
       <h4>Tempo logado no portal</h4>
       <div class="detail-tempo-grid" id="detail-tempo-grid">
+        <div class="tempo-cell"><span class="k">Hoje</span><span class="v" id="detail-tempo-hoje">—</span></div>
+        <div class="tempo-cell"><span class="k">Ontem</span><span class="v" id="detail-tempo-ontem">—</span></div>
         <div class="tempo-cell"><span class="k">Esta semana</span><span class="v" id="detail-tempo-semana">—</span></div>
         <div class="tempo-cell"><span class="k">Este mês</span><span class="v" id="detail-tempo-mes">—</span></div>
         <div class="tempo-cell"><span class="k">Este ano</span><span class="v" id="detail-tempo-ano">—</span></div>
         <div class="tempo-cell"><span class="k">Desde sempre</span><span class="v" id="detail-tempo-total">—</span></div>
       </div>
+      <div class="tempo-busca">
+        <label>Pesquisar
+          <select id="tempo-modo"><option value="dia">Um dia</option><option value="periodo">Período</option></select></label>
+        <label id="tempo-lbl-de"><span id="tempo-txt-de">Dia</span> <input type="date" id="tempo-de"></label>
+        <label id="tempo-lbl-ate" style="display:none">Até <input type="date" id="tempo-ate"></label>
+      </div>
+      <div class="tempo-resultado tempo-cell"><span class="k" id="tempo-res-k">Tempo no dia escolhido</span><span class="v" id="tempo-res-v" style="display:block">—</span></div>
+      <div class="tempo-dias" id="tempo-dias" style="display:none"></div>
     </div>
 
     <div class="modal-foot">
@@ -695,7 +720,6 @@
     editErr: document.getElementById('edit-err'),
     editCancelar: document.getElementById('edit-cancelar'),
     editSalvar: document.getElementById('edit-salvar'),
-    deptosExistentes: document.getElementById('deptos-existentes'),
     detailBackdrop: document.getElementById('detail-backdrop'),
     detailTitulo: document.getElementById('detail-titulo'),
     detailSistemas: document.getElementById('detail-sistemas'),
@@ -892,9 +916,10 @@
   }
 
   function renderDepartamento(depto, pessoas){
-    return '<div class="depto-section">' +
-      '<button type="button" class="depto-title" aria-expanded="false">' +
-        '<span>' + escapeHtml(depto) + '</span>' +
+    const semDepto = depto === 'Sem departamento definido';
+    return '<div class="depto-section' + (semDepto ? ' sem-depto open' : '') + '">' +
+      '<button type="button" class="depto-title" aria-expanded="' + (semDepto ? 'true' : 'false') + '">' +
+        '<span>' + (semDepto ? '⚠ ' : '') + escapeHtml(depto) + (semDepto ? ' — alocar em um departamento' : '') + '</span>' +
         '<span class="count">' + pessoas.length + (pessoas.length === 1 ? ' colaborador' : ' colaboradores') + '</span>' +
         '<span class="chevron" aria-hidden="true">⌄</span>' +
       '</button>' +
@@ -1079,14 +1104,17 @@
   }
 
   // ---------- Modal: adicionar/editar (todos os dados do cadastro) ----------
-  function listaDeptosExistentes(){
-    const set = {};
-    Object.keys(organogramaMap).forEach(function(uid){
-      const d = (organogramaMap[uid].deptoAtual || '').trim();
-      if (d) set[d] = true;
-    });
-    els.deptosExistentes.innerHTML = Object.keys(set).sort(function(a,b){return a.localeCompare(b,'pt-BR');})
-      .map(function(d){ return '<option value="' + escapeHtml(d) + '">'; }).join('');
+  // departamento é escolhido só na lista fixa; um valor antigo fora da lista aparece marcado para ser trocado
+  function listaDeptosExistentes(){}
+  function definirDepto(valor){
+    const sel = els.editDepto, v = (valor || '').trim();
+    Array.prototype.slice.call(sel.querySelectorAll('option[data-legado]')).forEach(function(o){ o.remove(); });
+    if (v && !Array.prototype.some.call(sel.options, function(o){ return o.value === v; })) {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v + ' (antigo — escolha um da lista)'; o.dataset.legado = '1';
+      sel.appendChild(o);
+    }
+    sel.value = v;
   }
 
   function preencherFormCompleto(uid){
@@ -1122,7 +1150,7 @@
     els.editEndereco.value = u.endereco || '';
     els.editEmailAlt.value = u.emailAlternativo || '';
     els.editIngresso.value = u.dataIngresso || '';
-    els.editDepto.value = u.deptoAtual || '';
+    definirDepto(u.deptoAtual);
     els.editRemuneracao.value = formatarCampoMoeda(u.remuneracao || '');
   }
 
@@ -1212,6 +1240,9 @@
     els.detailPatrimonioLista.style.display = 'none';
     els.detailPatrimonioLista.innerHTML = '';
     els.detailTempoSemana.textContent = '—';
+    document.getElementById('detail-tempo-hoje').textContent = '—';
+    document.getElementById('detail-tempo-ontem').textContent = '—';
+    tempoLinhas = null; prepararBuscaTempo();
     els.detailTempoMes.textContent = '—';
     els.detailTempoAno.textContent = '—';
     els.detailTempoTotal.textContent = '—';
@@ -1261,6 +1292,12 @@
         if (data >= inicioMesIso) mes += seg;
         if (data >= inicioSemanaIso) semana += seg;
       });
+      const ontemD = new Date(hoje); ontemD.setDate(ontemD.getDate() - 1);
+      const hojeIso = dataIso(hoje), ontemIso = dataIso(ontemD);
+      tempoLinhas = snap.docs.map(function(d){ const r = d.data(); return { data: r.data || '', seg: r.segundos || 0 }; });
+      document.getElementById('detail-tempo-hoje').textContent = formatarTempo(somaTempo(hojeIso, hojeIso));
+      document.getElementById('detail-tempo-ontem').textContent = formatarTempo(somaTempo(ontemIso, ontemIso));
+      atualizarBuscaTempo();
       els.detailTempoSemana.textContent = formatarTempo(semana);
       els.detailTempoMes.textContent = formatarTempo(mes);
       els.detailTempoAno.textContent = formatarTempo(ano);
@@ -1272,6 +1309,45 @@
       els.detailTempoTotal.textContent = 'erro';
     });
   }
+
+  // pesquisa de tempo logado por dia ou período (presencaDiaria guarda um registro por dia)
+  let tempoLinhas = null;
+  function somaTempo(de, ate){
+    return (tempoLinhas || []).reduce(function(s, r){ return (r.data >= de && r.data <= ate) ? s + r.seg : s; }, 0);
+  }
+  function prepararBuscaTempo(){
+    const hojeIso = dataIso(new Date());
+    document.getElementById('tempo-modo').value = 'dia';
+    document.getElementById('tempo-de').value = hojeIso;
+    document.getElementById('tempo-ate').value = hojeIso;
+    document.getElementById('tempo-lbl-ate').style.display = 'none';
+    document.getElementById('tempo-txt-de').textContent = 'Dia';
+    document.getElementById('tempo-res-v').textContent = '—';
+    document.getElementById('tempo-dias').style.display = 'none';
+  }
+  function atualizarBuscaTempo(){
+    const periodo = document.getElementById('tempo-modo').value === 'periodo';
+    document.getElementById('tempo-lbl-ate').style.display = periodo ? '' : 'none';
+    document.getElementById('tempo-txt-de').textContent = periodo ? 'De' : 'Dia';
+    let de = document.getElementById('tempo-de').value;
+    let ate = periodo ? document.getElementById('tempo-ate').value : de;
+    const k = document.getElementById('tempo-res-k'), v = document.getElementById('tempo-res-v'), lista = document.getElementById('tempo-dias');
+    if (!tempoLinhas) { v.textContent = 'Carregando...'; return; }
+    if (!de || !ate) { v.textContent = '—'; lista.style.display = 'none'; return; }
+    if (ate < de) { const t = de; de = ate; ate = t; }
+    const fmt = function(iso){ const p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; };
+    k.textContent = periodo ? 'Tempo de ' + fmt(de) + ' a ' + fmt(ate) : 'Tempo em ' + fmt(de);
+    const dias = tempoLinhas.filter(function(r){ return r.data >= de && r.data <= ate && r.seg > 0; })
+      .sort(function(a, b){ return b.data.localeCompare(a.data); });
+    v.textContent = formatarTempo(somaTempo(de, ate)) + (dias.length ? '' : ' (sem acesso)');
+    if (periodo && dias.length) {
+      lista.innerHTML = dias.map(function(r){ return '<div><span>' + fmt(r.data) + '</span><b>' + formatarTempo(r.seg) + '</b></div>'; }).join('');
+      lista.style.display = '';
+    } else lista.style.display = 'none';
+  }
+  ['tempo-modo', 'tempo-de', 'tempo-ate'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', atualizarBuscaTempo);
+  });
 
   function fecharDetalhe(){
     els.detailBackdrop.classList.remove('show');

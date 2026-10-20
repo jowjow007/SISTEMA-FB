@@ -1126,10 +1126,6 @@
           <input type="date" id="register-ingresso" required>
         </div>
         <div class="field">
-          <label>Departamento atual<span class="obrig">*</span></label>
-          <input type="text" id="register-depto" placeholder="Ex: Cível, Trabalhista, Financeiro..." required>
-        </div>
-        <div class="field">
           <label>Foto (para o mural de aniversariantes)<span class="obrig">*</span></label>
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="register-photo-preview" style="width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
@@ -1572,7 +1568,7 @@
       <div><label style="font-size:.75rem;color:var(--muted);">Data de ingresso</label>
         <input type="date" id="dados-ingresso" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Departamento atual</label>
-        <input type="text" id="dados-depto" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"></div>
+        <select id="dados-depto" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);"><option value="">— Sem departamento —</option><option value="Diretoria Jurídica">Diretoria Jurídica</option><option value="Condomínio">Condomínio</option><option value="Jurídico">Jurídico</option><option value="Secretaria">Secretaria</option></select></div>
       <div><label style="font-size:.75rem;color:var(--muted);">Remuneração do contrato <span style="opacity:.7;">(só o admin vê/edita)</span></label>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="color:var(--muted);font-size:.85rem;">R$</span>
@@ -1704,7 +1700,6 @@
     registerTelefone: document.getElementById('register-telefone'),
     registerEndereco: document.getElementById('register-endereco'),
     registerIngresso: document.getElementById('register-ingresso'),
-    registerDepto: document.getElementById('register-depto'),
     registerPhoto: document.getElementById('register-photo'),
     registerPhotoPreview: document.getElementById('register-photo-preview'),
     registerError: document.getElementById('register-error'),
@@ -1841,6 +1836,7 @@
   let tabSlugs = {};      // tabId -> slug usado no #hash da URL
   let slugToTabId = {};   // slug -> tabId (inverso de tabSlugs)
   let pendingCount = 0;   // usuários (não-admin) com zero abas liberadas
+  let semDeptoCount = 0;           // colaboradores sem departamento no organograma (pisca "Gestão" pro admin)
   let comprasPendentesCount = 0;   // solicitações de compra aguardando aprovação (pisca a aba "Gestão" pro admin)
   let comprasBadgeSubscribed = false;
   let patAceitePendentes = 0;      // patrimônio enviado para mim aguardando meu aceite (pisca "Gestão")
@@ -2222,7 +2218,6 @@
     const telefone = els.registerTelefone.value.trim();
     const endereco = els.registerEndereco.value.trim();
     const ingresso = els.registerIngresso.value;
-    const depto = els.registerDepto.value.trim();
 
     const camposObrigatorios = [
       { el: els.registerName, ok: !!primeiroNome },
@@ -2239,7 +2234,6 @@
       { el: els.registerEndereco, ok: !!endereco },
       { el: els.registerBirthdate, ok: !!nascimento },
       { el: els.registerIngresso, ok: !!ingresso },
-      { el: els.registerDepto, ok: !!depto },
       { el: document.getElementById('register-photo-btns'), ok: !!registerPhotoDataUrl }
     ];
     const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
@@ -2274,7 +2268,7 @@
           telefone: telefone,
           endereco: endereco,
           dataIngresso: ingresso,
-          deptoAtual: depto,
+          deptoAtual: '',   // o departamento é definido só pelo admin (Gestão > Colaboradores)
           patrimonioVerTudo: false,   // padrão: só vê o próprio patrimônio até um admin liberar (Gestão > Patrimônio > "⚙ Quem vê tudo")
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }),
@@ -2350,7 +2344,7 @@
     subscribeTabsCatalog();
     subscribeMobileHomeBadges();
     carregarFotoAvatarMobile();
-    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); }
+    if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); subscribeSemDepartamento(); }
     subscribeSugestoesPendentes();
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
@@ -2403,6 +2397,14 @@
     });
   }
 
+  // Colaborador novo entra sem departamento; a aba "Gestão" pisca até o admin alocá-lo.
+  function subscribeSemDepartamento(){
+    db.collection('organograma').onSnapshot(function(snap){
+      semDeptoCount = snap.docs.filter(function(d){ return !String(d.data().deptoAtual || '').trim(); }).length;
+      updateTabBlinks();
+    }, function(){ semDeptoCount = 0; });
+  }
+
   // Ponto vermelho na engrenagem quando há sugestões abertas — apenas para admins.
   function subscribeSugestoesPendentes(){
     if (sugestoesBadgeSubscribed) return;
@@ -2449,7 +2451,7 @@
       const t = tabsCatalog.find(function(x){ return x.id === b.dataset.tabId; });
       const l = (t && t.label) || '';
       const pisca =
-        (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0)) ||
+        (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0 || semDeptoCount > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
         (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
       b.classList.toggle('tab-blink', !!pisca);
@@ -3770,7 +3772,14 @@
       document.getElementById('dados-endereco').value = dados.endereco || '';
       document.getElementById('dados-email-alt').value = dados.emailAlternativo || '';
       document.getElementById('dados-ingresso').value = dados.dataIngresso || '';
-      document.getElementById('dados-depto').value = dados.deptoAtual || '';
+      (function(sel, v){
+        v = (v || '').trim();
+        Array.prototype.slice.call(sel.querySelectorAll('option[data-legado]')).forEach(function(o){ o.remove(); });
+        if (v && !Array.prototype.some.call(sel.options, function(o){ return o.value === v; })) {
+          var o = document.createElement('option'); o.value = v; o.textContent = v + ' (antigo — escolha um da lista)'; o.dataset.legado = '1'; sel.appendChild(o);
+        }
+        sel.value = v;
+      })(document.getElementById('dados-depto'), dados.deptoAtual);
       document.getElementById('dados-remuneracao').value = formatarMoeda(dados.remuneracao || '');
       els.editDadosBackdrop.classList.add('show');
     });
