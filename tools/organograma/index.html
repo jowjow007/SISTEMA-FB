@@ -278,6 +278,20 @@
   .foto-row .field{flex:1;min-width:0;margin-bottom:0;}
   .foto-row input[type="file"]{font-size:.78rem;color:var(--muted);padding:0;border:none;background:none;}
   .moeda-row{display:flex;align-items:center;gap:6px;}
+  .custos-form{display:flex;flex-direction:column;gap:6px;}
+  .custo-linha{display:grid;grid-template-columns:12px 1fr auto 130px;align-items:center;gap:8px;font-size:.8rem;margin:0;}
+  .custo-linha .rs{color:var(--muted);font-size:.8rem;}
+  .custo-linha input{width:100%;text-align:right;}
+  .custo-total{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line-strong);padding-top:8px;margin-top:2px;font-size:.85rem;}
+  .custo-total b{color:var(--gold);font-size:.95rem;}
+  .cdot{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none;}
+  .c-rem{background:#c9463c;} .c-vt{background:#3f8fcf;} .c-va{background:#4caf6e;} .c-bonus{background:#d4af37;} .c-trib{background:#9a8a83;}
+  .card .custos-card{width:100%;margin-top:2px;padding:6px 0 4px;border-top:1px solid rgba(255,255,255,0.06);}
+  .card .custos-barra{display:flex;height:6px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.07);margin:5px 0 6px;}
+  .card .custos-barra i{display:block;height:100%;}
+  .card .custos-itens{display:grid;gap:2px;}
+  .card .custos-itens div{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#a9a3a5;text-align:left;}
+  .card .custos-itens div b{margin-left:auto;color:#e5e7eb;font-weight:600;font-variant-numeric:tabular-nums;}
   .moeda-row span{color:var(--muted);font-size:.85rem;}
   .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
   .msg-err{display:none;color:var(--red-bright);font-size:.78rem;margin-top:-6px;margin-bottom:12px;}
@@ -597,10 +611,14 @@
       <input type="date" id="edit-ingresso">
     </div>
     <div class="field">
-      <label>Remuneração do contrato <span style="opacity:.7;">(só o admin vê/edita)</span></label>
-      <div class="moeda-row">
-        <span>R$</span>
-        <input type="text" inputmode="numeric" id="edit-remuneracao" placeholder="0,00">
+      <label>Custos do colaborador <span style="opacity:.7;">(só o admin vê/edita)</span></label>
+      <div class="custos-form">
+        <label class="custo-linha"><i class="cdot c-rem"></i><span>Remuneração</span><span class="rs">R$</span><input type="text" inputmode="numeric" id="edit-remuneracao" placeholder="0,00"></label>
+        <label class="custo-linha"><i class="cdot c-vt"></i><span>Vale transporte</span><span class="rs">R$</span><input type="text" inputmode="numeric" id="edit-custo-vt" placeholder="0,00"></label>
+        <label class="custo-linha"><i class="cdot c-va"></i><span>Vale alimentação</span><span class="rs">R$</span><input type="text" inputmode="numeric" id="edit-custo-va" placeholder="0,00"></label>
+        <label class="custo-linha"><i class="cdot c-bonus"></i><span>Bônus</span><span class="rs">R$</span><input type="text" inputmode="numeric" id="edit-custo-bonus" placeholder="0,00"></label>
+        <label class="custo-linha"><i class="cdot c-trib"></i><span>Custos tributários</span><span class="rs">R$</span><input type="text" inputmode="numeric" id="edit-custo-trib" placeholder="0,00"></label>
+        <div class="custo-total"><span>Total</span><b id="edit-custo-total">R$ 0,00</b></div>
       </div>
     </div>
 
@@ -717,6 +735,11 @@
     editDepto: document.getElementById('edit-depto'),
     editIngresso: document.getElementById('edit-ingresso'),
     editRemuneracao: document.getElementById('edit-remuneracao'),
+    editCustoVt: document.getElementById('edit-custo-vt'),
+    editCustoVa: document.getElementById('edit-custo-va'),
+    editCustoBonus: document.getElementById('edit-custo-bonus'),
+    editCustoTrib: document.getElementById('edit-custo-trib'),
+    editCustoTotal: document.getElementById('edit-custo-total'),
     editErr: document.getElementById('edit-err'),
     editCancelar: document.getElementById('edit-cancelar'),
     editSalvar: document.getElementById('edit-salvar'),
@@ -850,7 +873,23 @@
   ligarSomenteDigitos(els.editRg);
   ligarSomenteLetras(els.editRgOrgao);
   ligarSomenteDigitos(els.editOab);
-  ligarMascaraMoeda(els.editRemuneracao);
+  // custos por categoria: chave gravada em custos{} + campo do formulário
+  const CATEGORIAS_CUSTO = [
+    { chave: 'remuneracao', nome: 'Remuneração', cls: 'c-rem', cor: '#c9463c', el: 'editRemuneracao' },
+    { chave: 'valeTransporte', nome: 'Vale transporte', cls: 'c-vt', cor: '#3f8fcf', el: 'editCustoVt' },
+    { chave: 'valeAlimentacao', nome: 'Vale alimentação', cls: 'c-va', cor: '#4caf6e', el: 'editCustoVa' },
+    { chave: 'bonus', nome: 'Bônus', cls: 'c-bonus', cor: '#d4af37', el: 'editCustoBonus' },
+    { chave: 'custosTributarios', nome: 'Custos tributários', cls: 'c-trib', cor: '#9a8a83', el: 'editCustoTrib' }
+  ];
+  function atualizarTotalCustos(){
+    const total = CATEGORIAS_CUSTO.reduce(function(s, c){ return s + valorRemuneracao(els[c.el].value); }, 0);
+    els.editCustoTotal.textContent = formatarMoeda(total);
+    return total;
+  }
+  CATEGORIAS_CUSTO.forEach(function(c){
+    ligarMascaraMoeda(els[c.el]);
+    els[c.el].addEventListener('input', atualizarTotalCustos);
+  });
   els.editFotoInput.addEventListener('change', function(){
     const file = els.editFotoInput.files[0];
     if (!file) return;
@@ -1063,6 +1102,19 @@
     return (Date.now() - perfil.lastActive.toMillis()) < 70000;
   }
 
+  function custosDoCard(p){
+    const c = p.custos;
+    if (!c) return '';
+    const itens = CATEGORIAS_CUSTO.map(function(cat){ return { cat: cat, v: Number(c[cat.chave]) || 0 }; }).filter(function(x){ return x.v > 0; });
+    const total = itens.reduce(function(s, x){ return s + x.v; }, 0);
+    if (!total) return '';
+    return '<div class="custos-card">' +
+      '<div class="custos-barra" aria-hidden="true">' + itens.map(function(x){ return '<i style="width:' + (x.v / total * 100).toFixed(2) + '%;background:' + x.cat.cor + '"></i>'; }).join('') + '</div>' +
+      '<div class="custos-itens">' + itens.map(function(x){
+        return '<div><i class="cdot ' + x.cat.cls + '"></i><span>' + x.cat.nome + '</span><b>' + formatarMoeda(x.v) + ' · ' + Math.round(x.v / total * 100) + '%</b></div>';
+      }).join('') + '</div></div>';
+  }
+
   function renderCard(p){
     const foto = perfisMap[p.uid] && perfisMap[p.uid].photoBase64;
     const dot = '<span class="presence-dot' + (estaOnline(p.uid) ? ' online' : '') + '"></span>';
@@ -1088,7 +1140,8 @@
         (p.email ? '<div class="email">' + escapeHtml(p.email) + '</div>' : '') + '</div></div>' +
       '<div class="row"><span class="k">Departamento</span><span class="v">' + escapeHtml((p.deptoAtual || '').trim() || 'não informado') + '</span></div>' +
       '<div class="row"><span class="k">Ingresso</span><span class="v">' + ingresso + '</span></div>' +
-      '<div class="row"><span class="k">Remuneração</span><span class="v">' + remuneracao + '</span></div>' +
+      '<div class="row"><span class="k">' + (p.custos ? 'Custo total' : 'Remuneração') + '</span><span class="v">' + remuneracao + '</span></div>' +
+      custosDoCard(p) +
       rodapeAdmin +
     '</div>';
   }
@@ -1151,7 +1204,12 @@
     els.editEmailAlt.value = u.emailAlternativo || '';
     els.editIngresso.value = u.dataIngresso || '';
     definirDepto(u.deptoAtual);
-    els.editRemuneracao.value = formatarCampoMoeda(u.remuneracao || '');
+    const custos = u.custos || null;
+    CATEGORIAS_CUSTO.forEach(function(c){
+      let v = custos ? custos[c.chave] : (c.chave === 'remuneracao' ? valorRemuneracao(u.remuneracao) : 0);
+      els[c.el].value = v ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+    });
+    atualizarTotalCustos();
   }
 
   function abrirModalEdicao(uid){
@@ -1434,10 +1492,12 @@
     const rgUf = els.editRgUf.value;
     const oabNumero = els.editOab.value.trim();
     const oabUf = els.editOabUf.value;
-    const remuneracaoValor = formatarCampoMoeda(els.editRemuneracao.value);
     const deptoAtual = els.editDepto.value.trim();
     const dataIngresso = els.editIngresso.value;
-    const remuneracao = remuneracaoValor ? ('R$ ' + remuneracaoValor) : '';
+    const custos = {};
+    CATEGORIAS_CUSTO.forEach(function(c){ custos[c.chave] = valorRemuneracao(els[c.el].value); });
+    const totalCustos = atualizarTotalCustos();
+    const remuneracao = totalCustos ? ('R$ ' + totalCustos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '';
     const tipoColaborador = els.editTipoColaborador.value;
 
     const usersPatch = {
@@ -1451,6 +1511,7 @@
       dataIngresso: dataIngresso,
       deptoAtual: deptoAtual,
       remuneracao: remuneracao,
+      custos: custos,
       tipoColaborador: tipoColaborador,
       role: novoPapel
     };
@@ -1470,6 +1531,7 @@
       deptoAtual: deptoAtual,
       dataIngresso: dataIngresso,
       remuneracao: remuneracao,
+      custos: custos,
       tipoColaborador: tipoColaborador,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: meuUid
@@ -1517,6 +1579,7 @@
         deptoAtual: u.deptoAtual || '',
         dataIngresso: u.dataIngresso || '',
         remuneracao: u.remuneracao || '',
+        custos: u.custos || null,
         tipoColaborador: u.tipoColaborador || '',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: meuUid
