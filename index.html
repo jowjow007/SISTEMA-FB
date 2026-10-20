@@ -356,6 +356,13 @@
   }
   .gear-notif-dot.show{display:block;}
   #user-menu-btn{position:relative;overflow:visible;}
+  .online-strip{display:flex;align-items:center;gap:7px;margin-top:5px;flex-wrap:wrap;}
+  .online-label{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;color:var(--muted);white-space:nowrap;}
+  .online-label i{width:7px;height:7px;border-radius:50%;background:#3ecf7a;box-shadow:0 0 0 2px rgba(62,207,122,.25);}
+  .online-faces{display:inline-flex;}
+  .online-face{width:22px;height:22px;border-radius:50%;background:var(--panel-2) center/cover no-repeat;border:2px solid var(--panel);box-shadow:0 0 0 1px #3ecf7a;margin-left:-5px;display:inline-grid;place-items:center;font-size:.6rem;font-weight:700;color:var(--paper);}
+  .online-face:first-child{margin-left:0;}
+  .online-face.mais{background:var(--panel-2);box-shadow:0 0 0 1px var(--line-strong);}
   @keyframes gearDotPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.35);opacity:.7;}}
   .user-menu-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
   .user-menu-dropdown{
@@ -2571,9 +2578,48 @@
   function renderUserInfo(){
     const papel = roleLabel(currentProfile.role);
     els.userInfoBox.innerHTML = '<b>' + (currentProfile.displayName || currentProfile.email) + '</b>' +
-      '<span class="role-badge">' + papel + '</span>';
+      '<span class="role-badge">' + papel + '</span>' +
+      ((currentProfile.role === 'admin' || currentProfile.role === 'gestor') ? '<div class="online-strip" id="online-strip" aria-live="polite"></div>' : '');
+    if (currentProfile.role === 'admin' || currentProfile.role === 'gestor') subscribeOnline();
     const inicial = (currentProfile.displayName || currentProfile.email || '?').trim().charAt(0).toUpperCase();
     els.mbnAvatar.textContent = inicial;
+  }
+
+  // Bolinhas com a foto de quem está online agora (só admin e gestor).
+  // Busca apenas perfis ativos nos últimos 10 min (evita baixar a foto de todo mundo);
+  // "online" = sinal de presença nos últimos 70 s, o mesmo critério do organograma.
+  let onlineUnsub = null, onlinePerfis = [], onlineTimer = null;
+  function subscribeOnline(){
+    if (onlineUnsub) { desenharOnline(); return; }
+    function assinar(){
+      if (onlineUnsub) onlineUnsub();
+      const desde = firebase.firestore.Timestamp.fromMillis(Date.now() - 10 * 60 * 1000);
+      onlineUnsub = db.collection('perfis').where('lastActive', '>', desde).onSnapshot(function(snap){
+        onlinePerfis = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); });
+        desenharOnline();
+      }, function(){ onlinePerfis = []; desenharOnline(); });
+    }
+    assinar();
+    setInterval(assinar, 5 * 60 * 1000);
+    onlineTimer = setInterval(desenharOnline, 20000);
+  }
+  function desenharOnline(){
+    const box = document.getElementById('online-strip');
+    if (!box) return;
+    const agora = Date.now();
+    const on = onlinePerfis.filter(function(p){
+      return p.lastActive && p.lastActive.toMillis && (agora - p.lastActive.toMillis()) < 70000;
+    }).sort(function(a, b){ return (a.displayName || '').localeCompare(b.displayName || '', 'pt-BR'); });
+    const max = 8;
+    box.innerHTML = '<span class="online-label"><i></i>' + on.length + ' online</span><span class="online-faces">' +
+      on.slice(0, max).map(function(p){
+        const nome = escapeHtml(p.displayName || p.email || '?');
+        return p.photoBase64
+          ? '<span class="online-face" title="' + nome + '" style="background-image:url(' + p.photoBase64 + ')"></span>'
+          : '<span class="online-face sem-foto" title="' + nome + '">' + escapeHtml((p.displayName || '?').trim().charAt(0).toUpperCase()) + '</span>';
+      }).join('') +
+      (on.length > max ? '<span class="online-face mais" title="' + escapeHtml(on.slice(max).map(function(p){ return p.displayName || ''; }).join(', ')) + '">+' + (on.length - max) + '</span>' : '') +
+      '</span>';
   }
 
   // ---------- Tabs catalog (live) ----------
