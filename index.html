@@ -2497,7 +2497,7 @@
     if (anotacoesBadgeSubscribed) return;
     anotacoesBadgeSubscribed = true;
     db.collection('tarefasEnviadas').where('destinatarioUid', '==', currentProfile.uid).onSnapshot(function(snap){
-      mhRecebidas = snap.docs.map(function(d){ return d.data(); }).filter(function(r){
+      mhRecebidas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }).filter(function(r){
         return tarefaJaEnviada(r) && (r.status === 'pendente' || r.status === 'reprovada');
       });
       anotacoesPendentesCount = mhRecebidas.length;
@@ -2508,7 +2508,7 @@
       updateTabBlinks();
     });
     db.collection('tarefasEnviadas').where('remetenteUid', '==', currentProfile.uid).onSnapshot(function(snap){
-      const todas = snap.docs.map(function(d){ return d.data(); });
+      const todas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       anotacoesEnviadasAtencao = todas.filter(function(r){
         return tarefaJaEnviada(r) && (r.status === 'pendente' || r.status === 'aguardando_aprovacao');
       }).length;
@@ -2896,14 +2896,14 @@
     const recebidas = mhRecebidas.slice().sort(function(a, b){ return seg(b.criadoEm) - seg(a.criadoEm); }).map(function(r){
       let meta = 'Recebida de ' + escapeHtml(r.remetenteNome || '') + ' · enviada em ' + dataEnvio(r);
       if (r.status === 'reprovada') meta += ' · <span class="devolvida">devolvida em ' + (dataCurta(r.aprovadoEm) || '—') + '</span>';
-      return { texto: r.texto, meta: meta };
+      return { id: r.id, texto: r.texto, meta: meta };
     });
     const enviadas = mhEnviadas.slice().sort(function(a, b){ return seg(b.criadoEm) - seg(a.criadoEm); }).map(function(r){
       const agendada = !tarefaJaEnviada(r);
       let meta = 'Para ' + escapeHtml(r.destinatarioNome || '') + ' · ' + (agendada ? 'chega em ' : 'enviada em ') + dataEnvio(r);
       if (r.status === 'reprovada') meta += ' · <span class="devolvida">devolvida em ' + (dataCurta(r.aprovadoEm) || '—') + '</span>';
       else if (!agendada) meta += ' · ' + enviadaStatusTexto(r.status);
-      return { texto: r.texto, meta: meta };
+      return { id: r.id, texto: r.texto, meta: meta };
     });
     const tarefas = recebidas.concat(enviadas).slice(0, 6);
     els.mhTasks.innerHTML = '';
@@ -2916,12 +2916,37 @@
       row.className = 'mh-task-row';
       row.innerHTML =
         '<span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>' +
-        '<span class="txt"><span class="nm">' + escapeHtml(tf.texto || '') + '</span><span class="meta">' + tf.meta + '</span></span>';
-      row.addEventListener('click', function(){
+        '<span class="txt"><span class="nm">' + linkifyTexto(tf.texto || '') + '</span><span class="meta">' + tf.meta + '</span></span>';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      const abrir = function(){
         const t = acharTabPermitida(function(l){ return l.indexOf('anota') !== -1; });
-        if (t) selectTab(t.id);
-      });
+        if (!t) return;
+        selectTab(t.id);
+        if (tf.id) abrirTarefaNaAnotacoes(t.id, tf.id, 0);
+      };
+      row.addEventListener('click', abrir);
+      row.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') abrir(); });
       els.mhTasks.appendChild(row);
+    });
+  }
+
+  // abre a tarefa completa (com histórico) dentro do Minhas Anotações, assim que ele terminar de carregar
+  function abrirTarefaNaAnotacoes(tabId, tarefaId, tentativa){
+    const ifr = iframes[tabId];
+    let w = null;
+    try { w = ifr && ifr.contentWindow; } catch(e) {}
+    if (w && typeof w.__abrirDetalheEnvio === 'function') { w.__abrirDetalheEnvio(tarefaId); return; }
+    if (tentativa < 40) setTimeout(function(){ abrirTarefaNaAnotacoes(tabId, tarefaId, tentativa + 1); }, 250);
+  }
+  // http(s)://... e www.... viram link azul clicável (o clique não abre a linha)
+  function linkifyTexto(s){
+    return escapeHtml(s).replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, function(url){
+      let fim = '';
+      const m = url.match(/[.,;:!?)\]]+$/);
+      if (m){ fim = m[0]; url = url.slice(0, -fim.length); }
+      const href = /^www\./i.test(url) ? 'https://' + url : url;
+      return '<a href="' + href + '" target="_blank" rel="noopener noreferrer" style="color:#5aa9ff;text-decoration:underline;word-break:break-all;" onclick="event.stopPropagation()">' + url + '</a>' + fim;
     });
   }
 

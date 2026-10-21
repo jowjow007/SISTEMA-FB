@@ -321,6 +321,26 @@
     z-index:50;padding:20px;
   }
   .modal-backdrop.open{display:flex;}
+  a.auto-link{color:#5aa9ff;text-decoration:underline;word-break:break-all;}
+  a.auto-link:hover{color:#8cc4ff;}
+  .abre-detalhe{cursor:pointer;}
+  .abre-detalhe:hover .tarefa-texto,.abre-detalhe:hover .recebida-texto,.abre-detalhe:hover .enviada-texto,.abre-detalhe:hover .kanban-card-texto{text-decoration:underline;text-decoration-color:var(--muted);}
+  .ver-historico{background:none;border:0;color:var(--muted);font:inherit;font-size:.72rem;padding:2px 0;cursor:pointer;text-decoration:underline;}
+  .ver-historico:hover{color:var(--paper);}
+  .modal.detalhe-tarefa{max-width:560px;width:100%;max-height:88vh;overflow-y:auto;}
+  .det-texto{font-size:.95rem;color:var(--paper);white-space:pre-wrap;word-break:break-word;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:12px 14px;margin:10px 0 6px;}
+  .det-meta{font-size:.75rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;}
+  .det-hist{list-style:none;margin:14px 0 0;padding:0 0 0 14px;border-left:2px solid var(--line-strong);display:flex;flex-direction:column;gap:12px;}
+  .det-hist li{position:relative;}
+  .det-hist li::before{content:'';position:absolute;left:-20px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px var(--panel);}
+  .det-hist li.h-enviada::before{background:#5aa9ff;}
+  .det-hist li.h-concluida::before{background:#d8b25a;}
+  .det-hist li.h-devolvida::before{background:#e0614f;}
+  .det-hist li.h-aprovada::before{background:#4caf6e;}
+  .det-hist .h-top{font-size:.74rem;color:var(--muted);}
+  .det-hist .h-top b{color:var(--paper);}
+  .det-hist .h-txt{font-size:.86rem;color:var(--paper);white-space:pre-wrap;word-break:break-word;margin-top:3px;}
+  @media (max-width:640px){.modal.detalhe-tarefa{max-height:92vh;}}
   .modal{
     background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:18px;max-width:480px;
     width:100%;max-height:85vh;overflow-y:auto;
@@ -433,6 +453,20 @@
 </div>
 
 <!-- Modal: concluir tarefa recebida (justificativa obrigatória) -->
+<div class="modal-backdrop" id="detalheBackdrop">
+  <div class="modal detalhe-tarefa" role="dialog" aria-modal="true" aria-labelledby="detalheTitulo">
+    <h3 id="detalheTitulo">Tarefa</h3>
+    <div class="det-meta" id="detalheMeta"></div>
+    <div class="det-texto" id="detalheTexto"></div>
+    <h3 style="font-size:.9rem;margin-top:14px;">Histórico</h3>
+    <ul class="det-hist" id="detalheHist"></ul>
+    <div class="modal-foot">
+      <span id="detalheAcoes" style="display:flex;gap:8px;margin-right:auto;"></span>
+      <button type="button" class="btn ghost small" id="detalheFechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="concluirEnvioBackdrop">
   <div class="modal">
     <h3>Concluir tarefa</h3>
@@ -602,6 +636,17 @@
     if (!iso) return '';
     const p = iso.split('-');
     return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : iso;
+  }
+
+  // texto com links reconhecidos: escapa o HTML e transforma http(s)://... e www.... em link azul
+  function linkify(s){
+    return escapeHtml(s).replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, function(url){
+      let fim = '';
+      const m = url.match(/[.,;:!?)\]]+$/);
+      if (m){ fim = m[0]; url = url.slice(0, -fim.length); }
+      const href = /^www\./i.test(url) ? 'https://' + url : url;
+      return '<a class="auto-link" href="' + href + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + url + '</a>' + fim;
+    });
   }
 
   function escapeHtml(s){
@@ -823,7 +868,7 @@
     if (!t) return;
     const colega = colegas.find(function(c){ return c.uid === destinatarioUid; });
     envioPendente = { tarefaId: tarefaId, destinatarioUid: destinatarioUid };
-    agendarEls.resumo.innerHTML = 'Para <b>' + escapeHtml(colega ? colega.nome : '') + '</b>: ' + escapeHtml(t.texto);
+    agendarEls.resumo.innerHTML = 'Para <b>' + escapeHtml(colega ? colega.nome : '') + '</b>: ' + linkify(t.texto);
     document.querySelector('input[name="quandoEnviar"][value="agora"]').checked = true;
     agendarEls.data.disabled = true;
     agendarEls.data.value = '';
@@ -886,6 +931,16 @@
     return jaEnviada(e) && (e.status === 'pendente' || e.status === 'aguardando_aprovacao');
   }
 
+  // cada passo vira um item em historico[]; gravado à parte para não travar a ação
+  // principal caso a regra do Firestore ainda não aceite o campo
+  function registrarHistorico(id, tipo, texto){
+    db.collection('tarefasEnviadas').doc(id).update({
+      historico: firebase.firestore.FieldValue.arrayUnion({
+        tipo: tipo, texto: texto || '', autorUid: currentUser.uid, autorNome: currentUser.displayName, em: new Date().toISOString()
+      })
+    }).catch(function(){});
+  }
+
   window.__abrirConcluirEnvio = function(id){
     concluirEnvioAlvoId = id;
     els.concluirEnvioTexto.value = '';
@@ -912,6 +967,7 @@
       concluidaEm: firebase.firestore.FieldValue.serverTimestamp(),
       justificativaConclusao: justificativa
     }).then(function(){
+      registrarHistorico(concluirEnvioAlvoId, 'concluida', justificativa);
       tocarSomConcluida();
       els.concluirEnvioBackdrop.classList.remove('open');
       concluirEnvioAlvoId = null;
@@ -935,7 +991,7 @@
       status: 'aprovada',
       aprovadoEm: firebase.firestore.FieldValue.serverTimestamp(),
       aprovadoPor: currentUser.displayName
-    }).catch(function(e){ alert('Erro: ' + e.message); });
+    }).then(function(){ registrarHistorico(id, 'aprovada', ''); }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
   window.__abrirReprovar = function(id){
@@ -965,6 +1021,7 @@
       aprovadoPor: currentUser.displayName,
       motivoReprovacao: motivo
     }).then(function(){
+      registrarHistorico(reprovarAlvoId, 'devolvida', motivo);
       els.reprovarBackdrop.classList.remove('open');
       reprovarAlvoId = null;
     }).catch(function(e){
@@ -973,6 +1030,77 @@
       els.reprovarConfirmar.disabled = false;
     });
   });
+
+  // ---------- Detalhe da tarefa enviada/recebida, com todo o histórico ----------
+  const detEls = {
+    backdrop: document.getElementById('detalheBackdrop'), titulo: document.getElementById('detalheTitulo'),
+    meta: document.getElementById('detalheMeta'), texto: document.getElementById('detalheTexto'),
+    hist: document.getElementById('detalheHist'), acoes: document.getElementById('detalheAcoes')
+  };
+  let detalheAbertoId = null;
+  function tsMs(v){
+    if (!v) return 0;
+    if (v.toMillis) return v.toMillis();
+    if (typeof v === 'string') return Date.parse(v) || 0;
+    if (v.seconds) return v.seconds * 1000;
+    return 0;
+  }
+  function dataHoraBR(ms){
+    return ms ? new Date(ms).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+  }
+  // tarefas antigas não têm historico[]: o que já havia (justificativa, devolução, aprovação) é reconstruído
+  function historicoDe(e){
+    const itens = [];
+    const envioMs = e.enviarEm ? Date.parse(e.enviarEm + 'T08:00:00') : tsMs(e.criadoEm);
+    itens.push({ tipo: 'enviada', autorNome: e.remetenteNome, texto: '', ms: envioMs || 0, extra: 'para ' + (e.destinatarioNome || '') });
+    const hist = (e.historico || []).map(function(x){ return { tipo: x.tipo, autorNome: x.autorNome, texto: x.texto, ms: tsMs(x.em) }; });
+    const primeiro = hist.length ? Math.min.apply(null, hist.map(function(x){ return x.ms; })) : Infinity;
+    const legado = [];
+    if (e.justificativaConclusao && e.concluidaEm) legado.push({ tipo: 'concluida', autorNome: e.destinatarioNome, texto: e.justificativaConclusao, ms: tsMs(e.concluidaEm) });
+    if (e.motivoReprovacao && e.aprovadoEm) legado.push({ tipo: 'devolvida', autorNome: e.aprovadoPor, texto: e.motivoReprovacao, ms: tsMs(e.aprovadoEm) });
+    if (e.status === 'aprovada' && e.aprovadoEm) legado.push({ tipo: 'aprovada', autorNome: e.aprovadoPor, texto: '', ms: tsMs(e.aprovadoEm) });
+    legado.forEach(function(x){ if (!hist.length || x.ms < primeiro - 1000) itens.push(x); });
+    return itens.concat(hist).sort(function(a, b){ return a.ms - b.ms; });
+  }
+  const ROTULO_HIST = { enviada: 'Enviou a tarefa', concluida: 'Marcou como feita', devolvida: 'Devolveu', aprovada: 'Aprovou' };
+  function desenharDetalhe(e){
+    const souRemetente = e.remetenteUid === currentUser.uid;
+    detEls.titulo.textContent = souRemetente ? 'Tarefa enviada para ' + (e.destinatarioNome || '') : 'Tarefa recebida de ' + (e.remetenteNome || '');
+    const agendada = !jaEnviada(e);
+    detEls.meta.innerHTML = '<span>Situação: <b>' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</b></span>' +
+      (e.dataVencimento ? '<span>Prazo: <b>' + formatarDataBR(e.dataVencimento) + '</b></span>' : '');
+    detEls.texto.innerHTML = linkify(e.texto);
+    detEls.hist.innerHTML = historicoDe(e).map(function(x){
+      return '<li class="h-' + x.tipo + '"><div class="h-top"><b>' + escapeHtml(x.autorNome || '') + '</b> · ' + (ROTULO_HIST[x.tipo] || x.tipo) +
+        (x.extra ? ' ' + escapeHtml(x.extra) : '') + (x.ms ? ' · ' + dataHoraBR(x.ms) : '') + '</div>' +
+        (x.texto ? '<div class="h-txt">' + linkify(x.texto) + '</div>' : '') + '</li>';
+    }).join('');
+    let acoes = '';
+    if (souRemetente && e.status === 'aguardando_aprovacao'){
+      acoes = '<button type="button" class="btn small" onclick="__fecharDetalhe();__aprovarEnvio(\'' + e.id + '\')">✅ Aprovar</button>' +
+        '<button type="button" class="btn ghost small" onclick="__fecharDetalhe();__abrirReprovar(\'' + e.id + '\')">↩️ Devolver</button>';
+    } else if (!souRemetente && (e.status === 'pendente' || e.status === 'reprovada')){
+      acoes = '<button type="button" class="btn small" onclick="__fecharDetalhe();__abrirConcluirEnvio(\'' + e.id + '\')">✓ Concluir</button>';
+    }
+    detEls.acoes.innerHTML = acoes;
+  }
+  window.__abrirDetalheEnvio = function(id){
+    detalheAbertoId = id;
+    const local = enviadas.concat(recebidas).find(function(x){ return x.id === id; });
+    if (local) desenharDetalhe(local);
+    else {
+      detEls.titulo.textContent = 'Carregando...'; detEls.meta.innerHTML = ''; detEls.texto.textContent = ''; detEls.hist.innerHTML = ''; detEls.acoes.innerHTML = '';
+      db.collection('tarefasEnviadas').doc(id).get().then(function(d){
+        if (d.exists && detalheAbertoId === id) desenharDetalhe(Object.assign({ id: d.id }, d.data()));
+        else if (detalheAbertoId === id) detEls.titulo.textContent = 'Tarefa não encontrada (pode ter sido excluída).';
+      }).catch(function(err){ detEls.titulo.textContent = 'Não foi possível abrir: ' + err.message; });
+    }
+    detEls.backdrop.classList.add('open');
+  };
+  window.__fecharDetalhe = function(){ detEls.backdrop.classList.remove('open'); detalheAbertoId = null; };
+  document.getElementById('detalheFechar').addEventListener('click', window.__fecharDetalhe);
+  detEls.backdrop.addEventListener('click', function(ev){ if (ev.target === detEls.backdrop) window.__fecharDetalhe(); });
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape' && detalheAbertoId) window.__fecharDetalhe(); });
 
   // ---------- Ações de lista ----------
   window.__selecionarLista = function(id){
@@ -1135,7 +1263,7 @@
     const atrasada = !done && isAtrasada(t);
     let out = '<div class="tarefa-row' + (atrasada ? ' atrasada' : '') + '">';
     out += '<button type="button" class="tarefa-check' + (done ? ' done' : '') + '" onclick="__toggleTarefa(\'' + t.id + '\',' + done + ')" title="' + (done ? 'Reabrir tarefa' : 'Marcar como concluída') + '">' + (done ? '✓' : '') + '</button>';
-    out += '<div class="tarefa-texto' + (done ? ' done' : '') + '">' + escapeHtml(t.texto) + '</div>';
+    out += '<div class="tarefa-texto' + (done ? ' done' : '') + '">' + linkify(t.texto) + '</div>';
     if (atrasada) out += '<span class="tarefa-atraso-tag">⚠️ Atrasada</span>';
     out += '<input type="date" class="tarefa-data" value="' + (t.dataVencimento || '') + '" onchange="__definirData(\'' + t.id + '\', this.value)" title="Data de conclusão">';
     if (listaAtual && listaAtual.fixa){
@@ -1228,8 +1356,8 @@
       } else {
         out += lista.map(function(e){
           const agendada = !jaEnviada(e);
-          return '<div class="tarefa-row enviada-row">'
-            + '<div class="tarefa-texto">' + escapeHtml(e.texto) + '</div>'
+          return '<div class="tarefa-row enviada-row abre-detalhe" role="button" tabindex="0" title="Ver tarefa completa e histórico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')" onkeydown="if(event.key===\'Enter\')__abrirDetalheEnvio(\'' + e.id + '\')">'
+            + '<div class="tarefa-texto">' + linkify(e.texto) + '</div>'
             + '<span class="enviada-para">→ ' + escapeHtml(e.destinatarioNome || '') + '</span>'
             + '<span class="enviada-quando">' + (agendada ? '🕒 chega em ' : '') + dataEnvioTexto(e) + '</span>'
             + '<span class="enviada-status s-' + (agendada ? 'agendada' : e.status) + '">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>'
@@ -1301,7 +1429,7 @@
     let out = '<div class="kanban-card' + (atrasada ? ' atrasada' : '') + '" draggable="true" ondragstart="__dragStart(event,\'' + t.id + '\')">';
     out += '<div class="kanban-card-top">';
     out += '<button type="button" class="tarefa-check" onclick="__toggleTarefa(\'' + t.id + '\',false)" title="Marcar como concluída"></button>';
-    out += '<div class="kanban-card-texto">' + escapeHtml(t.texto) + '</div>';
+    out += '<div class="kanban-card-texto">' + linkify(t.texto) + '</div>';
     out += '<button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button>';
     out += '</div>';
     out += '<div class="kanban-card-foot">';
@@ -1357,13 +1485,13 @@
     let out = '<div class="kanban-card recebida-kanban-card">';
     out += '<div class="kanban-card-top">';
     out += '<span class="recebida-icone" style="font-size:1.05rem;">' + (r.status === 'reprovada' ? '↩️' : precisaAgir ? '📬' : '⏳') + '</span>';
-    out += '<div class="kanban-card-texto">' + escapeHtml(r.texto) + '</div>';
+    out += '<div class="kanban-card-texto abre-detalhe" role="button" tabindex="0" onclick="__abrirDetalheEnvio(\'' + r.id + '\')">' + linkify(r.texto) + '</div>';
     out += '</div>';
     out += '<div class="kanban-card-foot" style="flex-direction:column;align-items:flex-start;gap:6px;">';
     out += '<span style="font-size:.72rem;color:var(--muted);">De ' + escapeHtml(r.remetenteNome || '') +
       (r.dataVencimento ? ' · prazo ' + formatarDataBR(r.dataVencimento) : '') + '</span>';
     if (r.status === 'reprovada' && r.motivoReprovacao){
-      out += '<span style="font-size:.72rem;color:var(--muted);"><b>Devolvida:</b> ' + escapeHtml(r.motivoReprovacao) + '</span>';
+      out += '<span style="font-size:.72rem;color:var(--muted);"><b>Devolvida:</b> ' + linkify(r.motivoReprovacao) + '</span>';
     }
     if (precisaAgir){
       out += '<button type="button" class="btn small" onclick="__abrirConcluirEnvio(\'' + r.id + '\')">✓ Concluir</button>';
@@ -1409,17 +1537,18 @@
     out += '<div class="recebida-corpo">';
     out += '<div class="recebida-meta">Enviado por <b>' + escapeHtml(r.remetenteNome || '') + '</b>' +
       (r.dataVencimento ? ' · prazo ' + formatarDataBR(r.dataVencimento) : '') + '</div>';
-    out += '<div class="recebida-texto">' + escapeHtml(r.texto) + '</div>';
+    out += '<div class="recebida-texto abre-detalhe" role="button" tabindex="0" onclick="__abrirDetalheEnvio(\'' + r.id + '\')">' + linkify(r.texto) + '</div>';
+    out += '<button type="button" class="ver-historico" onclick="__abrirDetalheEnvio(\'' + r.id + '\')">Ver tarefa completa e histórico</button>';
     if (r.status === 'reprovada' && r.motivoReprovacao){
-      out += '<div class="recebida-motivo"><b>Devolvida — o que faltou:</b> ' + escapeHtml(r.motivoReprovacao) + '</div>';
+      out += '<div class="recebida-motivo"><b>Devolvida — o que faltou:</b> ' + linkify(r.motivoReprovacao) + '</div>';
     }
     if (r.status === 'aguardando_aprovacao'){
       out += '<div class="recebida-motivo">Você já marcou como feita — aguardando ' + escapeHtml(r.remetenteNome || 'aprovação') + ' confirmar.' +
-        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + escapeHtml(r.justificativaConclusao) : '') + '</div>';
+        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + linkify(r.justificativaConclusao) : '') + '</div>';
     }
     if (r.status === 'aprovada'){
       out += '<div class="recebida-motivo">Aprovada' + (r.aprovadoPor ? ' por ' + escapeHtml(r.aprovadoPor) : '') + '.' +
-        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + escapeHtml(r.justificativaConclusao) : '') + '</div>';
+        (r.justificativaConclusao ? '<br><b>Sua justificativa:</b> ' + linkify(r.justificativaConclusao) : '') + '</div>';
     }
     out += '</div>';
     if (precisaAgir){
@@ -1466,13 +1595,14 @@
       out += '<button type="button" class="icon-btn danger" onclick="__excluirEnvio(\'' + e.id + '\')" title="Excluir envio">✕</button>';
     }
     out += '</div>';
-    out += '<div class="enviada-texto">' + escapeHtml(e.texto) + '</div>';
+    out += '<div class="enviada-texto abre-detalhe" role="button" tabindex="0" onclick="__abrirDetalheEnvio(\'' + e.id + '\')">' + linkify(e.texto) + '</div>';
+    out += '<button type="button" class="ver-historico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')">Ver tarefa completa e histórico</button>';
     if (e.dataVencimento) out += '<div class="enviada-meta">Prazo: ' + formatarDataBR(e.dataVencimento) + '</div>';
     if ((e.status === 'aguardando_aprovacao' || e.status === 'aprovada') && e.justificativaConclusao){
-      out += '<div class="enviada-meta"><b>Justificativa de quem concluiu:</b> ' + escapeHtml(e.justificativaConclusao) + '</div>';
+      out += '<div class="enviada-meta"><b>Justificativa de quem concluiu:</b> ' + linkify(e.justificativaConclusao) + '</div>';
     }
     if (e.status === 'reprovada' && e.motivoReprovacao){
-      out += '<div class="enviada-meta">Motivo da devolução: ' + escapeHtml(e.motivoReprovacao) + '</div>';
+      out += '<div class="enviada-meta">Motivo da devolução: ' + linkify(e.motivoReprovacao) + '</div>';
     }
     if (e.status === 'aprovada' && e.aprovadoEm){
       out += '<div class="enviada-meta">Aprovada em ' + (e.aprovadoEm.toDate ? e.aprovadoEm.toDate().toLocaleDateString('pt-BR') : '') + '</div>';
@@ -1517,6 +1647,10 @@
     renderKanban();
     renderRecebidasBanner();
     renderEnviadas();
+    if (detalheAbertoId){
+      const aberto = enviadas.concat(recebidas).find(function(x){ return x.id === detalheAbertoId; });
+      if (aberto) desenharDetalhe(aberto);
+    }
     // o innerHTML acima recria o DOM e derruba o foco de qualquer campo — se havia
     // um campo de "nova tarefa" em uso, devolve o foco pra ele imediatamente,
     // sem esperar confirmação do servidor, pra dar pra digitar a próxima na hora.
@@ -1601,6 +1735,8 @@
       try { savedView = localStorage.getItem(VIEW_CACHE_KEY); } catch(e){ /* indisponível */ }
       setView(savedView === 'kanban' || savedView === 'enviadas' ? savedView : 'lista');
       startListening();
+      const tarefaUrl = new URLSearchParams(location.search).get('tarefa');
+      if (tarefaUrl) window.__abrirDetalheEnvio(tarefaUrl);
     }).catch(function(e){
       // Sem isso, qualquer falha aqui (ex.: regra do Firestore quebrada/sobrescrita por
       // outra ferramenta) deixava a tela 100% em branco, sem gate nem app nem mensagem
