@@ -439,6 +439,18 @@
   }
   #tabstrip > *{z-index:1;}
   #tabstrip.collapsed{width:60px;}
+  /* TESTE (?teste-subabas): sub-abas abrem logo abaixo da aba na barra lateral */
+  .subaba-gaveta{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s ease;margin:0 0 2px 0;}
+  .subaba-gaveta.aberta{grid-template-rows:1fr;}
+  .subaba-gaveta > div{overflow:hidden;display:flex;flex-direction:column;gap:1px;margin-left:22px;border-left:1px solid var(--line-strong);padding-left:8px;}
+  .subaba-gaveta.aberta > div{padding-top:3px;padding-bottom:5px;}
+  .subaba-btn{background:none;border:0;text-align:left;color:var(--muted);font:inherit;font-size:.74rem;padding:5px 8px;border-radius:7px;cursor:pointer;}
+  .subaba-btn:hover{color:var(--paper);background:var(--panel-2);}
+  .subaba-btn.ativa{color:var(--paper);background:var(--panel-2);box-shadow:inset 2px 0 0 var(--red-bright);}
+  #tabstrip.collapsed .subaba-gaveta{display:none;}
+  .teste-subabas-selo{margin:6px 12px 8px;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#d8b25a;border:1px dashed rgba(216,178,90,.5);border-radius:6px;padding:3px 7px;text-align:center;}
+  #tabstrip.collapsed .teste-subabas-selo{display:none;}
+  @media (prefers-reduced-motion:reduce){.subaba-gaveta{transition:none;}}
   #tabstrip.collapsed .tab-btn span:not(.pending-badge){display:none;}
   #tabstrip.collapsed .tab-btn{justify-content:center;padding:8px 6px;position:relative;}
   #sidebar-tooltip{
@@ -3029,8 +3041,51 @@
       .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
+  // ---------- TESTE: sub-abas na barra lateral (liga com ?teste-subabas, desliga com ?teste-subabas=0) ----------
+  const TESTE_SUBABAS = (function(){
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has('teste-subabas')) localStorage.setItem('fb-teste-subabas', q.get('teste-subabas') === '0' ? '0' : '1');
+      return localStorage.getItem('fb-teste-subabas') === '1';
+    } catch(e) { return false; }
+  })();
+  let subabaAtiva = {};   // tabId -> id da sub-aba escolhida pela barra lateral
+  function subabasPermitidas(t){
+    if (!t.subtabs || !t.subtabs.length) return [];
+    const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
+    return permitidas ? t.subtabs.filter(function(s){ return permitidas.indexOf(s.id) !== -1; }) : t.subtabs;
+  }
+  // a ferramenta abre no mesmo site, então dá para acionar a sub-aba dela diretamente
+  function acionarSubabaNaFerramenta(tabId, subId, tentativas){
+    const ifr = iframes[tabId];
+    let doc = null;
+    try { doc = ifr && ifr.contentDocument; } catch(e) {}
+    const pronto = doc && doc.readyState === 'complete';
+    const seletores = ['[data-goto="' + subId + '"]', '[data-subtab-id="' + subId + '"]', '[data-tab="' + subId + '"]', '[data-sub="' + subId + '"]'];
+    const alvo = pronto ? seletores.map(function(s){ return doc.querySelector(s); }).filter(Boolean)[0] : null;
+    if (alvo) { alvo.click(); return; }
+    if ((tentativas || 0) < 25) setTimeout(function(){ acionarSubabaNaFerramenta(tabId, subId, (tentativas || 0) + 1); }, 200);
+  }
+  function atualizarGavetas(tabId){
+    if (!TESTE_SUBABAS) return;
+    Array.prototype.forEach.call(els.tabstrip.querySelectorAll('.subaba-gaveta'), function(g){
+      const aberta = g.dataset.tabId === tabId;
+      g.classList.toggle('aberta', aberta);
+      Array.prototype.forEach.call(g.querySelectorAll('.subaba-btn'), function(b){
+        b.tabIndex = aberta ? 0 : -1;
+        b.classList.toggle('ativa', aberta && subabaAtiva[g.dataset.tabId] === b.dataset.subId);
+      });
+    });
+  }
+
   function renderTabstrip(){
     els.tabstrip.innerHTML = '';
+    if (TESTE_SUBABAS) {
+      const selo = document.createElement('div');
+      selo.className = 'teste-subabas-selo';
+      selo.textContent = 'Versão de teste: sub-abas';
+      els.tabstrip.appendChild(selo);
+    }
     const allowed = tabsCatalog.filter(function(t){
       return (currentProfile.tabs || []).indexOf(t.id) !== -1;
     });
@@ -3067,6 +3122,30 @@
       btn.addEventListener('click', function(){ selectTab(t.id); });
       ativarTooltipAba(btn, t.label);
       els.tabstrip.appendChild(btn);
+      const subs = TESTE_SUBABAS ? subabasPermitidas(t) : [];
+      if (subs.length) {
+        btn.setAttribute('aria-expanded', 'false');
+        const gaveta = document.createElement('div');
+        gaveta.className = 'subaba-gaveta';
+        gaveta.dataset.tabId = t.id;
+        const lista = document.createElement('div');
+        subs.forEach(function(s){
+          const sb = document.createElement('button');
+          sb.type = 'button';
+          sb.className = 'subaba-btn';
+          sb.dataset.subId = s.id;
+          sb.tabIndex = -1;
+          sb.textContent = s.label;
+          sb.addEventListener('click', function(){
+            subabaAtiva[t.id] = s.id;
+            if (activeTabId !== t.id) selectTab(t.id); else atualizarGavetas(t.id);
+            acionarSubabaNaFerramenta(t.id, s.id);
+          });
+          lista.appendChild(sb);
+        });
+        gaveta.appendChild(lista);
+        els.tabstrip.appendChild(gaveta);
+      }
     });
     if (currentProfile.role === 'admin') updateGestaoBlink();
     updateAnotacoesBlink();
@@ -3362,8 +3441,10 @@
     Array.prototype.forEach.call(els.tabstrip.querySelectorAll('.tab-btn'), function(b){
       const ativo = b.dataset.tabId === tabId;
       b.classList.toggle('active', ativo);
+      if (b.hasAttribute('aria-expanded')) b.setAttribute('aria-expanded', ativo ? 'true' : 'false');
       if (ativo) origemBtn = b;
     });
+    atualizarGavetas(tabId);
     // A tela nova "nasce" a partir da altura da aba clicada na barra lateral — dá a
     // sensação de que ela saiu dali, em vez de só trocar na hora.
     if (origemBtn) {
