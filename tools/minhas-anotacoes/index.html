@@ -285,6 +285,18 @@
   #enviadasBoard{display:none;padding:22px;overflow-y:auto;height:calc(100vh - var(--topbar-h));}
   #enviadasBoard.show{display:block;}
   .enviadas-grid{display:flex;flex-direction:column;gap:10px;max-width:760px;}
+  .envio-filtro{display:flex;flex-direction:column;gap:8px;margin:8px 0 10px;max-width:760px;}
+  .envio-busca{width:100%;padding:9px 12px;border-radius:9px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.86rem;}
+  .envio-busca:focus{outline:none;border-color:var(--red);}
+  .envio-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .envio-chip{border:1px solid var(--line-strong);background:transparent;color:var(--muted);font:inherit;font-size:.74rem;font-weight:600;padding:5px 11px;border-radius:99px;cursor:pointer;white-space:nowrap;}
+  .envio-chip:hover{color:var(--paper);}
+  .envio-chip.ativo{background:var(--red);border-color:var(--red);color:#fff;}
+  .envio-chip .n{opacity:.75;margin-left:4px;font-weight:500;}
+  .envio-chip.c-pendente:not(.ativo){border-color:rgba(216,178,90,.45);}
+  .envio-chip.c-aguardando_aprovacao:not(.ativo){border-color:rgba(90,169,255,.45);}
+  .envio-chip.c-reprovada:not(.ativo){border-color:rgba(224,97,79,.5);}
+  .envio-vazio{font-size:.8rem;color:var(--muted);padding:10px 2px;}
   .enviada-card{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:12px 14px;}
   .enviada-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
   .enviada-dest{font-size:.85rem;color:var(--paper);flex:1 1 auto;}
@@ -1338,6 +1350,84 @@
     return out;
   }
 
+  // ---------- Pesquisa nas tarefas enviadas (lista "Envio de Tarefa" e quadro "Enviadas") ----------
+  const filtroEnvio = { q: '', status: 'todas' };
+  const SITUACOES_ENVIO = [
+    { id: 'todas', nome: 'Todas' },
+    { id: 'pendente', nome: 'Pendentes' },
+    { id: 'aguardando_aprovacao', nome: 'Aguardando aprovação' },
+    { id: 'reprovada', nome: 'Devolvidas' },
+    { id: 'aprovada', nome: 'Concluídas' },
+    { id: 'agendada', nome: 'Agendadas' }
+  ];
+  function situacaoEnvio(e){ return jaEnviada(e) ? e.status : 'agendada'; }
+  function semAcento(s){ return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function enviadasFiltradas(){
+    const termos = semAcento(filtroEnvio.q).split(/\s+/).filter(Boolean);
+    return enviadas.filter(function(e){
+      if (filtroEnvio.status !== 'todas' && situacaoEnvio(e) !== filtroEnvio.status) return false;
+      if (!termos.length) return true;
+      const alvo = semAcento([e.texto, e.destinatarioNome, e.justificativaConclusao, e.motivoReprovacao,
+        (e.historico || []).map(function(x){ return x.texto; }).join(' ')].join(' '));
+      return termos.every(function(t){ return alvo.indexOf(t) !== -1; });
+    });
+  }
+  function chipsEnvioHtml(){
+    const cont = {};
+    enviadas.forEach(function(e){ const s = situacaoEnvio(e); cont[s] = (cont[s] || 0) + 1; });
+    cont.todas = enviadas.length;
+    return SITUACOES_ENVIO.filter(function(s){ return s.id === 'todas' || cont[s.id] || filtroEnvio.status === s.id; }).map(function(s){
+      const ativo = filtroEnvio.status === s.id;
+      return '<button type="button" class="envio-chip c-' + s.id + (ativo ? ' ativo' : '') + '" aria-pressed="' + ativo + '" onclick="event.stopPropagation();__statusEnvio(\'' + s.id + '\')">' +
+        s.nome + '<span class="n">' + (cont[s.id] || 0) + '</span></button>';
+    }).join('');
+  }
+  function filtroEnvioHtml(sufixo){
+    return '<div class="envio-filtro" onclick="event.stopPropagation()">' +
+      '<input type="search" class="envio-busca" id="envio-busca-' + sufixo + '" placeholder="Pesquisar por tarefa, destinatário ou comentário…" autocomplete="off" value="' + escapeHtml(filtroEnvio.q) + '" oninput="__buscarEnvio(this.value, this.id)" aria-label="Pesquisar tarefas enviadas">' +
+      '<div class="envio-chips" role="group" aria-label="Filtrar por situação">' + chipsEnvioHtml() + '</div></div>';
+  }
+  function vazioEnvioHtml(){
+    return '<div class="envio-vazio">Nenhuma tarefa enviada encontrada' + (filtroEnvio.q ? ' para "' + escapeHtml(filtroEnvio.q) + '"' : '') +
+      (filtroEnvio.status !== 'todas' ? ' nesta situação' : '') + '.</div>';
+  }
+  function enviadaLinhaHtml(e){
+    const agendada = !jaEnviada(e);
+    return '<div class="tarefa-row enviada-row abre-detalhe" role="button" tabindex="0" title="Ver tarefa completa e histórico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')" onkeydown="if(event.key===\'Enter\')__abrirDetalheEnvio(\'' + e.id + '\')">'
+      + '<div class="tarefa-texto">' + linkify(e.texto) + '</div>'
+      + '<span class="enviada-para">→ ' + escapeHtml(e.destinatarioNome || '') + '</span>'
+      + '<span class="enviada-quando">' + (agendada ? '🕒 chega em ' : '') + dataEnvioTexto(e) + '</span>'
+      + '<span class="enviada-status s-' + (agendada ? 'agendada' : e.status) + '">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>'
+      + '</div>';
+  }
+  function resultadoListaEnviadas(){
+    const seg = function(t){ return (t && t.seconds) || 0; };
+    const lista = enviadasFiltradas().sort(function(a,b){ return seg(b.criadoEm) - seg(a.criadoEm); });
+    return lista.length ? lista.map(enviadaLinhaHtml).join('') : vazioEnvioHtml();
+  }
+  function resultadoQuadroEnviadas(){
+    const ordem = { aguardando_aprovacao: 0, pendente: 1, reprovada: 2, aprovada: 3 };
+    const lista = enviadasFiltradas().sort(function(a,b){
+      return (ordem[a.status] - ordem[b.status]) || ((b.criadoEm && b.criadoEm.seconds || 0) - (a.criadoEm && a.criadoEm.seconds || 0));
+    });
+    return lista.length ? '<div class="enviadas-grid">' + lista.map(enviadaCardHtml).join('') + '</div>' : vazioEnvioHtml();
+  }
+  // atualiza só os resultados e os botões de situação: a caixa de pesquisa não é recriada e não perde o foco
+  function atualizarResultadosEnvio(){
+    const l = document.getElementById('envio-res-lista'); if (l) l.innerHTML = resultadoListaEnviadas();
+    const q = document.getElementById('envio-res-quadro'); if (q) q.innerHTML = resultadoQuadroEnviadas();
+    Array.prototype.forEach.call(document.querySelectorAll('.envio-chips'), function(c){ c.innerHTML = chipsEnvioHtml(); });
+  }
+  window.__buscarEnvio = function(valor, origemId){
+    filtroEnvio.q = valor;
+    Array.prototype.forEach.call(document.querySelectorAll('.envio-busca'), function(i){ if (i.id !== origemId) i.value = valor; });
+    atualizarResultadosEnvio();
+  };
+  window.__statusEnvio = function(id){
+    filtroEnvio.status = id;
+    atualizarResultadosEnvio();
+  };
+
   // Na lista "Envio de Tarefa": o que já foi enviado — tarefa, para quem e quando
   function enviadasSecaoHtml(g){
     const key = g.id + ':enviadas';
@@ -1350,21 +1440,12 @@
     out += '<span class="chevron">▾</span><span class="sec-title">Enviadas (' + lista.length + ')</span>';
     out += '</div>';
     if (!colapsado){
-      out += '<div class="sec-list">';
       if (!lista.length){
-        out += '<div class="sec-empty">Nenhuma tarefa enviada ainda.</div>';
+        out += '<div class="sec-list"><div class="sec-empty">Nenhuma tarefa enviada ainda.</div></div>';
       } else {
-        out += lista.map(function(e){
-          const agendada = !jaEnviada(e);
-          return '<div class="tarefa-row enviada-row abre-detalhe" role="button" tabindex="0" title="Ver tarefa completa e histórico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')" onkeydown="if(event.key===\'Enter\')__abrirDetalheEnvio(\'' + e.id + '\')">'
-            + '<div class="tarefa-texto">' + linkify(e.texto) + '</div>'
-            + '<span class="enviada-para">→ ' + escapeHtml(e.destinatarioNome || '') + '</span>'
-            + '<span class="enviada-quando">' + (agendada ? '🕒 chega em ' : '') + dataEnvioTexto(e) + '</span>'
-            + '<span class="enviada-status s-' + (agendada ? 'agendada' : e.status) + '">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>'
-            + '</div>';
-        }).join('');
+        out += filtroEnvioHtml('lista');
+        out += '<div class="sec-list" id="envio-res-lista">' + resultadoListaEnviadas() + '</div>';
       }
-      out += '</div>';
     }
     out += '</div>';
     return out;
@@ -1624,11 +1705,7 @@
       els.enviadasBoard.innerHTML = '<div class="kanban-empty" style="padding:30px;">Você ainda não enviou nenhuma tarefa. Cadastre na lista 📨 "Envio de Tarefa" e escolha o destinatário em cada item.</div>';
       return;
     }
-    const ordem = { aguardando_aprovacao: 0, pendente: 1, reprovada: 2, aprovada: 3 };
-    const ordenadas = enviadas.slice().sort(function(a,b){
-      return (ordem[a.status] - ordem[b.status]) || ((b.criadoEm && b.criadoEm.seconds || 0) - (a.criadoEm && a.criadoEm.seconds || 0));
-    });
-    els.enviadasBoard.innerHTML = '<div class="enviadas-grid">' + ordenadas.map(enviadaCardHtml).join('') + '</div>';
+    els.enviadasBoard.innerHTML = filtroEnvioHtml('quadro') + '<div id="envio-res-quadro">' + resultadoQuadroEnviadas() + '</div>';
   }
 
   function listaSelecaoValida(id){
@@ -1642,11 +1719,17 @@
     } else if (!selectedListaId && (recebidas.length || listas.length)){
       selectedListaId = recebidas.length ? LISTA_RECEBIDAS_ID : listas[0].id;
     }
+    const emBusca = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('envio-busca')
+      ? { id: document.activeElement.id, pos: document.activeElement.selectionStart } : null;
     renderSidebar();
     renderMain();
     renderKanban();
     renderRecebidasBanner();
     renderEnviadas();
+    if (emBusca){
+      const campo = document.getElementById(emBusca.id);
+      if (campo){ campo.focus(); try { campo.setSelectionRange(emBusca.pos, emBusca.pos); } catch(e){} }
+    }
     if (detalheAbertoId){
       const aberto = enviadas.concat(recebidas).find(function(x){ return x.id === detalheAbertoId; });
       if (aberto) desenharDetalhe(aberto);

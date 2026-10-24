@@ -143,6 +143,15 @@ var TEMPLATE =
       '<button class="btn primary" type="button" data-act="csv">'+ic('download')+'Exportar seleção (CSV)</button></div></div>'+
   '</div>'+
 '</section>'+
+'<section class="painel" aria-labelledby="agr-h-painel">'+
+  '<div class="pz-head"><h2 id="agr-h-painel">Painel da agenda</h2><p>Visão rápida da seleção atual. Clique em medidores, barras, dias e semanas para filtrar.</p></div>'+
+  '<div class="pz-grid">'+
+    '<div class="pz-card pz-gauge-card" id="agr-pz-g0"></div><div class="pz-card pz-gauge-card" id="agr-pz-g1"></div><div class="pz-card pz-gauge-card" id="agr-pz-g2"></div>'+
+    '<div class="pz-card pz-big" id="agr-pz-big"></div><div class="pz-card pz-bars" id="agr-pz-bars"></div>'+
+    '<div class="pz-card pz-chart" id="agr-pz-chart"></div><div class="pz-card pz-led" id="agr-pz-led"></div>'+
+    '<div class="pz-card pz-act" id="agr-pz-act"></div><div class="pz-card pz-cal" id="agr-pz-cal"></div><div class="pz-card pz-rings" id="agr-pz-rings"></div>'+
+  '</div>'+
+'</section>'+
 '<section aria-label="Visão geral"><div class="kpis" id="agr-kpis"></div></section>'+
 '<section class="card" aria-labelledby="agr-h-agenda">'+
   '<div class="sec-head"><div class="sec-ic">'+ic('calendar')+'</div><div><h2 id="agr-h-agenda">Situação da agenda</h2><p>Posição de cada atividade em relação à data-base, pela data cadastrada na agenda.</p></div></div>'+
@@ -480,11 +489,175 @@ function montar(root, payload, opts){
   function recRowLabel(r){ return r.titulo+', '+r.resp+', agenda '+dayToBR(r.ag)+'. Abrir detalhes'; }
   function openFromTable(r, view, ix){ openModal(r, view, ix); }
 
+  /* -------- Painel da agenda (visual inspirado no modelo de relatório) --------
+     Medidores, barras e anéis usam a seleção atual. Gráfico diário, calendário e semanas
+     ignoram só o intervalo de datas, para continuarem mostrando os dias ao redor. */
+  var NEON = {cyan:'#22d3ee', teal:'#2dd4bf', pink:'#ec4899', coral:'#fb7185', orange:'#fb923c', gold:'#facc15', violet:'#8b5cf6', blue:'#3b82f6', green:'#4ade80'};
+  var SEL_NP = [];
+  function hex2rgb(h){ h=h.replace('#',''); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+  function mixCor(a,b,t){ var x=hex2rgb(a), y=hex2rgb(b); return 'rgb('+x.map(function(v,i){ return Math.round(v+(y[i]-v)*t); }).join(',')+')'; }
+  function corNaEscala(stops,t){ if(stops.length===1) return stops[0]; var seg=(stops.length-1)*Math.max(0,Math.min(1,t)), i=Math.min(Math.floor(seg),stops.length-2); return mixCor(stops[i],stops[i+1],seg-i); }
+  function dm(d){ var x=new Date(d*DAY); return String(x.getUTCDate()).padStart(2,'0')+'/'+String(x.getUTCMonth()+1).padStart(2,'0'); }
+  function filtrarPeriodo(ini, fim){
+    var ativo = S.dateField==='ag' && S.from===ini && S.to===fim;
+    if(ativo){ S.from=null; S.to=null; } else { S.dateField='ag'; S.from=ini; S.to=fim; }
+    syncControls(); render();
+  }
+  function periodoAtivo(ini, fim){ return S.dateField==='ag' && S.from===ini && S.to===fim; }
+
+  function gaugeSvg(frac, stops, aria){
+    var n=36, on=Math.round(Math.max(0,Math.min(1,frac||0))*n), s='';
+    for(var i=0;i<n;i++){
+      var a=(-90+i*(360/n))*Math.PI/180, r1=41, r2=55;
+      var cor = i<on ? corNaEscala(stops, n>1?i/(n-1):0) : 'rgba(255,255,255,.08)';
+      s+='<line x1="'+(60+r1*Math.cos(a)).toFixed(1)+'" y1="'+(60+r1*Math.sin(a)).toFixed(1)+'" x2="'+(60+r2*Math.cos(a)).toFixed(1)+'" y2="'+(60+r2*Math.sin(a)).toFixed(1)+'" stroke="'+cor+'" stroke-width="5.5"'+(i<on&&!RM?' class="pz-seg" style="animation-delay:'+(i*16)+'ms"':'')+'/>';
+    }
+    return '<svg viewBox="0 0 120 120" class="pz-gauge" role="img" aria-label="'+esc(aria)+'">'+s+'</svg>';
+  }
+  function gaugeCard(el, o){
+    var tag=o.onClick?'button':'div';
+    el.innerHTML='<'+tag+(o.onClick?' type="button" aria-pressed="'+!!o.ativo+'"':'')+' class="pz-gauge-inner'+(o.ativo?' is-active':'')+'">'
+      +'<div class="pz-gauge-wrap">'+gaugeSvg(o.frac,o.stops,o.titulo+': '+nf.format(o.valor))+'<span class="pz-gauge-n" data-n>—</span></div>'
+      +'<div class="pz-t" style="color:'+o.stops[0]+'">'+esc(o.titulo)+'</div><p class="pz-desc">'+o.desc+'</p></'+tag+'>';
+    var n=el.querySelector('[data-n]'); if(el._v!=null) n.dataset.v=el._v; setNum(n,o.valor); el._v=o.valor;
+    if(o.onClick) el.querySelector('button').addEventListener('click',o.onClick);
+  }
+  function suavizar(pts, yMin, yMax){
+    if(pts.length<2) return '';
+    var d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1), lim=function(v){ return Math.max(yMin,Math.min(yMax,v)); };
+    for(var i=0;i<pts.length-1;i++){
+      var p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
+      d+=' C'+(p1[0]+(p2[0]-p0[0])/6).toFixed(1)+','+lim(p1[1]+(p2[1]-p0[1])/6).toFixed(1)+' '+(p2[0]-(p3[0]-p1[0])/6).toFixed(1)+','+lim(p2[1]-(p3[1]-p1[1])/6).toFixed(1)+' '+p2[0].toFixed(1)+','+p2[1].toFixed(1);
+    }
+    return d;
+  }
+
+  function renderPainel(){
+    var n=SEL.length, venc=0, prox7=0, hoje=0, fatalVenc=0;
+    SEL.forEach(function(r){ var s=situacao(r); if(s==='vencida'){ venc++; if(r.fatal) fatalVenc++; } if(s==='prox7') prox7++; if(s==='hoje') hoje++; });
+
+    gaugeCard($('pz-g0'), {titulo:'Em aberto', valor:n, frac:RECS.length?n/RECS.length:0, stops:[NEON.teal,NEON.blue,NEON.violet],
+      desc:'atividades na seleção, de '+nf.format(RECS.length)+' na última importação.'});
+    gaugeCard($('pz-g1'), {titulo:'Vencidas', valor:venc, frac:n?venc/n:0, stops:[NEON.coral,NEON.pink,NEON.violet], ativo:S.chips.situacao==='vencida',
+      desc:pct(venc,n)+' da seleção com data da agenda anterior a '+esc(dayToBR(S.base))+'.', onClick:function(){ toggleChip('situacao','vencida'); }});
+    gaugeCard($('pz-g2'), {titulo:'Próximos 7 dias', valor:prox7, frac:n?prox7/n:0, stops:[NEON.gold,NEON.green,NEON.cyan], ativo:S.chips.situacao==='prox7',
+      desc:'de '+esc(dm(S.base+1))+' a '+esc(dm(S.base+7))+'; mais '+plural(hoje,'para hoje','para hoje')+'.', onClick:function(){ toggleChip('situacao','prox7'); }});
+
+    var emDia = n ? (n-venc)/n*100 : 0;
+    $('pz-big').innerHTML='<div class="pz-t" style="color:'+NEON.gold+'">Agenda em dia</div><div class="pz-sub">data da agenda igual ou posterior à data-base</div>'
+      +'<div class="pz-pct" data-n>—</div>'
+      +'<p class="pz-desc">'+nf.format(n-venc)+' de '+nf.format(n)+' atividades da seleção não estão vencidas.</p>'
+      +'<p class="pz-desc">'+(fatalVenc?'<b class="pz-alerta">Atenção:</b> '+plural(fatalVenc,'prazo fatal (etiqueta) com agenda vencida','prazos fatais (etiqueta) com agenda vencida')+'.':'Nenhum prazo fatal (etiqueta) com agenda vencida.')+'</p>';
+    var big=$('pz-big').querySelector('[data-n]'); if($('pz-big')._v!=null) big.dataset.v=$('pz-big')._v;
+    setNum(big, emDia, function(x){ return pf.format(Math.round(x))+'%'; }); $('pz-big')._v=emDia;
+
+    var topResp = counts(SEL,function(r){ return r.resp; }).slice(0,4), maxR = topResp.length?topResp[0].count:1;
+    $('pz-bars').innerHTML='<div class="pz-t" style="color:'+NEON.coral+'">Responsáveis</div><div class="pz-sub">quem concentra mais atividades na seleção</div>'
+      +(topResp.length?topResp.map(function(x){ var a=S.resp===x.key;
+        return '<button type="button" class="pz-gbar'+(a?' is-active':'')+'" data-key="'+esc(x.key)+'" aria-pressed="'+a+'"><span class="pz-gbar-l"><span>'+esc(x.label)+'</span><b>'+nf.format(x.count)+'</b></span>'
+          +'<span class="pz-gbar-t"><span class="pz-gbar-f" data-to="'+(x.count/maxR*100).toFixed(1)+'%"></span></span></button>'; }).join(''):'<p class="pz-desc">Nenhuma atividade na seleção.</p>');
+    $('pz-bars').querySelectorAll('.pz-gbar').forEach(function(b){ b.addEventListener('click',function(){ toggle('resp',b.dataset.key); }); });
+    grow($('pz-bars'),'.pz-gbar-f','width');
+
+    renderPainelGrafico(); renderPainelLed(); renderPainelAtividades(); renderPainelCalendario(); renderPainelSemanas();
+  }
+
+  function renderPainelGrafico(){
+    var el=$('pz-chart'), nDias=29, ini=S.base-14, cont=[], i;
+    for(i=0;i<nDias;i++) cont.push(0);
+    SEL_NP.forEach(function(r){ if(r.ag!=null && r.ag>=ini && r.ag<ini+nDias) cont[r.ag-ini]++; });
+    var W=640,H=250,pl=36,pr=14,pt=34,pb=28, max=Math.max.apply(null,cont.concat([1])), passo=Math.max(1,Math.ceil(max/4)), topo=passo*4;
+    var x=function(i){ return pl+i*(W-pl-pr)/(nDias-1); }, y=function(v){ return pt+(1-v/topo)*(H-pt-pb); }, y0=y(0);
+    var pts=cont.map(function(v,i){ return [x(i),y(v)]; }), linha=suavizar(pts,pt,y0);
+    var s='<defs><linearGradient id="pz-lg" x1="0" x2="1"><stop offset="0" stop-color="'+NEON.orange+'"/><stop offset=".5" stop-color="'+NEON.pink+'"/><stop offset="1" stop-color="'+NEON.violet+'"/></linearGradient>'
+      +'<linearGradient id="pz-ag" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+NEON.pink+'" stop-opacity=".35"/><stop offset="1" stop-color="'+NEON.violet+'" stop-opacity="0"/></linearGradient></defs>';
+    for(i=0;i<=4;i++){ var v=passo*i, yy=y(v); s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" class="pz-grid-l"/><text x="'+(pl-8)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" class="pz-ax">'+nf.format(v)+'</text>'; }
+    s+='<path d="'+linha+' L'+x(nDias-1).toFixed(1)+','+y0.toFixed(1)+' L'+x(0).toFixed(1)+','+y0.toFixed(1)+' Z" fill="url(#pz-ag)"/>';
+    s+='<path d="'+linha+'" fill="none" stroke="url(#pz-lg)" stroke-width="3" stroke-linecap="round" pathLength="1" class="pz-linha"/>';
+    var xb=x(14); s+='<line x1="'+xb.toFixed(1)+'" x2="'+xb.toFixed(1)+'" y1="'+pt+'" y2="'+y0.toFixed(1)+'" class="pz-hoje"/><text x="'+(xb+5).toFixed(1)+'" y="'+(y0-6).toFixed(1)+'" text-anchor="start" class="pz-ax pz-ax-hoje">data-base</text>';
+    var ordem=cont.map(function(v,i){ return {v:v,i:i}; }).filter(function(o){ return o.v>0; }).sort(function(a,b){ return b.v-a.v; }), picos=[];
+    ordem.forEach(function(o){ if(picos.length<3 && picos.every(function(p){ return Math.abs(p.i-o.i)>=3; })) picos.push(o); });
+    picos.forEach(function(p){ var px=x(p.i), py=y(p.v);
+      s+='<line x1="'+px.toFixed(1)+'" x2="'+px.toFixed(1)+'" y1="'+py.toFixed(1)+'" y2="'+y0.toFixed(1)+'" class="pz-pico-l"/><circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="4.5" class="pz-pico"/>'
+        +'<text x="'+px.toFixed(1)+'" y="'+(py-11).toFixed(1)+'" text-anchor="middle" class="pz-pico-t">'+dm(ini+p.i)+' · '+nf.format(p.v)+'</text>'; });
+    [0,7,14,21,28].forEach(function(i){ s+='<text x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" class="pz-ax">'+dm(ini+i)+'</text>'; });
+    var larg=(W-pl-pr)/(nDias-1);
+    cont.forEach(function(v,i){ var d=ini+i, a=periodoAtivo(d,d);
+      s+='<rect x="'+(x(i)-larg/2).toFixed(1)+'" y="'+pt+'" width="'+larg.toFixed(1)+'" height="'+(y0-pt).toFixed(1)+'" class="pz-hit'+(a?' is-active':'')+'" data-d="'+d+'"><title>'+dayToBR(d)+': '+plural(v,'atividade','atividades')+' (clique para filtrar o dia)</title></rect>'; });
+    el.innerHTML='<div class="pz-t" style="color:'+NEON.pink+'">Atividades por dia</div><div class="pz-sub">data da agenda, 14 dias antes e depois da data-base · destaques: os 3 dias mais cheios</div>'
+      +'<div class="pz-chart-wrap"><svg viewBox="0 0 '+W+' '+H+'" class="pz-svg" role="img" aria-label="Atividades por dia da agenda entre '+dayToBR(ini)+' e '+dayToBR(ini+nDias-1)+'">'+s+'</svg></div>';
+    el.querySelectorAll('.pz-hit').forEach(function(r){ r.addEventListener('click',function(){ var d=+r.getAttribute('data-d'); filtrarPeriodo(d,d); }); });
+  }
+
+  function renderPainelLed(){
+    var el=$('pz-led'), tipos=counts(SEL,function(r){ return r.tipo; }).slice(0,5), tot=SEL.length||1, celulas=28;
+    var pal=[[NEON.violet,NEON.pink,NEON.orange],[NEON.teal,NEON.green,NEON.gold],[NEON.blue,NEON.cyan,NEON.teal],[NEON.violet,NEON.pink,NEON.coral],[NEON.gold,NEON.orange,NEON.coral]];
+    var linhas=tipos.map(function(t,k){ var cheias=Math.max(t.count?1:0,Math.round(t.count/tot*celulas)), a=S.tipo===t.key, c='';
+      for(var i=0;i<celulas;i++) c+='<i style="background:'+(i<cheias?corNaEscala(pal[k%pal.length],cheias>1?i/(cheias-1):0):'rgba(255,255,255,.07)')+(i<cheias&&!RM?';animation-delay:'+(i*14)+'ms':'')+'"'+(i<cheias&&!RM?' class="pz-led-on"':'')+'></i>';
+      return '<button type="button" class="pz-led-row'+(a?' is-active':'')+'" data-key="'+esc(t.key)+'" aria-pressed="'+a+'" aria-label="'+esc(t.label)+': '+nf.format(t.count)+' ('+pct(t.count,tot)+')">'+c+'</button>'; }).join('');
+    var leg=tipos.map(function(t,k){ return '<li><i style="background:'+pal[k%pal.length][1]+'"></i><span>'+esc(t.label)+'</span><b>'+nf.format(t.count)+'</b><small>'+pct(t.count,tot)+'</small></li>'; }).join('');
+    el.innerHTML='<div class="pz-led-bars">'+(linhas||'<p class="pz-desc">Nenhuma atividade na seleção.</p>')+'</div>'
+      +'<div class="pz-led-txt"><div class="pz-t" style="color:'+NEON.cyan+'">Tipos de atividade</div><p class="pz-desc">Cada barra mostra a fatia da seleção em cada tipo. Clique para filtrar.</p><ul class="pz-leg">'+leg+'</ul></div>';
+    el.querySelectorAll('.pz-led-row').forEach(function(b){ b.addEventListener('click',function(){ toggle('tipo',b.dataset.key); }); });
+  }
+
+  function renderPainelAtividades(){
+    var el=$('pz-act');
+    var lista=SEL.filter(function(r){ return r.ag!=null && r.ag>=S.base && (r.fatal || r.tipoPrazo || /audien/.test(norm(r.tipo))); })
+      .sort(function(a,b){ return a.ag-b.ag || a.i-b.i; }).slice(0,6);
+    el.innerHTML='<div class="pz-t" style="color:'+NEON.teal+'">Próximos compromissos</div><div class="pz-sub">prazos fatais, prazos e audiências a partir da data-base</div>'
+      +(lista.length?'<ul class="pz-act-list">'+lista.map(function(r,i){ var d=r.ag-S.base;
+        return '<li><button type="button" data-i="'+i+'"><span class="pz-act-d'+(d===0?' hoje':'')+'">'+(d===0?'Hoje':dayToBR(r.ag))+(r.hora?' · '+esc(r.hora):'')+' · '+esc(r.fatal?'Prazo fatal':r.tipo)+'</span>'
+          +'<span class="pz-act-t">'+esc(r.titulo)+'</span><span class="pz-act-r">'+esc(r.resp)+'</span></button></li>'; }).join('')+'</ul>'
+        :'<p class="pz-desc">Nenhum prazo ou audiência a partir de '+esc(dayToBR(S.base))+' na seleção.</p>');
+    el.querySelectorAll('button[data-i]').forEach(function(b){ b.addEventListener('click',function(){ var i=+b.dataset.i; openModal(lista[i],lista,i); }); });
+  }
+
+  function renderPainelCalendario(){
+    var el=$('pz-cal'), mk=S.calMes||monthKey(S.base), y=+mk.slice(0,4), m=+mk.slice(5,7);
+    var primeiro=Math.floor(Date.UTC(y,m-1,1)/DAY), nDias=new Date(Date.UTC(y,m,0)).getUTCDate(), wd=new Date(primeiro*DAY).getUTCDay();
+    var cont={}, fat={}, max=1;
+    SEL_NP.forEach(function(r){ if(r.ag!=null && r.ag>=primeiro && r.ag<primeiro+nDias){ cont[r.ag]=(cont[r.ag]||0)+1; if(r.fatal) fat[r.ag]=true; } });
+    Object.keys(cont).forEach(function(k){ if(cont[k]>max) max=cont[k]; });
+    var h='<div class="pz-cal-head"><button type="button" class="pz-cal-nav" data-m="-1" aria-label="Mês anterior">◀</button><span>'+MESF[m-1].charAt(0).toUpperCase()+MESF[m-1].slice(1)+' '+y+'</span><button type="button" class="pz-cal-nav" data-m="1" aria-label="Próximo mês">▶</button></div>';
+    h+='<div class="pz-cal-grid">'+['D','S','T','Q','Q','S','S'].map(function(d,i){ return '<span class="pz-cal-wd'+(i===0?' dom':'')+'">'+d+'</span>'; }).join('');
+    for(var i=0;i<wd;i++) h+='<span></span>';
+    for(var d=0;d<nDias;d++){
+      var dia=primeiro+d, c=cont[dia]||0, a=periodoAtivo(dia,dia), dom=(wd+d)%7===0;
+      var bg=c?'background:rgba(236,72,153,'+(0.14+0.56*c/max).toFixed(2)+')':'';
+      h+='<button type="button" class="pz-cal-d'+(dom?' dom':'')+(dia===S.base?' base':'')+(a?' is-active':'')+(c?' tem':'')+'" style="'+bg+'" data-d="'+dia+'" aria-pressed="'+a+'" aria-label="'+dayToBR(dia)+': '+plural(c,'atividade','atividades')+(fat[dia]?', com prazo fatal':'')+'">'
+        +'<span>'+(d+1)+'</span>'+(c?'<small>'+c+'</small>':'')+(fat[dia]?'<i class="pz-cal-fatal" aria-hidden="true"></i>':'')+'</button>';
+    }
+    h+='</div><div class="pz-cal-leg"><span><i class="pz-cal-fatal"></i> prazo fatal</span><span>cor mais forte = mais atividades · clique no dia para filtrar</span></div>';
+    el.innerHTML=h;
+    el.querySelectorAll('.pz-cal-nav').forEach(function(b){ b.addEventListener('click',function(){ var mm=m+(+b.dataset.m), yy=y; if(mm<1){ mm=12; yy--; } if(mm>12){ mm=1; yy++; } S.calMes=yy+'-'+String(mm).padStart(2,'0'); renderPainelCalendario(); }); });
+    el.querySelectorAll('.pz-cal-d').forEach(function(b){ b.addEventListener('click',function(){ var dd=+b.dataset.d; filtrarPeriodo(dd,dd); }); });
+  }
+
+  function renderPainelSemanas(){
+    var el=$('pz-rings'), sem=[], tot=0, i;
+    for(i=0;i<5;i++){ var a=S.base+i*7, b=a+6, c=SEL_NP.filter(function(r){ return r.ag!=null && r.ag>=a && r.ag<=b; }).length; sem.push({a:a,b:b,c:c}); tot+=c; }
+    var cores=[[NEON.orange,NEON.pink],[NEON.gold,NEON.cyan],[NEON.cyan,NEON.blue],[NEON.pink,NEON.violet],[NEON.violet,NEON.blue]], R=34, CIRC=2*Math.PI*R;
+    var aneis=sem.map(function(s,k){ var p=tot?Math.round(s.c/tot*100):0, at=periodoAtivo(s.a,s.b);
+      return '<button type="button" class="pz-ring'+(at?' is-active':'')+'" data-k="'+k+'" aria-pressed="'+at+'" aria-label="'+dm(s.a)+' a '+dm(s.b)+': '+plural(s.c,'atividade','atividades')+', '+p+'% das próximas 5 semanas">'
+        +'<svg viewBox="0 0 84 84"><defs><linearGradient id="pz-rg'+k+'" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="'+cores[k][0]+'"/><stop offset="1" stop-color="'+cores[k][1]+'"/></linearGradient></defs>'
+        +'<circle cx="42" cy="42" r="'+R+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>'
+        +'<circle cx="42" cy="42" r="'+R+'" fill="none" stroke="url(#pz-rg'+k+')" stroke-width="7" stroke-linecap="round" transform="rotate(-90 42 42)" stroke-dasharray="'+(RM?(p/100*CIRC):0).toFixed(1)+' '+CIRC.toFixed(1)+'" data-to="'+(p/100*CIRC).toFixed(1)+' '+CIRC.toFixed(1)+'" class="pz-ring-arc"/>'
+        +'<text x="42" y="47" text-anchor="middle" class="pz-ring-n">'+p+'%</text></svg>'
+        +'<span class="pz-ring-tick"></span><span class="pz-ring-dot"></span><span class="pz-ring-l">'+dm(s.a)+' a '+dm(s.b)+'<b>'+plural(s.c,'atividade','atividades')+'</b></span></button>'; }).join('');
+    el.innerHTML='<div class="pz-t" style="color:'+NEON.violet+'">Carga das próximas 5 semanas</div><div class="pz-sub">parte de cada semana no total de '+plural(tot,'atividade','atividades')+' das próximas 5 semanas · clique para filtrar</div>'
+      +'<div class="pz-rings-row"><span class="pz-rings-line" aria-hidden="true"></span>'+aneis+'</div>';
+    el.querySelectorAll('.pz-ring').forEach(function(b){ b.addEventListener('click',function(){ var s=sem[+b.dataset.k]; filtrarPeriodo(s.a,s.b); }); });
+    if(!RM) requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.querySelectorAll('.pz-ring-arc').forEach(function(c){ c.setAttribute('stroke-dasharray', c.getAttribute('data-to')); }); }); });
+  }
+
   /* -------- renderização -------- */
   var SEL = [];
   var T = {};
   function render(){
     SEL = RECS.filter(pass);
+    var f0=S.from, t0=S.to; S.from=null; S.to=null; SEL_NP = RECS.filter(pass); S.from=f0; S.to=t0;
+    renderPainel();
     renderSelBar(); renderKPIs(); renderAgenda(); renderFatal(); renderRevisao(); renderResp(); renderCriador();
     renderClass(); renderIdade(); renderMov(); renderMensal(); renderConc(); renderQual();
     T.main.setRows(SEL);
