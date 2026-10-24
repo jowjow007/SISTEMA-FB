@@ -144,7 +144,7 @@ var TEMPLATE =
   '</div>'+
 '</section>'+
 '<section class="painel" aria-labelledby="agr-h-painel">'+
-  '<div class="pz-head"><h2 id="agr-h-painel">Painel da agenda</h2><p>Visão rápida da seleção atual. Clique em medidores, barras, dias e semanas para filtrar.</p></div>'+
+  '<div class="sec-head"><div class="sec-ic">'+ic('layout')+'</div><div><h2 id="agr-h-painel">Painel da agenda</h2><p>Visão rápida da seleção atual. Clique em medidores, barras, dias e semanas para filtrar.</p></div></div>'+
   '<div class="pz-grid">'+
     '<div class="pz-card pz-gauge-card" id="agr-pz-g0"></div><div class="pz-card pz-gauge-card" id="agr-pz-g1"></div><div class="pz-card pz-gauge-card" id="agr-pz-g2"></div>'+
     '<div class="pz-card pz-big" id="agr-pz-big"></div><div class="pz-card pz-bars" id="agr-pz-bars"></div>'+
@@ -492,7 +492,10 @@ function montar(root, payload, opts){
   /* -------- Painel da agenda (visual inspirado no modelo de relatório) --------
      Medidores, barras e anéis usam a seleção atual. Gráfico diário, calendário e semanas
      ignoram só o intervalo de datas, para continuarem mostrando os dias ao redor. */
-  var NEON = {cyan:'#22d3ee', teal:'#2dd4bf', pink:'#ec4899', coral:'#fb7185', orange:'#fb923c', gold:'#facc15', violet:'#8b5cf6', blue:'#3b82f6', green:'#4ade80'};
+  var NEON_ESCURO = {cyan:'#22d3ee', teal:'#2dd4bf', pink:'#ec4899', coral:'#fb7185', orange:'#fb923c', gold:'#facc15', violet:'#8b5cf6', blue:'#3b82f6', green:'#4ade80'};
+  var NEON_CLARO = {cyan:'#0891b2', teal:'#0d9488', pink:'#db2777', coral:'#e11d48', orange:'#ea580c', gold:'#b7791f', violet:'#7c3aed', blue:'#2563eb', green:'#16a34a'};
+  var NEON = NEON_ESCURO;
+  function atualizarNeon(){ NEON = document.documentElement.getAttribute('data-theme')==='light' ? NEON_CLARO : NEON_ESCURO; }
   var SEL_NP = [];
   function hex2rgb(h){ h=h.replace('#',''); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
   function mixCor(a,b,t){ var x=hex2rgb(a), y=hex2rgb(b); return 'rgb('+x.map(function(v,i){ return Math.round(v+(y[i]-v)*t); }).join(',')+')'; }
@@ -509,8 +512,8 @@ function montar(root, payload, opts){
     var n=36, on=Math.round(Math.max(0,Math.min(1,frac||0))*n), s='';
     for(var i=0;i<n;i++){
       var a=(-90+i*(360/n))*Math.PI/180, r1=41, r2=55;
-      var cor = i<on ? corNaEscala(stops, n>1?i/(n-1):0) : 'rgba(255,255,255,.08)';
-      s+='<line x1="'+(60+r1*Math.cos(a)).toFixed(1)+'" y1="'+(60+r1*Math.sin(a)).toFixed(1)+'" x2="'+(60+r2*Math.cos(a)).toFixed(1)+'" y2="'+(60+r2*Math.sin(a)).toFixed(1)+'" stroke="'+cor+'" stroke-width="5.5"'+(i<on&&!RM?' class="pz-seg" style="animation-delay:'+(i*16)+'ms"':'')+'/>';
+      var cor = i<on ? 'stroke="'+corNaEscala(stops, n>1?i/(n-1):0)+'"' : 'style="stroke:var(--a-track)"';
+      s+='<line x1="'+(60+r1*Math.cos(a)).toFixed(1)+'" y1="'+(60+r1*Math.sin(a)).toFixed(1)+'" x2="'+(60+r2*Math.cos(a)).toFixed(1)+'" y2="'+(60+r2*Math.sin(a)).toFixed(1)+'" '+cor+' stroke-width="5.5"'+(i<on&&!RM?' class="pz-seg" style="animation-delay:'+(i*16)+'ms"':'')+'/>';
     }
     return '<svg viewBox="0 0 120 120" class="pz-gauge" role="img" aria-label="'+esc(aria)+'">'+s+'</svg>';
   }
@@ -533,6 +536,7 @@ function montar(root, payload, opts){
   }
 
   function renderPainel(){
+    atualizarNeon();
     var n=SEL.length, venc=0, prox7=0, hoje=0, fatalVenc=0;
     SEL.forEach(function(r){ var s=situacao(r); if(s==='vencida'){ venc++; if(r.fatal) fatalVenc++; } if(s==='prox7') prox7++; if(s==='hoje') hoje++; });
 
@@ -545,7 +549,7 @@ function montar(root, payload, opts){
 
     var emDia = n ? (n-venc)/n*100 : 0;
     $('pz-big').innerHTML='<div class="pz-t" style="color:'+NEON.gold+'">Agenda em dia</div><div class="pz-sub">data da agenda igual ou posterior à data-base</div>'
-      +'<div class="pz-pct" data-n>—</div>'
+      +'<div class="pz-pct" data-n style="background-image:linear-gradient(90deg,'+NEON.cyan+','+NEON.teal+' 60%,'+NEON.gold+')">—</div>'
       +'<p class="pz-desc">'+nf.format(n-venc)+' de '+nf.format(n)+' atividades da seleção não estão vencidas.</p>'
       +'<p class="pz-desc">'+(fatalVenc?'<b class="pz-alerta">Atenção:</b> '+plural(fatalVenc,'prazo fatal (etiqueta) com agenda vencida','prazos fatais (etiqueta) com agenda vencida')+'.':'Nenhum prazo fatal (etiqueta) com agenda vencida.')+'</p>';
     var big=$('pz-big').querySelector('[data-n]'); if($('pz-big')._v!=null) big.dataset.v=$('pz-big')._v;
@@ -593,7 +597,7 @@ function montar(root, payload, opts){
     var el=$('pz-led'), tipos=counts(SEL,function(r){ return r.tipo; }).slice(0,5), tot=SEL.length||1, celulas=28;
     var pal=[[NEON.violet,NEON.pink,NEON.orange],[NEON.teal,NEON.green,NEON.gold],[NEON.blue,NEON.cyan,NEON.teal],[NEON.violet,NEON.pink,NEON.coral],[NEON.gold,NEON.orange,NEON.coral]];
     var linhas=tipos.map(function(t,k){ var cheias=Math.max(t.count?1:0,Math.round(t.count/tot*celulas)), a=S.tipo===t.key, c='';
-      for(var i=0;i<celulas;i++) c+='<i style="background:'+(i<cheias?corNaEscala(pal[k%pal.length],cheias>1?i/(cheias-1):0):'rgba(255,255,255,.07)')+(i<cheias&&!RM?';animation-delay:'+(i*14)+'ms':'')+'"'+(i<cheias&&!RM?' class="pz-led-on"':'')+'></i>';
+      for(var i=0;i<celulas;i++) c+='<i style="background:'+(i<cheias?corNaEscala(pal[k%pal.length],cheias>1?i/(cheias-1):0):'var(--a-track)')+(i<cheias&&!RM?';animation-delay:'+(i*14)+'ms':'')+'"'+(i<cheias&&!RM?' class="pz-led-on"':'')+'></i>';
       return '<button type="button" class="pz-led-row'+(a?' is-active':'')+'" data-key="'+esc(t.key)+'" aria-pressed="'+a+'" aria-label="'+esc(t.label)+': '+nf.format(t.count)+' ('+pct(t.count,tot)+')">'+c+'</button>'; }).join('');
     var leg=tipos.map(function(t,k){ return '<li><i style="background:'+pal[k%pal.length][1]+'"></i><span>'+esc(t.label)+'</span><b>'+nf.format(t.count)+'</b><small>'+pct(t.count,tot)+'</small></li>'; }).join('');
     el.innerHTML='<div class="pz-led-bars">'+(linhas||'<p class="pz-desc">Nenhuma atividade na seleção.</p>')+'</div>'
@@ -641,7 +645,7 @@ function montar(root, payload, opts){
     var aneis=sem.map(function(s,k){ var p=tot?Math.round(s.c/tot*100):0, at=periodoAtivo(s.a,s.b);
       return '<button type="button" class="pz-ring'+(at?' is-active':'')+'" data-k="'+k+'" aria-pressed="'+at+'" aria-label="'+dm(s.a)+' a '+dm(s.b)+': '+plural(s.c,'atividade','atividades')+', '+p+'% das próximas 5 semanas">'
         +'<svg viewBox="0 0 84 84"><defs><linearGradient id="pz-rg'+k+'" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="'+cores[k][0]+'"/><stop offset="1" stop-color="'+cores[k][1]+'"/></linearGradient></defs>'
-        +'<circle cx="42" cy="42" r="'+R+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>'
+        +'<circle cx="42" cy="42" r="'+R+'" fill="none" style="stroke:var(--a-track)" stroke-width="7"/>'
         +'<circle cx="42" cy="42" r="'+R+'" fill="none" stroke="url(#pz-rg'+k+')" stroke-width="7" stroke-linecap="round" transform="rotate(-90 42 42)" stroke-dasharray="'+(RM?(p/100*CIRC):0).toFixed(1)+' '+CIRC.toFixed(1)+'" data-to="'+(p/100*CIRC).toFixed(1)+' '+CIRC.toFixed(1)+'" class="pz-ring-arc"/>'
         +'<text x="42" y="47" text-anchor="middle" class="pz-ring-n">'+p+'%</text></svg>'
         +'<span class="pz-ring-tick"></span><span class="pz-ring-dot"></span><span class="pz-ring-l">'+dm(s.a)+' a '+dm(s.b)+'<b>'+plural(s.c,'atividade','atividades')+'</b></span></button>'; }).join('');
@@ -1026,7 +1030,7 @@ function montar(root, payload, opts){
   function ajustarTopo(){ var tn=document.querySelector('.tabnav'); root.style.setProperty('--a-top', (tn?tn.offsetHeight:0)+'px'); }
   ajustarTopo(); window.addEventListener('resize', ajustarTopo);
   /* a paleta da rosca muda com o tema do portal */
-  var mo = new MutationObserver(function(){ renderClass(); });
+  var mo = new MutationObserver(function(){ renderClass(); renderPainel(); });
   mo.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
   root._agrCleanup = function(){ document.removeEventListener('keydown', onKey); window.removeEventListener('resize', ajustarTopo); mo.disconnect(); if(!modal.hidden) document.body.style.overflow=''; };
 
