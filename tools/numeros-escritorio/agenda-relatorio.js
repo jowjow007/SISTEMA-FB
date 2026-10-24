@@ -605,16 +605,57 @@ function montar(root, payload, opts){
     el.querySelectorAll('.pz-led-row').forEach(function(b){ b.addEventListener('click',function(){ toggle('tipo',b.dataset.key); }); });
   }
 
+  /* Próximos compromissos: prazos (fatais, internos, de condomínio, sem etiqueta e demais) e
+     audiências a partir da data-base. Um prazo pode estar em mais de uma categoria (ex.: interno
+     e condomínio); o selo mostra a principal: fatal > interno > condomínio > sem etiqueta > outro. */
+  var CATS_COMP = [
+    {id:'todos', nome:'Todos'},
+    {id:'fatal', nome:'Prazo fatal', cls:'b-red'},
+    {id:'interno', nome:'Prazo interno', cls:'b-gold'},
+    {id:'condominio', nome:'Condomínio', cls:'b-petrol'},
+    {id:'semEtiqueta', nome:'Sem etiqueta', cls:'b-slate'},
+    {id:'outroPrazo', nome:'Outros prazos', cls:'b-slate'},
+    {id:'audiencia', nome:'Audiência', cls:'b-green'}
+  ];
+  function catsDoCompromisso(r){
+    var c = {}, tn = r.tags.map(norm);
+    var ehPrazo = r.tipoPrazo || r.fatal || tn.some(function(t){ return t.indexOf('prazo') !== -1; });
+    if (r.fatal) c.fatal = true;
+    if (ehPrazo && !r.fatal){
+      if (tn.some(function(t){ return t.indexOf('intern') !== -1; })) c.interno = true;
+      if (tn.some(function(t){ return t.indexOf('condom') !== -1; })) c.condominio = true;
+      if (!r.tags.length) c.semEtiqueta = true;
+      if (!c.interno && !c.condominio && !c.semEtiqueta) c.outroPrazo = true;
+    }
+    if (/audien/.test(norm(r.tipo))) c.audiencia = true;
+    return c;
+  }
+  function catPrincipal(c){
+    var ordem = ['fatal','interno','condominio','semEtiqueta','outroPrazo','audiencia'];
+    for (var i = 0; i < ordem.length; i++) if (c[ordem[i]]) return ordem[i];
+    return null;
+  }
   function renderPainelAtividades(){
-    var el=$('pz-act');
-    var lista=SEL.filter(function(r){ return r.ag!=null && r.ag>=S.base && (r.fatal || r.tipoPrazo || /audien/.test(norm(r.tipo))); })
-      .sort(function(a,b){ return a.ag-b.ag || a.i-b.i; }).slice(0,6);
-    el.innerHTML='<div class="pz-t" style="color:'+NEON.teal+'">Próximos compromissos</div><div class="pz-sub">prazos fatais, prazos e audiências a partir da data-base</div>'
-      +(lista.length?'<ul class="pz-act-list">'+lista.map(function(r,i){ var d=r.ag-S.base;
-        return '<li><button type="button" data-i="'+i+'"><span class="pz-act-d'+(d===0?' hoje':'')+'">'+(d===0?'Hoje':dayToBR(r.ag))+(r.hora?' · '+esc(r.hora):'')+' · '+esc(r.fatal?'Prazo fatal':r.tipo)+'</span>'
-          +'<span class="pz-act-t">'+esc(r.titulo)+'</span><span class="pz-act-r">'+esc(r.resp)+'</span></button></li>'; }).join('')+'</ul>'
-        :'<p class="pz-desc">Nenhum prazo ou audiência a partir de '+esc(dayToBR(S.base))+' na seleção.</p>');
-    el.querySelectorAll('button[data-i]').forEach(function(b){ b.addEventListener('click',function(){ var i=+b.dataset.i; openModal(lista[i],lista,i); }); });
+    var el=$('pz-act'), cat=S.pzCat||'todos';
+    var base=SEL.filter(function(r){ return r.ag!=null && r.ag>=S.base; }).map(function(r){ return {r:r, c:catsDoCompromisso(r)}; })
+      .filter(function(x){ return catPrincipal(x.c); })
+      .sort(function(a,b){ return a.r.ag-b.r.ag || a.r.i-b.r.i; });
+    var cont={todos:base.length};
+    base.forEach(function(x){ Object.keys(x.c).forEach(function(k){ cont[k]=(cont[k]||0)+1; }); });
+    var lista=base.filter(function(x){ return cat==='todos' || x.c[cat]; });
+    var limite=S.pzTodos?lista.length:8, vis=lista.slice(0,limite), regs=vis.map(function(x){ return x.r; });
+    var catMap={}; CATS_COMP.forEach(function(c){ catMap[c.id]=c; });
+    el.innerHTML='<div class="pz-t" style="color:'+NEON.teal+'">Próximos compromissos</div><div class="pz-sub">prazos (fatais, internos, de condomínio, sem etiqueta e demais) e audiências a partir de '+esc(dayToBR(S.base))+'</div>'
+      +'<div class="pz-cats" role="group" aria-label="Categoria">'+CATS_COMP.filter(function(c){ return c.id==='todos' || cont[c.id] || cat===c.id; }).map(function(c){
+        var a=cat===c.id; return '<button type="button" class="pz-cat'+(a?' is-active':'')+'" data-c="'+c.id+'" aria-pressed="'+a+'">'+c.nome+'<span>'+nf.format(cont[c.id]||0)+'</span></button>'; }).join('')+'</div>'
+      +(vis.length?'<ul class="pz-act-list'+(S.pzTodos?' todos':'')+'">'+vis.map(function(x,i){ var r=x.r, d=r.ag-S.base, cp=catMap[catPrincipal(x.c)];
+        return '<li><button type="button" data-i="'+i+'"><span class="pz-act-d'+(d===0?' hoje':'')+'">'+(d===0?'Hoje':d===1?'Amanhã':dayToBR(r.ag))+(r.hora?' · '+esc(r.hora):'')+'<span class="badge '+cp.cls+'">'+cp.nome+'</span></span>'
+          +'<span class="pz-act-t">'+esc(r.titulo)+'</span><span class="pz-act-r">'+esc(r.resp)+(r.caso&&r.caso!==r.titulo?' · '+esc(r.caso):'')+'</span></button></li>'; }).join('')+'</ul>'
+        :'<p class="pz-desc">Nada nesta categoria a partir de '+esc(dayToBR(S.base))+' na seleção.</p>')
+      +(lista.length>8?'<button type="button" class="pz-mais">'+(S.pzTodos?'Mostrar menos':'Mostrar todos ('+nf.format(lista.length)+')')+'</button>':'');
+    el.querySelectorAll('.pz-cat').forEach(function(b){ b.addEventListener('click',function(){ S.pzCat=b.dataset.c; S.pzTodos=false; renderPainelAtividades(); }); });
+    var mais=el.querySelector('.pz-mais'); if(mais) mais.addEventListener('click',function(){ S.pzTodos=!S.pzTodos; renderPainelAtividades(); });
+    el.querySelectorAll('button[data-i]').forEach(function(b){ b.addEventListener('click',function(){ var i=+b.dataset.i; openModal(regs[i],regs,i); }); });
   }
 
   function renderPainelCalendario(){
