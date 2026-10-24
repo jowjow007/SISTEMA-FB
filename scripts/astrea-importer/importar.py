@@ -18,6 +18,7 @@ import os
 import re
 import glob
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from datetime import date, datetime
@@ -476,5 +477,38 @@ async def main():
     log("Importação concluída.")
 
 
+def atualizar_codigo():
+    """Atualiza a pasta do portal pelo GitHub antes de importar e, se o código mudou,
+    roda de novo já com a versão nova. Assim o computador do escritório não fica com
+    um robô desatualizado. Qualquer falha (sem git, sem internet, alteração local)
+    não impede a importação: ela segue com o código atual.
+    Para desligar: ASTREA_AUTO_UPDATE=false em credenciais.env."""
+    if os.getenv("ASTREA_AUTO_UPDATE", "true").lower() != "true" or os.getenv("_ASTREA_ATUALIZADO"):
+        return
+    raiz = Path(__file__).resolve().parents[2]
+    if not (raiz / ".git").exists():
+        log("Atualização automática: a pasta não é um clone do GitHub; seguindo com o código atual.")
+        return
+    try:
+        def git(*args, timeout=60):
+            return subprocess.run(["git", "-C", str(raiz)] + list(args), capture_output=True, text=True, timeout=timeout)
+        antes = git("rev-parse", "HEAD").stdout.strip()
+        r = git("pull", "--ff-only", timeout=180)
+        if r.returncode != 0:
+            log("Atualização automática falhou (seguindo com o código atual): " + (r.stderr or r.stdout).strip()[:300])
+            return
+        depois = git("rev-parse", "HEAD").stdout.strip()
+        if antes and depois and antes != depois:
+            log(f"Código atualizado ({antes[:7]} -> {depois[:7]}); rodando a importação com a versão nova...")
+            os.environ["_ASTREA_ATUALIZADO"] = "1"
+            sys.stdout.flush()
+            r2 = subprocess.run([sys.executable, str(Path(__file__).resolve())] + sys.argv[1:])
+            sys.exit(r2.returncode)
+        log("Código do robô já está na versão mais recente.")
+    except Exception as e:
+        log(f"Atualização automática indisponível ({e}); seguindo com o código atual.")
+
+
 if __name__ == "__main__":
+    atualizar_codigo()
     asyncio.run(main())

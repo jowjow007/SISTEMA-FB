@@ -143,6 +143,7 @@ var TEMPLATE =
       '<button class="btn primary" type="button" data-act="csv">'+ic('download')+'Exportar seleção (CSV)</button></div></div>'+
   '</div>'+
 '</section>'+
+'<div id="agr-alertaImport" role="alert"></div>'+
 '<section class="painel" aria-labelledby="agr-h-painel">'+
   '<div class="sec-head"><div class="sec-ic">'+ic('layout')+'</div><div><h2 id="agr-h-painel">Painel da agenda</h2><p>Visão rápida da seleção atual. Clique em medidores, barras, dias e semanas para filtrar.</p></div></div>'+
   '<div class="pz-grid">'+
@@ -1096,6 +1097,20 @@ function montar(root, payload, opts){
     {key:'alta',label:'Prior. alta',num:true,dir0:-1,sv:function(a){return a.alta;},html:function(a){ return nf.format(a.alta); }},
     {key:'med',label:'Idade mediana',num:true,dir0:-1,sv:function(a){return a.med;},html:function(a){ return a.med==null?'—':nf.format(Math.round(a.med))+' d'; }}
   ], {caption:'Quadro por responsável', paginate:false, sort:{key:'n',dir:-1}, onRow:function(a){ toggle('resp',a.nome); }, rowLabel:function(a){ return a.nome+': '+a.n+' atividades. Filtrar por este responsável'; }});
+
+  /* aviso quando a importação chega com datas perdidas ou com dia e mês invertidos
+     (acontece quando o robô do computador do escritório está desatualizado) */
+  (function(){
+    var box=$('alertaImport'); if(!box || !RECS.length) return;
+    var semData=RECS.filter(function(r){ return r.ag==null; }).length;
+    var comData=RECS.filter(function(r){ return r.ag!=null; });
+    var invertida=comData.length>=30 && comData.every(function(r){ return new Date(r.ag*DAY).getUTCDate()<=12; });
+    if(semData/RECS.length<=0.15 && !invertida) return;
+    box.innerHTML='<div class="alerta-import">'+ic('alert','lg')+'<div><b>Importação de '+esc(dayToBR(BASE0))+' com problema nas datas.</b> '
+      +nf.format(semData)+' de '+nf.format(RECS.length)+' atividades chegaram sem a data da agenda'
+      +(invertida?', e as datas que chegaram parecem estar com dia e mês trocados':'')+'. '
+      +'Vencidas, prazos, calendário e gráficos ficam incompletos até o robô do computador do escritório ser atualizado e a importação ser refeita.</div></div>';
+  })();
 
   buildControls(); syncControls(); wire(); render();
   if(opts.carregarDelta){
