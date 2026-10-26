@@ -120,6 +120,16 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
   .tipo-hidden{display:none !important;}
 
+  /* Relatório de Cobranças: é uma ferramenta à parte (tools/cobrancas), aberta aqui em largura total */
+  body.modo-cobrancas .layout{grid-template-columns:1fr;}
+  body.modo-cobrancas .preview-col,
+  body.modo-cobrancas #card-historico,
+  body.modo-cobrancas #card-exportar{display:none;}
+  body.modo-cobrancas .form-col{position:static;max-height:none;overflow:visible;padding-right:0;}
+  body.modo-cobrancas .segmented button{flex:1 1 auto;}
+  #card-cobrancas{padding:14px;}
+  #frame-cobrancas{display:block;width:100%;height:calc(100vh - var(--hdr-h,76px) - 230px);min-height:680px;border:0;border-radius:10px;background:var(--panel);}
+
   .hist-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line);}
   .hist-row:last-child{border-bottom:none;}
   .hist-main{flex:1;min-width:0;background:none;border:none;text-align:left;cursor:pointer;padding:0;color:var(--paper);}
@@ -208,6 +218,10 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <h2>Tipo de documento</h2>
         <p class="desc">Escolha o modelo desejado.</p>
         <div class="segmented" id="tipo-seg"></div>
+      </div>
+
+      <div class="card tipo-hidden" id="card-cobrancas" data-tipo-only="cobrancas">
+        <iframe id="frame-cobrancas" title="Relatório de Cobranças"></iframe>
       </div>
 
       <div class="card" id="card-historico">
@@ -1487,6 +1501,7 @@ let renderTimer=null;
 function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(render, 280); }
 
 function render(){
+  if(currentTipo==='cobrancas') return;   // o relatório se monta sozinho dentro do próprio iframe
   const status=document.getElementById('pag-status');
   const d = coletarDados();
   const erro = validar(d);
@@ -1524,7 +1539,8 @@ const TIPOS=[
   {id:'substabelecimento', label:'Substabelecimento', ready:true},
   {id:'hipossuficiencia', label:'Declaração de Hipossuficiência', ready:true},
   {id:'termo_repasse', label:'Termo de Repasse', ready:true},
-  {id:'recibo', label:'Recibo', ready:true}
+  {id:'recibo', label:'Recibo', ready:true},
+  {id:'cobrancas', label:'Relatório de Cobranças', ready:true}
 ];
 let currentTipo='procuracao';
 const seg=document.getElementById('tipo-seg');
@@ -1549,6 +1565,9 @@ function setTipo(id){
   const descDocs=document.getElementById('desc-exportar-docs');
   if(btnDocs){ btnDocs.style.display=id==='termo_repasse'?'':'none'; }
   if(descDocs){ descDocs.style.display=id==='termo_repasse'?'':'none'; }
+  document.body.classList.toggle('modo-cobrancas', id==='cobrancas');
+  const frameCob=document.getElementById('frame-cobrancas');
+  if(id==='cobrancas' && !frameCob.getAttribute('src')) frameCob.setAttribute('src','../cobrancas/index.html?embed=1');
   render();
   if(typeof renderHistoricoDoTipo==='function') renderHistoricoDoTipo();
 }

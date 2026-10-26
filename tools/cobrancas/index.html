@@ -7,6 +7,8 @@
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
 <script>
 (function(){
+  // ?embed=1: aberto dentro do Criador de Documentos, que já tem o próprio cabeçalho
+  if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('embed');
   try{
     var t = localStorage.getItem('fb-portal-theme');
     if(t === 'light') document.documentElement.setAttribute('data-theme','light');
@@ -148,6 +150,20 @@
   .preview-vazio{display:flex;align-items:center;justify-content:center;text-align:center;min-height:300px;color:var(--muted);font-size:.82rem;line-height:1.6;padding:20px;}
   .aviso-pag{font-size:.72rem;color:var(--muted);margin-top:8px;line-height:1.45;}
   .oculto{display:none !important;}
+
+  .abat-row{display:grid;grid-template-columns:150px minmax(0,1fr) 140px auto;gap:10px;align-items:end;margin-bottom:10px;}
+  .abat-row .field{margin-bottom:0;}
+  .btn-x{
+    width:38px;height:40px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);
+    color:var(--muted);font-size:1.1rem;cursor:pointer;
+  }
+  .btn-x:hover{color:var(--err);border-color:var(--err);}
+  @media(max-width:640px){ .abat-row{grid-template-columns:1fr 1fr;} }
+
+  html.embed body::before{display:none;}
+  html.embed header{display:none;}
+  html.embed main{max-width:none;padding:4px 2px 30px;}
+  @media(min-width:1101px){ html.embed .preview-col{top:8px;} }
 </style>
 </head>
 <body>
@@ -227,6 +243,15 @@
           </div>
         </div>
       </section>
+
+      <section class="card oculto" id="card-abat">
+        <h2>4. Pagamentos a abater</h2>
+        <p class="desc">Se o cliente já pagou parte do débito, lance o pagamento aqui. O valor é descontado do total
+        e aparece discriminado no fim da tabela do relatório.</p>
+        <div id="lista-abat"></div>
+        <button class="btn secondary" id="btn-add-abat" type="button">+ Adicionar pagamento</button>
+        <div class="msg-err" id="abat-aviso"></div>
+      </section>
     </div>
 
     <div class="preview-col">
@@ -269,6 +294,7 @@
 
   var cobrancas = [];      // todas as linhas da planilha
   var marcados = {};       // chave da cobrança -> true/false (escolha manual)
+  var abatimentos = [];    // pagamentos a descontar do total: {data, desc, valor}
   var clienteAtual = '';
   var htmlAtual = '';
   var tituloAtual = '';
@@ -311,6 +337,7 @@
     if (typeof v === 'number') return Math.round(v * 100);
     var s = String(v).replace(/[R$\s ]/g, '');
     if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // "1.000" digitado = mil reais
     var n = parseFloat(s);
     return isNaN(n) ? null : Math.round(n * 100);
   }
@@ -419,13 +446,33 @@
     trocouCliente();
     $('card-cliente').classList.remove('oculto');
     $('card-dados').classList.remove('oculto');
+    $('card-abat').classList.remove('oculto');
   }
 
   function trocouCliente(){
     clienteAtual = $('cliente').value;
     var c = cobrancas.filter(function(x){ return x.cliente === clienteAtual; })[0];
     $('nome-relatorio').value = c ? c.nome : '';
+    abatimentos = [];
+    desenharAbatimentos();
     atualizar();
+  }
+
+  // ---------- pagamentos a abater ----------
+  function desenharAbatimentos(){
+    $('lista-abat').innerHTML = abatimentos.map(function(a, i){
+      return '<div class="abat-row" data-i="' + i + '">' +
+        '<div class="field"><label>Data do pagamento</label><input type="date" data-campo="data" value="' + esc(a.data) + '"></div>' +
+        '<div class="field"><label>Descrição</label><input type="text" data-campo="desc" value="' + esc(a.desc) + '"></div>' +
+        '<div class="field"><label>Valor pago (R$)</label><input type="text" inputmode="decimal" placeholder="0,00" data-campo="valor" value="' + esc(a.valor) + '"></div>' +
+        '<button type="button" class="btn-x" data-remover="' + i + '" title="Remover pagamento">×</button></div>';
+    }).join('');
+  }
+
+  function abatimentosValidos(){
+    return abatimentos.map(function(a){
+      return { data: a.data ? lerData(a.data) : null, desc: a.desc.trim() || 'Pagamento', valor: lerCentavos(a.valor) || 0 };
+    }).filter(function(a){ return a.valor > 0; });
   }
 
   // ---------- cálculo (mesma regra do Asaas) ----------
@@ -540,8 +587,11 @@
     '.pill.azul { background: var(--azul-cl); color: var(--azul); }',
     'tr.hoje td { background: #F3FAF6 !important; }',
     'tfoot td { padding: 2.4mm 2mm; font-weight: 700; font-size: 9pt; background: var(--vinho-cl); }',
-    'tfoot td:first-child { border-radius: 0 0 0 2mm; } tfoot td:last-child { border-radius: 0 0 2mm 0; }',
+    'tfoot tr:last-child td:first-child { border-radius: 0 0 0 2mm; } tfoot tr:last-child td:last-child { border-radius: 0 0 2mm 0; }',
     'tfoot .tot { color: #fff; background: var(--vinho); font-size: 10.4pt; }',
+    'tfoot tr.sub td { padding: 1.8mm 2mm; border-bottom: 1px solid #fff; }',
+    'tfoot tr.sub .sub-tot { color: var(--vinho-esc); }',
+    'tfoot tr.abat td { padding: 1.5mm 2mm; background: #EEF7F1; color: var(--verde); font-weight: 600; font-size: 8.6pt; border-bottom: 1px solid #fff; }',
     '.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 4.5mm; }',
     '.card { border-radius: 3mm; padding: 3.4mm 3.8mm; }',
     '.card h3 { display: flex; align-items: center; gap: 2mm; font: 700 9.2pt "Century Gothic", "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2.2mm; }',
@@ -618,6 +668,26 @@
     var maxDias = vencidas.reduce(function(m, l){ return Math.max(m, l.dias); }, 0);
     var tot = itens.reduce(function(a, l){ a.valor += l.c.valor; a.multa += l.multa; a.juros += l.juros; a.total += l.total; return a; },
       { valor: 0, multa: 0, juros: 0, total: 0 });
+    var abats = abatimentosValidos();
+    var totAbat = abats.reduce(function(s, a){ return s + a.valor; }, 0);
+    var saldo = Math.max(0, tot.total - totAbat);
+    var rotAtraso = maxDias ? ' · maior atraso: ' + maxDias + ' dias' : '';
+
+    var rodape;
+    if (!abats.length){
+      rodape = '<tr><td colspan="4">Total em aberto' + rotAtraso + '</td>' +
+        '<td class="r">' + brl(tot.valor) + '</td><td class="r">' + brl(tot.multa) + '</td><td class="r">' + brl(tot.juros) + '</td>' +
+        '<td class="r tot">' + brl(tot.total) + '</td></tr>';
+    } else {
+      rodape = '<tr class="sub"><td colspan="4">Subtotal dos boletos</td>' +
+        '<td class="r">' + brl(tot.valor) + '</td><td class="r">' + brl(tot.multa) + '</td><td class="r">' + brl(tot.juros) + '</td>' +
+        '<td class="r sub-tot">' + brl(tot.total) + '</td></tr>' +
+        abats.map(function(a){
+          return '<tr class="abat"><td colspan="7">(−) ' + esc(a.desc) + (a.data != null ? ' em ' + fmtData(a.data) : '') + '</td>' +
+            '<td class="r">− ' + brl(a.valor) + '</td></tr>';
+        }).join('') +
+        '<tr><td colspan="7">Total em aberto' + rotAtraso + '</td><td class="r tot">' + brl(saldo) + '</td></tr>';
+    }
 
     var partes = [];
     if (vencidas.length) partes.push(plural(vencidas.length, 'vencida', 'vencidas'));
@@ -649,7 +719,7 @@
 
     var titulo = 'Relatorio_Debitos_' + nomeCliente.split(/[\s\-–]+/)[0].replace(/[^\w]/g, '') + '_' + refTxt.replace(/\//g, '-');
 
-    return { titulo: titulo, total: tot.total, qtd: itens.length, html: '<!doctype html>\n<html lang="pt-BR">\n<head>\n<meta charset="utf-8">\n<title>' + esc(titulo) + '</title>\n<style>\n' + CSS_RELATORIO + '\n</style>\n</head>\n<body>\n' +
+    return { titulo: titulo, total: saldo, bruto: tot.total, abatido: totAbat, qtd: itens.length, html: '<!doctype html>\n<html lang="pt-BR">\n<head>\n<meta charset="utf-8">\n<title>' + esc(titulo) + '</title>\n<style>\n' + CSS_RELATORIO + '\n</style>\n</head>\n<body>\n' +
       '<svg width="0" height="0" style="position:absolute">' + ICONES + '</svg>\n' +
       '<div class="page">\n<div class="faixa"></div>\n' +
       '<header>\n<img src="' + esc(LOGO_URL) + '" alt="Fonseca e Braga — Sociedade de Advogados">\n' +
@@ -661,10 +731,12 @@
       '<div class="lab">Referência</div><div class="val">' + esc(refTitulo) + '</div><div class="sub">' + esc(refSub) + '</div></div></div>\n' +
       '</section>\n' +
       '<p class="intro">Prezados, apresentamos a posição atualizada dos ' + esc(refTitulo.charAt(0).toLowerCase() + refTitulo.slice(1)) +
-      ' em aberto. Os valores atualizados abaixo correspondem aos boletos reemitidos com vencimento em <b>' + refTxt + '</b>, que seguem anexos a este relatório.</p>\n' +
+      ' em aberto. Os valores atualizados abaixo correspondem aos boletos reemitidos com vencimento em <b>' + refTxt + '</b>, que seguem anexos a este relatório.' +
+      (abats.length ? ' Do total, já foram abatidos os pagamentos recebidos, discriminados ao final da tabela.' : '') + '</p>\n' +
       '<section class="kpis">\n' +
       '<div class="kpi k1"><div class="top"><span class="ic">' + ico('i-receipt') + '</span>Parcelas</div><div class="v">' + plural(itens.length, 'boleto', 'boletos') + '</div><div class="s">' + partes.join(' + ') + '</div></div>\n' +
-      '<div class="kpi k4"><div class="top"><span class="ic">' + ico('i-alert') + '</span>Total atualizado</div><div class="v">' + brl(tot.total) + '</div><div class="s">para pagar em ' + refTxt + '</div></div>\n' +
+      '<div class="kpi k4"><div class="top"><span class="ic">' + ico('i-alert') + '</span>Total atualizado</div><div class="v">' + brl(saldo) + '</div><div class="s">' +
+      (totAbat ? 'já abatidos ' + brl(totAbat) + ' pagos · ' : '') + 'para pagar em ' + refTxt + '</div></div>\n' +
       '</section>\n' +
       '<h2>' + ico('i-list') + 'Detalhamento dos boletos<span class="leg">' +
       '<span><i style="background:var(--vinho)"></i>180+ dias</span><span><i style="background:var(--laranja)"></i>90 a 179</span>' +
@@ -672,9 +744,7 @@
       '<table>\n<thead><tr><th>#</th><th>Parcela</th><th class="c">Vencimento original</th><th>Dias em atraso</th>' +
       '<th class="r">Valor original</th><th class="r">Multa</th><th class="r">Juros</th><th class="r">Valor atualizado</th></tr></thead>\n' +
       '<tbody>' + linhas + '</tbody>\n' +
-      '<tfoot><tr><td colspan="4">Total em aberto' + (maxDias ? ' · maior atraso: ' + maxDias + ' dias' : '') + '</td>' +
-      '<td class="r">' + brl(tot.valor) + '</td><td class="r">' + brl(tot.multa) + '</td><td class="r">' + brl(tot.juros) + '</td>' +
-      '<td class="r tot">' + brl(tot.total) + '</td></tr></tfoot>\n</table>\n' +
+      '<tfoot>' + rodape + '</tfoot>\n</table>\n' +
       '<section class="cols">\n' +
       '<div class="card pagar"><h3>' + ico('i-card') + 'Como regularizar</h3>' +
       '<div class="passo"><span class="ic">' + ico('i-qr') + '</span><div><b>Pix:</b> QR Code ou “copia e cola” de cada boleto.</div></div>' +
@@ -745,6 +815,11 @@
     tituloAtual = rel.titulo;
     $('res-qtd').textContent = plural(rel.qtd, 'boleto', 'boletos');
     $('res-total').textContent = brl(rel.total);
+    var aviso = $('abat-aviso');
+    aviso.textContent = rel.abatido > rel.bruto
+      ? 'Os pagamentos lançados (' + brl(rel.abatido) + ') passam do total dos boletos marcados (' + brl(rel.bruto) + '); o saldo ficou em R$ 0,00.'
+      : '';
+    aviso.style.display = aviso.textContent ? 'block' : 'none';
 
     var minha = ++geracao;
     preview.onload = function(){
@@ -834,6 +909,25 @@
   var timer = null;
   ['ref', 'multa', 'juros', 'nome-relatorio', 'cidade', 'ref-titulo', 'ref-sub'].forEach(function(id){
     $(id).addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(atualizar, 250); });
+  });
+  $('btn-add-abat').addEventListener('click', function(){
+    abatimentos.push({ data: '', desc: 'Pagamento recebido', valor: '' });
+    desenharAbatimentos();
+    var campos = $('lista-abat').querySelectorAll('input[data-campo="valor"]');
+    if (campos.length) campos[campos.length - 1].focus();
+  });
+  $('lista-abat').addEventListener('input', function(e){
+    var linha = e.target.closest('.abat-row');
+    if (!linha || !e.target.dataset.campo) return;
+    abatimentos[+linha.dataset.i][e.target.dataset.campo] = e.target.value;
+    clearTimeout(timer); timer = setTimeout(atualizar, 250);
+  });
+  $('lista-abat').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-remover]');
+    if (!btn) return;
+    abatimentos.splice(+btn.dataset.remover, 1);
+    desenharAbatimentos();
+    atualizar();
   });
   $('btn-imprimir').addEventListener('click', imprimir);
   $('btn-abrir').addEventListener('click', abrirNovaAba);
