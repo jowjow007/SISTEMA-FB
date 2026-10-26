@@ -2932,6 +2932,24 @@
   }
 
   // abre a tarefa completa (com histórico) dentro do Minhas Anotações, assim que ele terminar de carregar
+  // Link compartilhado de uma tarefa (portal/?tarefa=ID): abre Minhas Anotações já com a
+  // tarefa aberta. Tratado uma vez só; o ?tarefa sai da barra de endereço depois.
+  let tarefaDoLinkTratada = false;
+  function abrirTarefaDoLink(){
+    if (tarefaDoLinkTratada) return;
+    const id = new URLSearchParams(location.search).get('tarefa');
+    if (!id) { tarefaDoLinkTratada = true; return; }
+    const t = acharTabPermitida(function(l){ return l.indexOf('anota') !== -1; });
+    if (!t) return;
+    tarefaDoLinkTratada = true;
+    try {
+      const u = new URL(location.href); u.searchParams.delete('tarefa');
+      history.replaceState(null, '', u.pathname + u.search + location.hash);
+    } catch(e) {}
+    selectTab(t.id, { replaceHistory: true });
+    abrirTarefaNaAnotacoes(t.id, id, 0);
+  }
+
   function abrirTarefaNaAnotacoes(tabId, tarefaId, tentativa){
     const ifr = iframes[tabId];
     let w = null;
@@ -3203,6 +3221,7 @@
       selectTab(allowed[0].id, { replaceHistory: true });
     }
     agendarPreloadAbas(allowed);
+    abrirTarefaDoLink();
 
     applySearchFilter();
   }

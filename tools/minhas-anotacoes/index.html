@@ -334,6 +334,10 @@
   }
   .modal-backdrop.open{display:flex;}
   a.auto-link{color:#5aa9ff;text-decoration:underline;word-break:break-all;}
+  .link-btn{border:1px solid var(--line-strong);background:transparent;color:var(--muted);font:inherit;font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:99px;cursor:pointer;white-space:nowrap;}
+  .link-btn:hover{color:var(--paper);border-color:var(--paper);}
+  .link-btn.ok{color:#4caf6e;border-color:#4caf6e;}
+  .link-acoes{display:inline-flex;gap:6px;flex-wrap:wrap;}
   a.auto-link:hover{color:#8cc4ff;}
   .abre-detalhe{cursor:pointer;}
   .abre-detalhe:hover .tarefa-texto,.abre-detalhe:hover .recebida-texto,.abre-detalhe:hover .enviada-texto,.abre-detalhe:hover .kanban-card-texto{text-decoration:underline;text-decoration-color:var(--muted);}
@@ -1043,6 +1047,44 @@
     });
   });
 
+  // ---------- Link direto para uma tarefa enviada/recebida (abre o portal já com ela aberta) ----------
+  function linkTarefa(id){
+    return new URL('../../', location.href).href + '?tarefa=' + encodeURIComponent(id);
+  }
+  function copiarTexto(t){
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+    return new Promise(function(ok, falha){
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? ok() : falha(); } catch(e){ falha(e); }
+      ta.remove();
+    });
+  }
+  const PODE_COMPARTILHAR = !!navigator.share;
+  function botoesLinkHtml(id){
+    return '<span class="link-acoes">' +
+      '<button type="button" class="link-btn" onclick="__copiarLinkTarefa(\'' + id + '\', this, event)" title="Copiar o link desta tarefa para mandar no chat ou no WhatsApp">🔗 Copiar link</button>' +
+      (PODE_COMPARTILHAR ? '<button type="button" class="link-btn" onclick="__compartilharTarefa(\'' + id + '\', event)" title="Enviar por WhatsApp ou outro app">📤 Compartilhar</button>' : '') +
+      '</span>';
+  }
+  window.__copiarLinkTarefa = function(id, btn, ev){
+    if (ev) ev.stopPropagation();
+    const url = linkTarefa(id);
+    copiarTexto(url).then(function(){
+      if (!btn) return;
+      const original = btn.innerHTML;
+      btn.classList.add('ok'); btn.innerHTML = '✓ Link copiado';
+      setTimeout(function(){ btn.classList.remove('ok'); btn.innerHTML = original; }, 1800);
+    }).catch(function(){ window.prompt('Copie o link da tarefa:', url); });
+  };
+  window.__compartilharTarefa = function(id, ev){
+    if (ev) ev.stopPropagation();
+    const e = enviadas.concat(recebidas).find(function(x){ return x.id === id; });
+    const resumo = e ? String(e.texto || '').slice(0, 140) : '';
+    navigator.share({ title: 'Tarefa no Portal Fonseca e Braga', text: resumo ? 'Tarefa: ' + resumo : 'Tarefa no Portal Fonseca e Braga', url: linkTarefa(id) }).catch(function(){});
+  };
+
   // ---------- Detalhe da tarefa enviada/recebida, com todo o histórico ----------
   const detEls = {
     backdrop: document.getElementById('detalheBackdrop'), titulo: document.getElementById('detalheTitulo'),
@@ -1094,9 +1136,11 @@
     } else if (!souRemetente && (e.status === 'pendente' || e.status === 'reprovada')){
       acoes = '<button type="button" class="btn small" onclick="__fecharDetalhe();__abrirConcluirEnvio(\'' + e.id + '\')">✓ Concluir</button>';
     }
-    detEls.acoes.innerHTML = acoes;
+    detEls.acoes.innerHTML = acoes + botoesLinkHtml(e.id);
   }
+  let detalhePendente = null;   // link aberto antes do login terminar
   window.__abrirDetalheEnvio = function(id){
+    if (!currentUser){ detalhePendente = id; return; }
     detalheAbertoId = id;
     const local = enviadas.concat(recebidas).find(function(x){ return x.id === id; });
     if (local) desenharDetalhe(local);
@@ -1393,11 +1437,12 @@
   }
   function enviadaLinhaHtml(e){
     const agendada = !jaEnviada(e);
-    return '<div class="tarefa-row enviada-row abre-detalhe" role="button" tabindex="0" title="Ver tarefa completa e histórico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')" onkeydown="if(event.key===\'Enter\')__abrirDetalheEnvio(\'' + e.id + '\')">'
+    return '<div class="tarefa-row enviada-row abre-detalhe" role="button" tabindex="0" title="Ver tarefa completa e histórico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')" onkeydown="if(event.key===\'Enter\'&&event.target===this)__abrirDetalheEnvio(\'' + e.id + '\')">'
       + '<div class="tarefa-texto">' + linkify(e.texto) + '</div>'
       + '<span class="enviada-para">→ ' + escapeHtml(e.destinatarioNome || '') + '</span>'
       + '<span class="enviada-quando">' + (agendada ? '🕒 chega em ' : '') + dataEnvioTexto(e) + '</span>'
       + '<span class="enviada-status s-' + (agendada ? 'agendada' : e.status) + '">' + (agendada ? 'Agendada' : enviadaStatusLabel(e.status)) + '</span>'
+      + botoesLinkHtml(e.id)
       + '</div>';
   }
   function resultadoListaEnviadas(){
@@ -1677,7 +1722,7 @@
     }
     out += '</div>';
     out += '<div class="enviada-texto abre-detalhe" role="button" tabindex="0" onclick="__abrirDetalheEnvio(\'' + e.id + '\')">' + linkify(e.texto) + '</div>';
-    out += '<button type="button" class="ver-historico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')">Ver tarefa completa e histórico</button>';
+    out += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><button type="button" class="ver-historico" onclick="__abrirDetalheEnvio(\'' + e.id + '\')">Ver tarefa completa e histórico</button>' + botoesLinkHtml(e.id) + '</div>';
     if (e.dataVencimento) out += '<div class="enviada-meta">Prazo: ' + formatarDataBR(e.dataVencimento) + '</div>';
     if ((e.status === 'aguardando_aprovacao' || e.status === 'aprovada') && e.justificativaConclusao){
       out += '<div class="enviada-meta"><b>Justificativa de quem concluiu:</b> ' + linkify(e.justificativaConclusao) + '</div>';
@@ -1818,6 +1863,7 @@
       try { savedView = localStorage.getItem(VIEW_CACHE_KEY); } catch(e){ /* indisponível */ }
       setView(savedView === 'kanban' || savedView === 'enviadas' ? savedView : 'lista');
       startListening();
+      if (detalhePendente){ const pend = detalhePendente; detalhePendente = null; window.__abrirDetalheEnvio(pend); }
       const tarefaUrl = new URLSearchParams(location.search).get('tarefa');
       if (tarefaUrl) window.__abrirDetalheEnvio(tarefaUrl);
     }).catch(function(e){
