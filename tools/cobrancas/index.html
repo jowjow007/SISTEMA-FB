@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório de Cobranças — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:url('../../assets/bg-texture.jpg') repeat;background-size:280px auto;opacity:.05;}
+
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --red-deep:#5c1a16;
+    --ok:#4caf7d;
+    --err:#ffb4ae;
+    --silver:#a9adb2;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --panel-3:#e6dfd7;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --silver:#756f6c;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+    --ok:#2f8f5b;
+    --err:#9c2c20;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--panel);color:var(--paper);font-family:var(--font-body);transition:background-color .2s,color .2s;}
+  html{height:100%;overflow:hidden;}
+  body{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+  *{scrollbar-width:thin;scrollbar-color:var(--red-deep) var(--panel-2);}
+  ::-webkit-scrollbar{width:11px;height:11px;}
+  ::-webkit-scrollbar-track{background:var(--panel-2);}
+  ::-webkit-scrollbar-thumb{background:var(--red-deep);border-radius:7px;border:2px solid var(--panel-2);background-clip:padding-box;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--red);}
+  button,input,select,textarea{font-family:inherit;}
+
+  header{
+    position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);
+    padding:16px 20px 14px;
+  }
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 2px;color:var(--paper);}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+
+  main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:24px 20px 70px;}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 460px;gap:20px;align-items:start;}
+  @media(max-width:1100px){ .layout{grid-template-columns:1fr;} }
+
+  .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:22px;margin-bottom:20px;}
+  .card h2{font-family:var(--font-display);font-weight:600;font-size:1.05rem;margin:0 0 4px;color:var(--paper);}
+  .card .desc{font-size:.78rem;color:var(--muted);margin:0 0 16px;line-height:1.5;}
+
+  .drop{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;
+    border:2px dashed var(--line-strong);border-radius:12px;padding:26px 16px;cursor:pointer;
+    background:var(--panel-2);transition:border-color .15s,background .15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--red);}
+  .drop b{font-size:.92rem;}
+  .drop span{font-size:.76rem;color:var(--muted);}
+  .drop svg{width:28px;height:28px;color:var(--red-bright);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .arquivo-ok{margin-top:10px;font-size:.8rem;color:var(--ok);display:none;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  .grid3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:0 16px;}
+  @media(max-width:640px){ .grid,.grid3{grid-template-columns:1fr;} }
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
+  .field .hint{font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .field input,.field select{
+    width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);
+    background:var(--panel-2);color:var(--paper);font-size:.9rem;outline:none;
+  }
+  .field input:focus,.field select:focus{border-color:var(--red);}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;border:none;background:var(--red);
+    color:#fff;font-weight:600;font-size:.86rem;letter-spacing:.02em;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.secondary:hover{background:var(--panel-2);}
+  .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+  .msg-err{color:var(--err);font-size:.82rem;margin-top:12px;display:none;line-height:1.5;}
+
+  .table-wrap{max-height:430px;overflow:auto;border:1px solid var(--line-strong);border-radius:10px;}
+  table.lista{width:100%;border-collapse:collapse;font-size:.78rem;}
+  table.lista thead th{
+    position:sticky;top:0;background:var(--panel-3);color:var(--silver);text-align:left;
+    padding:9px 10px;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;
+    border-bottom:1px solid var(--line-strong);
+  }
+  table.lista td{padding:8px 10px;border-bottom:1px solid var(--line);color:var(--paper);white-space:nowrap;}
+  table.lista td.r,table.lista th.r{text-align:right;}
+  table.lista tr.fora td{color:var(--muted);}
+  table.lista input[type=checkbox]{width:16px;height:16px;accent-color:var(--red);cursor:pointer;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700;background:var(--panel-3);color:var(--silver);}
+  .tag.venc{background:rgba(184,54,46,.18);color:var(--red-bright);}
+  .tag.hoje{background:rgba(76,175,125,.16);color:var(--ok);}
+  .tag.paga{background:transparent;border:1px solid var(--line-strong);}
+
+  .resumo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .stat{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:12px 14px;}
+  .stat .k{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+  .stat .v{font-family:var(--font-display);font-size:1.1rem;color:var(--paper);font-weight:600;}
+  .stat.hi{background:linear-gradient(160deg,var(--red-deep),var(--red-bright));border-color:var(--red-bright);}
+  .stat.hi .k{color:#ffd9d5;}
+  .stat.hi .v{color:#fff;}
+
+  @media(min-width:1101px){ .preview-col{position:sticky;top:84px;} }
+  .preview-box{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:12px;}
+  .preview-scale{width:100%;overflow:hidden;border-radius:4px;box-shadow:0 6px 24px rgba(0,0,0,.35);background:#fff;}
+  .preview-scale iframe{width:794px;height:1123px;border:0;display:block;transform-origin:0 0;background:#fff;}
+  .preview-vazio{display:flex;align-items:center;justify-content:center;text-align:center;min-height:300px;color:var(--muted);font-size:.82rem;line-height:1.6;padding:20px;}
+  .aviso-pag{font-size:.72rem;color:var(--muted);margin-top:8px;line-height:1.45;}
+  .oculto{display:none !important;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Relatório de Cobranças</h1>
+  <p class="sub">Gere o relatório de débitos em aberto do cliente a partir da planilha de cobranças exportada do Asaas.</p>
+</header>
+
+<main>
+  <div class="layout">
+    <div>
+      <section class="card">
+        <h2>1. Planilha do Asaas</h2>
+        <p class="desc">No Asaas, abra <b>Cobranças</b>, filtre o cliente (ou a situação "Vencida") e use <b>Exportar → Excel</b>.
+        O arquivo é lido só neste navegador; nada é enviado nem gravado no Portal.</p>
+        <label class="drop" id="drop">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+          <b>Clique para escolher ou arraste a planilha aqui</b>
+          <span>Arquivo "Cobrancas.xlsx" (também aceita .xls e .csv)</span>
+          <input type="file" id="arquivo" accept=".xlsx,.xls,.csv" hidden>
+        </label>
+        <div class="arquivo-ok" id="arquivo-ok"></div>
+        <div class="msg-err" id="msg-err"></div>
+      </section>
+
+      <section class="card oculto" id="card-cliente">
+        <h2>2. Cliente e boletos</h2>
+        <p class="desc">Já vêm marcados os boletos não pagos vencidos até a data de referência. Desmarque o que não deve entrar
+        ou marque parcelas a vencer para incluí-las sem encargos.</p>
+        <div class="field" id="campo-cliente">
+          <label for="cliente">Cliente</label>
+          <select id="cliente"></select>
+        </div>
+        <div class="table-wrap">
+          <table class="lista">
+            <thead><tr><th></th><th>Parcela</th><th>Vencimento</th><th>Situação</th><th class="r">Valor</th><th class="r">Atraso</th></tr></thead>
+            <tbody id="lista-boletos"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card oculto" id="card-dados">
+        <h2>3. Encargos e dados do relatório</h2>
+        <p class="desc">Mesma conta do Asaas para boletos vencidos: multa sobre o valor original e juros ao mês contados por dia
+        (taxa mensal ÷ 30), com os centavos truncados. Com os percentuais configurados no Asaas, o valor bate com o boleto atualizado.</p>
+        <div class="grid3">
+          <div class="field">
+            <label for="ref">Data de referência</label>
+            <input type="date" id="ref">
+            <div class="hint">Vencimento dos boletos atualizados</div>
+          </div>
+          <div class="field">
+            <label for="multa">Multa (%)</label>
+            <input type="number" id="multa" min="0" step="0.01" value="10">
+          </div>
+          <div class="field">
+            <label for="juros">Juros ao mês (%)</label>
+            <input type="number" id="juros" min="0" step="0.01" value="3">
+          </div>
+        </div>
+        <div class="grid">
+          <div class="field">
+            <label for="nome-relatorio">Nome do cliente no relatório</label>
+            <input type="text" id="nome-relatorio">
+          </div>
+          <div class="field">
+            <label for="cidade">Cidade do cliente</label>
+            <input type="text" id="cidade" value="Uberlândia/MG">
+          </div>
+          <div class="field">
+            <label for="ref-titulo">Referência</label>
+            <input type="text" id="ref-titulo" value="Honorários advocatícios mensais">
+          </div>
+          <div class="field">
+            <label for="ref-sub">Detalhe da referência</label>
+            <input type="text" id="ref-sub" value="Contrato de prestação de serviços advocatícios">
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview-col">
+      <section class="card" style="margin-bottom:0">
+        <h2>Relatório</h2>
+        <p class="desc" style="margin-bottom:12px">Prévia da página A4 que será impressa ou salva em PDF.</p>
+        <div class="resumo oculto" id="resumo">
+          <div class="stat"><div class="k">Boletos</div><div class="v" id="res-qtd">—</div></div>
+          <div class="stat hi"><div class="k">Total atualizado</div><div class="v" id="res-total">—</div></div>
+        </div>
+        <div class="preview-box">
+          <div class="preview-vazio" id="preview-vazio">Escolha a planilha do Asaas para montar o relatório.</div>
+          <div class="preview-scale oculto" id="preview-scale"><iframe id="preview" title="Prévia do relatório"></iframe></div>
+        </div>
+        <div class="aviso-pag oculto" id="aviso-pag"></div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn" id="btn-imprimir" disabled>
+            <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimir / salvar PDF
+          </button>
+          <button class="btn secondary" id="btn-abrir" disabled>
+            <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+            Abrir em nova aba
+          </button>
+        </div>
+        <p class="aviso-pag">Para o PDF: em "Destino" escolha <b>Salvar como PDF</b>. As cores já saem certas; se a impressora
+        pedir, deixe as margens em "Nenhuma".</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var LOGO_URL = new URL('../../assets/logo-light.png', location.href).href;
+  var PREF_KEY = 'fb-cobrancas-prefs';
+
+  var cobrancas = [];      // todas as linhas da planilha
+  var marcados = {};       // chave da cobrança -> true/false (escolha manual)
+  var clienteAtual = '';
+  var htmlAtual = '';
+  var tituloAtual = '';
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ---------- utilidades ----------
+  function semAcento(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+
+  // datas como número de dias UTC, para a diferença não sofrer com horário de verão
+  function diaUTC(y, m, d){ return Date.UTC(y, m - 1, d) / 86400000; }
+  function partesDia(n){ var d = new Date(n * 86400000); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() }; }
+  function fmtData(n){ var p = partesDia(n); return pad(p.d) + '/' + pad(p.m) + '/' + p.y; }
+  function fmtDataLonga(n){ var p = partesDia(n); return p.d + ' de ' + MESES[p.m - 1] + ' de ' + p.y; }
+  function fmtCompetencia(n){ var p = partesDia(n); var m = MESES[p.m - 1].slice(0, 3); return m.charAt(0).toUpperCase() + m.slice(1) + '/' + p.y; }
+  function hojeDia(){ var d = new Date(); return diaUTC(d.getFullYear(), d.getMonth() + 1, d.getDate()); }
+
+  function lerData(v){
+    if (v == null || v === '') return null;
+    if (v instanceof Date && !isNaN(v)){
+      // o leitor às vezes entrega a data segundos antes da meia-noite; meio-dia evita cair no dia anterior
+      var t = new Date(v.getTime() + 12 * 3600000);
+      return diaUTC(t.getFullYear(), t.getMonth() + 1, t.getDate());
+    }
+    if (typeof v === 'number' && window.XLSX){
+      var c = XLSX.SSF.parse_date_code(v);
+      return c ? diaUTC(c.y, c.m, c.d) : null;
+    }
+    var m = String(v).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return diaUTC(+m[3], +m[2], +m[1]);
+    m = String(v).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return diaUTC(+m[1], +m[2], +m[3]);
+    return null;
+  }
+
+  function lerCentavos(v){
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return Math.round(v * 100);
+    var s = String(v).replace(/[R$\s ]/g, '');
+    if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    var n = parseFloat(s);
+    return isNaN(n) ? null : Math.round(n * 100);
+  }
+
+  function brl(c){
+    var neg = c < 0; c = Math.abs(c);
+    var reais = Math.floor(c / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (neg ? '-' : '') + 'R$ ' + reais + ',' + pad(c % 100);
+  }
+
+  function fmtDoc(d){
+    d = String(d || '').replace(/\D/g, '');
+    if (d.length === 14) return { rot: 'CNPJ', txt: d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') };
+    if (d.length === 11) return { rot: 'CPF', txt: d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') };
+    return d ? { rot: 'Doc.', txt: d } : null;
+  }
+
+  function idTexto(v){
+    if (typeof v === 'number') return String(Math.round(v));
+    return String(v || '').replace(/\.0+$/, '').trim();
+  }
+
+  // Situações do Asaas que significam cobrança já paga ou encerrada
+  function situacaoPaga(s){
+    return /receb|confirm|estorn|cancel|reembols|dinheiro|exclu|removid|\bpag[ao]s?\b|quitad/.test(semAcento(s));
+  }
+
+  // ---------- leitura da planilha ----------
+  var COLUNAS = {
+    nome: ['nome'],
+    doc: ['cpf ou cnpj', 'cpf/cnpj', 'cpfcnpj'],
+    venc: ['vencimento'],
+    vencOrig: ['vencimento original'],
+    valor: ['valor'],
+    valorOrig: ['valor original'],
+    situacao: ['situacao', 'status'],
+    ident: ['identificador', 'numero da fatura'],
+    tipo: ['tipo de cobranca']
+  };
+
+  function processarPlanilha(buf, nomeArquivo){
+    var wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var linhas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+
+    var iCab = -1, idx = {};
+    for (var i = 0; i < Math.min(linhas.length, 15); i++){
+      var cab = linhas[i].map(semAcento);
+      if (cab.indexOf('nome') !== -1 && cab.indexOf('vencimento') !== -1 && cab.indexOf('valor') !== -1){
+        iCab = i;
+        Object.keys(COLUNAS).forEach(function(k){
+          idx[k] = -1;
+          COLUNAS[k].some(function(nomeCol){ var p = cab.indexOf(nomeCol); if (p !== -1){ idx[k] = p; return true; } return false; });
+        });
+        break;
+      }
+    }
+    if (iCab === -1) throw new Error('Não encontrei as colunas Nome, Vencimento e Valor. Confira se é a planilha de cobranças exportada do Asaas.');
+
+    var lista = [];
+    for (var r = iCab + 1; r < linhas.length; r++){
+      var L = linhas[r];
+      var pega = function(k){ return idx[k] >= 0 ? L[idx[k]] : ''; };
+      var nome = String(pega('nome') || '').trim();
+      var venc = lerData(pega('vencOrig')) || lerData(pega('venc'));
+      var valor = lerCentavos(pega('valorOrig'));
+      if (!valor) valor = lerCentavos(pega('valor'));
+      if (!nome || venc == null || !valor) continue;
+      var doc = String(pega('doc') || '').replace(/\D/g, '');
+      lista.push({
+        chave: r + ':' + idTexto(pega('ident')),
+        cliente: doc || semAcento(nome),
+        nome: nome,
+        doc: doc,
+        venc: venc,
+        valor: valor,
+        situacao: String(pega('situacao') || '').trim(),
+        ident: idTexto(pega('ident')),
+        tipo: String(pega('tipo') || '').trim()
+      });
+    }
+    if (!lista.length) throw new Error('A planilha não tem cobranças com nome, vencimento e valor preenchidos.');
+    lista.sort(function(a, b){ return a.venc - b.venc; });
+
+    cobrancas = lista;
+    marcados = {};
+    $('arquivo-ok').textContent = '✓ ' + nomeArquivo + ' — ' + lista.length + (lista.length === 1 ? ' cobrança lida' : ' cobranças lidas');
+    $('arquivo-ok').style.display = 'block';
+    montarClientes();
+  }
+
+  function montarClientes(){
+    var grupos = {};
+    cobrancas.forEach(function(c){
+      var g = grupos[c.cliente] || (grupos[c.cliente] = { id: c.cliente, nome: c.nome, qtd: 0 });
+      if (!situacaoPaga(c.situacao)) g.qtd++;
+    });
+    var ids = Object.keys(grupos).sort(function(a, b){ return grupos[a].nome.localeCompare(grupos[b].nome, 'pt-BR'); });
+    $('cliente').innerHTML = ids.map(function(id){
+      var g = grupos[id];
+      return '<option value="' + esc(id) + '">' + esc(g.nome) + ' (' + g.qtd + ' em aberto)</option>';
+    }).join('');
+    $('campo-cliente').classList.toggle('oculto', ids.length < 2);
+    clienteAtual = ids[0];
+    $('cliente').value = clienteAtual;
+    trocouCliente();
+    $('card-cliente').classList.remove('oculto');
+    $('card-dados').classList.remove('oculto');
+  }
+
+  function trocouCliente(){
+    clienteAtual = $('cliente').value;
+    var c = cobrancas.filter(function(x){ return x.cliente === clienteAtual; })[0];
+    $('nome-relatorio').value = c ? c.nome : '';
+    atualizar();
+  }
+
+  // ---------- cálculo (mesma regra do Asaas) ----------
+  function lerPercentual(id){
+    var v = parseFloat(String($(id).value).replace(',', '.'));
+    return isNaN(v) || v < 0 ? 0 : v;
+  }
+
+  function calcular(){
+    var ref = $('ref').value ? lerData($('ref').value) : hojeDia();
+    // percentuais em centésimos de ponto (10% -> 1000), para fazer a conta só com inteiros
+    var multaBp = Math.round(lerPercentual('multa') * 100);
+    var jurosBp = Math.round(lerPercentual('juros') * 100);
+
+    var doCliente = cobrancas.filter(function(x){ return x.cliente === clienteAtual; });
+    var linhas = doCliente.map(function(c){
+      var dias = ref - c.venc;
+      var paga = situacaoPaga(c.situacao);
+      var padrao = !paga && dias >= 0;
+      var incluido = marcados.hasOwnProperty(c.chave) ? marcados[c.chave] : padrao;
+      var multa = 0, juros = 0;
+      if (dias > 0){
+        multa = Math.floor(c.valor * multaBp / 10000);
+        juros = Math.floor(c.valor * jurosBp * dias / 300000);
+      }
+      return { c: c, dias: dias, paga: paga, incluido: incluido, multa: multa, juros: juros, total: c.valor + multa + juros };
+    });
+    return { ref: ref, linhas: linhas };
+  }
+
+  function desenharLista(calc){
+    $('lista-boletos').innerHTML = calc.linhas.map(function(l){
+      var tag;
+      if (l.paga) tag = '<span class="tag paga">' + esc(l.c.situacao || 'Paga') + '</span>';
+      else if (l.dias > 0) tag = '<span class="tag venc">' + esc(l.c.situacao || 'Vencida') + '</span>';
+      else if (l.dias === 0) tag = '<span class="tag hoje">Vence hoje</span>';
+      else tag = '<span class="tag">' + esc(l.c.situacao || 'A vencer') + '</span>';
+      var atraso = l.dias > 0 ? l.dias + ' dias' : (l.dias === 0 ? 'hoje' : '—');
+      return '<tr class="' + (l.incluido ? '' : 'fora') + '">' +
+        '<td><input type="checkbox" data-chave="' + esc(l.c.chave) + '"' + (l.incluido ? ' checked' : '') + '></td>' +
+        '<td>' + fmtCompetencia(l.c.venc) + (l.c.ident ? ' <span style="color:var(--muted)">· ' + esc(l.c.ident) + '</span>' : '') + '</td>' +
+        '<td>' + fmtData(l.c.venc) + '</td>' +
+        '<td>' + tag + '</td>' +
+        '<td class="r">' + brl(l.c.valor) + '</td>' +
+        '<td class="r">' + atraso + '</td></tr>';
+    }).join('');
+  }
+
+  // ---------- relatório (mesmo layout do PDF aprovado) ----------
+  var CSS_RELATORIO = [
+    '@page { size: A4; margin: 0; }',
+    ':root { --vinho: #8E1B22; --vinho-esc: #5E1015; --vinho-cl: #FBEDEE; --azul: #1F5FAD; --azul-cl: #EAF2FC;',
+    '  --ambar: #C98200; --ambar-cl: #FFF5DD; --verde: #1E8E5A; --verde-cl: #E5F5EC; --laranja: #D9480F;',
+    '  --txt: #26272B; --muted: #6B6F76; --linha: #E4E6EA; --fundo: #F6F7F9; }',
+    '* { box-sizing: border-box; margin: 0; padding: 0; }',
+    'html, body { background: #fff; }',
+    'body { font: 9.4pt/1.4 "Segoe UI", Arial, sans-serif; color: var(--txt); -webkit-print-color-adjust: exact; print-color-adjust: exact; }',
+    '.page { width: 210mm; height: 297mm; position: relative; overflow: hidden; padding: 0 14mm; }',
+    'svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }',
+    '.faixa { position: absolute; left: 0; right: 0; top: 0; height: 5mm; background: linear-gradient(90deg, var(--vinho-esc), var(--vinho) 45%, #B8323A 70%, #C9A227); }',
+    'header { display: flex; align-items: center; justify-content: space-between; padding-top: 9mm; }',
+    'header img { height: 14.5mm; }',
+    '.titulo { text-align: right; }',
+    '.titulo h1 { font: 700 15.5pt/1.1 "Century Gothic", "Segoe UI", sans-serif; color: var(--vinho); letter-spacing: .4px; text-transform: uppercase; }',
+    '.titulo p { margin-top: 1.6mm; color: var(--muted); font-size: 8.8pt; display: flex; gap: 1.5mm; align-items: center; justify-content: flex-end; }',
+    '.titulo p svg { color: var(--vinho); }',
+    'hr { border: 0; height: 1px; background: var(--linha); margin: 4.5mm 0 4mm; }',
+    '.cliente { display: grid; grid-template-columns: 1.35fr 1fr; gap: 4mm; }',
+    '.bloco { display: flex; gap: 3mm; align-items: flex-start; }',
+    '.ic { width: 9mm; height: 9mm; border-radius: 50%; display: grid; place-items: center; font-size: 12pt; flex: none; }',
+    '.bloco .lab { font-size: 7.4pt; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }',
+    '.bloco .val { font-weight: 700; font-size: 10.2pt; }',
+    '.bloco .sub { color: var(--muted); font-size: 8.4pt; }',
+    '.intro { margin: 4mm 0 4mm; font-size: 9.3pt; color: #3A3C41; }',
+    '.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm; }',
+    '.kpi { border-radius: 3mm; padding: 3.2mm 3.4mm; background: var(--fundo); border: 1px solid var(--linha); }',
+    '.kpi .top { display: flex; align-items: center; gap: 2mm; font-size: 7.6pt; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }',
+    '.kpi .top .ic { width: 7mm; height: 7mm; font-size: 10pt; }',
+    '.kpi .v { margin-top: 2mm; font: 700 13.2pt/1.1 "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }',
+    '.kpi .s { margin-top: 1mm; font-size: 7.8pt; color: var(--muted); }',
+    '.k1 .ic { background: var(--azul-cl); color: var(--azul); } .k1 .v { color: var(--azul); }',
+    '.k4 { background: linear-gradient(135deg, var(--vinho-esc), var(--vinho)); border-color: var(--vinho); color: #fff; }',
+    '.k4 .top, .k4 .s { color: rgba(255,255,255,.82); }',
+    '.k4 .ic { background: rgba(255,255,255,.16); color: #fff; }',
+    '.k4 .v { font-size: 14.2pt; }',
+    'h2 { display: flex; align-items: center; gap: 2mm; margin: 5mm 0 2.3mm; font: 700 10.6pt "Century Gothic", "Segoe UI", sans-serif; color: var(--vinho); text-transform: uppercase; letter-spacing: .5px; }',
+    'h2 .leg { margin-left: auto; display: flex; gap: 3.2mm; font: 600 7.4pt "Segoe UI", sans-serif; color: var(--muted); text-transform: none; letter-spacing: 0; }',
+    'h2 .leg span { display: flex; align-items: center; gap: 1.2mm; }',
+    'h2 .leg i { width: 2.6mm; height: 2.6mm; border-radius: 50%; display: inline-block; }',
+    'table { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }',
+    'thead th { background: var(--vinho); color: #fff; font-size: 7.4pt; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 2.2mm 2mm; text-align: left; }',
+    'thead th:first-child { border-radius: 2mm 0 0 0; } thead th:last-child { border-radius: 0 2mm 0 0; }',
+    'thead th.r { text-align: right; } thead th.c { text-align: center; }',
+    'tbody td { padding: 1.05mm 2mm; border-bottom: 1px solid var(--linha); font-size: 8.9pt; vertical-align: middle; }',
+    'tbody tr:nth-child(even) td { background: #FAFAFB; }',
+    'td small { display: block; color: var(--muted); font-size: 6.9pt; line-height: 1.15; white-space: nowrap; }',
+    'td.n { color: var(--muted); font-weight: 600; width: 7mm; }',
+    'td.r { text-align: right; white-space: nowrap; } td.c { text-align: center; }',
+    'td.mul { color: var(--laranja); } td.jur { color: var(--ambar); }',
+    'td.tot { font-weight: 700; color: var(--vinho-esc); }',
+    'td.muted { color: #B3B6BC; }',
+    '.dias { display: flex; align-items: center; gap: 1.6mm; }',
+    '.dias .bar { width: 17mm; height: 2.2mm; border-radius: 2mm; background: #EEEFF2; overflow: hidden; }',
+    '.dias .bar i { display: block; height: 100%; border-radius: 2mm; }',
+    '.dias b { min-width: 6.5mm; text-align: right; }',
+    '.dias small { display: inline; }',
+    '.f4 .bar i { background: var(--vinho); } .f4 b { color: var(--vinho); }',
+    '.f3 .bar i { background: var(--laranja); } .f3 b { color: var(--laranja); }',
+    '.f2 .bar i { background: #E8A317; } .f2 b { color: var(--ambar); }',
+    '.f1 .bar i { background: #2E9C6A; } .f1 b { color: var(--verde); }',
+    '.pill { display: inline-flex; align-items: center; gap: 1.2mm; background: var(--verde-cl); color: var(--verde); font-weight: 700; font-size: 7.8pt; padding: .8mm 2.4mm; border-radius: 5mm; }',
+    '.pill.azul { background: var(--azul-cl); color: var(--azul); }',
+    'tr.hoje td { background: #F3FAF6 !important; }',
+    'tfoot td { padding: 2.4mm 2mm; font-weight: 700; font-size: 9pt; background: var(--vinho-cl); }',
+    'tfoot td:first-child { border-radius: 0 0 0 2mm; } tfoot td:last-child { border-radius: 0 0 2mm 0; }',
+    'tfoot .tot { color: #fff; background: var(--vinho); font-size: 10.4pt; }',
+    '.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 4.5mm; }',
+    '.card { border-radius: 3mm; padding: 3.4mm 3.8mm; }',
+    '.card h3 { display: flex; align-items: center; gap: 2mm; font: 700 9.2pt "Century Gothic", "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2.2mm; }',
+    '.card h3 svg { font-size: 11.5pt; }',
+    '.pagar { background: var(--azul-cl); } .pagar h3 { color: var(--azul); }',
+    '.obs { background: var(--ambar-cl); } .obs h3 { color: #9A6300; }',
+    '.passo { display: flex; gap: 2.4mm; align-items: center; margin-top: 1.5mm; font-size: 8.5pt; }',
+    '.passo .ic { width: 6.4mm; height: 6.4mm; font-size: 9pt; background: #fff; color: var(--azul); }',
+    '.obs li { list-style: none; display: flex; gap: 2mm; margin-top: 2.3mm; font-size: 8.5pt; }',
+    '.obs li svg { color: #B07400; margin-top: .6mm; }',
+    '.assin { margin-top: 4mm; display: flex; justify-content: space-between; align-items: flex-end; font-size: 8.6pt; color: var(--muted); }',
+    '.assin b { color: var(--txt); font-size: 9.4pt; }',
+    'footer { position: absolute; left: 0; right: 0; bottom: 0; background: var(--vinho-esc); color: #fff; padding: 3.4mm 14mm 3.6mm; }',
+    'footer .linha1 { font-size: 7.6pt; opacity: .85; margin-bottom: 1.4mm; }',
+    'footer .contatos { display: flex; justify-content: space-between; font-size: 7.8pt; white-space: nowrap; }',
+    'footer .contatos span { display: flex; align-items: center; gap: 1.5mm; }',
+    'footer svg { color: #E7B8BC; }',
+    /* com muitos boletos a tabela vai apertando para caber em uma página; se nem assim couber, vira 2 páginas */
+    'body.compacto tbody td { padding: .45mm 2mm; font-size: 8.5pt; }',
+    'body.compacto td small { font-size: 6.5pt; }',
+    'body.compacto .intro { margin: 3mm 0; }',
+    'body.compacto h2 { margin: 3.8mm 0 2mm; }',
+    'body.compacto .cols { margin-top: 3.5mm; }',
+    'body.compacto .assin { margin-top: 3mm; }',
+    'body.compacto2 tbody td { padding: .15mm 2mm; font-size: 7.9pt; line-height: 1.25; }',
+    'body.compacto2 td small { font-size: 6pt; line-height: 1.05; }',
+    'body.compacto2 .dias .bar { height: 1.8mm; }',
+    'body.compacto2 .pill { padding: .3mm 2mm; font-size: 7pt; }',
+    'body.compacto2 .kpi { padding: 2.4mm 3.2mm; }',
+    'body.compacto2 .card { padding: 2.6mm 3.4mm; }',
+    'body.multipagina .page { height: auto; min-height: 297mm; overflow: visible; padding-bottom: 26mm; }',
+    'body.multipagina tr, body.multipagina .cols, body.multipagina .assin { break-inside: avoid; }',
+    'body.multipagina tfoot { display: table-row-group; }'
+  ].join('\n');
+
+  var ICONES = [
+    '<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>',
+    '<symbol id="i-build" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>',
+    '<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>',
+    '<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/></symbol>',
+    '<symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></symbol>',
+    '<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>',
+    '<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>',
+    '<symbol id="i-check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></symbol>',
+    '<symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></symbol>',
+    '<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/></symbol>',
+    '<symbol id="i-bar" viewBox="0 0 24 24"><path d="M3 5v14M7 5v14M10 5v14M14 5v14M17 5v14M21 5v14"/></symbol>',
+    '<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>',
+    '<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>',
+    '<symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>',
+    '<symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>',
+    '<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>',
+    '<symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>'
+  ].join('');
+
+  function ico(id){ return '<svg><use href="#' + id + '"/></svg>'; }
+  function plural(n, um, varios){ return n + ' ' + (n === 1 ? um : varios); }
+  function faixa(d){ return d >= 180 ? 'f4' : d >= 90 ? 'f3' : d >= 30 ? 'f2' : 'f1'; }
+
+  function montarRelatorio(calc, itens){
+    var ref = calc.ref;
+    var refTxt = fmtData(ref);
+    var c0 = itens[0].c;
+    var doc = fmtDoc(c0.doc);
+    var cidade = $('cidade').value.trim();
+    var subCliente = [doc ? doc.rot + ' ' + doc.txt : '', cidade].filter(Boolean).join(' · ');
+    var nomeCliente = $('nome-relatorio').value.trim() || c0.nome;
+    var refTitulo = $('ref-titulo').value.trim() || 'Honorários advocatícios';
+    var refSub = $('ref-sub').value.trim();
+
+    var vencidas = itens.filter(function(l){ return l.dias > 0; });
+    var hoje = itens.filter(function(l){ return l.dias === 0; });
+    var aVencer = itens.filter(function(l){ return l.dias < 0; });
+    var maxDias = vencidas.reduce(function(m, l){ return Math.max(m, l.dias); }, 0);
+    var tot = itens.reduce(function(a, l){ a.valor += l.c.valor; a.multa += l.multa; a.juros += l.juros; a.total += l.total; return a; },
+      { valor: 0, multa: 0, juros: 0, total: 0 });
+
+    var partes = [];
+    if (vencidas.length) partes.push(plural(vencidas.length, 'vencida', 'vencidas'));
+    if (hoje.length) partes.push(hoje.length + ' vence' + (hoje.length === 1 ? '' : 'm') + ' hoje');
+    if (aVencer.length) partes.push(aVencer.length + ' a vencer');
+
+    var linhas = itens.map(function(l, i){
+      var diasCel, extra = '';
+      if (l.dias > 0){
+        var pct = Math.max(6, Math.round(l.dias / maxDias * 100));
+        diasCel = '<div class="dias ' + faixa(l.dias) + '"><span class="bar"><i style="width:' + pct + '%"></i></span><b>' + l.dias + '</b><small>dias</small></div>';
+      } else if (l.dias === 0){
+        diasCel = '<span class="pill">' + ico('i-check') + 'Vence hoje</span>';
+        extra = ' class="hoje"';
+      } else {
+        diasCel = '<span class="pill azul">' + ico('i-clock') + 'Vence em ' + fmtData(l.c.venc).slice(0, 5) + '</span>';
+      }
+      var semEncargo = l.dias <= 0;
+      return '<tr' + extra + '>' +
+        '<td class="n">' + pad(i + 1) + '</td>' +
+        '<td><b>' + fmtCompetencia(l.c.venc) + '</b>' + (l.c.ident ? '<small>Doc. ' + esc(l.c.ident) + '</small>' : '') + '</td>' +
+        '<td class="c">' + fmtData(l.c.venc) + '</td>' +
+        '<td>' + diasCel + '</td>' +
+        '<td class="r">' + brl(l.c.valor) + '</td>' +
+        (semEncargo ? '<td class="r muted">—</td><td class="r muted">—</td>'
+                    : '<td class="r mul">' + brl(l.multa) + '</td><td class="r jur">' + brl(l.juros) + '</td>') +
+        '<td class="r tot">' + brl(l.total) + '</td></tr>';
+    }).join('');
+
+    var titulo = 'Relatorio_Debitos_' + nomeCliente.split(/[\s\-–]+/)[0].replace(/[^\w]/g, '') + '_' + refTxt.replace(/\//g, '-');
+
+    return { titulo: titulo, total: tot.total, qtd: itens.length, html: '<!doctype html>\n<html lang="pt-BR">\n<head>\n<meta charset="utf-8">\n<title>' + esc(titulo) + '</title>\n<style>\n' + CSS_RELATORIO + '\n</style>\n</head>\n<body>\n' +
+      '<svg width="0" height="0" style="position:absolute">' + ICONES + '</svg>\n' +
+      '<div class="page">\n<div class="faixa"></div>\n' +
+      '<header>\n<img src="' + esc(LOGO_URL) + '" alt="Fonseca e Braga — Sociedade de Advogados">\n' +
+      '<div class="titulo"><h1>Relatório de Débitos<br>em Aberto</h1><p>' + ico('i-cal') + 'Posição em ' + fmtDataLonga(ref) + '</p></div>\n</header>\n<hr>\n' +
+      '<section class="cliente">\n' +
+      '<div class="bloco"><div class="ic" style="background:var(--vinho-cl);color:var(--vinho)">' + ico('i-build') + '</div><div>' +
+      '<div class="lab">Cliente</div><div class="val">' + esc(nomeCliente) + '</div><div class="sub">' + esc(subCliente) + '</div></div></div>\n' +
+      '<div class="bloco"><div class="ic" style="background:var(--azul-cl);color:var(--azul)">' + ico('i-file') + '</div><div>' +
+      '<div class="lab">Referência</div><div class="val">' + esc(refTitulo) + '</div><div class="sub">' + esc(refSub) + '</div></div></div>\n' +
+      '</section>\n' +
+      '<p class="intro">Prezados, apresentamos a posição atualizada dos ' + esc(refTitulo.charAt(0).toLowerCase() + refTitulo.slice(1)) +
+      ' em aberto. Os valores atualizados abaixo correspondem aos boletos reemitidos com vencimento em <b>' + refTxt + '</b>, que seguem anexos a este relatório.</p>\n' +
+      '<section class="kpis">\n' +
+      '<div class="kpi k1"><div class="top"><span class="ic">' + ico('i-receipt') + '</span>Parcelas</div><div class="v">' + plural(itens.length, 'boleto', 'boletos') + '</div><div class="s">' + partes.join(' + ') + '</div></div>\n' +
+      '<div class="kpi k4"><div class="top"><span class="ic">' + ico('i-alert') + '</span>Total atualizado</div><div class="v">' + brl(tot.total) + '</div><div class="s">para pagar em ' + refTxt + '</div></div>\n' +
+      '</section>\n' +
+      '<h2>' + ico('i-list') + 'Detalhamento dos boletos<span class="leg">' +
+      '<span><i style="background:var(--vinho)"></i>180+ dias</span><span><i style="background:var(--laranja)"></i>90 a 179</span>' +
+      '<span><i style="background:#E8A317"></i>30 a 89</span><span><i style="background:#2E9C6A"></i>vence hoje</span></span></h2>\n' +
+      '<table>\n<thead><tr><th>#</th><th>Parcela</th><th class="c">Vencimento original</th><th>Dias em atraso</th>' +
+      '<th class="r">Valor original</th><th class="r">Multa</th><th class="r">Juros</th><th class="r">Valor atualizado</th></tr></thead>\n' +
+      '<tbody>' + linhas + '</tbody>\n' +
+      '<tfoot><tr><td colspan="4">Total em aberto' + (maxDias ? ' · maior atraso: ' + maxDias + ' dias' : '') + '</td>' +
+      '<td class="r">' + brl(tot.valor) + '</td><td class="r">' + brl(tot.multa) + '</td><td class="r">' + brl(tot.juros) + '</td>' +
+      '<td class="r tot">' + brl(tot.total) + '</td></tr></tfoot>\n</table>\n' +
+      '<section class="cols">\n' +
+      '<div class="card pagar"><h3>' + ico('i-card') + 'Como regularizar</h3>' +
+      '<div class="passo"><span class="ic">' + ico('i-qr') + '</span><div><b>Pix:</b> QR Code ou “copia e cola” de cada boleto.</div></div>' +
+      '<div class="passo"><span class="ic">' + ico('i-bar') + '</span><div><b>Boleto:</b> linha digitável em banco, app ou lotérica.</div></div>' +
+      '<div class="passo"><span class="ic">' + ico('i-send') + '</span><div><b>Comprovantes:</b> financeiro@fonsecaebraga.com.br</div></div></div>\n' +
+      '<div class="card obs"><h3>' + ico('i-info') + 'Observações</h3><ul>' +
+      '<li>' + ico('i-clock') + '<span>Valores válidos até <b>' + refTxt + '</b>; depois, incidem os acréscimos indicados em cada boleto.</span></li>' +
+      '<li>' + ico('i-alert') + '<span>Títulos não quitados estão sujeitos a protesto 30 dias após o vencimento.</span></li>' +
+      '<li>' + ico('i-phone') + '<span>Dúvidas: financeiro pelo (34) 3225-2737.</span></li></ul></div>\n' +
+      '</section>\n' +
+      '<div class="assin"><div>Uberlândia/MG, ' + fmtDataLonga(ref) + '.</div>' +
+      '<div style="text-align:right"><b>Fonseca e Braga Sociedade de Advogados</b><br>Departamento Financeiro</div></div>\n' +
+      '<footer><div class="linha1">Beneficiário: Jonathan Fonseca Sociedade Individual de Advocacia · CNPJ 57.704.224/0001-00</div>' +
+      '<div class="contatos"><span>' + ico('i-pin') + 'R. Sen. Salgado Filho, 426 · Tabajaras · Uberlândia/MG</span>' +
+      '<span>' + ico('i-phone') + '(34) 3225-2737</span><span>' + ico('i-mail') + 'financeiro@fonsecaebraga.com.br</span>' +
+      '<span>' + ico('i-globe') + 'fonsecaebraga.com.br</span></div></footer>\n' +
+      '</div>\n</body>\n</html>\n' };
+  }
+
+  // Ajusta a densidade da tabela até a assinatura caber acima do rodapé
+  function ajustarPagina(doc){
+    var corpo = doc.body;
+    var niveis = ['', 'compacto', 'compacto compacto2'];
+    for (var i = 0; i < niveis.length; i++){
+      corpo.className = niveis[i];
+      var limite = doc.querySelector('footer').getBoundingClientRect().top;
+      if (doc.querySelector('.assin').getBoundingClientRect().bottom <= limite - 6) return 1;
+    }
+    corpo.className = 'compacto multipagina';
+    return 2;
+  }
+
+  // ---------- prévia e impressão ----------
+  var preview = $('preview');
+  var geracao = 0;
+
+  function escalarPrevia(){
+    var largura = $('preview-scale').clientWidth;
+    if (!largura) return;
+    var k = largura / 794;
+    preview.style.transform = 'scale(' + k + ')';
+    var doc = preview.contentDocument;
+    var alturaPx = doc && doc.querySelector('.page') ? doc.querySelector('.page').getBoundingClientRect().height : 1123;
+    preview.style.height = Math.ceil(alturaPx) + 'px';
+    $('preview-scale').style.height = Math.ceil(alturaPx * k) + 'px';
+  }
+
+  function atualizar(){
+    if (!cobrancas.length) return;
+    var calc = calcular();
+    desenharLista(calc);
+    salvarPrefs();
+    var itens = calc.linhas.filter(function(l){ return l.incluido; });
+    var temItens = itens.length > 0;
+    $('btn-imprimir').disabled = !temItens;
+    $('btn-abrir').disabled = !temItens;
+    $('resumo').classList.toggle('oculto', !temItens);
+    $('preview-scale').classList.toggle('oculto', !temItens);
+    $('preview-vazio').classList.toggle('oculto', temItens);
+    $('aviso-pag').classList.add('oculto');
+    if (!temItens){
+      $('preview-vazio').textContent = 'Nenhum boleto marcado. Marque ao menos um na lista ao lado.';
+      htmlAtual = '';
+      return;
+    }
+    var rel = montarRelatorio(calc, itens);
+    htmlAtual = rel.html;
+    tituloAtual = rel.titulo;
+    $('res-qtd').textContent = plural(rel.qtd, 'boleto', 'boletos');
+    $('res-total').textContent = brl(rel.total);
+
+    var minha = ++geracao;
+    preview.onload = function(){
+      if (minha !== geracao) return;
+      var doc = preview.contentDocument;
+      var pronto = doc.fonts && doc.fonts.ready ? doc.fonts.ready : Promise.resolve();
+      pronto.then(function(){
+        if (minha !== geracao) return;
+        var paginas = ajustarPagina(doc);
+        // o HTML guardado precisa levar a densidade escolhida, para "Abrir em nova aba" sair igual
+        htmlAtual = rel.html.replace('<body>', '<body class="' + doc.body.className + '">');
+        escalarPrevia();
+        if (paginas > 1){
+          $('aviso-pag').textContent = 'São muitos boletos para uma página só: o relatório vai sair em 2 páginas.';
+          $('aviso-pag').classList.remove('oculto');
+        }
+      });
+    };
+    preview.srcdoc = rel.html;
+  }
+
+  function imprimir(){
+    if (!htmlAtual) return;
+    var w = preview.contentWindow;
+    w.focus();
+    w.print();
+  }
+
+  function abrirNovaAba(){
+    if (!htmlAtual) return;
+    var url = URL.createObjectURL(new Blob([htmlAtual], { type: 'text/html' }));
+    window.open(url, '_blank');
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+  }
+
+  // ---------- preferências do usuário (só conveniência local) ----------
+  function salvarPrefs(){
+    try{
+      localStorage.setItem(PREF_KEY, JSON.stringify({ multa: $('multa').value, juros: $('juros').value, cidade: $('cidade').value }));
+    }catch(e){}
+  }
+  function carregarPrefs(){
+    try{
+      var p = JSON.parse(localStorage.getItem(PREF_KEY) || 'null');
+      if (p){
+        if (p.multa !== undefined && p.multa !== '') $('multa').value = p.multa;
+        if (p.juros !== undefined && p.juros !== '') $('juros').value = p.juros;
+        if (p.cidade !== undefined) $('cidade').value = p.cidade;
+      }
+    }catch(e){}
+  }
+
+  // ---------- eventos ----------
+  function mostrarErro(msg){
+    var el = $('msg-err');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function lerArquivo(f){
+    if (!f) return;
+    mostrarErro('');
+    if (!window.XLSX){ mostrarErro('Não consegui carregar o leitor de planilhas. Verifique a internet e recarregue a página.'); return; }
+    var leitor = new FileReader();
+    leitor.onload = function(){
+      try{ processarPlanilha(new Uint8Array(leitor.result), f.name); }
+      catch(e){ mostrarErro(e.message || 'Não consegui ler essa planilha.'); }
+    };
+    leitor.onerror = function(){ mostrarErro('Não consegui abrir o arquivo.'); };
+    leitor.readAsArrayBuffer(f);
+  }
+
+  $('arquivo').addEventListener('change', function(){ lerArquivo(this.files[0]); this.value = ''; });
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function(e){ lerArquivo(e.dataTransfer.files[0]); });
+
+  $('cliente').addEventListener('change', trocouCliente);
+  $('lista-boletos').addEventListener('change', function(e){
+    var cb = e.target;
+    if (!cb.dataset || !cb.dataset.chave) return;
+    marcados[cb.dataset.chave] = cb.checked;
+    atualizar();
+  });
+
+  var timer = null;
+  ['ref', 'multa', 'juros', 'nome-relatorio', 'cidade', 'ref-titulo', 'ref-sub'].forEach(function(id){
+    $(id).addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(atualizar, 250); });
+  });
+  $('btn-imprimir').addEventListener('click', imprimir);
+  $('btn-abrir').addEventListener('click', abrirNovaAba);
+  window.addEventListener('resize', escalarPrevia);
+
+  var h = new Date();
+  $('ref').value = h.getFullYear() + '-' + pad(h.getMonth() + 1) + '-' + pad(h.getDate());
+  carregarPrefs();
+})();
+</script>
+</body>
+</html>
