@@ -1758,7 +1758,17 @@
     return listas.some(function(g){ return g.id === id; });
   }
 
+  // atalhos usados pelo aviso de tarefas pendentes do portal
+  let preferirRecebidas = false;
+  window.__irParaRecebidas = function(){
+    preferirRecebidas = true;
+    setView('lista');
+    if (currentUser) render();
+  };
+  window.__irParaEnviadas = function(){ setView('enviadas'); };
+
   function render(){
+    if (preferirRecebidas && recebidas.length){ selectedListaId = LISTA_RECEBIDAS_ID; preferirRecebidas = false; }
     if (selectedListaId && !listaSelecaoValida(selectedListaId)){
       selectedListaId = recebidas.length ? LISTA_RECEBIDAS_ID : (listas.length ? listas[0].id : null);
     } else if (!selectedListaId && (recebidas.length || listas.length)){

@@ -921,6 +921,51 @@
   }
   #aviso-foto-fechar:hover{color:var(--paper);}
   .aviso-rodape-nota{margin-top:14px;font-size:.66rem;color:var(--muted);}
+  /* ---------- Aviso ao entrar: tarefas pendentes (Minhas Anotações) ---------- */
+  #ta-backdrop{z-index:60;}
+  #ta-backdrop .modal-box{width:min(520px,100%);max-height:88vh;overflow-y:auto;display:block;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.45);}
+  .ta-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
+  .ta-ic{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(201,70,60,.14);border:1px solid rgba(201,70,60,.35);color:var(--red-bright);position:relative;}
+  .ta-ic svg{width:22px;height:22px;}
+  .ta-ic .ta-n{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--red-bright);color:#fff;font-size:.68rem;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--panel);}
+  #ta-backdrop h3{margin:0 0 3px;font-size:1.15rem;line-height:1.3;}
+  #ta-backdrop .sub{margin:0;font-size:.8rem;line-height:1.45;}
+  #ta-backdrop .sub b{color:var(--paper);}
+  .ta-secao{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin:14px 0 8px;}
+  .ta-item{display:block;width:100%;text-align:left;border:1px solid var(--line-strong);border-radius:10px;padding:11px 12px;margin-bottom:8px;background:var(--panel-2);color:inherit;font:inherit;cursor:pointer;transition:border-color .15s;}
+  .ta-item:hover{border-color:var(--gold);}
+  .ta-item:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+  .ta-item-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .ta-status{font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+  .ta-status.pendente{color:var(--gold);}
+  .ta-status.devolvida{color:var(--danger-text);}
+  .ta-status.aprovar{color:#5aa9ff;}
+  :root[data-theme="light"] .ta-status.aprovar{color:#1d63c4;}
+  .ta-abrir{font-size:.72rem;color:var(--muted);white-space:nowrap;}
+  .ta-item:hover .ta-abrir{color:var(--paper);}
+  .ta-texto{font-size:.86rem;color:var(--paper);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .ta-meta{font-size:.72rem;color:var(--muted);margin-top:4px;}
+  .ta-meta .atraso{color:var(--danger-text);font-weight:600;}
+  .ta-motivo{margin-top:7px;font-size:.78rem;color:var(--paper);background:rgba(201,70,60,.08);border:1px solid rgba(201,70,60,.3);border-radius:6px;padding:6px 8px;}
+  .ta-motivo b{color:var(--danger-text);}
+  .ta-mais{font-size:.75rem;color:var(--muted);margin:2px 0 4px;}
+  .ta-passos{background:rgba(0,0,0,.14);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:12px;}
+  :root[data-theme="light"] .ta-passos{background:rgba(36,28,27,.03);}
+  .ta-passos-titulo{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin:2px 0 6px;}
+  .ta-passo{display:flex;align-items:flex-start;gap:10px;padding:6px 0;font-size:.8rem;color:var(--paper);line-height:1.45;}
+  .ta-passo + .ta-passo{border-top:1px dashed var(--line);}
+  .ta-passo-num{flex:none;width:18px;height:18px;margin-top:1px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:.64rem;font-weight:700;color:var(--gold);}
+  .ta-passo b{color:var(--gold);}
+  .ta-foot{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:16px;}
+  .ta-foot .btn{width:100%;}
+  .ta-depois{background:transparent;border:none;color:var(--muted);font-size:.76rem;text-decoration:underline;cursor:pointer;padding:4px;font-family:var(--font-body);}
+  .ta-depois:hover{color:var(--paper);}
+  .ta-nota{margin:8px 0 0;font-size:.66rem;color:var(--muted);text-align:center;}
+  @media (max-width:640px){
+    #ta-backdrop{padding:0;align-items:flex-end;}
+    #ta-backdrop .modal-box{border-radius:16px 16px 0 0;max-height:92vh;padding:18px 16px 14px;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     .aviso-selo-ring,.aviso-selo{animation:none;}
   }
@@ -1598,6 +1643,22 @@
       <button class="btn secondary" id="edit-dados-cancelar">Cancelar</button>
       <button class="btn" id="edit-dados-salvar">Salvar</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= AVISO AO ENTRAR: TAREFAS PENDENTES (Minhas Anotações) ================= -->
+<div class="modal-backdrop" id="ta-backdrop">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ta-titulo" tabindex="-1" id="ta-box">
+    <div class="ta-head">
+      <span class="ta-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="ta-n" id="ta-n"></span></span>
+      <div><h3 id="ta-titulo"></h3><p class="sub" id="ta-sub"></p></div>
+    </div>
+    <div id="ta-conteudo"></div>
+    <div class="ta-foot">
+      <button class="btn" type="button" id="ta-ir">Ir para minhas tarefas</button>
+      <button class="ta-depois" type="button" id="ta-depois">Ver depois</button>
+    </div>
+    <p class="ta-nota">Este aviso aparece toda vez que você entra no portal enquanto houver tarefas pendentes.</p>
   </div>
 </div>
 
@@ -2491,6 +2552,112 @@
     return !dados.enviarEm || dados.enviarEm <= hojeISO();
   }
 
+  // ---------- Aviso ao entrar: tarefas pendentes do Minhas Anotações ----------
+  // Aparece uma vez por sessão (aba do navegador) quando há tarefa recebida pendente/devolvida
+  // ou tarefa enviada esperando a aprovação desta pessoa. Espera as duas consultas chegarem.
+  let taRecebidasProntas = false, taEnviadasProntas = false, taDecidido = false;
+  function taChaveSessao(){ return 'fb-aviso-tarefas-' + (currentProfile && currentProfile.uid); }
+  function taTalvezMostrar(){
+    if (taDecidido || !taRecebidasProntas || !taEnviadasProntas || !currentProfile) return;
+    let jaMostrado = false;
+    try { jaMostrado = sessionStorage.getItem(taChaveSessao()) === '1'; } catch(e) {}
+    if (jaMostrado) { taDecidido = true; return; }
+    const aprovar = mhEnviadas.filter(function(r){ return tarefaJaEnviada(r) && r.status === 'aguardando_aprovacao'; });
+    if (!mhRecebidas.length && !aprovar.length) { taDecidido = true; return; }
+    const tab = acharTabPermitida(function(l){ return l.indexOf('anota') !== -1; });
+    if (!tab) { if (tabsCatalog.length) taDecidido = true; else setTimeout(taTalvezMostrar, 800); return; }
+    taDecidido = true;
+    try { sessionStorage.setItem(taChaveSessao(), '1'); } catch(e) {}
+    taMostrar(tab, mhRecebidas.slice(), aprovar);
+  }
+  // chama uma função do Minhas Anotações assim que a ferramenta terminar de carregar
+  function chamarNaAnotacoes(tabId, fn, arg, tentativa){
+    const ifr = iframes[tabId];
+    let w = null;
+    try { w = ifr && ifr.contentWindow; } catch(e) {}
+    if (w && typeof w[fn] === 'function') { w[fn](arg); return; }
+    if ((tentativa || 0) < 40) setTimeout(function(){ chamarNaAnotacoes(tabId, fn, arg, (tentativa || 0) + 1); }, 250);
+  }
+  function taDataBR(iso){ const p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : ''; }
+  function taMostrar(tab, recebidas, aprovar){
+    const seg = function(t){ return (t && t.seconds) || 0; };
+    const hoje = hojeISO();
+    recebidas.sort(function(a, b){
+      const da = a.status === 'reprovada' ? 0 : 1, db2 = b.status === 'reprovada' ? 0 : 1;
+      return da - db2 || String(a.dataVencimento || '9999').localeCompare(String(b.dataVencimento || '9999')) || seg(a.criadoEm) - seg(b.criadoEm);
+    });
+    aprovar.sort(function(a, b){ return seg(a.concluidaEm) - seg(b.concluidaEm); });
+    const LIM = 5;
+    const itemRecebida = function(r){
+      const devolvida = r.status === 'reprovada';
+      const atrasada = r.dataVencimento && r.dataVencimento < hoje;
+      return '<button type="button" class="ta-item" data-id="' + escapeHtml(r.id) + '">' +
+        '<div class="ta-item-top"><span class="ta-status ' + (devolvida ? 'devolvida">↩ Devolvida — refazer' : 'pendente">● Pendente') + '</span><span class="ta-abrir">Abrir ›</span></div>' +
+        '<div class="ta-texto">' + escapeHtml(r.texto || '') + '</div>' +
+        '<div class="ta-meta">De ' + escapeHtml(r.remetenteNome || '') + ' · ' +
+          (r.dataVencimento ? (atrasada ? '<span class="atraso">prazo ' + taDataBR(r.dataVencimento) + ' — atrasada</span>' : 'prazo ' + taDataBR(r.dataVencimento)) : 'sem prazo') + '</div>' +
+        (devolvida && r.motivoReprovacao ? '<div class="ta-motivo"><b>O que faltou:</b> ' + escapeHtml(r.motivoReprovacao) + '</div>' : '') +
+        '</button>';
+    };
+    const itemAprovar = function(r){
+      return '<button type="button" class="ta-item" data-id="' + escapeHtml(r.id) + '">' +
+        '<div class="ta-item-top"><span class="ta-status aprovar">⏳ Aguardando você aprovar</span><span class="ta-abrir">Abrir ›</span></div>' +
+        '<div class="ta-texto">' + escapeHtml(r.texto || '') + '</div>' +
+        '<div class="ta-meta">Para ' + escapeHtml(r.destinatarioNome || '') + (dataCurta(r.concluidaEm) ? ' · feita em ' + dataCurta(r.concluidaEm) : '') + '</div>' +
+        '</button>';
+    };
+    const mais = function(n){ return n > LIM ? '<p class="ta-mais">+ ' + (n - LIM) + (n - LIM === 1 ? ' outra' : ' outras') + ' em Minhas Anotações.</p>' : ''; };
+    let h = '';
+    if (recebidas.length) h += '<div class="ta-secao">Para você fazer</div>' + recebidas.slice(0, LIM).map(itemRecebida).join('') + mais(recebidas.length);
+    if (aprovar.length) h += '<div class="ta-secao">Esperando a sua aprovação</div>' + aprovar.slice(0, LIM).map(itemAprovar).join('') + mais(aprovar.length);
+    h += '<div class="ta-passos"><p class="ta-passos-titulo">Como chegar até lá</p>' +
+      '<div class="ta-passo"><span class="ta-passo-num">1</span><span>Toque na tarefa acima, ou abra a aba <b>Minhas Anotações</b> no menu.</span></div>' +
+      '<div class="ta-passo"><span class="ta-passo-num">2</span><span>Na lista da esquerda, abra <b>📨 Recebidas</b>. As que você enviou ficam em <b>📨 Envio de Tarefa</b>.</span></div></div>';
+    if (recebidas.length) h += '<div class="ta-passos"><p class="ta-passos-titulo">Como devolver para aprovação</p>' +
+      '<div class="ta-passo"><span class="ta-passo-num">1</span><span>Na tarefa, clique em <b>✓ Concluir</b>.</span></div>' +
+      '<div class="ta-passo"><span class="ta-passo-num">2</span><span>Escreva <b>o que foi feito</b> (obrigatório) e confirme.</span></div>' +
+      '<div class="ta-passo"><span class="ta-passo-num">3</span><span>A tarefa vai para quem enviou <b>aprovar</b>. Se faltar algo, ela volta como <b>Devolvida</b> com o motivo.</span></div></div>';
+    if (aprovar.length) h += '<div class="ta-passos"><p class="ta-passos-titulo">Como aprovar</p>' +
+      '<div class="ta-passo"><span class="ta-passo-num">1</span><span>Abra a tarefa e confira o que a pessoa escreveu.</span></div>' +
+      '<div class="ta-passo"><span class="ta-passo-num">2</span><span>Clique em <b>✅ Aprovar</b>, ou em <b>↩️ Devolver</b> explicando o que faltou.</span></div></div>';
+
+    const total = recebidas.length + aprovar.length;
+    document.getElementById('ta-n').textContent = total > 99 ? '99+' : String(total);
+    document.getElementById('ta-titulo').textContent = recebidas.length
+      ? 'Você tem ' + recebidas.length + (recebidas.length === 1 ? ' tarefa pendente' : ' tarefas pendentes')
+      : 'Você tem ' + aprovar.length + (aprovar.length === 1 ? ' tarefa esperando sua aprovação' : ' tarefas esperando sua aprovação');
+    document.getElementById('ta-sub').innerHTML = recebidas.length
+      ? 'Tarefas que a equipe te enviou pelo <b>Minhas Anotações</b> e que ainda esperam a sua resposta.'
+      : 'Tarefas que você enviou pelo <b>Minhas Anotações</b> já foram feitas e esperam a sua conferência.';
+    const conteudo = document.getElementById('ta-conteudo');
+    conteudo.innerHTML = h;
+    const backdrop = document.getElementById('ta-backdrop');
+    const focoAntes = document.activeElement;
+    const fechar = function(){
+      backdrop.classList.remove('show');
+      document.removeEventListener('keydown', teclas);
+      if (focoAntes && focoAntes.isConnected) try { focoAntes.focus(); } catch(e) {}
+    };
+    const teclas = function(e){ if (e.key === 'Escape') fechar(); };
+    conteudo.querySelectorAll('.ta-item').forEach(function(b){
+      b.addEventListener('click', function(){
+        fechar();
+        selectTab(tab.id);
+        abrirTarefaNaAnotacoes(tab.id, b.dataset.id, 0);
+      });
+    });
+    document.getElementById('ta-ir').onclick = function(){
+      fechar();
+      selectTab(tab.id);
+      chamarNaAnotacoes(tab.id, recebidas.length ? '__irParaRecebidas' : '__irParaEnviadas');
+    };
+    document.getElementById('ta-depois').onclick = fechar;
+    backdrop.onclick = function(e){ if (e.target === backdrop) fechar(); };
+    document.addEventListener('keydown', teclas);
+    backdrop.classList.add('show');
+    setTimeout(function(){ document.getElementById('ta-box').focus(); }, 30);
+  }
+
   let mhRecebidas = [];
   let mhEnviadas = [];   // tarefas que EU enviei e ainda não foram aprovadas (acompanhamento no celular)
   function subscribeAnotacoesPendentes(){
@@ -2503,9 +2670,11 @@
       anotacoesPendentesCount = mhRecebidas.length;
       updateTabBlinks();
       renderMobileHomeTasks();
+      taRecebidasProntas = true; taTalvezMostrar();
     }, function(){
       anotacoesPendentesCount = 0;
       updateTabBlinks();
+      taRecebidasProntas = true; taTalvezMostrar();
     });
     db.collection('tarefasEnviadas').where('remetenteUid', '==', currentProfile.uid).onSnapshot(function(snap){
       const todas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
@@ -2515,7 +2684,8 @@
       mhEnviadas = todas.filter(function(r){ return r.status !== 'aprovada'; });
       updateTabBlinks();
       renderMobileHomeTasks();
-    }, function(){ /* quem não envia tarefa não tem nada aqui */ });
+      taEnviadasProntas = true; taTalvezMostrar();
+    }, function(){ /* quem não envia tarefa não tem nada aqui */ taEnviadasProntas = true; taTalvezMostrar(); });
   }
 
   // ---------- Aviso obrigatório: foto de perfil faltando (só para usuários específicos) ----------
