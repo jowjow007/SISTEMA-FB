@@ -163,7 +163,15 @@
   html.embed body::before{display:none;}
   html.embed header{display:none;}
   html.embed main{max-width:none;padding:4px 2px 30px;}
-  @media(min-width:1101px){ html.embed .preview-col{top:8px;} }
+  html.embed{height:auto;overflow:visible;}
+  html.embed body{height:auto;overflow-y:visible;}
+  html.embed .preview-col{display:none!important;}
+  html.embed .layout{grid-template-columns:1fr!important;}
+  .item-block{border:1px solid var(--line-strong);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel-2);}
+  .item-block .row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .item-block .row-head strong{font-size:.8rem;color:var(--silver);}
+  .btn-ghost{background:transparent;color:var(--err);border:1px solid rgba(255,180,174,.3);padding:5px 10px;font-size:.72rem;border-radius:6px;cursor:pointer;}
+  .btn-ghost:hover{background:rgba(255,180,174,.08);}
 </style>
 </head>
 <body>
@@ -176,17 +184,32 @@
   <div class="layout">
     <div>
       <section class="card">
-        <h2>1. Planilha do Asaas</h2>
-        <p class="desc">No Asaas, abra <b>Cobranças</b>, filtre o cliente (ou a situação "Vencida") e use <b>Exportar → Excel</b>.
-        O arquivo é lido só neste navegador; nada é enviado nem gravado no Portal.</p>
-        <label class="drop" id="drop">
-          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
-          <b>Clique para escolher ou arraste a planilha aqui</b>
-          <span>Arquivo "Cobrancas.xlsx" (também aceita .xls e .csv)</span>
-          <input type="file" id="arquivo" accept=".xlsx,.xls,.csv" hidden>
-        </label>
-        <div class="arquivo-ok" id="arquivo-ok"></div>
-        <div class="msg-err" id="msg-err"></div>
+        <h2>1. Dados das cobranças</h2>
+        <div class="segmented" id="modo-seg" style="margin-bottom:14px">
+          <button class="active" data-modo="planilha">Planilha do Asaas</button>
+          <button data-modo="manual">Entrada manual</button>
+        </div>
+        <div id="bloco-planilha">
+          <p class="desc">No Asaas, abra <b>Cobranças</b>, filtre o cliente (ou a situação "Vencida") e use <b>Exportar → Excel</b>.
+          O arquivo é lido só neste navegador; nada é enviado nem gravado no Portal.</p>
+          <label class="drop" id="drop">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+            <b>Clique para escolher ou arraste a planilha aqui</b>
+            <span>Arquivo "Cobrancas.xlsx" (também aceita .xls e .csv)</span>
+            <input type="file" id="arquivo" accept=".xlsx,.xls,.csv" hidden>
+          </label>
+          <div class="arquivo-ok" id="arquivo-ok"></div>
+          <div class="msg-err" id="msg-err"></div>
+        </div>
+        <div id="bloco-manual" style="display:none">
+          <p class="desc">Digite o nome do cliente e adicione os boletos um a um — competência, vencimento e valor original de cada um.</p>
+          <div class="field">
+            <label for="manual-nome-cliente">Cliente</label>
+            <input type="text" id="manual-nome-cliente" placeholder="PROCHOC — Produtos Alimentícios Ltda.">
+          </div>
+          <div id="lista-manual-boletos"></div>
+          <button class="btn secondary" id="btn-add-boleto-manual" type="button" style="margin-top:4px">+ Adicionar boleto</button>
+        </div>
       </section>
 
       <section class="card oculto" id="card-cliente">
@@ -298,6 +321,8 @@
   var clienteAtual = '';
   var htmlAtual = '';
   var tituloAtual = '';
+  var modoEntrada = 'planilha'; // 'planilha' | 'manual'
+  var manualBoletos = [];
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -363,6 +388,80 @@
   // Situações do Asaas que significam cobrança já paga ou encerrada
   function situacaoPaga(s){
     return /receb|confirm|estorn|cancel|reembols|dinheiro|exclu|removid|\bpag[ao]s?\b|quitad/.test(semAcento(s));
+  }
+
+  // ---------- envio de altura e prévia ao documentos (embed mode) ----------
+  function enviarAlturaParent(){
+    if(window.parent === window) return;
+    setTimeout(function(){
+      window.parent.postMessage({type:'cobrancas-height', height: document.documentElement.scrollHeight}, '*');
+    }, 60);
+  }
+
+  // ---------- entrada manual ----------
+  function novoManualBoleto(){ return {comp:'', venc:'', valor:'', situacao:'Vencida'}; }
+
+  function renderManualBoletos(){
+    var lista = $('lista-manual-boletos');
+    lista.innerHTML = manualBoletos.map(function(b, i){
+      return '<div class="item-block" data-idx="'+i+'">' +
+        '<div class="row-head"><strong>Boleto '+(i+1)+'</strong>' +
+        (manualBoletos.length > 1 ? '<button type="button" class="btn-ghost" data-remover="'+i+'">remover</button>' : '') +
+        '</div>' +
+        '<div class="grid"><div class="field"><label>Competência</label>' +
+        '<input data-campo="comp" placeholder="Jan/2026" value="'+esc(b.comp)+'"></div>' +
+        '<div class="field"><label>Vencimento original</label>' +
+        '<input type="date" data-campo="venc" value="'+esc(b.venc)+'"></div></div>' +
+        '<div class="grid"><div class="field"><label>Valor original (R$)</label>' +
+        '<input data-campo="valor" placeholder="1.000,00" value="'+esc(b.valor)+'"></div>' +
+        '<div class="field"><label>Situação</label>' +
+        '<select data-campo="situacao">' +
+        '<option value="Vencida"'+(b.situacao==='Vencida'?' selected':'')+'>Vencida</option>' +
+        '<option value="A vencer"'+(b.situacao==='A vencer'?' selected':'')+'>A vencer</option>' +
+        '<option value="Recebida"'+(b.situacao==='Recebida'?' selected':'')+'>Paga / Recebida</option>' +
+        '</select></div></div></div>';
+    }).join('');
+    lista.querySelectorAll('[data-campo]').forEach(function(el){
+      el.addEventListener('change', function(){ atualizarManualBoleto(el); });
+      el.addEventListener('input', function(){ atualizarManualBoleto(el); });
+    });
+    lista.querySelectorAll('[data-remover]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        manualBoletos.splice(+btn.dataset.remover, 1);
+        renderManualBoletos();
+        processarManual();
+      });
+    });
+    enviarAlturaParent();
+  }
+
+  function atualizarManualBoleto(el){
+    var idx = +el.closest('[data-idx]').dataset.idx;
+    manualBoletos[idx][el.dataset.campo] = el.value;
+    clearTimeout(timer); timer = setTimeout(processarManual, 250);
+  }
+
+  function processarManual(){
+    var nomeCliente = ($('manual-nome-cliente').value || '').trim() || 'Cliente';
+    var lista = manualBoletos.filter(function(b){ return b.venc && lerCentavos(b.valor) > 0; }).map(function(b, i){
+      return { chave:'manual-'+i, cliente:'manual', nome:nomeCliente, doc:'', venc:lerData(b.venc), valor:lerCentavos(b.valor), situacao:b.situacao, ident:b.comp, tipo:'BOLETO' };
+    }).filter(function(c){ return c.venc != null; });
+    lista.sort(function(a,b){ return a.venc - b.venc; });
+    cobrancas = lista;
+    marcados = {};
+    if(!lista.length){
+      ['card-cliente','card-dados','card-abat'].forEach(function(id){ $(id).classList.add('oculto'); });
+      htmlAtual = ''; tituloAtual = '';
+      if(window.parent !== window) window.parent.postMessage({type:'cobrancas-preview', html:null}, '*');
+      enviarAlturaParent();
+      return;
+    }
+    $('nome-relatorio').value = nomeCliente;
+    $('campo-cliente').classList.add('oculto');
+    clienteAtual = 'manual';
+    abatimentos = []; desenharAbatimentos();
+    ['card-cliente','card-dados','card-abat'].forEach(function(id){ $(id).classList.remove('oculto'); });
+    atualizar();
   }
 
   // ---------- leitura da planilha ----------
@@ -808,6 +907,8 @@
     if (!temItens){
       $('preview-vazio').textContent = 'Nenhum boleto marcado. Marque ao menos um na lista ao lado.';
       htmlAtual = '';
+      if(window.parent !== window) window.parent.postMessage({type:'cobrancas-preview', html:null}, '*');
+      enviarAlturaParent();
       return;
     }
     var rel = montarRelatorio(calc, itens);
@@ -836,6 +937,10 @@
           $('aviso-pag').textContent = 'São muitos boletos para uma página só: o relatório vai sair em 2 páginas.';
           $('aviso-pag').classList.remove('oculto');
         }
+        if(window.parent !== window){
+          window.parent.postMessage({type:'cobrancas-preview', html:htmlAtual, titulo:tituloAtual, qtd:rel.qtd, total_brl:brl(rel.total), paginas:paginas}, '*');
+        }
+        enviarAlturaParent();
       });
     };
     preview.srcdoc = rel.html;
@@ -932,6 +1037,37 @@
   $('btn-imprimir').addEventListener('click', imprimir);
   $('btn-abrir').addEventListener('click', abrirNovaAba);
   window.addEventListener('resize', escalarPrevia);
+
+  // ---------- modo de entrada (planilha / manual) ----------
+  document.querySelectorAll('#modo-seg [data-modo]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if(modoEntrada === btn.dataset.modo) return;
+      modoEntrada = btn.dataset.modo;
+      document.querySelectorAll('#modo-seg [data-modo]').forEach(function(b){ b.classList.toggle('active', b.dataset.modo === modoEntrada); });
+      $('bloco-planilha').style.display = modoEntrada === 'planilha' ? '' : 'none';
+      $('bloco-manual').style.display = modoEntrada === 'manual' ? '' : 'none';
+      cobrancas = []; marcados = {}; abatimentos = [];
+      ['card-cliente','card-dados','card-abat'].forEach(function(id){ $(id).classList.add('oculto'); });
+      htmlAtual = ''; tituloAtual = '';
+      if(window.parent !== window) window.parent.postMessage({type:'cobrancas-preview', html:null}, '*');
+      $('arquivo-ok').style.display = 'none';
+      mostrarErro('');
+      if(modoEntrada === 'manual'){
+        if(!manualBoletos.length){ manualBoletos.push(novoManualBoleto()); }
+        renderManualBoletos();
+      }
+      enviarAlturaParent();
+    });
+  });
+
+  $('btn-add-boleto-manual').addEventListener('click', function(){
+    manualBoletos.push(novoManualBoleto());
+    renderManualBoletos();
+  });
+
+  $('manual-nome-cliente').addEventListener('input', function(){
+    clearTimeout(timer); timer = setTimeout(processarManual, 250);
+  });
 
   var h = new Date();
   $('ref').value = h.getFullYear() + '-' + pad(h.getMonth() + 1) + '-' + pad(h.getDate());
