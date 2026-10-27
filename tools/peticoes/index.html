@@ -215,6 +215,9 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-subsecao{font-weight:bold;font-size:11.5pt;margin:3mm 0 2mm;}
   .dc-fonte{font-size:10pt;margin:-1mm 0 3mm;}
   .dc-imagem{border:1px dashed #b9b9b9;color:#888;font-size:9.5pt;font-style:italic;text-align:center;padding:5mm;margin:2mm 0 4mm;}
+  .dc-imagem[data-img]{cursor:pointer;}
+  .dc-imagem-ok{text-align:center;margin:2mm 0 4mm;}
+  .dc-imagem-ok img{display:block;max-width:100%;height:auto;margin:0 auto;}
   .dc-apos-sig{margin-top:10mm;}
   .doc-content a{color:#1155cc;text-decoration:underline;}
   .dc-fechamento{text-align:center;margin:10mm 0 4mm;font-size:11.5pt;line-height:1.6;}
@@ -878,10 +881,15 @@ function ehSubsecao(l){ var m = l.match(SUBSEC_RE); return m && l.length <= 150 
 var FONTE_RE = /^\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)\.?$/;
 // referência de julgado logo abaixo do parágrafo: "STJ, REsp 1.210.205/RS, rel. Min. ..."
 var REF_RE = /^(STJ|STF|TST|TSE|TNU|TRF-?\d|TRT-?\d{1,2}|TJ[A-Z]{2,3})\s*[,—–-]\s*(REsp|AREsp|RE|ARE|AgInt|AgRg|EDcl|HC|RHC|RMS|MS|AI|Ap|Apelação|Agravo|Súmula|Tema|RR|AIRR|ADI|ADPF|Rcl|CC|EREsp)\b.{0,260}\b(rel\.|julg|DJe|DJ\b)/;
-var MARCA_IMAGEM = '[IMAGEM]';
+// imagem no texto: linha "[IMAGEM 2]" ↔ imagensPeticao[2] = {url (data:), tw, th (tamanho em twips)}
+// só ficam na memória da página (o histórico guarda o texto, e a imagem volta como "clique para escolher")
+var imagensPeticao = {};
+var MARCA_IMAGEM_RE = /^\[IMAGEM(?:\s+(\d+))?\]$/;
+function ehMarcaImagem(l){ return MARCA_IMAGEM_RE.test(l); }
+function numMarcaImagem(l){ var m = String(l).match(MARCA_IMAGEM_RE); return m && m[1] ? +m[1] : 0; }
 var SUBALINEA_RE = /^([a-z]\.\d{1,2}[.)])\s+(.*)$/;
 function ehEspecial(l){ return ROTULO_RE.test(l) || ehMaiusculas(l) || ehCitacao(l) || ehLinhaTabela(l) || ehFormula(l)
-  || !!ehSubsecao(l) || FONTE_RE.test(l) || REF_RE.test(l) || l === MARCA_IMAGEM; }
+  || !!ehSubsecao(l) || FONTE_RE.test(l) || REF_RE.test(l) || ehMarcaImagem(l); }
 
 // trechos do texto: "[rótulo](url)" e endereços soltos viram link; "negrito" destaca um trecho (ex.: nome do réu)
 var LINK_RE = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"]*[^\s<>".,;:)\]])/g;
@@ -1025,7 +1033,7 @@ function montarBlocos(d){
       }
       var mS = ehSubsecao(s);
       if(mS){ subsecao(mS); continue; }
-      if(s === MARCA_IMAGEM){ B.push({t:'imagem'}); continue; }
+      if(ehMarcaImagem(s)){ B.push({t:'imagem', n:numMarcaImagem(s)}); continue; }
       if(FONTE_RE.test(s)){ B.push({t:'fonte', texto:s}); continue; }
       var mA = s.match(/^([a-z])[.)]\s+(.*)$/);
       if(mA){ B.push({t:'alinea', letra:mA[1]+')', texto:mA[2]}); continue; }
@@ -1148,7 +1156,11 @@ function buildBody(d){
       case 'subpedido': return '<div class="dc-item dc-sub"><span class="dc-item-num">'+esc(b.letra)+'</span><span class="dc-item-body">'+rico(b.texto)+'</span></div>';
       case 'subsecao': return '<div class="dc-subsecao">'+esc(b.texto)+'</div>';
       case 'fonte':    return '<div class="dc-fonte">'+rico(b.texto)+'</div>';
-      case 'imagem':   return '<div class="dc-imagem">Imagem do documento original — inserir aqui</div>';
+      case 'imagem': {
+        var im = imagensPeticao[b.n];
+        if(im) return '<div class="dc-imagem-ok"><img src="'+im.url+'" alt="" style="width:'+Math.min(160, im.tw/56.693).toFixed(1)+'mm;aspect-ratio:'+im.tw+' / '+im.th+'"></div>';
+        return '<div class="dc-imagem" data-img="'+(b.n||'')+'">Imagem'+(b.n?' '+b.n:'')+' do documento original — clique aqui para escolher o arquivo (ou cole a imagem no texto)</div>';
+      }
       case 'espaco':   return '<div style="height:4mm"></div>';
       case 'aposSig':  return '<div class="dc-apos-sig"></div>';
       case 'formula':  return '<div class="dc-centro">'+esc(b.texto)+'</div>';
@@ -1299,6 +1311,20 @@ function wRico(texto, o, negrito){
     return '<w:hyperlink r:id="rIdLink'+docxLinks.length+'" w:history="1">'+wRun(p.t, Object.assign(op, {link:1}))+'</w:hyperlink>';
   }).join('');
 }
+// imagem embutida (word/media + relação gravadas em gerarDocx), no máximo na largura do texto
+var docxImagens = [], larguraTextoDocx = 8504;
+function wImagem(im){
+  var k = docxImagens.push(im), id = 9000 + k;
+  var larg = Math.min(im.tw, larguraTextoDocx), cx = larg * 635, cy = Math.round(im.th * larg / im.tw) * 635;
+  return '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/>'
+    + '<wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="'+id+'" name="Imagem '+k+'"/>'
+    + '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+    + '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    + '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="'+id+'" name="imagem'+k+'"/><pic:cNvPicPr/></pic:nvPicPr>'
+    + '<pic:blipFill><a:blip r:embed="rIdImg'+k+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+    + '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+    + '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+}
 function wP(runs, o){
   o = o || {};
   var ppr = '';
@@ -1355,7 +1381,10 @@ function docxBody(d){
       case 'subpedido': x += wP(wRun(b.letra,{b:1}) + '<w:r><w:tab/></w:r>' + wRico(b.texto), {ind:'w:left="2127" w:hanging="709"', tabs:2127}); break;
       case 'subsecao': x += wP(wRun(b.texto,{b:1}), {jc:'left', before:120, after:120, junto:1}); break;
       case 'fonte':    x += wP(wRico(b.texto,{sz:20}), {jc:'left', after:160, line:276}); break;
-      case 'imagem':   x += wP(wRun('[INSERIR AQUI A IMAGEM DO DOCUMENTO ORIGINAL]',{i:1, hl:1}), {jc:'center'}); break;
+      case 'imagem':
+        x += imagensPeticao[b.n] ? wP(wImagem(imagensPeticao[b.n]), {jc:'center', line:240})
+                                 : wP(wRun('[INSERIR AQUI A IMAGEM'+(b.n?' '+b.n:'')+' DO DOCUMENTO ORIGINAL]',{i:1, hl:1}), {jc:'center'});
+        break;
       case 'espaco':   x += wVazio(); break;
       case 'aposSig':  x += wVazio() + wVazio(); break;
       case 'formula':  x += wP(wRun(b.texto,{b:1}), {jc:'center', after:120}); break;
@@ -1395,18 +1424,25 @@ async function gerarDocx(d){
   // async('string') do JSZip trava com este modelo; bytes + TextDecoder funciona
   var docXml = new TextDecoder('utf-8').decode(await zip.file('word/document.xml').async('uint8array'));
   var sect = (docXml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/) || [''])[0];
-  docxLinks = [];
+  docxLinks = []; docxImagens = [];
+  var pg = sect.match(/<w:pgSz w:w="(\d+)"/), ml = sect.match(/w:left="(\d+)"/), mr = sect.match(/w:right="(\d+)"/);
+  if(pg && ml && mr) larguraTextoDocx = +pg[1] - +ml[1] - +mr[1];
   var corpo = docxBody(d) + sect;
   // replacer em função: evita que "$" no texto (ex.: R$) seja interpretado
   docXml = docXml.replace(/<w:body>[\s\S]*<\/w:body>/, function(){ return '<w:body>' + corpo + '</w:body>'; });
   zip.file('word/document.xml', docXml);
-  if(docxLinks.length){
+  if(docxLinks.length || docxImagens.length){
     var relsPath = 'word/_rels/document.xml.rels';
     var rels = new TextDecoder('utf-8').decode(await zip.file(relsPath).async('uint8array'));
     var novas = docxLinks.map(function(u, k){
       return '<Relationship Id="rIdLink'+(k+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="'
         + xmlEsc(u).replace(/"/g,'&quot;') + '" TargetMode="External"/>';
     }).join('');
+    docxImagens.forEach(function(im, k){
+      var ext = /^data:image\/png/i.test(im.url) ? 'png' : 'jpeg', arq = 'peticao-imagem'+(k+1)+'.'+ext;
+      zip.file('word/media/'+arq, im.url.slice(im.url.indexOf(',') + 1), {base64:true});
+      novas += '<Relationship Id="rIdImg'+(k+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/'+arq+'"/>';
+    });
     zip.file(relsPath, rels.replace('</Relationships>', function(){ return novas + '</Relationships>'; }));
   }
   zip.file('word/numbering.xml', NUMBERING_XML);
@@ -1441,6 +1477,7 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
   reqCount=0; redCount=0;
+  imagensPeticao = {};
   resetNomenclatura();
   render();
 });
@@ -1466,14 +1503,172 @@ document.getElementById('btn-importar').addEventListener('click', function(){
   st.textContent = '✓ Campos preenchidos' + (achados.length ? ' (' + achados.join(', ') + ')' : '') + ' — revise e ajuste conforme necessário.';
 });
 
-// Cola automática na área de importação
+// Cola automática na área de importação (texto + imagens do Word/Docs)
 document.getElementById('import-txt').addEventListener('paste', function(e){
-  var html = e.clipboardData && e.clipboardData.getData('text/html');
-  if(html){ e.preventDefault(); this.value = stripHtml(html); }
+  var cd = e.clipboardData;
+  if(!cd) return;
+  var html = cd.getData('text/html'), arquivos = imagensDoClipboard(cd);
+  if(html){
+    e.preventDefault();
+    imagensPeticao = {};
+    this.value = stripHtml(html);
+    preencherImagensColadas(imgsColadas, cd.getData('text/rtf'), arquivos);
+  } else if(arquivos.length){ e.preventDefault(); inserirImagens(this, arquivos); }
 });
+// print ou imagem colada direto no texto de um tópico (ou de qualquer campo de texto)
+document.addEventListener('paste', function(e){
+  var ta = e.target, cd = e.clipboardData;
+  if(!ta || ta.tagName !== 'TEXTAREA' || ta.id === 'import-txt' || !cd) return;
+  var arquivos = imagensDoClipboard(cd);
+  if(!arquivos.length || (cd.getData('text/plain') || '').trim()) return;   // com texto junto, cola o texto normalmente
+  e.preventDefault();
+  inserirImagens(ta, arquivos);
+});
+// clique no quadro "Imagem ... clique aqui" da prévia: escolhe o arquivo
+document.getElementById('doc-pages').addEventListener('click', function(e){
+  var alvo = e.target.closest && e.target.closest('.dc-imagem[data-img]');
+  if(!alvo || !alvo.dataset.img) return;
+  var n = +alvo.dataset.img, inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = function(){
+    if(inp.files[0]) lerArquivoImagem(inp.files[0]).then(function(im){ if(im){ imagensPeticao[n] = im; render(); } });
+  };
+  inp.click();
+});
+
+function imagensDoClipboard(cd){
+  var arqs = [];
+  Array.prototype.forEach.call(cd.items || [], function(it){
+    if(it.kind === 'file' && /^image\//.test(it.type)){ var f = it.getAsFile(); if(f) arqs.push(f); }
+  });
+  return arqs;
+}
+// carrega a imagem e mede (96 dpi → 15 twips por pixel); formatos que o Word não aceita viram PNG
+function carregarImagem(url){
+  return new Promise(function(ok){
+    var im = new Image();
+    im.onload = function(){
+      var w = im.naturalWidth, h = im.naturalHeight, final = url;
+      if(!w || !h) return ok(null);
+      if(!/^data:image\/(png|jpe?g)/i.test(url)){
+        try {
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(im, 0, 0);
+          final = cv.toDataURL('image/png');
+        } catch(err){ return ok(null); }
+      }
+      ok({url:final, tw:w * 15, th:h * 15});
+    };
+    im.onerror = function(){ ok(null); };
+    im.src = url;
+  });
+}
+function lerArquivoImagem(f){
+  return new Promise(function(ok){
+    var fr = new FileReader();
+    fr.onload = function(){ carregarImagem(fr.result).then(ok); };
+    fr.onerror = function(){ ok(null); };
+    fr.readAsDataURL(f);
+  });
+}
+function baixarImagem(src){
+  return fetch(src).then(function(r){ return r.ok ? r.blob() : null; })
+    .then(function(b){ return b && /^image\//.test(b.type) ? lerArquivoImagem(b) : null; })
+    .catch(function(){ return null; });
+}
+// próximo número livre entre as imagens e as marcas já escritas nos campos
+function proximaImagem(){
+  var max = 0;
+  Object.keys(imagensPeticao).forEach(function(k){ max = Math.max(max, +k); });
+  document.querySelectorAll('textarea').forEach(function(t){
+    (t.value.match(/\[IMAGEM (\d+)\]/g) || []).forEach(function(m){ max = Math.max(max, +m.replace(/\D/g, '')); });
+  });
+  return max + 1;
+}
+// insere "[IMAGEM n]" numa linha própria onde está o cursor
+async function inserirImagens(ta, arquivos){
+  for(var i = 0; i < arquivos.length; i++){
+    var im = await lerArquivoImagem(arquivos[i]);
+    if(!im) continue;
+    var n = proximaImagem();
+    imagensPeticao[n] = im;
+    var ini = ta.selectionStart || 0, fim = ta.selectionEnd || ini, v = ta.value;
+    var marca = (ini && v[ini-1] !== '\n' ? '\n' : '') + '[IMAGEM ' + n + ']' + (v[fim] && v[fim] !== '\n' ? '\n' : '');
+    ta.value = v.slice(0, ini) + marca + v.slice(fim);
+    ta.selectionStart = ta.selectionEnd = ini + marca.length;
+  }
+  ta.dispatchEvent(new Event('input', {bubbles:true}));
+  render();
+}
+// liga cada <img> da colagem à sua imagem: data: direto; Word → RTF da área de transferência
+// (mesma ordem, conferindo a proporção); Docs/web → tenta baixar
+async function preencherImagensColadas(lista, rtf, arquivos){
+  var doRtf = rtf ? imagensDoRtf(rtf) : [], j = 0;
+  for(var k = 0; k < lista.length; k++){
+    var it = lista[k], im = null;
+    if(/^data:image\//i.test(it.src)) im = await carregarImagem(it.src);
+    if(!im && doRtf.length){
+      for(var t = j; t < doRtf.length; t++){
+        var a = doRtf[t];
+        if(!it.w || !it.h || Math.abs(a.tw/a.th - it.w/it.h) / (it.w/it.h) < 0.08){ im = a; j = t + 1; break; }
+      }
+    }
+    if(!im && /^https?:/i.test(it.src)) im = await baixarImagem(it.src);
+    if(!im && lista.length === 1 && arquivos.length === 1) im = await lerArquivoImagem(arquivos[0]);
+    if(im && it.n) imagensPeticao[it.n] = im;
+  }
+  render();
+}
+
+// imagens PNG/JPEG do RTF (o Word põe a imagem em \shppict e uma cópia WMF em \nonshppict, que é ignorada)
+function imagensDoRtf(rtf){
+  var imgs = [], pilha = [];
+  for(var i = 0; i < rtf.length; i++){
+    var c = rtf.charCodeAt(i);
+    if(c === 92){ i++; continue; }                         // \{ \} \\ e palavras de controle
+    if(c === 125){ pilha.pop(); continue; }
+    if(c !== 123) continue;
+    var cab = rtf.substr(i + 1, 14);
+    var ignorar = (pilha.length && pilha[pilha.length-1]) || /^\\nonshppict/.test(cab);
+    if(ignorar || /^\\pict\b/.test(cab)){
+      var fim = fimDoGrupo(rtf, i);
+      if(!ignorar){ var im = lerPict(rtf.slice(i, fim + 1)); if(im) imgs.push(im); }
+      i = fim; continue;
+    }
+    pilha.push(false);
+  }
+  return imgs;
+}
+function fimDoGrupo(s, i){
+  for(var d = 0; i < s.length; i++){
+    var c = s.charCodeAt(i);
+    if(c === 92){ i++; continue; }
+    if(c === 123) d++;
+    else if(c === 125 && --d === 0) return i;
+  }
+  return s.length - 1;
+}
+function lerPict(g){
+  var tipo = /\\pngblip/.test(g) ? 'png' : /\\jpegblip/.test(g) ? 'jpeg' : '';
+  if(!tipo) return null;
+  function num(k){ var m = g.match(new RegExp('\\\\' + k + '(-?\\d+)')); return m ? +m[1] : 0; }
+  var corpo = g.slice(1, -1), antes;
+  do { antes = corpo; corpo = corpo.replace(/\{[^{}]*\}/g, ''); } while(corpo !== antes);
+  var hex = corpo.replace(/\\[a-zA-Z]+-?\d* ?/g, '').replace(/[^0-9a-fA-F]/g, '');
+  if(hex.length < 200) return null;
+  var tw = (num('picwgoal') || num('picw') * 0.567) * (num('picscalex') || 100) / 100;
+  var th = (num('pichgoal') || num('pich') * 0.567) * (num('picscaley') || 100) / 100;
+  if(!tw || !th) return null;
+  var bytes = new Uint8Array(hex.length >> 1), bin = '';
+  for(var i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  for(var j = 0; j < bytes.length; j += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(j, j + 0x8000));
+  return {url:'data:image/' + tipo + ';base64,' + btoa(bin), tw:Math.round(tw), th:Math.round(th)};
+}
 
 // títulos reconhecidos pelo estilo na última colagem do Word/Docs: texto → nível (0 = título da peça; 1, 2… = Título 1, Título 2…)
 var titulosColados = {};
+// <img> da última colagem, na ordem: {src, w, h, n (nº da marca "[IMAGEM n]"; 0 = dentro de tabela)}
+var imgsColadas = [];
 // O Word manda o documento inteiro (com o <style>) e quebra as linhas do HTML no meio da frase:
 // percorre o HTML e devolve um parágrafo por linha, células separadas por tab e links como [rótulo](url)
 function stripHtml(html){
@@ -1481,7 +1676,7 @@ function stripHtml(html){
   var BLOCO = /^(P|DIV|H[1-6]|LI|UL|OL|BLOCKQUOTE|TABLE|SECTION|ARTICLE|PRE|DL|DT|DD)$/;
   var IGNORAR = /^(STYLE|SCRIPT|HEAD|TITLE|META|LINK|TEMPLATE|NOSCRIPT|XML)$/;
   var out = [], atual = '', celula = 0, pendente = '';
-  titulosColados = {};
+  titulosColados = {}; imgsColadas = [];
   function fecha(separa){
     var t = atual.replace(/[^\S\t]+/g, ' ').replace(/ *\t */g, '\t').replace(/^ +| +$/g, '');
     atual = '';
@@ -1506,7 +1701,13 @@ function stripHtml(html){
     if(n.nodeType !== 1 || IGNORAR.test(n.tagName)) return;
     var tag = n.tagName;
     if(tag === 'BR'){ if(celula) atual += ' '; else fecha(false); return; }
-    if(tag === 'IMG'){ if(!celula){ fecha(true); atual = MARCA_IMAGEM; fecha(true); } return; }
+    if(tag === 'IMG'){
+      var reg = {src:n.getAttribute('src') || '', n:0,
+        w:+n.getAttribute('width') || parseFloat(n.style.width) || 0, h:+n.getAttribute('height') || parseFloat(n.style.height) || 0};
+      if(!celula){ reg.n = imgsColadas.filter(function(x){ return x.n; }).length + 1; fecha(true); atual = '[IMAGEM ' + reg.n + ']'; fecha(true); }
+      imgsColadas.push(reg);
+      return;
+    }
     if(tag === 'TD' || tag === 'TH'){ celula++; filhos(n); celula--; atual += '\t'; return; }
     if(tag === 'TR'){ filhos(n); atual = atual.replace(/\t+$/, ''); fecha(false); return; }
     if(tag === 'A'){
@@ -1570,7 +1771,7 @@ function parsearPeticao(raw){
   // título de seção na linha k → {nivel:1 (seção) | 2 (subtítulo), texto, num (número digitado)}
   function tituloDe(k){
     var l = linhas[k];
-    if(!l || l.length > 180 || l === MARCA_IMAGEM) return null;
+    if(!l || l.length > 180 || ehMarcaImagem(l)) return null;
     var continua = /^[a-zà-ÿ]/.test(proxima(k));   // a linha seguinte continua a frase: não é título
     var m = l.match(NUMHEAD_RE);
     if(m && !continua && !/[.,:]$/.test(l) && !/\.\s+[A-ZÀ-Ý]/.test(m[2])) return {nivel:1, texto:m[2].trim(), num:m[1]};
