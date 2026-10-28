@@ -193,6 +193,17 @@ service cloud.firestore {
                     );
       allow delete: if isSignedIn() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
     }
+    // Comunicados (lista em comunicados.js): cada pessoa grava só a própria ciência, uma vez, com a hora do servidor.
+    // A pessoa lê as próprias ciências; o administrador lê todas (botão "Ver ciências" no histórico do megafone).
+    match /comunicadosCiencia/{docId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && docId == request.resource.data.comunicadoId + '_' + request.auth.uid
+                    && request.resource.data.em == request.time;
+      allow update, delete: if false;
+    }
+
     // Remuneração variável (tools/remuneracao): só o dono configura, lança o lucro e libera pessoas.
     // Cada pessoa liberada lê apenas o próprio cadastro e o próprio extrato — nem outros admins veem o resto.
     function isDonoRemuneracao() {

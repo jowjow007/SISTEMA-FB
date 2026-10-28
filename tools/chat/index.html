@@ -2226,6 +2226,26 @@
 
   // ---------------- picker: nova conversa / encaminhar ----------------
 
+  // Chamado pelo portal (card de aniversário / tempo de escritório): abre a conversa com a pessoa
+  // e deixa a mensagem de parabéns escrita no campo, para quem quiser editar antes de enviar.
+  var conversasProntas = false;
+  window.__abrirConversaCom = function(uid, texto, tentativa){
+    if (!myUid || !conversasProntas){
+      if ((tentativa || 0) < 60) setTimeout(function(){ window.__abrirConversaCom(uid, texto, (tentativa || 0) + 1); }, 250);
+      return;
+    }
+    if (!uid || uid === myUid) return;
+    ensureIndividualConversa(uid).then(function(id){
+      selecionarConversa(id);
+      var campo = document.getElementById('composer-input');
+      if (campo && texto && !campo.value){
+        campo.value = texto;
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+        campo.focus();
+      }
+    });
+  };
+
   function ensureIndividualConversa(otherUid){
     var existente = conversas.filter(function(c){
       return c.tipo === 'individual' && c.participantes.indexOf(otherUid) !== -1 && c.participantes.indexOf(myUid) !== -1;
@@ -2520,6 +2540,7 @@
 
     db.collection('conversas').where('participantes', 'array-contains', myUid).onSnapshot(function(snap){
       conversas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      conversasProntas = true;
 
       if (naoLidoAnterior) {
         conversas.forEach(function(c){
