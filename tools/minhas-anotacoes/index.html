@@ -173,7 +173,7 @@
   }
   .tarefa-check:hover{border-color:var(--paper);}
   .tarefa-check.done{background:var(--green);border-color:var(--green);}
-  .tarefa-texto{flex:1 1 160px;font-size:.88rem;color:var(--paper);word-break:break-word;}
+  .tarefa-texto{white-space:pre-wrap;flex:1 1 160px;font-size:.88rem;color:var(--paper);word-break:break-word;}
   .tarefa-texto.done{color:var(--muted);text-decoration:line-through;}
   .tarefa-atraso-tag{
     font-size:.64rem;font-weight:700;color:#ffb4ae;background:rgba(184,54,46,.18);
@@ -191,11 +191,11 @@
   .tarefa-actions{display:flex;gap:6px;flex:0 0 auto;}
 
   .add-tarefa-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-width:760px;}
-  .add-tarefa-row input{
-    flex:1 1 auto;min-width:0;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
+  .add-tarefa-row textarea{
+    flex:1 1 auto;min-width:0;resize:none;overflow:hidden;line-height:1.4;max-height:260px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;
     color:var(--paper);font-family:inherit;font-size:.86rem;padding:8px 10px;
   }
-  .add-tarefa-row input:focus{outline:none;border-color:var(--red);}
+  .add-tarefa-row textarea:focus{outline:none;border-color:var(--red);}
   .add-tarefa-row .btn.small{flex:0 0 auto;}
   .add-tarefa-btn{
     display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--line-strong);
@@ -229,7 +229,7 @@
   .kanban-card:active{cursor:grabbing;}
   .kanban-card.atrasada{border-color:rgba(184,54,46,.55);background:rgba(184,54,46,.10);}
   .kanban-card-top{display:flex;align-items:flex-start;gap:8px;}
-  .kanban-card-texto{flex:1 1 auto;font-size:.85rem;color:var(--paper);word-break:break-word;padding-top:1px;}
+  .kanban-card-texto{white-space:pre-wrap;flex:1 1 auto;font-size:.85rem;color:var(--paper);word-break:break-word;padding-top:1px;}
   .kanban-card-foot{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
   .kanban-add{
     flex:0 0 auto;margin:0 10px 10px;display:flex;align-items:center;gap:6px;background:transparent;
@@ -278,7 +278,7 @@
   .recebida-icone{font-size:1.4rem;line-height:1;flex:0 0 auto;}
   .recebida-corpo{flex:1 1 auto;min-width:0;}
   .recebida-meta{font-size:.72rem;color:var(--muted);margin-bottom:2px;}
-  .recebida-texto{font-size:.92rem;color:var(--paper);font-weight:600;word-break:break-word;}
+  .recebida-texto{white-space:pre-wrap;font-size:.92rem;color:var(--paper);font-weight:600;word-break:break-word;}
   .recebida-motivo{font-size:.78rem;color:var(--muted);margin-top:4px;}
 
   /* ---------- Quadro "Enviadas" (admin/gestor) ---------- */
@@ -308,7 +308,7 @@
   .enviada-card.status-aguardando_aprovacao .enviada-badge{background:rgba(76,140,154,.18);color:#8fd0e0;border:1px solid rgba(76,140,154,.4);}
   .enviada-card.status-aprovada .enviada-badge{background:var(--green-bg);color:#8fd6ab;border:1px solid rgba(76,154,106,.4);}
   .enviada-card.status-reprovada .enviada-badge{background:rgba(184,54,46,.18);color:#ffb4ae;border:1px solid rgba(184,54,46,.4);}
-  .enviada-texto{font-size:.88rem;color:var(--paper);margin-bottom:2px;word-break:break-word;}
+  .enviada-texto{white-space:pre-wrap;font-size:.88rem;color:var(--paper);margin-bottom:2px;word-break:break-word;}
   .enviada-meta{font-size:.75rem;color:var(--muted);margin-top:4px;}
   .enviada-acoes{display:flex;gap:8px;margin-top:10px;}
   .enviada-card.status-agendada .enviada-badge{background:rgba(150,150,170,.16);color:#c8c8d8;border:1px solid rgba(150,150,170,.4);}
@@ -1231,6 +1231,7 @@
     composerAberto[stateKey] = true;
     focoAlvo = inputId;
     input.value = ''; // limpa e mantém o campo pronto na hora — não espera o servidor confirmar
+    ajustarAltura(input);
     db.collection('pendTarefas').add({
       ownerUid: currentUser.uid,
       grupoId: listaId,
@@ -1244,6 +1245,13 @@
     });
   }
 
+  // caixa da nova tarefa cresce com o texto (mensagens coladas com várias linhas e links longos)
+  function ajustarAltura(el){
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 2 + 'px';
+    el.style.overflowY = el.scrollHeight > 260 ? 'auto' : 'hidden';
+  }
+  window.__ajustarAltura = ajustarAltura;
   window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId, 'list:' + listaId, 'composer-input-' + listaId); };
   window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId, 'list:' + listaId); };
   window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId, 'kanban:' + listaId, 'kanban-composer-input-' + listaId); };
@@ -1367,7 +1375,7 @@
       out += '</div>';
       out += '<button type="button" class="add-tarefa-btn" onclick="__abrirComposer(\'' + g.id + '\')">+ Adicionar tarefa</button>';
       out += '<div class="add-tarefa-row" id="composer-' + g.id + '" style="display:' + (composerAberto['list:' + g.id] ? 'flex' : 'none') + ';">';
-      out += '<input type="text" id="composer-input-' + g.id + '" maxlength="2000" placeholder="Descreva a tarefa e pressione Enter" onkeydown="if(event.key===\'Enter\'){__criarTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
+      out += '<textarea rows="1" id="composer-input-' + g.id + '" maxlength="2000" placeholder="Descreva a tarefa e pressione Enter (Shift+Enter quebra a linha)" oninput="__ajustarAltura(this)" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();__criarTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}"></textarea>';
       out += '<button type="button" class="btn small" onclick="__criarTarefa(\'' + g.id + '\')">Adicionar</button>';
       out += '</div>';
     }
@@ -1599,7 +1607,7 @@
     out += '</div>';
     out += '<button type="button" class="kanban-add" onclick="__abrirKanbanComposer(\'' + g.id + '\')">+ Adicionar</button>';
     out += '<div class="add-tarefa-row" id="kanban-composer-' + g.id + '" style="display:' + (composerAberto['kanban:' + g.id] ? 'flex' : 'none') + ';margin:0 10px 10px;">';
-    out += '<input type="text" id="kanban-composer-input-' + g.id + '" maxlength="2000" placeholder="Nova tarefa" onkeydown="if(event.key===\'Enter\'){__criarKanbanTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}">';
+    out += '<textarea rows="1" id="kanban-composer-input-' + g.id + '" maxlength="2000" placeholder="Nova tarefa" oninput="__ajustarAltura(this)" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();__criarKanbanTarefa(\'' + g.id + '\');} if(event.key===\'Escape\'){this.value=\'\';this.blur();}"></textarea>';
     out += '<button type="button" class="btn small" onclick="__criarKanbanTarefa(\'' + g.id + '\')">OK</button>';
     out += '</div>';
     out += '</div>';
