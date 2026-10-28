@@ -1252,6 +1252,34 @@
     el.style.overflowY = el.scrollHeight > 260 ? 'auto' : 'hidden';
   }
   window.__ajustarAltura = ajustarAltura;
+
+  // Colar na caixa da nova tarefa: links que vieram abreviados ("https://docs.google.com/…", como o chat
+  // antigo exibia) são trocados pelo endereço completo que está no próprio link copiado.
+  document.addEventListener('paste', function(ev){
+    const el = ev.target;
+    if (!el || el.tagName !== 'TEXTAREA' || !/composer-input-/.test(el.id || '')) return;
+    const cd = ev.clipboardData;
+    const html = cd && cd.getData('text/html');
+    let texto = cd ? cd.getData('text/plain') : '';
+    if (!html || !texto) return;
+    let trocou = false;
+    new DOMParser().parseFromString(html, 'text/html').querySelectorAll('a[href]').forEach(function(a){
+      const href = a.getAttribute('href') || '';
+      const rotulo = (a.textContent || '').trim();
+      const base = rotulo.replace(/(…|\.\.\.)$/, '');
+      if (!/^https?:\/\//i.test(href) || base === rotulo || base.length < 10 || href.indexOf(base) !== 0) return;
+      if (texto.indexOf(rotulo) === -1) return;
+      texto = texto.split(rotulo).join(href);
+      trocou = true;
+    });
+    if (!trocou) return;
+    ev.preventDefault();
+    const ini = el.selectionStart, fim = el.selectionEnd;
+    el.value = el.value.slice(0, ini) + texto + el.value.slice(fim);
+    el.selectionStart = el.selectionEnd = ini + texto.length;
+    ajustarAltura(el);
+  });
+
   window.__abrirComposer = function(listaId){ abrirComposerRow('composer-' + listaId, 'list:' + listaId, 'composer-input-' + listaId); };
   window.__criarTarefa = function(listaId){ criarTarefaFromInput(listaId, 'composer-input-' + listaId, 'list:' + listaId); };
   window.__abrirKanbanComposer = function(listaId){ abrirComposerRow('kanban-composer-' + listaId, 'kanban:' + listaId, 'kanban-composer-input-' + listaId); };
