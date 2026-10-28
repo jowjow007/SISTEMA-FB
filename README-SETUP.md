@@ -193,6 +193,27 @@ service cloud.firestore {
                     );
       allow delete: if isSignedIn() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
     }
+    // Remuneração variável (tools/remuneracao): só o dono configura, lança o lucro e libera pessoas.
+    // Cada pessoa liberada lê apenas o próprio cadastro e o próprio extrato — nem outros admins veem o resto.
+    function isDonoRemuneracao() {
+      return isSignedIn() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
+    }
+    match /remuneracaoConfig/{docId} {
+      allow read, write: if isDonoRemuneracao();
+    }
+    match /remuneracaoMeses/{mes} {
+      allow read, write: if isDonoRemuneracao();
+    }
+    match /remuneracaoPessoas/{uid} {
+      allow read: if isDonoRemuneracao() || (isSignedIn() && request.auth.uid == uid);
+      allow write: if isDonoRemuneracao();
+    }
+    match /remuneracaoExtrato/{uid}/meses/{mes} {
+      allow read: if isDonoRemuneracao()
+                  || (isSignedIn() && request.auth.uid == uid
+                      && exists(/databases/$(database)/documents/remuneracaoPessoas/$(uid)));
+      allow write: if isDonoRemuneracao();
+    }
     match /contratosGerados/{docId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
