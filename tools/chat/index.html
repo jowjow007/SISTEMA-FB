@@ -276,13 +276,14 @@
   .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:3px;justify-content:flex-end;}
   .tick{font-size:.72rem;line-height:1;color:var(--muted);}
   .tick.lido{color:#4fc3f7;}
-  .msg-fwd-btn,.msg-reply-btn,.msg-react-btn{
+  .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .12s;
     padding:2px 4px;display:inline-flex;align-items:center;overflow:visible;
   }
-  .msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg{overflow:visible;display:block;}
-  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn{opacity:1;}
-  .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover{color:var(--paper);}
+  .msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg,.msg-copy-btn svg{overflow:visible;display:block;}
+  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn{opacity:1;}
+  .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover,.msg-copy-btn:hover{color:var(--paper);}
+  .msg-copy-btn.ok{color:#4caf6e;opacity:1;}
   .msg-react-btn{font-size:.85rem;line-height:1;}
   .react-picker{
     display:none;position:fixed;background:var(--panel);border:1px solid var(--line-strong);
@@ -979,6 +980,7 @@
     starOutline: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3"></polygon>',
     starFilled: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3" fill="currentColor"></polygon>',
     forward: '<polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>',
     reply: '<polyline points="10 8 6 12 10 16"></polyline><path d="M20 5v4a3 3 0 0 1-3 3H6"></path>',
     group: '<circle cx="9" cy="8" r="3"></circle><path d="M2.6 20c0-3.6 2.9-6.5 6.4-6.5s6.4 2.9 6.4 6.5"></path><circle cx="17" cy="8" r="2.6"></circle><path d="M15.5 13.8c2.9.4 5 2.9 5 6.2"></path>',
     pencil: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>',
@@ -1036,6 +1038,25 @@
       }
       return escapeHtml(p);
     }).join('');
+  }
+
+  // Copia o texto da mensagem exatamente como foi escrito (links inteiros, quebras de linha)
+  function copiarTexto(texto, btn){
+    function ok(){
+      btn.classList.add('ok'); btn.innerHTML = icoSvg('check', 28); btn.title = 'Copiado';
+      setTimeout(function(){ btn.classList.remove('ok'); btn.innerHTML = icoSvg('copy', 28); btn.title = 'Copiar mensagem'; }, 1500);
+    }
+    function alternativo(){
+      var ta = document.createElement('textarea');
+      ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var feito = false;
+      try { feito = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      if (feito) ok(); else window.prompt('Copie a mensagem:', texto);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, alternativo);
+    else alternativo();
   }
 
   function hexToRgba(hex, alpha){
@@ -1513,6 +1534,7 @@
       if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 28) + '</button>';
+      if (m.texto) out += '<button class="msg-copy-btn" data-copy="' + m.id + '" title="Copiar mensagem">' + icoSvg('copy', 28) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 28) + '</button>';
       out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">' + icoSvg('smiley', 28) + '</button>';
       out += '</div>';
@@ -1569,6 +1591,13 @@
         var id = btn.getAttribute('data-fwd');
         forwardMsg = mensagensCache.filter(function(m){ return m.id === id; })[0];
         if (forwardMsg) abrirPicker('encaminhar');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-copy]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-copy');
+        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (msg && msg.texto) copiarTexto(msg.texto, btn);
       });
     });
     Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-reply]'), function(btn){
