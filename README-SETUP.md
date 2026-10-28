@@ -205,13 +205,15 @@ service cloud.firestore {
       allow read, write: if isDonoRemuneracao();
     }
     match /remuneracaoPessoas/{uid} {
-      allow read: if isDonoRemuneracao() || (isSignedIn() && request.auth.uid == uid);
+      allow read: if isDonoRemuneracao()
+                  || (isSignedIn() && request.auth.uid == uid && resource.data.liberado == true);
       allow write: if isDonoRemuneracao();
     }
     match /remuneracaoExtrato/{uid}/meses/{mes} {
       allow read: if isDonoRemuneracao()
                   || (isSignedIn() && request.auth.uid == uid
-                      && exists(/databases/$(database)/documents/remuneracaoPessoas/$(uid)));
+                      && exists(/databases/$(database)/documents/remuneracaoPessoas/$(uid))
+                      && get(/databases/$(database)/documents/remuneracaoPessoas/$(uid)).data.liberado == true);
       allow write: if isDonoRemuneracao();
     }
     match /contratosGerados/{docId} {
