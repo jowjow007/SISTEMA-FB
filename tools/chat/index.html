@@ -440,6 +440,9 @@
   .swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;padding:0;}
   .swatch.active{border-color:#fff;}
 
+  #thread-active{position:relative;}
+  #thread-active.soltando::after{content:'📎  Solte o arquivo para anexar';position:absolute;inset:8px;z-index:30;display:flex;align-items:center;justify-content:center;
+    border:2px dashed var(--red-bright,#c9463c);border-radius:14px;background:rgba(22,16,16,.78);color:#fff;font-size:1.05rem;font-weight:600;pointer-events:none;}
   .lightbox-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;
     z-index:70;padding:20px;cursor:zoom-out;
@@ -1792,6 +1795,9 @@
   els.docInput.addEventListener('change', function(){
     var file = els.docInput.files[0];
     if (!file) return;
+    processarDocParaEnvio(file);
+  });
+  function processarDocParaEnvio(file){
     if (file.size > LIMITE_DOCUMENTO_BYTES){
       alert('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.');
       els.docInput.value = '';
@@ -1816,8 +1822,39 @@
       alert(err.message || 'Não foi possível enviar o arquivo.');
     });
     els.docInput.value = '';
-  });
+  }
   els.btnRemoverDoc.addEventListener('click', limparComposerDoc);
+
+  // Arrastar um arquivo para dentro da conversa aberta já anexa (como no WhatsApp)
+  var EXT_DOC_RE = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip|rar|odt|ods)$/i;
+  var threadAtiva = document.getElementById('thread-active'), arrastando = 0;
+  function temArquivo(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; }
+  threadAtiva.addEventListener('dragenter', function(e){
+    if (!activeId || !temArquivo(e)) return;
+    e.preventDefault(); arrastando++;
+    threadAtiva.classList.add('soltando');
+  });
+  threadAtiva.addEventListener('dragover', function(e){
+    if (!activeId || !temArquivo(e)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  threadAtiva.addEventListener('dragleave', function(){
+    if (--arrastando <= 0){ arrastando = 0; threadAtiva.classList.remove('soltando'); }
+  });
+  threadAtiva.addEventListener('drop', function(e){
+    if (!temArquivo(e)) return;
+    e.preventDefault(); arrastando = 0;
+    threadAtiva.classList.remove('soltando');
+    if (!activeId) return;
+    var files = e.dataTransfer.files;
+    if (!files || !files.length) return;
+    var file = files[0];
+    if (files.length > 1) alert('Dá para anexar um arquivo por mensagem — vou anexar "' + file.name + '". Envie os outros em seguida.');
+    if (/^image\//.test(file.type)) processarFotoParaEnvio(file);
+    else if (EXT_DOC_RE.test(file.name)) processarDocParaEnvio(file);
+    else alert('Esse tipo de arquivo não pode ser enviado no chat. Formatos aceitos: imagens, PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP, RAR, ODT e ODS.');
+    els.composerInput.focus();
+  });
 
   function resumoMensagem(m){
     if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');

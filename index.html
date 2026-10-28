@@ -979,6 +979,16 @@
   .com-acoes .btn:disabled{opacity:.45;cursor:default;}
   .com-erro{color:var(--danger-text);font-size:.78rem;margin-top:10px;}
   .com-ok{margin-top:14px;font-size:.82rem;color:var(--ok);font-weight:600;}
+  .com-videos{margin-top:14px;display:flex;flex-direction:column;gap:10px;}
+  .com-video{border:1px solid var(--line-strong);border-radius:12px;padding:10px 12px;background:var(--panel-2);}
+  .com-video.ok{border-color:rgba(76,175,125,.55);}
+  .com-video-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .com-video-tit{flex:1 1 220px;font-size:.86rem;font-weight:600;color:var(--paper);}
+  .com-video-st{font-size:.74rem;color:var(--muted);white-space:nowrap;}
+  .com-video.ok .com-video-st{color:var(--ok);font-weight:600;}
+  .com-video-top .btn{width:auto;padding:7px 14px;font-size:.78rem;}
+  .com-video-player{position:relative;padding-top:56.25%;margin-top:10px;border-radius:8px;overflow:hidden;background:#000;}
+  .com-video-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
   .com-lista-ciencia{margin:10px 0 0;padding:0;list-style:none;font-size:.82rem;}
   .com-lista-ciencia li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);}
   .com-lista-ciencia .quando{color:var(--muted);white-space:nowrap;}
@@ -2758,7 +2768,14 @@
     }
     return bd;
   }
-  function comFechar(){ const bd = document.getElementById('com-backdrop'); if (bd) bd.classList.remove('show'); }
+  let comVideoTick = null;   // cronômetro dos vídeos obrigatórios do comunicado aberto
+  function comPararVideos(){ clearInterval(comVideoTick); comVideoTick = null; }
+  function comFechar(){
+    comPararVideos();
+    const bd = document.getElementById('com-backdrop');
+    if (bd){ bd.classList.remove('show'); bd.querySelectorAll('.com-video-player').forEach(function(p){ p.remove(); }); }
+  }
+  function comFmtSeg(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
   function iniciarComunicados(){
     document.getElementById('comunicados-btn').onclick = comAbrirHistorico;
     db.collection('comunicadosCiencia').where('uid', '==', currentProfile.uid).get().then(function(snap){
@@ -2777,23 +2794,70 @@
     const bd = comBackdrop();
     const box = bd.querySelector('.modal-box');
     const ciencia = comCiencias[c.id];
+    const videos = c.videos || [];
+    comPararVideos();
     bd.dataset.fechavel = ciencia ? '1' : '0';
+    box.style.width = videos.length ? 'min(760px,100%)' : '';
     let h = '<div class="com-head"><div class="com-ic">' + MEGAFONE_SVG + '</div><div>' +
       '<p class="com-rot">Comunicado à equipe · ' + taDataBR(c.data) + '</p><h3>' + escapeHtml(c.titulo) + '</h3>' +
-      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
+      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : videos.length ? 'Assista aos vídeos e registre sua ciência para continuar.' : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
       '<div class="com-corpo">' + c.html + '</div>';
+    // vídeos do Google Drive (c.videos = [{titulo, drive: id do arquivo, minutos: tempo mínimo com o vídeo aberto}])
+    if (videos.length){
+      h += '<div class="com-videos">' + videos.map(function(v, i){
+        return '<div class="com-video" id="com-v' + i + '"><div class="com-video-top"><span class="com-video-tit">🎬 ' + escapeHtml(v.titulo) + '</span>' +
+          '<span class="com-video-st" id="com-vst' + i + '"></span>' +
+          '<button type="button" class="btn secondary" data-video="' + i + '">▶ Assistir</button></div></div>';
+      }).join('') + '</div>';
+    }
     if (ciencia){
       h += '<p class="com-ok">✓ Você deu ciência em ' + dataBRDeTs(ciencia.em) + '.</p>' +
         '<div class="com-acoes">' + (doLogin ? '' : '<button type="button" class="btn secondary" id="com-voltar">← Voltar</button>') +
         '<button type="button" class="btn" id="com-fechar">Fechar</button></div>';
     } else {
       h += '<div class="com-aceite">' +
-        '<label class="com-check" id="com-l1"><input type="checkbox" id="com-c1"><span>Li e concordo com os termos deste comunicado.</span></label>' +
+        '<label class="com-check" id="com-l1"><input type="checkbox" id="com-c1"><span>' +
+          (videos.length ? 'Assisti aos vídeos e concordo com os termos deste comunicado.' : 'Li e concordo com os termos deste comunicado.') + '</span></label>' +
         '<label class="com-check off" id="com-l2"><input type="checkbox" id="com-c2" disabled><span>Confirmo que estou dando ciência deste comunicado e que o registro ficará gravado com meu nome, data e hora.</span></label>' +
         '</div><div class="com-erro" id="com-erro"></div>' +
         '<div class="com-acoes"><button type="button" class="btn" id="com-registrar" disabled>Registrar ciência e fechar</button></div>';
     }
     box.innerHTML = h;
+    // tempo com cada vídeo aberto (só conta com a aba visível); guardado no navegador para não recomeçar ao recarregar
+    const chaveVideo = function(i){ return 'fb-com-video-' + c.id + '-' + i + '-' + currentProfile.uid; };
+    const visto = videos.map(function(v, i){ try { return +localStorage.getItem(chaveVideo(i)) || 0; } catch(e) { return 0; } });
+    const minimo = function(i){ return Math.round((videos[i].minutos || 0) * 60); };
+    const videosOk = function(){ return ciencia || visto.every(function(s, i){ return s >= minimo(i); }); };
+    let aoMudarVideos = function(){};
+    const pintaVideos = function(){
+      videos.forEach(function(v, i){
+        const ok = !ciencia && visto[i] >= minimo(i);
+        document.getElementById('com-v' + i).classList.toggle('ok', ok);
+        document.getElementById('com-vst' + i).textContent = ciencia ? '' : ok ? '✓ Assistido'
+          : visto[i] ? comFmtSeg(visto[i]) + ' de ' + comFmtSeg(minimo(i)) : 'Não assistido · ' + (videos[i].minutos || 0) + ' min';
+      });
+      aoMudarVideos();
+    };
+    box.querySelectorAll('[data-video]').forEach(function(b){
+      b.onclick = function(){
+        const i = +b.dataset.video;
+        box.querySelectorAll('.com-video-player').forEach(function(p){ p.remove(); });
+        box.querySelectorAll('[data-video]').forEach(function(x){ x.textContent = '▶ Assistir'; });
+        const pl = document.createElement('div');
+        pl.className = 'com-video-player';
+        pl.innerHTML = '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(videos[i].drive) + '/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>';
+        document.getElementById('com-v' + i).appendChild(pl);
+        b.textContent = 'Assistindo…';
+        if (ciencia) return;
+        comPararVideos();
+        comVideoTick = setInterval(function(){
+          if (document.visibilityState !== 'visible' || !pl.isConnected) return;
+          visto[i]++;
+          try { localStorage.setItem(chaveVideo(i), visto[i]); } catch(e) {}
+          pintaVideos();
+        }, 1000);
+      };
+    });
     if (ciencia){
       document.getElementById('com-fechar').onclick = comFechar;
       const voltar = document.getElementById('com-voltar');
@@ -2801,13 +2865,17 @@
     } else {
       const c1 = document.getElementById('com-c1'), c2 = document.getElementById('com-c2'), btn = document.getElementById('com-registrar');
       const pinta = function(){
+        if (!videosOk()) c1.checked = false;
+        c1.disabled = !videosOk();
         if (!c1.checked) c2.checked = false;
         c2.disabled = !c1.checked;
-        document.getElementById('com-l1').className = 'com-check' + (c1.checked ? ' on' : '');
+        document.getElementById('com-l1').className = 'com-check' + (c1.checked ? ' on' : (c1.disabled ? ' off' : ''));
         document.getElementById('com-l2').className = 'com-check' + (c2.checked ? ' on' : (c1.checked ? '' : ' off'));
         btn.disabled = !(c1.checked && c2.checked);
       };
       c1.onchange = pinta; c2.onchange = pinta;
+      aoMudarVideos = pinta;
+      pinta();
       btn.onclick = function(){
         btn.disabled = true; btn.textContent = 'Registrando…';
         db.collection('comunicadosCiencia').doc(c.id + '_' + currentProfile.uid).set({
@@ -2825,12 +2893,15 @@
         });
       };
     }
+    pintaVideos();
     bd.classList.add('show');
     setTimeout(function(){ try { box.focus(); } catch(e) {} }, 30);
   }
   function comAbrirHistorico(){
     const bd = comBackdrop();
     const box = bd.querySelector('.modal-box');
+    comPararVideos();
+    box.style.width = '';
     bd.dataset.fechavel = '1';
     const souAdmin = currentProfile.role === 'admin';
     const lista = comLista();
