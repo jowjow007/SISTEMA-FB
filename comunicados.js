@@ -5,6 +5,20 @@
 // "data" (AAAA-MM-DD) é o dia a partir do qual o comunicado aparece.
 window.COMUNICADOS_FB = [
   {
+    id: '2026-10-28-errata-etiquetas-astrea',
+    data: '2026-10-28',
+    titulo: 'Errata: regras de etiquetas no Astrea',
+    html:
+      '<p>Complementando o comunicado de 28/10/2026 sobre as etiquetas do Astrea, esclarecemos:</p>' +
+      '<p>📁 <b>Nas tarefas de processos</b>, utilizem <b>as duas etiquetas</b>:</p>' +
+      '<p>🔴 <b>PRAZO FATAL:</b> a data final do prazo processual, como contestações, recursos e manifestações judiciais.</p>' +
+      '<p>🟢 <b>PRAZO INTERNO:</b> a data interna para concluir a peça ou atividade do processo, antes do prazo fatal.</p>' +
+      '<p>📋 <b>Nas demais atividades</b>, que não são processuais:</p>' +
+      '<p>🟤 <b>PRAZO DE RETORNO:</b> para atividades com data-limite obrigatória que não podem atrasar, como entregas, respostas e compromissos assumidos.</p>' +
+      '<p>✅ <b>IMPORTANTE:</b> não utilizem as etiquetas <b>PRAZO FATAL</b> e <b>PRAZO INTERNO</b> em atividades administrativas ou fora dos processos. Para essas, a etiqueta é a <b>PRAZO DE RETORNO</b>.</p>' +
+      '<p>O objetivo é facilitar a gestão, identificar prioridades e evitar atrasos nas entregas.</p>'
+  },
+  {
     id: '2026-10-28-etiquetas-astrea',
     data: '2026-10-28',
     titulo: 'Novas regras de etiquetas no Astrea',
