@@ -903,10 +903,17 @@ function trechos(texto, negrito){
     k = LINK_RE.lastIndex;
   }
   if(k < texto.length) out.push({t:texto.slice(k)});
+  // **negrito** do Markdown (texto copiado do chat)
+  var md = [];
+  out.forEach(function(p){
+    if(p.url){ p.t = p.t.replace(/\*\*/g, ''); md.push(p); return; }
+    p.t.split(/\*\*(?=\S)([^*\n]*?\S)\*\*/).forEach(function(s, j){ if(s) md.push(j % 2 ? {t:s, b:true} : {t:s}); });
+  });
+  out = md;
   if(!negrito) return out;
   var res = [];
   out.forEach(function(p){
-    var j = (p.url || !negrito) ? -1 : p.t.indexOf(negrito);
+    var j = (p.url || p.b || !negrito) ? -1 : p.t.indexOf(negrito);
     if(j < 0){ res.push(p); return; }
     if(j) res.push({t:p.t.slice(0, j)});
     res.push({t:negrito, b:true});
@@ -973,8 +980,8 @@ function montarBlocos(d){
   if(d.processo) B.push({t:'processo', texto:d.processo});
   var rotulos = (d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
   rotulos.forEach(function(l){
-    var m = l.match(ROTULO_RE);
-    B.push({t:'rotulo', rot:m ? m[0] : '', texto:m ? l.slice(m[0].length) : l});
+    var r = partirRotulo(l);
+    B.push({t:'rotulo', rot:r[0], texto:r[1]});
   });
   if(rotulos.length) B.push({t:'espaco'});
   d.requerentes.forEach(function(p){
@@ -989,9 +996,9 @@ function montarBlocos(d){
     if(numerar){ cont++; B.push({t:'p', texto:restoParagrafo(s), n:cont, lista:lista}); }
     else B.push({t:'p', texto:s});
   }
-  function secao(tit){
-    rom++; sub = [];
-    B.push({t:'secao', texto:(romanos ? roman(rom)+' — ' : '') + tit.toUpperCase()});
+  function secao(tit, semNumero){
+    if(!semNumero){ rom++; sub = []; }
+    B.push({t:'secao', texto:(romanos && !semNumero ? roman(rom)+' — ' : '') + tit.toUpperCase()});
   }
   // "3.1 Título" vira "III.1 — Título": a numeração segue a posição, não o número digitado
   function subsecao(m){
@@ -1045,7 +1052,7 @@ function montarBlocos(d){
       if(ehMaiusculas(s) && s.length < 200){
         if(modo === 'topico') B.push({t:'centro', texto:s});
         else {
-          secao(s.replace(/^(?:[IVXL]+|\d{1,2})\s*[—–\-.)]\s*/, ''));
+          secao(s.replace(/^(?:[IVXL]+|\d{1,2})\s*[—–\-.)]\s*/, ''), modo === 'aposAssinatura');
           if(modo === 'aposPedidos') numera = numerar;
         }
         continue;
@@ -1106,7 +1113,8 @@ function qualifParts(p){
     var m = resto.match(/^([A-ZÀ-Ý0-9][A-ZÀ-Ý0-9\s.&\-\/]{2,}?)(?=,)/);
     if(m){ nome = m[1].trim(); resto = resto.slice(m[1].length); }
   }
-  var sufixo = (/\bv[eê]m\b/i.test(resto) || /:\s*$/.test(resto)) ? '' : FRASE_VEM;
+  // frase já completa ("..., apresenta as presentes CONTRARRAZÕES ..., pelas razões seguintes.") também não leva o "vem"
+  var sufixo = (/\bv[eê]m\b/i.test(resto) || /[:.]\s*$/.test(resto)) ? '' : FRASE_VEM;
   return {nome:nome, resto:resto, sufixo:sufixo};
 }
 
@@ -1732,8 +1740,33 @@ function stripHtml(html){
   return out.join('\n').trim();
 }
 
+// texto em Markdown (copiado do chat): "**1. TÍTULO**" e "## Título" viram título; "| a | b |" vira tabela (células por tab);
+// o **negrito** no meio da frase fica e é tratado em trechos()
+function desmarkdown(raw){
+  return raw.split('\n').map(function(l){
+    var t = l.trim();
+    if(/^\|.*\|$/.test(t)){
+      if(/^\|[\s:|-]+\|$/.test(t) && /-{3}/.test(t)) return null;   // linha separadora |---|---|
+      return t.slice(1, -1).split('|').map(function(c){ return c.trim().replace(/\*\*/g, ''); }).join('\t');
+    }
+    if(/^([-*_])(\s*\1){2,}$/.test(t)) return '';                      // linha horizontal ---
+    var h = t.match(/^(#{1,6})\s+(.*?)\s*#*$/);
+    if(h) t = h[2];
+    var b = t.match(/^(\*\*|__)([^*]+?)\1$/);
+    if(b) t = b[2].trim();
+    if((h || b) && t.length <= 150 && !/[.,;:]$/.test(t)) titulosColados[t] = h ? h[1].length : 1;
+    return t;
+  }).filter(function(l){ return l !== null; }).join('\n');
+}
+// "Marca: X", "Processo de registro nº 123" no cabeçalho → [rótulo, resto]
+var ROTULO_LIVRE_RE = /^[A-ZÀ-Ý][^:.;]{1,45}:(?=\s+\S)|^[A-ZÀ-Ý][^:.;]{2,60}?\bn\.?\s*[º°o]\.?(?=\s*[\d.\/-]{4,}$)/;
+function partirRotulo(l){
+  var m = l.match(ROTULO_RE) || l.match(ROTULO_LIVRE_RE);
+  return m ? [m[0], l.slice(m[0].length)] : ['', l];
+}
+
 function parsearPeticao(raw){
-  var linhas = raw.replace(/\r\n?/g,'\n').replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
+  var linhas = desmarkdown(raw.replace(/\r\n?/g,'\n')).replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
 
   var resultado = {
     processo:'', vara:'', enderecamento:'', titulo:'',
@@ -1771,7 +1804,7 @@ function parsearPeticao(raw){
   // título de seção na linha k → {nivel:1 (seção) | 2 (subtítulo), texto, num (número digitado)}
   function tituloDe(k){
     var l = linhas[k];
-    if(!l || l.length > 180 || ehMarcaImagem(l)) return null;
+    if(!l || l.length > 180 || ehMarcaImagem(l) || l.indexOf('\t') >= 0) return null;
     var continua = /^[a-zà-ÿ]/.test(proxima(k));   // a linha seguinte continua a frase: não é título
     var m = l.match(NUMHEAD_RE);
     if(m && !continua && !/[.,:]$/.test(l) && !/\.\s+[A-ZÀ-Ý]/.test(m[2])) return {nivel:1, texto:m[2].trim(), num:m[1]};
@@ -1794,7 +1827,7 @@ function parsearPeticao(raw){
     var le = linhas[i];
     if(!le){
       var pe = proxima(i);
-      if(ender.length && pe && ehMaiusculas(pe) && ENDER_CONT_RE.test(pe) && !PROC_RE.test(pe)){ i++; continue; }
+      if(ender.length && pe && ehMaiusculas(pe) && (ENDER_CONT_RE.test(pe) || ENDER_KW.test(pe)) && !PROC_RE.test(pe)){ i++; continue; }
       break;
     }
     if(!(ehMaiusculas(le) || (!ender.length && ENDER_KW.test(le))) || PROC_RE.test(le)) break;
@@ -1825,7 +1858,7 @@ function parsearPeticao(raw){
     var l = linhas[i];
     if(!l) continue;
     if(!resultado.processo && PROC_RE.test(l) && l.length < 90){ resultado.processo = l.match(PROC_RE)[1]; continue; }
-    if(ROTULO_RE.test(l) && l.length < 160 && !resultado.requerentes.length){ rotulos.push(l); continue; }
+    if((ROTULO_RE.test(l) || ROTULO_LIVRE_RE.test(l)) && l.length < 160 && !resultado.requerentes.length){ rotulos.push(l); continue; }
     var tt = tituloDe(i);
     if(PED_HEADER_RE.test(l) || (tt && (tt.num || tt.rom || tt.nivel === 2))) break;
     var ehTit = (ehMaiusculas(l) && l.length < 160) || titulosColados[l] === 0
@@ -1847,6 +1880,10 @@ function parsearPeticao(raw){
       }
       resultado.subtitulo = sub.join(' ');
       resultado.aposTitulo = apos.join(' ');
+      // qualificação logo abaixo do título ("FULANO LTDA., inscrita no CNPJ..., apresenta as presentes...")
+      if(i < fim && !apos.length && !resultado.requerentes.length && linhas[i].length > 60 && QUALIF_RE.test(linhas[i]) && !tituloDe(i)){
+        resultado.requerentes.push({nome:'', qual:linhas[i]}); i++;
+      }
       break;
     }
     if(l.length > 60 && QUALIF_RE.test(l) && !resultado.requerentes.length){
@@ -1944,7 +1981,7 @@ function parsearPeticao(raw){
   }
 
   // ── 5. fechamento: local/data, advogados (nome + OAB) e o que vier depois da assinatura ──
-  var cauda = linhas.slice(fim), ultimaSig = -1;
+  var cauda = linhas.slice(fim), ultimaSig = -1, jLocal = -1;
   cauda.forEach(function(l, j){
     var mo = l.match(OAB_RE);
     if(mo && l.length < 45){
@@ -1962,7 +1999,7 @@ function parsearPeticao(raw){
     if(ultimaSig >= 0 || resultado.local) return;
     var mLugar = l.match(LUGAR_RE) || l.match(LUGAR_SO_RE);
     if(mLugar){
-      resultado.local = mLugar[1].trim();
+      resultado.local = mLugar[1].trim(); jLocal = j;
       if(mLugar[4]){
         var mesesMap = {janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
         var mes = mesesMap[(mLugar[3]||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')];
@@ -1970,6 +2007,11 @@ function parsearPeticao(raw){
       }
     }
   });
+  // sem OAB (assinatura em branco, "[NOME DO ADVOGADO]"): o que vem depois começa no 1º título após o local/data
+  if(ultimaSig < 0 && jLocal >= 0){
+    var jTit = cauda.findIndex(function(x, j){ return j > jLocal && x && x[0] !== '[' && ehMaiusculas(x) && x.length <= 120 && !FECH_RE.test(x); });
+    if(jTit >= 0) ultimaSig = jTit - 1;
+  }
   if(ultimaSig >= 0){
     resultado.aposAssinatura = cauda.slice(ultimaSig + 1).map(function(x, j){
       var t = x && tituloDe(fim + ultimaSig + 1 + j);
