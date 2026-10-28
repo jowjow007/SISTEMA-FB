@@ -5,6 +5,20 @@
 // "data" (AAAA-MM-DD) é o dia a partir do qual o comunicado aparece.
 window.COMUNICADOS_FB = [
   {
+    id: '2026-10-29-videos-organizacao-aprovacao',
+    data: '2026-10-29',
+    titulo: 'Treinamento obrigatório: organização de pastas e tarefas para aprovação',
+    html:
+      '<p>Preparamos dois vídeos sobre a <b>organização de pastas</b> e o envio de <b>tarefas para aprovação</b>. Todos devem assistir.</p>' +
+      '<p>📌 Clique em <b>▶ Assistir</b> em cada vídeo e assista <b>até o final</b>. A confirmação de ciência só é liberada depois que os dois vídeos forem assistidos.</p>' +
+      '<p>Os vídeos também ficam disponíveis a qualquer momento na aba <b>Treinamentos › Vídeos</b>.</p>',
+    // vídeos obrigatórios: "minutos" = tempo mínimo com o vídeo aberto (duração de cada um: 2:31 e 3:39)
+    videos: [
+      { titulo: 'Organização de pastas e tarefas para aprovação (parte 1)', drive: '12fTsL1PZwQQlIeI3iYW_kp97eEzaRnNL', minutos: 151 / 60 },
+      { titulo: 'Organização de pastas e tarefas para aprovação (parte 2)', drive: '1L-Jm0zNn8RTs8afrPQQQbLJ7sKrrmXNZ', minutos: 219 / 60 }
+    ]
+  },
+  {
     id: '2026-10-28-errata-etiquetas-astrea',
     data: '2026-10-28',
     titulo: 'Errata: regras de etiquetas no Astrea',
