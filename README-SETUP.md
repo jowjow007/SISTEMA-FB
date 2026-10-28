@@ -152,7 +152,7 @@ service cloud.firestore {
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.texto is string
                     && request.resource.data.texto.size() > 0
-                    && request.resource.data.texto.size() <= 300
+                    && request.resource.data.texto.size() <= 2000
                     && request.resource.data.grupoId is string
                     && request.resource.data.concluida == false;
       allow update: if isSignedIn()
@@ -168,7 +168,7 @@ service cloud.firestore {
                     && request.resource.data.destinatarioUid != request.auth.uid
                     && request.resource.data.texto is string
                     && request.resource.data.texto.size() > 0
-                    && request.resource.data.texto.size() <= 300
+                    && request.resource.data.texto.size() <= 2000
                     && request.resource.data.status == 'pendente';
       allow update: if isSignedIn() && (
                       (
