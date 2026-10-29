@@ -228,6 +228,24 @@ service cloud.firestore {
       allow write: if isDonoRemuneracao();
     }
 
+    // Agenda do Astrea (Números do Escritório › Agenda — Astrea): o robô do PC do escritório
+    // (scripts/astrea-importer, login robo@) grava a agenda do dia e o delta; todos os logados leem.
+    // astreaTrigger/pedido é o botão "Executar robô agora": o portal cria/apaga o pedido, o robô atualiza o status.
+    function isRoboAstrea() {
+      return isSignedIn() && request.auth.token.email == 'robo@fonsecaebraga.com.br';
+    }
+    match /astreaDiario/{data} {
+      allow read: if isSignedIn();
+      allow write: if isRoboAstrea() || isAdmin();
+    }
+    match /astreaDelta/{data} {
+      allow read: if isSignedIn();
+      allow write: if isRoboAstrea() || isAdmin();
+    }
+    match /astreaTrigger/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Conferência de e-mails (tools/conferencia-emails): o robô (conta de serviço, fora destas regras) cria
     // e atualiza os documentos. O admin vê todos, troca o responsável, ignora e reabre; cada responsável
     // vê só os seus e pode apenas marcar como respondido.
