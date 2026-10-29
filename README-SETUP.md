@@ -250,6 +250,27 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false;
     }
+    // Textos dos e-mails e das respostas (nunca apagados) e lista do que o robô descartou: só o dono lê.
+    // O responsável só pode gravar a própria anotação de "Marcar respondido" (nota), nada mais.
+    function isDonoConferencia() {
+      return isSignedIn() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
+    }
+    match /emailsConferenciaTextos/{docId} {
+      allow read: if isDonoConferencia();
+      allow create, update: if isDonoConferencia()
+                            || (isSignedIn()
+                                && get(/databases/$(database)/documents/emailsConferencia/$(docId)).data.responsavelEmail == request.auth.token.email
+                                && request.resource.data.notaPor == request.auth.token.email
+                                && request.resource.data.notaEm == request.time
+                                && (resource == null
+                                    ? request.resource.data.keys().hasOnly(['nota', 'notaPor', 'notaEm'])
+                                    : request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nota', 'notaPor', 'notaEm'])));
+      allow delete: if false;
+    }
+    match /emailsConferenciaDescartes/{docId} {
+      allow read: if isDonoConferencia();
+      allow write: if false;
+    }
     match /contratosGerados/{docId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -1031,4 +1052,6 @@ Confere de hora em hora os e-mails recebidos na caixa `jonathan@fonsecaebraga.co
 
 **O que fica de fora:** enviados, rascunhos, spam e lixeira; categorias Promoções, Social, Atualizações e Fóruns; remetentes `@fonsecaebraga.com.br`; mensagens automáticas (cabeçalhos `Auto-Submitted`, `Precedence: bulk/list`, `List-Unsubscribe`, remetentes no-reply/não-responda/newsletter); e-mails em que o Jonathan está só em cópia. "Atrasado" = 24 h corridas sem resposta.
 
-**Aba no portal:** registrar pelo Admin com a URL `tools/conferencia-emails/` e o rótulo **Conferência de E-mails** (o rótulo precisa ter "e-mail" e "confer" para a aba piscar quando a pessoa tiver e-mail pendente). Admin vê todos os e-mails dos últimos 30 dias, troca o responsável, ignora e reabre; cada responsável vê só os seus e pode marcar como respondido. O link "Abrir no Gmail" busca pelo Message-ID (`#search/rfc822msgid:`) na conta de quem clicou — funciona na caixa de qualquer um que tenha recebido a mensagem.
+**Textos e histórico (desde 29/10/2026):** o robô guarda o texto do e-mail recebido e o da resposta (até 3.000 caracteres cada, sem o histórico citado, sem anexos, senhas mascaradas) em `emailsConferenciaTextos/{id}` — **nunca é apagado** — e registra cada e-mail descartado (remetente, assunto, para, motivo) em `emailsConferenciaDescartes/{id}`. As duas coleções só são lidas pelo dono (`isDonoConferencia`, travado no e-mail do Jonathan). Quem marca "respondido" à mão pode deixar uma anotação ("Como foi respondido?"), gravada no mesmo documento de textos (campos `nota`/`notaPor`/`notaEm` — a regra só deixa o responsável gravar esses três). Se o robô depois achar a resposta no Gmail de um e-mail marcado à mão, ele guarda o texto também (sem mudar quem marcou).
+
+**Aba no portal:** registrar pelo Admin com a URL `tools/conferencia-emails/` e o rótulo **Conferência de E-mails** (o rótulo precisa ter "e-mail" e "confer" para a aba piscar quando a pessoa tiver e-mail pendente). Admin vê todos os e-mails dos últimos 30 dias, troca o responsável, ignora e reabre; cada responsável vê só os seus e pode marcar como respondido. O dono tem ainda as abas **Histórico** (todos os e-mails desde o início, busca no texto recebido/resposta/anotação, filtro por quem enviou, situação, caixa, quem respondeu, robô/manual e período, conversa lado a lado) e **Relatório** (por período: totais, tempo médio de resposta, % em até 24 h, tabela por remetente e planilha .xlsx com Remetentes, E-mails com textos, Pontos de atenção e Descartados pelo robô). O link "Abrir no Gmail" busca pelo Message-ID (`#search/rfc822msgid:`) na conta de quem clicou — funciona na caixa de qualquer um que tenha recebido a mensagem.

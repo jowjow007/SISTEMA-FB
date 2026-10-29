@@ -5,6 +5,8 @@
 // 2) Para cada e-mail ainda sem resposta, procura a resposta no mesmo fio: na caixa principal e nos
 //    ENVIADOS do responsável (a cópia encaminhada é achada pelo Message-ID original).
 // 3) Grava o resultado no Firestore do portal (coleção emailsConferencia), que a aba "Conferência de E-mails" mostra.
+// 4) Guarda o texto do e-mail recebido e o da resposta (emailsConferenciaTextos — só o dono lê, nunca é apagado)
+//    e a lista do que foi descartado (emailsConferenciaDescartes), para o Histórico e o Relatório do portal.
 //
 // Acesso: conta de serviço conferencia-emails@sistema-fb-7a811 com delegação em todo o domínio (escopo
 // gmail.readonly) e papel "Usuário do Cloud Datastore" no projeto sistema-fb-4cce5. A chave JSON fica em
@@ -51,6 +53,9 @@ var CONFIG = {
 var ESCOPO_GMAIL = 'https://www.googleapis.com/auth/gmail.readonly';
 var ESCOPO_FIRESTORE = 'https://www.googleapis.com/auth/datastore';
 var COLECAO = 'emailsConferencia';
+var TEXTOS = 'emailsConferenciaTextos';
+var DESCARTES = 'emailsConferenciaDescartes';
+var LIMITE_TEXTO = 3000;
 var CABECALHOS = ['From', 'To', 'Cc', 'Subject', 'Message-ID', 'Auto-Submitted', 'Precedence',
                   'List-Unsubscribe', 'List-Id', 'X-Autoreply', 'X-Autorespond'];
 
@@ -96,12 +101,14 @@ function testarAcessos() {
 
 // Uma conferência completa (é o que o agendamento roda de hora em hora).
 function conferirAgora() {
-  var resumo = { em: new Date(), novos: 0, respondidos: 0, pendentes: 0, erro: '' };
+  var resumo = { em: new Date(), novos: 0, respondidos: 0, pendentes: 0, textos: 0, erro: '' };
   try {
+    migrarTextos();
     resumo.novos = registrarNovos();
     var r = atualizarRespostas();
     resumo.respondidos = r.respondidos;
     resumo.pendentes = r.pendentes;
+    resumo.textos = completarTextos();
   } catch (e) {
     resumo.erro = String(e && e.message || e).slice(0, 500);
     throw e;
@@ -134,11 +141,28 @@ function registrarNovos() {
   var jaDescartados = ids.length ? cache.getAll(ids.map(function(id) { return 'desc|' + id; })) : {};
   ids = ids.filter(function(id) { return !jaDescartados['desc|' + id]; });
 
-  var novos = [], descartados = {};
+  var novos = [], textos = [], descartes = [], descartados = {}, manter = [];
   lerMensagens(CONFIG.caixaPrincipal, ids).forEach(function(m) {
     var c = classificar(m);
-    if (!c.caixa) { descartados['desc|' + m.id] = '1'; return; }
+    if (c.caixa) { manter.push({ m: m, c: c }); return; }
+    descartados['desc|' + m.id] = '1';
+    descartes.push({ id: m.id, dados: {
+      recebidoEm: new Date(m.internalDate),
+      deNome: c.de.nome.slice(0, 150),
+      deEmail: c.de.email.slice(0, 150),
+      assunto: (m.h['subject'] || '(sem assunto)').slice(0, 300),
+      para: (m.h['to'] || '').slice(0, 300),
+      motivo: c.motivo
+    } });
+  });
+  var corpos = {};
+  lerMensagens(CONFIG.caixaPrincipal, manter.map(function(x) { return x.m.id; }), 'full').forEach(function(m) {
+    corpos[m.id] = textoDaMensagem(m.payload);
+  });
+  manter.forEach(function(x) {
+    var m = x.m, c = x.c;
     var resp = c.caixa.responsavel;
+    textos.push({ id: m.id, dados: { recebidoTexto: corpos[m.id] || limparTrecho(m.snippet), criadoEm: new Date() } });
     novos.push({ id: m.id, dados: {
       caixa: c.caixa.id,
       assunto: (m.h['subject'] || '(sem assunto)').slice(0, 300),
@@ -152,10 +176,13 @@ function registrarNovos() {
       responsavelEmail: resp,
       responsavelNome: CONFIG.nomes[resp] || resp,
       status: 'pendente',
+      textos: false,
       criadoEm: new Date()
     } });
   });
   if (Object.keys(descartados).length) cache.putAll(descartados, 21600);
+  criarVarios(DESCARTES, descartes);
+  criarVarios(TEXTOS, textos);
   return criarVarios(COLECAO, novos);
 }
 
@@ -164,21 +191,74 @@ function atualizarRespostas() {
   var respondidos = 0, pendentes = 0;
   consultar(filtroCampo('status', 'EQUAL', 'pendente')).forEach(function(d) {
     if (!d.recebidoEm || d.recebidoEm.getTime() < limite) return;
-    var recebido = d.recebidoEm.getTime();
-    var achou = respostaNoFio(CONFIG.caixaPrincipal, d.threadId, recebido);
-    var outro = d.responsavelEmail;
-    if (!achou && d.messageId && outro && outro !== CONFIG.caixaPrincipal && CONFIG.caixasLiberadas.indexOf(outro) >= 0) {
-      var tid = fioPorMessageId(outro, d.messageId);
-      if (tid) achou = respostaNoFio(outro, tid, recebido);
-    }
+    var achou = acharResposta(d);
     if (achou) {
-      atualizar(COLECAO, d._id, { status: 'respondido', respondidoEm: new Date(achou.em), respondidoPor: achou.por, respondidoModo: 'auto' });
+      guardarResposta(d._id, achou);
+      atualizar(COLECAO, d._id, { status: 'respondido', respondidoEm: new Date(achou.em), respondidoPor: achou.por, respondidoModo: 'auto', textos: true });
       respondidos++;
     } else {
       pendentes++;
     }
   });
   return { respondidos: respondidos, pendentes: pendentes };
+}
+
+// Procura a resposta no mesmo fio: na caixa principal e nas caixas do responsável atual e do responsável
+// padrão da caixa (o e-mail pode ter sido respondido antes de o responsável ser trocado no portal).
+function acharResposta(d) {
+  var recebido = d.recebidoEm.getTime();
+  var achou = respostaNoFio(CONFIG.caixaPrincipal, d.threadId, recebido);
+  if (achou) { achou.usuario = CONFIG.caixaPrincipal; return achou; }
+  if (!d.messageId) return null;
+  var padrao = CONFIG.caixas.filter(function(cx) { return cx.id === d.caixa; }).map(function(cx) { return cx.responsavel; });
+  var outros = [d.responsavelEmail].concat(padrao).filter(function(u, i, a) {
+    return u && u !== CONFIG.caixaPrincipal && a.indexOf(u) === i && CONFIG.caixasLiberadas.indexOf(u) >= 0;
+  });
+  for (var i = 0; i < outros.length; i++) {
+    var tid = fioPorMessageId(outros[i], d.messageId);
+    achou = tid && respostaNoFio(outros[i], tid, recebido);
+    if (achou) { achou.usuario = outros[i]; return achou; }
+  }
+  return null;
+}
+
+function guardarResposta(id, achou) {
+  var m = gmail(achou.usuario, 'messages/' + achou.id, { format: 'full' });
+  mesclar(TEXTOS, id, {
+    respostaTexto: m ? textoDaMensagem(m.payload) : '',
+    respostaEm: new Date(achou.em),
+    respostaPor: achou.por
+  });
+}
+
+// E-mails respondidos sem texto da resposta (marcados à mão, ou de antes de os textos existirem): procura a
+// resposta no Gmail por até CONFIG.diasAcompanhar dias. Não muda quem marcou nem como.
+function completarTextos() {
+  var limite = Date.now() - CONFIG.diasAcompanhar * 864e5;
+  var n = 0;
+  consultar(filtroCampo('textos', 'EQUAL', false)).forEach(function(d) {
+    if (d.status !== 'respondido' || !d.recebidoEm) return;
+    var achou = d.recebidoEm.getTime() >= limite ? acharResposta(d) : null;
+    if (achou) { guardarResposta(d._id, achou); n++; }
+    if (achou || d.recebidoEm.getTime() < limite) atualizar(COLECAO, d._id, { textos: true });
+  });
+  return n;
+}
+
+// Uma vez só: os e-mails gravados antes de existir o texto ganham o texto recebido e entram na fila de completarTextos.
+function migrarTextos() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('TEXTOS_MIGRADOS')) return;
+  var faltam = consultar(null).filter(function(d) { return d.textos === undefined; });
+  var corpos = {};
+  lerMensagens(CONFIG.caixaPrincipal, faltam.map(function(d) { return d._id; }), 'full').forEach(function(m) {
+    corpos[m.id] = textoDaMensagem(m.payload);
+  });
+  faltam.forEach(function(d) {
+    mesclar(TEXTOS, d._id, { recebidoTexto: corpos[d._id] || d.trecho || '', criadoEm: new Date() });
+    atualizar(COLECAO, d._id, { textos: false });
+  });
+  props.setProperty('TEXTOS_MIGRADOS', new Date().toISOString());
 }
 
 function listarRecebidos() {
@@ -192,14 +272,15 @@ function listarRecebidos() {
   return ids;
 }
 
-// Lê os cabeçalhos de várias mensagens, 25 requisições em paralelo por vez.
-function lerMensagens(usuario, ids) {
+// Lê várias mensagens, 25 requisições em paralelo por vez. Sem "formato", só os cabeçalhos; 'full' traz o corpo.
+function lerMensagens(usuario, ids, formato) {
+  var params = formato === 'full' ? { format: 'full' } : { format: 'metadata', metadataHeaders: CABECALHOS };
   var lidos = [];
   for (var i = 0; i < ids.length; i += 25) {
     var lote = ids.slice(i, i + 25);
     var reqs = lote.map(function(id) {
       return {
-        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?' + qs({ format: 'metadata', metadataHeaders: CABECALHOS }),
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?' + qs(params),
         headers: { Authorization: 'Bearer ' + token(ESCOPO_GMAIL, usuario) },
         muteHttpExceptions: true
       };
@@ -208,7 +289,7 @@ function lerMensagens(usuario, ids) {
       var c = r.getResponseCode(), m;
       if (c === 200) m = JSON.parse(r.getContentText());
       else if (c === 404) return;
-      else { Utilities.sleep(1000); m = gmail(usuario, 'messages/' + lote[j], { format: 'metadata', metadataHeaders: CABECALHOS }); }
+      else { Utilities.sleep(1000); m = gmail(usuario, 'messages/' + lote[j], params); }
       if (m) lidos.push(paraMensagem(m));
     });
   }
@@ -216,7 +297,7 @@ function lerMensagens(usuario, ids) {
 }
 
 function paraMensagem(m) {
-  return { id: m.id, threadId: m.threadId, internalDate: +m.internalDate, snippet: m.snippet || '', rotulos: m.labelIds || [], h: cabecalhos(m) };
+  return { id: m.id, threadId: m.threadId, internalDate: +m.internalDate, snippet: m.snippet || '', rotulos: m.labelIds || [], h: cabecalhos(m), payload: m.payload };
 }
 
 // Decide a caixa do e-mail, ou o motivo de ficar de fora.
@@ -264,7 +345,7 @@ function respostaNoFio(usuario, threadId, depoisDe) {
     if (+m.internalDate <= depoisDe || rot.indexOf('DRAFT') >= 0) continue;
     var de = separarRemetente(cabecalhos(m)['from']);
     if (rot.indexOf('SENT') >= 0 || de.email.slice(-CONFIG.dominio.length - 1) === '@' + CONFIG.dominio) {
-      return { em: +m.internalDate, por: de.email || usuario };
+      return { id: m.id, em: +m.internalDate, por: de.email || usuario };
     }
   }
   return null;
@@ -301,6 +382,58 @@ function limparTrecho(s) {
     .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/((?:senha|password|c[óo]digo|token|pin)\s*[:=]?\s*)\S+/gi, '$1•••')
     .slice(0, 220);
+}
+
+// Texto legível de uma mensagem: prefere text/plain, cai para o HTML sem tags; ignora anexos.
+function textoDaMensagem(payload) {
+  var plano = [], html = [];
+  (function andar(p) {
+    if (!p || p.filename) return;
+    var tipo = String(p.mimeType || '').toLowerCase();
+    if (p.body && p.body.data) {
+      if (tipo === 'text/plain') plano.push(decodificarParte(p));
+      else if (tipo === 'text/html') html.push(decodificarParte(p));
+    }
+    (p.parts || []).forEach(andar);
+  })(payload);
+  return limparCorpo(plano.length ? plano.join('\n') : htmlParaTexto(html.join('\n')));
+}
+
+function decodificarParte(p) {
+  var dados = p.body.data;
+  while (dados.length % 4) dados += '=';
+  var bytes = Utilities.base64DecodeWebSafe(dados);
+  var ct = ((p.headers || []).filter(function(h) { return h.name.toLowerCase() === 'content-type'; })[0] || {}).value || '';
+  var cs = (/charset="?([\w-]+)/i.exec(ct) || [])[1] || 'UTF-8';
+  try { return Utilities.newBlob(bytes).getDataAsString(cs); } catch (e) { return Utilities.newBlob(bytes).getDataAsString(); }
+}
+
+function htmlParaTexto(h) {
+  return String(h || '')
+    .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<div[^>]*class="?gmail_quote[\s\S]*$/i, '')
+    .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|tr|li|h\d)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, function(m, n) { return String.fromCharCode(+n); }).replace(/&amp;/g, '&');
+}
+
+// Corta o histórico citado ("Em … escreveu:", "-----Mensagem original-----", linhas com ">"), limpa e limita o tamanho.
+function limparCorpo(t) {
+  t = '\n' + String(t || '').replace(/\r\n?/g, '\n');
+  var marcas = [
+    /\n[ \t>]*(Em|On)\s[\s\S]{0,250}?(escreveu|wrote)\s*:/i,
+    /\n[ \t]*-{2,}\s*(Mensagem original|Original Message|Forwarded message|Mensagem encaminhada)/i,
+    /\n[ \t]*_{5,}[ \t]*\n[ \t]*(De|From)\s*:/i,
+    /\n[ \t]*\*?(De|From)\s*:\*?[^\n]*\n[ \t]*\*?(Enviad[oa]|Sent|Data|Date)\s*:/i
+  ];
+  var corte = t.length;
+  marcas.forEach(function(re) { var m = re.exec(t); if (m && m.index < corte) corte = m.index; });
+  t = t.slice(0, corte).split('\n').filter(function(l) { return !/^\s*>/.test(l); }).join('\n');
+  t = t.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  t = t.replace(/((?:senha|password|c[óo]digo|token|pin)\s*[:=]?\s*)\S+/gi, '$1•••');
+  return t.length > LIMITE_TEXTO ? t.slice(0, LIMITE_TEXTO) + '…' : t;
 }
 
 function qs(p) {
@@ -426,6 +559,13 @@ function atualizar(colecao, id, dados) {
   var mascara = Object.keys(dados).map(function(k) { return 'updateMask.fieldPaths=' + encodeURIComponent(k); }).join('&');
   var r = fs('patch', '/' + colecao + '/' + encodeURIComponent(id) + '?' + mascara + '&currentDocument.exists=true', campos(dados));
   if (r.codigo !== 200) throw new Error('Firestore (atualizar): ' + r.codigo + ' ' + r.corpo.slice(0, 300));
+}
+
+// Grava só os campos informados, criando o documento se ainda não existir.
+function mesclar(colecao, id, dados) {
+  var mascara = Object.keys(dados).map(function(k) { return 'updateMask.fieldPaths=' + encodeURIComponent(k); }).join('&');
+  var r = fs('patch', '/' + colecao + '/' + encodeURIComponent(id) + '?' + mascara, campos(dados));
+  if (r.codigo !== 200) throw new Error('Firestore (mesclar): ' + r.codigo + ' ' + r.corpo.slice(0, 300));
 }
 
 function gravar(colecao, id, dados) {
