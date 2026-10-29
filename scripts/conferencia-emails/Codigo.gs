@@ -59,11 +59,20 @@ function testarAcessos() {
   var cont = { condominio: 0, juridico: 0, meu: 0, automatico: 0, foraDasCaixas: 0 };
   lidos.forEach(function(m) {
     var c = classificar(m);
-    cont[c.motivo || c.caixa]++;
+    cont[c.motivo || c.caixa.id]++;
+    Logger.log('  ' + (c.motivo ? '✗ ' + c.motivo : '✓ ' + c.caixa.id) + ' | ' + c.de.email + ' | para: ' +
+               (m.h['to'] || '—').slice(0, 80) + ' | ' + (m.h['subject'] || '').slice(0, 60));
   });
   Logger.log('Últimos ' + CONFIG.diasNovos + ' dias: ' + lidos.length + ' e-mails lidos → condomínio ' + cont.condominio +
              ', jurídico ' + cont.juridico + ', meu e-mail ' + cont.meu + ' · ignorados: automáticos ' + cont.automatico +
              ', só em cópia/fora das caixas ' + cont.foraDasCaixas);
+
+  // Quanto cada filtro do Gmail tirou da conferência (para calibrar CONFIG.filtroGmail).
+  var base = 'newer_than:' + CONFIG.diasNovos + 'd -in:sent -in:chats -in:drafts -in:spam -in:trash -from:me ';
+  ['', 'category:promotions', 'category:social', 'category:updates', 'category:forums', 'from:fonsecaebraga.com.br'].forEach(function(f) {
+    var r = gmail(CONFIG.caixaPrincipal, 'messages', { q: base + f, maxResults: 500 });
+    Logger.log('Filtro "' + (f || 'tudo recebido') + '": ' + ((r.messages || []).length) + (r.nextPageToken ? '+' : '') + ' e-mails');
+  });
 }
 
 // Uma conferência completa (é o que o agendamento roda de hora em hora).
