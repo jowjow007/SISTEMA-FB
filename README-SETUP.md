@@ -227,6 +227,29 @@ service cloud.firestore {
                       && get(/databases/$(database)/documents/remuneracaoPessoas/$(uid)).data.liberado == true);
       allow write: if isDonoRemuneracao();
     }
+
+    // Conferência de e-mails (tools/conferencia-emails): o robô (conta de serviço, fora destas regras) cria
+    // e atualiza os documentos. O admin vê todos, troca o responsável, ignora e reabre; cada responsável
+    // vê só os seus e pode apenas marcar como respondido.
+    match /emailsConferencia/{docId} {
+      allow read: if isAdmin()
+                  || (isSignedIn() && resource.data.responsavelEmail == request.auth.token.email);
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && resource.data.responsavelEmail == request.auth.token.email
+                        && resource.data.status == 'pendente'
+                        && request.resource.data.status == 'respondido'
+                        && request.resource.data.respondidoModo == 'manual'
+                        && request.resource.data.respondidoPor == request.auth.token.email
+                        && request.resource.data.respondidoEm == request.time
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['status', 'respondidoModo', 'respondidoPor', 'respondidoEm']));
+      allow create, delete: if false;
+    }
+    match /emailsConferenciaMeta/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
     match /contratosGerados/{docId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -994,3 +1017,18 @@ mandou para alguém) — a regra de `tarefasEnviadas` restringe a leitura a
 `remetenteUid`/`destinatarioUid`. Não existe hierarquia entre admin e
 gestor aqui: os dois têm exatamente o mesmo poder de enviar/aprovar/reprovar
 para qualquer colega, inclusive um para o outro.
+
+## 12. Conferência de E-mails (robô + aba `tools/conferencia-emails/`)
+
+Confere de hora em hora os e-mails recebidos na caixa `jonathan@fonsecaebraga.com.br` — inclusive os aliases `condominio@` (responsável padrão: Dra. Yasmin, `yasmin@`) e `juridico@` (Ana Vitória, `avsoares@`) — e marca quais já foram respondidos por alguém do escritório no mesmo fio, na caixa principal ou nos **enviados** do responsável (a cópia encaminhada é achada pelo Message-ID original).
+
+**Peças (configuradas em 28/10/2026):**
+- **Conta de serviço** `conferencia-emails@sistema-fb-7a811.iam.gserviceaccount.com` (ID 111660471447043205533), no projeto `sistema-fb-7a811` da conta do escritório. Em admin.google.com › Segurança › Controles de API › Delegação em todo o domínio, autorizada **só** com `https://www.googleapis.com/auth/gmail.readonly`. Para desligar o robô na hora: apague essa linha.
+- No projeto do portal (`sistema-fb-4cce5`, conta pessoal), a mesma conta tem o papel **Usuário do Cloud Datastore** — é assim que ela grava `emailsConferencia` e `emailsConferenciaMeta` (contas de serviço não passam pelas regras do Firestore; as regras da seção 3 valem para quem usa o portal).
+- **Robô**: `scripts/conferencia-emails/Codigo.gs`, colado num projeto do Google Apps Script (script.google.com) da conta do Jonathan. A chave JSON da conta de serviço vai em **Configurações do projeto › Propriedades do script › `CHAVE_JSON`** (conteúdo inteiro do arquivo) — nunca no código nem no GitHub. O código só abre as caixas listadas em `CONFIG.caixasLiberadas`.
+
+**Instalar / testar o robô:** no editor do Apps Script, rode `testarAcessos` (não grava nada: confere a chave, a delegação, o Firestore e mostra quantos e-mails entrariam), depois `conferirAgora` (primeira conferência real) e por fim `instalarAgendamento` (de hora em hora).
+
+**O que fica de fora:** enviados, rascunhos, spam e lixeira; categorias Promoções, Social, Atualizações e Fóruns; remetentes `@fonsecaebraga.com.br`; mensagens automáticas (cabeçalhos `Auto-Submitted`, `Precedence: bulk/list`, `List-Unsubscribe`, remetentes no-reply/não-responda/newsletter); e-mails em que o Jonathan está só em cópia. "Atrasado" = 24 h corridas sem resposta.
+
+**Aba no portal:** registrar pelo Admin com a URL `tools/conferencia-emails/` e o rótulo **Conferência de E-mails** (o rótulo precisa ter "e-mail" e "confer" para a aba piscar quando a pessoa tiver e-mail pendente). Admin vê todos os e-mails dos últimos 30 dias, troca o responsável, ignora e reabre; cada responsável vê só os seus e pode marcar como respondido. O link "Abrir no Gmail" busca pelo Message-ID (`#search/rfc822msgid:`) na conta de quem clicou — funciona na caixa de qualquer um que tenha recebido a mensagem.

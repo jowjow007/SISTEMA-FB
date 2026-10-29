@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conferência de E-mails — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:url('../../assets/bg-texture.jpg') repeat;background-size:280px auto;opacity:.05;}
+
+  :root{
+    --ink:#161010;
+    --panel:#211918;
+    --panel-2:#2a1f1e;
+    --panel-3:#332524;
+    --paper:#ece6e1;
+    --muted:#9c908b;
+    --red:#b8362e;
+    --red-bright:#c9463c;
+    --gold:#d8b25a;
+    --green:#4caf6e;
+    --warn:#e0a24a;
+    --blue:#8fb4ff;
+    --violet:#d88aff;
+    --line:rgba(236,230,225,0.10);
+    --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9;
+    --panel:#ffffff;
+    --panel-2:#f1ece6;
+    --panel-3:#e7e0d9;
+    --paper:#241c1b;
+    --muted:#7d716b;
+    --gold:#9a7424;
+    --green:#2e8a4f;
+    --warn:#b4741a;
+    --blue:#2f5fb8;
+    --violet:#8a3fb0;
+    --line:rgba(36,28,27,0.10);
+    --line-strong:rgba(36,28,27,0.16);
+  }
+
+  *{box-sizing:border-box;}
+  *{scrollbar-width:thin;scrollbar-color:var(--red-deep, #5c1a16) var(--panel-2);}
+  html,body{margin:0;min-height:100%;background:var(--panel);color:var(--paper);font-family:var(--font-body);font-size:14px;}
+
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 12px;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.45rem;margin:0 0 4px;}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+  header .sub.erro{color:var(--red-bright);}
+
+  main{position:relative;z-index:1;max-width:1150px;margin:0 auto;padding:18px 20px 60px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);line-height:1.6;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;}
+  .card{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:12px 14px;cursor:pointer;}
+  .card.on{border-color:var(--red-bright);box-shadow:0 0 0 1px var(--red-bright) inset;}
+  .card b{display:block;font-size:1.5rem;font-weight:700;}
+  .card span{font-size:.74rem;color:var(--muted);}
+  .card.alerta b{color:var(--red-bright);} .card.okc b{color:var(--green);} .card.pend b{color:var(--warn);}
+
+  .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+  .chip{border:1px solid var(--line-strong);background:transparent;color:var(--paper);border-radius:20px;padding:5px 12px;font:inherit;font-size:.75rem;font-weight:600;cursor:pointer;}
+  .chip.on{background:var(--panel-3);border-color:var(--gold);color:var(--gold);}
+  .busca{flex:1 1 200px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);padding:7px 10px;font:inherit;font-size:.8rem;}
+  .busca:focus,select:focus{outline:none;border-color:var(--red);}
+
+  .lista{display:flex;flex-direction:column;gap:8px;}
+  .mail{background:var(--panel-2);border:1px solid var(--line-strong);border-left:4px solid var(--warn);border-radius:10px;padding:11px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 14px;}
+  .mail.atrasado{border-left-color:var(--red-bright);}
+  .mail.respondido{border-left-color:var(--green);opacity:.8;}
+  .mail.ignorado{border-left-color:var(--muted);opacity:.6;}
+  .linha1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .caixa{font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:2px 7px;background:var(--panel-3);}
+  .caixa.meu{color:var(--blue);} .caixa.condominio{color:var(--gold);} .caixa.juridico{color:var(--violet);}
+  .assunto{font-weight:600;word-break:break-word;}
+  .de{color:var(--muted);font-size:.76rem;word-break:break-word;}
+  .de b{color:var(--paper);font-weight:600;}
+  .trecho{color:var(--muted);font-size:.78rem;grid-column:1/2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lado{grid-row:1/3;grid-column:2;display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center;min-width:230px;}
+  .st{font-size:.72rem;font-weight:600;text-align:right;}
+  .st.atrasado{color:var(--red-bright);} .st.pendente{color:var(--warn);} .st.respondido{color:var(--green);} .st.ignorado{color:var(--muted);}
+  select{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);border-radius:7px;padding:5px 8px;font:inherit;font-size:.76rem;max-width:230px;}
+  .bts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+  .bt{border:1px solid var(--line-strong);background:transparent;color:var(--paper);border-radius:7px;padding:5px 10px;font:inherit;font-size:.72rem;font-weight:600;cursor:pointer;text-decoration:none;}
+  .bt:hover{border-color:var(--paper);}
+  .bt.p{background:var(--red);border-color:var(--red);color:#fff;}
+  .bt.p:hover{background:var(--red-bright);}
+  .bt:disabled{opacity:.5;cursor:default;}
+  .vazio{color:var(--muted);text-align:center;padding:30px;border:1px dashed var(--line-strong);border-radius:12px;}
+  .rodape{margin-top:22px;color:var(--muted);font-size:.74rem;line-height:1.6;}
+  .toast{position:fixed;z-index:20;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel-3);border:1px solid var(--line-strong);color:var(--paper);padding:9px 16px;border-radius:9px;font-size:.8rem;display:none;}
+
+  @media (max-width:700px){
+    main{padding:16px 16px 50px;}
+    .mail{grid-template-columns:1fr;}
+    .lado{grid-row:auto;grid-column:1;align-items:flex-start;min-width:0;}
+    .st{text-align:left;}
+    .bts{justify-content:flex-start;}
+    .trecho{white-space:normal;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📬 Conferência de E-mails</h1>
+  <p class="sub" id="sub">Carregando…</p>
+</header>
+
+<main>
+  <div id="gate"></div>
+  <div id="conteudo" style="display:none;">
+    <div class="cards" id="cards"></div>
+    <div class="filtros" id="filtros"></div>
+    <div class="lista" id="lista"></div>
+    <div class="rodape" id="rodape"></div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // Os e-mails são gravados pelo robô (scripts/conferencia-emails/Codigo.gs, Google Apps Script), de hora em hora.
+  // Administrador vê tudo e troca o responsável; cada responsável vê só os próprios e marca como respondido.
+  const CAIXAS = { meu: 'Meu e-mail', condominio: 'Condomínio', juridico: 'Jurídico' };
+  const PRAZO_H = 24;
+  const DIAS_VISAO_ADMIN = 30;
+
+  const $ = function(id){ return document.getElementById(id); };
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    $('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let eu = null;            // { uid, email, nome, admin }
+  let mails = [];
+  let equipe = [];          // [{ email, nome }] — só o admin carrega
+  let meta = null;
+  let filtroSt = 'abertos', filtroCaixa = '', filtroResp = '', busca = '';
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function toast(t){
+    const e = $('toast'); e.textContent = t; e.style.display = 'block';
+    clearTimeout(e._t); e._t = setTimeout(function(){ e.style.display = 'none'; }, 2800);
+  }
+  function data(v){ return v && v.toDate ? v.toDate() : (v instanceof Date ? v : null); }
+  function horasDesde(d){ return d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 36e5)) : 0; }
+  function idade(h){ return h < 24 ? 'há ' + h + ' h' : 'há ' + Math.floor(h / 24) + ' d ' + (h % 24) + ' h'; }
+  function quando(d){
+    if (!d) return '';
+    const hoje = new Date(); const ontem = new Date(Date.now() - 864e5);
+    const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === hoje.toDateString()) return 'hoje ' + hm;
+    if (d.toDateString() === ontem.toDateString()) return 'ontem ' + hm;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+  }
+  function nomeDe(email){
+    if (!email) return '';
+    if (eu && email === eu.email) return 'você';
+    const p = equipe.find(function(x){ return x.email === email; });
+    if (p) return p.nome;
+    const m = mails.find(function(x){ return x.responsavelEmail === email && x.responsavelNome; });
+    return m ? m.responsavelNome : email;
+  }
+  function st(m){
+    if (m.status === 'respondido' || m.status === 'ignorado') return m.status;
+    return horasDesde(data(m.recebidoEm)) >= PRAZO_H ? 'atrasado' : 'pendente';
+  }
+  function linkGmail(m){
+    const base = 'https://mail.google.com/mail/?authuser=' + encodeURIComponent(eu.email);
+    return m.messageId ? base + '#search/' + encodeURIComponent('rfc822msgid:' + m.messageId) : base;
+  }
+
+  // ---------- render ----------
+  function visiveis(){
+    return mails.filter(function(m){
+      const s = st(m);
+      if (filtroSt === 'abertos' && (s === 'respondido' || s === 'ignorado')) return false;
+      if (filtroSt === 'atrasados' && s !== 'atrasado') return false;
+      if (filtroSt === 'respondidos' && s !== 'respondido') return false;
+      if (filtroSt === 'ignorados' && s !== 'ignorado') return false;
+      if (filtroCaixa && m.caixa !== filtroCaixa) return false;
+      if (filtroResp && m.responsavelEmail !== filtroResp) return false;
+      if (busca && (m.assunto + ' ' + m.deNome + ' ' + m.deEmail + ' ' + m.trecho).toLowerCase().indexOf(busca) < 0) return false;
+      return true;
+    }).sort(function(a, b){
+      const ra = st(a) === 'respondido' || st(a) === 'ignorado', rb = st(b) === 'respondido' || st(b) === 'ignorado';
+      if (ra !== rb) return ra ? 1 : -1;
+      const da = data(a.recebidoEm), dbb = data(b.recebidoEm);
+      // abertos: mais antigo primeiro (mais urgente); fechados: mais recente primeiro
+      return ra ? (dbb - da) : (da - dbb);
+    });
+  }
+
+  function render(){
+    const n = function(f){ return mails.filter(f).length; };
+    const cards = [
+      ['abertos', 'pend', n(function(m){ const s = st(m); return s === 'pendente' || s === 'atrasado'; }), 'Sem resposta'],
+      ['atrasados', 'alerta', n(function(m){ return st(m) === 'atrasado'; }), 'Sem resposta há +' + PRAZO_H + ' h'],
+      ['respondidos', 'okc', n(function(m){ return st(m) === 'respondido'; }), 'Respondidos']
+    ];
+    if (eu.admin) cards.push(['ignorados', '', n(function(m){ return st(m) === 'ignorado'; }), 'Ignorados']);
+    $('cards').innerHTML = cards.map(function(c){
+      return '<div class="card ' + c[1] + (filtroSt === c[0] ? ' on' : '') + '" data-st="' + c[0] + '"><b>' + c[2] + '</b><span>' + c[3] + '</span></div>';
+    }).join('');
+
+    let f = '<button type="button" class="chip' + (!filtroCaixa ? ' on' : '') + '" data-cx="">Todas as caixas</button>' +
+      Object.keys(CAIXAS).map(function(k){
+        return '<button type="button" class="chip' + (filtroCaixa === k ? ' on' : '') + '" data-cx="' + k + '">' + CAIXAS[k] + '</button>';
+      }).join('');
+    if (eu.admin) {
+      const resps = [];
+      mails.forEach(function(m){ if (m.responsavelEmail && resps.indexOf(m.responsavelEmail) < 0) resps.push(m.responsavelEmail); });
+      f += '<select id="filtro-resp"><option value="">Todos os responsáveis</option>' + resps.map(function(e){
+        return '<option value="' + escapeHtml(e) + '"' + (filtroResp === e ? ' selected' : '') + '>' + escapeHtml(nomeDe(e)) + '</option>';
+      }).join('') + '</select>';
+    }
+    f += '<input class="busca" id="busca" placeholder="Buscar por assunto, remetente…" value="' + escapeHtml(busca) + '">';
+    $('filtros').innerHTML = f;
+
+    const lista = visiveis();
+    $('lista').innerHTML = lista.length ? lista.map(function(m){
+      const s = st(m);
+      const h = horasDesde(data(m.recebidoEm));
+      let stTxt;
+      if (s === 'respondido') {
+        stTxt = '✓ Respondido' + (m.respondidoPor ? ' por ' + escapeHtml(nomeDe(m.respondidoPor)) : '') + ' · ' + quando(data(m.respondidoEm)) +
+          (m.respondidoModo === 'manual' ? ' (marcado)' : '');
+      } else if (s === 'ignorado') stTxt = 'Ignorado';
+      else if (s === 'atrasado') stTxt = '● Sem resposta ' + idade(h);
+      else stTxt = '● Aguardando resposta · ' + idade(h);
+
+      let resp = '';
+      if (eu.admin && s !== 'respondido' && s !== 'ignorado') {
+        const opcoes = equipe.slice();
+        if (m.responsavelEmail && !opcoes.some(function(p){ return p.email === m.responsavelEmail; })) {
+          opcoes.unshift({ email: m.responsavelEmail, nome: m.responsavelNome || m.responsavelEmail });
+        }
+        resp = '<select data-resp="' + m.id + '">' + opcoes.map(function(p){
+          return '<option value="' + escapeHtml(p.email) + '"' + (m.responsavelEmail === p.email ? ' selected' : '') + '>' + escapeHtml(p.nome) + '</option>';
+        }).join('') + '</select>';
+      }
+
+      let bts = '<a class="bt" href="' + escapeHtml(linkGmail(m)) + '" target="_blank" rel="noopener">Abrir no Gmail ↗</a>';
+      if (s === 'pendente' || s === 'atrasado') {
+        bts += '<button type="button" class="bt p" data-ok="' + m.id + '">Marcar respondido</button>';
+        if (eu.admin) bts += '<button type="button" class="bt" data-ign="' + m.id + '" title="Tirar da conferência (propaganda, aviso que não precisa de resposta…)">Ignorar</button>';
+      } else if (eu.admin) {
+        bts += '<button type="button" class="bt" data-reabrir="' + m.id + '">Reabrir</button>';
+      }
+
+      // o responsável já aparece no seletor enquanto o e-mail está aberto
+      const para = eu.admin && !resp && m.responsavelEmail ? ' · responsável: <b>' + escapeHtml(nomeDe(m.responsavelEmail)) + '</b>' : '';
+      return '<div class="mail ' + s + '">' +
+        '<div><div class="linha1"><span class="caixa ' + escapeHtml(m.caixa) + '">' + escapeHtml(CAIXAS[m.caixa] || m.caixa) + '</span>' +
+          '<span class="assunto">' + escapeHtml(m.assunto) + '</span></div>' +
+          '<div class="de">' + escapeHtml(m.deNome) + (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + escapeHtml(m.deEmail) + '&gt;' : '') +
+          ' · recebido ' + quando(data(m.recebidoEm)) + para + '</div></div>' +
+        '<div class="lado"><span class="st ' + s + '">' + stTxt + '</span>' + resp + '<div class="bts">' + bts + '</div></div>' +
+        '<div class="trecho">' + escapeHtml(m.trecho) + '</div>' +
+      '</div>';
+    }).join('') : '<div class="vazio">' + (mails.length ? 'Nenhum e-mail nesta lista. 🎉' : 'Nenhum e-mail na conferência ainda.') + '</div>';
+
+    $('rodape').innerHTML = eu.admin
+      ? 'O robô confere as caixas <b>Meu e-mail</b>, <b>Condomínio</b> e <b>Jurídico</b> de hora em hora (e-mails dos últimos 7 dias; propagandas, avisos automáticos e mensagens internas ficam de fora). ' +
+        'Um e-mail vira <b>respondido</b> sozinho quando alguém do escritório responde no mesmo fio — na sua caixa ou nos enviados do responsável. ' +
+        'Trocar o responsável vale para a próxima conferência; ele vê o e-mail na hora nesta aba. Aqui aparecem os últimos ' + DIAS_VISAO_ADMIN + ' dias.'
+      : 'Aqui aparecem os e-mails que você precisa responder. Responda pelo Gmail (botão <b>Abrir no Gmail</b>): o status muda sozinho para <b>respondido</b> em até 1 hora. ' +
+        'Se respondeu por outro meio (telefone, WhatsApp…), use <b>Marcar respondido</b>.';
+
+    const b = $('busca');
+    b.oninput = function(){
+      busca = b.value.trim().toLowerCase();
+      const pos = b.selectionStart; render();
+      const nb = $('busca'); nb.focus(); nb.setSelectionRange(pos, pos);
+    };
+    const fr = $('filtro-resp');
+    if (fr) fr.onchange = function(){ filtroResp = fr.value; render(); };
+  }
+
+  function renderSub(){
+    const el = $('sub');
+    el.classList.remove('erro');
+    if (!eu.admin) { el.textContent = 'E-mails encaminhados para você responder'; return; }
+    if (!meta) { el.textContent = 'Caixas: Meu e-mail, Condomínio e Jurídico — aguardando a primeira conferência do robô'; return; }
+    const em = data(meta.em);
+    if (meta.erro) {
+      el.classList.add('erro');
+      el.textContent = '⚠ A última conferência (' + quando(em) + ') falhou: ' + meta.erro;
+      return;
+    }
+    el.textContent = 'Última conferência: ' + quando(em) + ' — ' + (meta.novos || 0) + ' novo(s), ' + (meta.respondidos || 0) + ' respondido(s) nesta rodada';
+  }
+
+  // ---------- ações ----------
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('[data-st],[data-cx],[data-ok],[data-ign],[data-reabrir]');
+    if (!t) return;
+    if (t.dataset.st) { filtroSt = filtroSt === t.dataset.st ? 'todos' : t.dataset.st; render(); return; }
+    if (t.dataset.cx !== undefined && t.classList.contains('chip')) { filtroCaixa = t.dataset.cx; render(); return; }
+    const ref = function(id){ return db.collection('emailsConferencia').doc(id); };
+    if (t.dataset.ok) {
+      t.disabled = true;
+      ref(t.dataset.ok).update({
+        status: 'respondido', respondidoModo: 'manual', respondidoPor: eu.email,
+        respondidoEm: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){ toast('Marcado como respondido.'); })
+        .catch(function(err){ t.disabled = false; toast('Não foi possível marcar: ' + err.message); });
+    } else if (t.dataset.ign) {
+      ref(t.dataset.ign).update({ status: 'ignorado' })
+        .then(function(){ toast('E-mail ignorado — some da conferência.'); })
+        .catch(function(err){ toast('Erro: ' + err.message); });
+    } else if (t.dataset.reabrir) {
+      const del = firebase.firestore.FieldValue.delete();
+      ref(t.dataset.reabrir).update({ status: 'pendente', respondidoEm: del, respondidoPor: del, respondidoModo: del })
+        .then(function(){ toast('Reaberto — volta a aguardar resposta.'); })
+        .catch(function(err){ toast('Erro: ' + err.message); });
+    }
+  });
+
+  document.addEventListener('change', function(e){
+    const id = e.target.dataset && e.target.dataset.resp;
+    if (!id) return;
+    const email = e.target.value;
+    db.collection('emailsConferencia').doc(id).update({
+      responsavelEmail: email, responsavelNome: nomeDe(email) === 'você' ? eu.nome : nomeDe(email),
+      atribuidoPor: eu.email, atribuidoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){ toast('Encaminhado para ' + nomeDe(email) + '.'); })
+      .catch(function(err){ toast('Erro ao trocar o responsável: ' + err.message); });
+  });
+
+  // ---------- carga ----------
+  function aoMudar(snap){
+    mails = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+    render();
+  }
+  function aoErro(err){
+    $('conteudo').style.display = 'none';
+    $('gate').style.display = 'block';
+    $('gate').textContent = 'Não foi possível carregar a conferência: ' + err.message;
+  }
+
+  function iniciar(){
+    $('gate').style.display = 'none';
+    $('conteudo').style.display = 'block';
+    renderSub();
+    if (eu.admin) {
+      const desde = new Date(Date.now() - DIAS_VISAO_ADMIN * 864e5);
+      db.collection('emailsConferencia').where('recebidoEm', '>=', desde).onSnapshot(aoMudar, aoErro);
+      db.collection('emailsConferenciaMeta').doc('ultima').onSnapshot(function(d){ meta = d.exists ? d.data() : null; renderSub(); }, function(){});
+      db.collection('users').get().then(function(snap){
+        equipe = snap.docs.map(function(d){ const u = d.data(); return { email: String(u.email || '').toLowerCase(), nome: u.displayName || u.email }; })
+          .filter(function(p){ return /@fonsecaebraga\.com\.br$/.test(p.email); })
+          .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+        render();
+      }).catch(function(){});
+    } else {
+      db.collection('emailsConferencia').where('responsavelEmail', '==', eu.email).onSnapshot(aoMudar, aoErro);
+    }
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) { $('gate').textContent = 'Faça login no portal para ver a conferência.'; $('sub').textContent = ''; return; }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      const u = doc.exists ? doc.data() : {};
+      eu = { uid: user.uid, email: String(user.email || '').toLowerCase(), nome: u.displayName || user.email, admin: u.role === 'admin' };
+      iniciar();
+    }).catch(function(err){ $('gate').textContent = 'Erro ao carregar o seu cadastro: ' + err.message; });
+  });
+})();
+</script>
+</body>
+</html>

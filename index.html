@@ -1991,6 +1991,7 @@
   let sugestoesPendentesCount = 0;   // sugestões com status 'aberta' — pisca a aba "Sugestões" para admins
   let sugestoesBadgeSubscribed = false;
   let anotacoesEnviadasAtencao = 0;   // tarefa que EU enviei sem resposta ou aguardando minha aprovação
+  let emailsPendentesCount = 0;       // e-mails da conferência sob minha responsabilidade sem resposta (pisca "Conferência de E-mails")
 
   // ---------- Erros PT-BR ----------
   function traduzErro(code){
@@ -2496,6 +2497,7 @@
     subscribeSugestoesPendentes();
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
+    subscribeEmailsPendentes();
     verificarAvisoFotoObrigatoria();
     iniciarPresenca();
   }
@@ -2588,6 +2590,18 @@
     }).catch(function(){});
   }
 
+  // Pisca a aba "Conferência de E-mails" enquanto houver e-mail sob minha responsabilidade sem resposta
+  // (gravados pelo robô scripts/conferencia-emails — ver tools/conferencia-emails).
+  function subscribeEmailsPendentes(){
+    const email = String(currentProfile.email || '').toLowerCase();
+    if (!email) return;
+    db.collection('emailsConferencia').where('responsavelEmail', '==', email).where('status', '==', 'pendente')
+      .onSnapshot(function(snap){
+        emailsPendentesCount = snap.size;
+        updateTabBlinks();
+      }, function(){ emailsPendentesCount = 0; });
+  }
+
   // Um único lugar decide quais abas piscam (antes cada regra apagava o pisca da outra):
   // Gestão = compra aguardando aprovação (admin) ou patrimônio para aceitar/devolução para
   // receber; Minhas Anotações = tarefa recebida a
@@ -2601,7 +2615,8 @@
       const pisca =
         (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0 || semDeptoCount > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
-        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0);
+        (/chat|mensage|recad/i.test(l) && mhChatUnread > 0) ||
+        (/e-?mail/i.test(l) && /confer/i.test(l) && emailsPendentesCount > 0);
       b.classList.toggle('tab-blink', !!pisca);
     });
     // "Sugestões" fica no menu da engrenagem — acende ponto vermelho no botão
