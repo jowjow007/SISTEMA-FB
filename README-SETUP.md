@@ -246,8 +246,9 @@ service cloud.firestore {
                              .hasOnly(['status', 'respondidoModo', 'respondidoPor', 'respondidoEm']));
       allow create, delete: if false;
     }
+    // Resumo da última rodada do robô (data/hora mostrada a todos na aba; contagens e erro só aparecem para admin).
     match /emailsConferenciaMeta/{docId} {
-      allow read: if isAdmin();
+      allow read: if isSignedIn();
       allow write: if false;
     }
     // Textos dos e-mails e das respostas (nunca apagados) e lista do que o robô descartou: só o dono lê.
