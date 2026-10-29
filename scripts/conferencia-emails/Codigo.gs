@@ -35,8 +35,17 @@ var CONFIG = {
   // As abas do Gmail (Social, Atualizações…) NÃO entram no filtro: nesta caixa elas recebem e-mails de verdade.
   // O que é automático sai pelos cabeçalhos (função automatico) e pela lista remetentesIgnorados.
   filtroGmail: '-in:sent -in:chats -in:drafts -in:spam -in:trash -from:me -from:fonsecaebraga.com.br',
-  // Remetentes que nunca precisam de resposta (endereço inteiro ou só o domínio, ex.: '@tjsp.jus.br').
-  remetentesIgnorados: []
+  // Remetentes que nunca precisam de resposta: endereço inteiro, domínio ('@nubank.com.br') ou final do
+  // domínio ('.jus.br' = qualquer tribunal). Lista inicial montada com o diagnóstico de 28/10/2026.
+  remetentesIgnorados: [
+    '.jus.br',                                   // tribunais (intimações, andamentos, e-SAJ, e-proc, PJe)
+    'astrea@aurum.com.br', 'andamentos@jusbrasil.com.br', 'contato@sedep.com.br',
+    'informativo@oab.com.br', 'informativo@oabuberlandia.org.br', 'regularize@oabsp.org.br',
+    'informativo@comunicadocaamg.com.br', 'contact@cuoreplatform.com',
+    '@nubank.com.br', '@novidades.nubank.com.br', '@atendimento.empresas.vivo.com.br', 'financeiro@ikatec.com.br',
+    '@correios.com.br', '@autoavaliar.com.br', '@email.v4company.com', 'gemini-notes@google.com',
+    'nfe-auto@prefeitura.sp.gov.br', 'comercial@clicleiloes.com.br'
+  ]
 };
 
 var ESCOPO_GMAIL = 'https://www.googleapis.com/auth/gmail.readonly';
@@ -235,13 +244,13 @@ function abaGmail(rotulos) {
 function automatico(h, email) {
   var ignorado = CONFIG.remetentesIgnorados.some(function(r) {
     r = r.toLowerCase();
-    return r.charAt(0) === '@' ? email.slice(-r.length) === r : email === r;
+    return r.charAt(0) === '@' || r.charAt(0) === '.' ? email.slice(-r.length) === r : email === r;
   });
   if (ignorado) return true;
   if ((h['auto-submitted'] || 'no').trim().toLowerCase() !== 'no') return true;
   if (/^(bulk|list|junk|auto_reply)$/i.test((h['precedence'] || '').trim())) return true;
   if (h['list-unsubscribe'] || h['list-id'] || h['x-autoreply'] || h['x-autorespond']) return true;
-  return /(^|[._+-])(no-?reply|nao-?responda|naoresponder|donotreply|do-not-reply|mailer-daemon|postmaster|newsletter|bounces?|notifica(coes|cao|tions?))([._+-]|@)/i.test(email);
+  return /(^|[._+-])(no-?reply|nao[._-]?respond[ae]r?|donotreply|do-not-reply|mailer-daemon|postmaster|newsletter|bounces?|notifica(coes|cao|tions?))([._+-]|@)/i.test(email);
 }
 
 // Primeira mensagem do fio, depois do recebimento, enviada por alguém do escritório (rascunhos não contam).
