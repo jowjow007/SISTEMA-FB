@@ -65,7 +65,7 @@ function testarAcessos() {
     Logger.log('Recebidos em ' + cx.endereco + ': ' + (r.messages || []).length + (r.nextPageToken ? '+' : ''));
   });
 
-  var lidos = listarRecebidos().map(function(id) { return lerMensagem(CONFIG.caixaPrincipal, id); });
+  var lidos = lerMensagens(CONFIG.caixaPrincipal, listarRecebidos());
   var cont = {}, porAba = {}, remetentes = {};
   lidos.forEach(function(m) {
     var c = classificar(m);
@@ -119,14 +119,18 @@ function registrarNovos() {
   var existentes = {};
   consultar(filtroCampo('recebidoEm', 'GREATER_THAN_OR_EQUAL', desde)).forEach(function(d) { existentes[d._id] = true; });
 
-  var novos = 0;
-  listarRecebidos().forEach(function(id) {
-    if (existentes[id]) return;
-    var m = lerMensagem(CONFIG.caixaPrincipal, id);
+  // E-mails já descartados (automáticos, só em cópia) ficam 6 h no cache para não serem relidos toda hora.
+  var cache = CacheService.getScriptCache();
+  var ids = listarRecebidos().filter(function(id) { return !existentes[id]; });
+  var jaDescartados = ids.length ? cache.getAll(ids.map(function(id) { return 'desc|' + id; })) : {};
+  ids = ids.filter(function(id) { return !jaDescartados['desc|' + id]; });
+
+  var novos = [], descartados = {};
+  lerMensagens(CONFIG.caixaPrincipal, ids).forEach(function(m) {
     var c = classificar(m);
-    if (!c.caixa) return;
+    if (!c.caixa) { descartados['desc|' + m.id] = '1'; return; }
     var resp = c.caixa.responsavel;
-    var criado = criar(COLECAO, id, {
+    novos.push({ id: m.id, dados: {
       caixa: c.caixa.id,
       assunto: (m.h['subject'] || '(sem assunto)').slice(0, 300),
       deNome: c.de.nome.slice(0, 150),
@@ -140,10 +144,10 @@ function registrarNovos() {
       responsavelNome: CONFIG.nomes[resp] || resp,
       status: 'pendente',
       criadoEm: new Date()
-    });
-    if (criado) novos++;
+    } });
   });
-  return novos;
+  if (Object.keys(descartados).length) cache.putAll(descartados, 21600);
+  return criarVarios(COLECAO, novos);
 }
 
 function atualizarRespostas() {
@@ -179,8 +183,30 @@ function listarRecebidos() {
   return ids;
 }
 
-function lerMensagem(usuario, id) {
-  var m = gmail(usuario, 'messages/' + id, { format: 'metadata', metadataHeaders: CABECALHOS });
+// Lê os cabeçalhos de várias mensagens, 25 requisições em paralelo por vez.
+function lerMensagens(usuario, ids) {
+  var lidos = [];
+  for (var i = 0; i < ids.length; i += 25) {
+    var lote = ids.slice(i, i + 25);
+    var reqs = lote.map(function(id) {
+      return {
+        url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' + id + '?' + qs({ format: 'metadata', metadataHeaders: CABECALHOS }),
+        headers: { Authorization: 'Bearer ' + token(ESCOPO_GMAIL, usuario) },
+        muteHttpExceptions: true
+      };
+    });
+    UrlFetchApp.fetchAll(reqs).forEach(function(r, j) {
+      var c = r.getResponseCode(), m;
+      if (c === 200) m = JSON.parse(r.getContentText());
+      else if (c === 404) return;
+      else { Utilities.sleep(1000); m = gmail(usuario, 'messages/' + lote[j], { format: 'metadata', metadataHeaders: CABECALHOS }); }
+      if (m) lidos.push(paraMensagem(m));
+    });
+  }
+  return lidos;
+}
+
+function paraMensagem(m) {
   return { id: m.id, threadId: m.threadId, internalDate: +m.internalDate, snippet: m.snippet || '', rotulos: m.labelIds || [], h: cabecalhos(m) };
 }
 
@@ -371,12 +397,20 @@ function consultar(onde, limite) {
   });
 }
 
-// Cria só se ainda não existir (nunca sobrescreve o responsável trocado no portal).
-function criar(colecao, id, dados) {
-  var r = fs('post', '/' + colecao + '?documentId=' + encodeURIComponent(id), campos(dados));
-  if (r.codigo === 409) return false;
-  if (r.codigo !== 200) throw new Error('Firestore (criar): ' + r.codigo + ' ' + r.corpo.slice(0, 300));
-  return true;
+// Cria em lotes, só os que ainda não existem (nunca sobrescreve o responsável trocado no portal).
+// Devolve quantos foram criados.
+function criarVarios(colecao, itens) {
+  var criados = 0;
+  var prefixo = 'projects/' + CONFIG.projetoFirestore + '/databases/(default)/documents/' + colecao + '/';
+  for (var i = 0; i < itens.length; i += 200) {
+    var writes = itens.slice(i, i + 200).map(function(it) {
+      return { update: { name: prefixo + it.id, fields: campos(it.dados).fields }, currentDocument: { exists: false } };
+    });
+    var r = fs('post', ':batchWrite', { writes: writes });
+    if (r.codigo !== 200) throw new Error('Firestore (criar): ' + r.codigo + ' ' + r.corpo.slice(0, 300));
+    (JSON.parse(r.corpo).status || []).forEach(function(st) { if (!st.code) criados++; });
+  }
+  return criados;
 }
 
 function atualizar(colecao, id, dados) {
