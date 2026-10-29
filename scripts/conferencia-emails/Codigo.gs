@@ -32,8 +32,11 @@ var CONFIG = {
   caixasLiberadas: ['jonathan@fonsecaebraga.com.br', 'yasmin@fonsecaebraga.com.br', 'avsoares@fonsecaebraga.com.br'],
   diasNovos: 7,        // e-mails recebidos nos últimos N dias entram na conferência
   diasAcompanhar: 30,  // por quanto tempo se continua procurando a resposta
-  filtroGmail: '-in:sent -in:chats -in:drafts -in:spam -in:trash -category:promotions -category:social ' +
-               '-category:updates -category:forums -from:me -from:fonsecaebraga.com.br'
+  // As abas do Gmail (Social, Atualizações…) NÃO entram no filtro: nesta caixa elas recebem e-mails de verdade.
+  // O que é automático sai pelos cabeçalhos (função automatico) e pela lista remetentesIgnorados.
+  filtroGmail: '-in:sent -in:chats -in:drafts -in:spam -in:trash -from:me -from:fonsecaebraga.com.br',
+  // Remetentes que nunca precisam de resposta (endereço inteiro ou só o domínio, ex.: '@tjsp.jus.br').
+  remetentesIgnorados: []
 };
 
 var ESCOPO_GMAIL = 'https://www.googleapis.com/auth/gmail.readonly';
@@ -55,23 +58,30 @@ function testarAcessos() {
   consultar(null, 1);
   Logger.log('✓ Firestore do portal acessível');
 
+  // Quantos e-mails chegaram em cada alias (antes de qualquer filtro).
+  CONFIG.caixas.forEach(function(cx) {
+    if (cx.id === 'meu') return;
+    var r = gmail(CONFIG.caixaPrincipal, 'messages', { q: 'newer_than:' + CONFIG.diasNovos + 'd to:' + cx.endereco + ' -from:me', maxResults: 500 });
+    Logger.log('Recebidos em ' + cx.endereco + ': ' + (r.messages || []).length + (r.nextPageToken ? '+' : ''));
+  });
+
   var lidos = listarRecebidos().map(function(id) { return lerMensagem(CONFIG.caixaPrincipal, id); });
-  var cont = { condominio: 0, juridico: 0, meu: 0, automatico: 0, foraDasCaixas: 0 };
+  var cont = {}, porAba = {}, remetentes = {};
   lidos.forEach(function(m) {
     var c = classificar(m);
-    cont[c.motivo || c.caixa.id]++;
-    Logger.log('  ' + (c.motivo ? '✗ ' + c.motivo : '✓ ' + c.caixa.id) + ' | ' + c.de.email + ' | para: ' +
-               (m.h['to'] || '—').slice(0, 80) + ' | ' + (m.h['subject'] || '').slice(0, 60));
+    var k = c.motivo || c.caixa.id;
+    cont[k] = (cont[k] || 0) + 1;
+    if (!c.caixa) return;
+    var aba = c.caixa.id + ' / aba ' + abaGmail(m.rotulos);
+    porAba[aba] = (porAba[aba] || 0) + 1;
+    var chave = c.caixa.id + ' | ' + c.de.email;
+    remetentes[chave] = (remetentes[chave] || 0) + 1;
   });
-  Logger.log('Últimos ' + CONFIG.diasNovos + ' dias: ' + lidos.length + ' e-mails lidos → condomínio ' + cont.condominio +
-             ', jurídico ' + cont.juridico + ', meu e-mail ' + cont.meu + ' · ignorados: automáticos ' + cont.automatico +
-             ', só em cópia/fora das caixas ' + cont.foraDasCaixas);
-
-  // Quanto cada filtro do Gmail tirou da conferência (para calibrar CONFIG.filtroGmail).
-  var base = 'newer_than:' + CONFIG.diasNovos + 'd -in:sent -in:chats -in:drafts -in:spam -in:trash -from:me ';
-  ['', 'category:promotions', 'category:social', 'category:updates', 'category:forums', 'from:fonsecaebraga.com.br'].forEach(function(f) {
-    var r = gmail(CONFIG.caixaPrincipal, 'messages', { q: base + f, maxResults: 500 });
-    Logger.log('Filtro "' + (f || 'tudo recebido') + '": ' + ((r.messages || []).length) + (r.nextPageToken ? '+' : '') + ' e-mails');
+  Logger.log('Últimos ' + CONFIG.diasNovos + ' dias: ' + lidos.length + ' e-mails lidos → ' + JSON.stringify(cont));
+  Object.keys(porAba).sort().forEach(function(k) { Logger.log('  entrariam: ' + k + ' = ' + porAba[k]); });
+  Logger.log('Remetentes que entrariam (mais frequentes primeiro):');
+  Object.keys(remetentes).sort(function(a, b) { return remetentes[b] - remetentes[a]; }).slice(0, 40).forEach(function(k) {
+    Logger.log('  ' + remetentes[k] + '× ' + k);
   });
 }
 
@@ -171,7 +181,7 @@ function listarRecebidos() {
 
 function lerMensagem(usuario, id) {
   var m = gmail(usuario, 'messages/' + id, { format: 'metadata', metadataHeaders: CABECALHOS });
-  return { id: m.id, threadId: m.threadId, internalDate: +m.internalDate, snippet: m.snippet || '', h: cabecalhos(m) };
+  return { id: m.id, threadId: m.threadId, internalDate: +m.internalDate, snippet: m.snippet || '', rotulos: m.labelIds || [], h: cabecalhos(m) };
 }
 
 // Decide a caixa do e-mail, ou o motivo de ficar de fora.
@@ -189,7 +199,19 @@ function classificar(m) {
   return { motivo: 'foraDasCaixas', de: de };
 }
 
+function abaGmail(rotulos) {
+  var nomes = { CATEGORY_PERSONAL: 'Principal', CATEGORY_SOCIAL: 'Social', CATEGORY_UPDATES: 'Atualizações',
+                CATEGORY_FORUMS: 'Fóruns', CATEGORY_PROMOTIONS: 'Promoções' };
+  for (var i = 0; i < rotulos.length; i++) if (nomes[rotulos[i]]) return nomes[rotulos[i]];
+  return 'sem aba';
+}
+
 function automatico(h, email) {
+  var ignorado = CONFIG.remetentesIgnorados.some(function(r) {
+    r = r.toLowerCase();
+    return r.charAt(0) === '@' ? email.slice(-r.length) === r : email === r;
+  });
+  if (ignorado) return true;
   if ((h['auto-submitted'] || 'no').trim().toLowerCase() !== 'no') return true;
   if (/^(bulk|list|junk|auto_reply)$/i.test((h['precedence'] || '').trim())) return true;
   if (h['list-unsubscribe'] || h['list-id'] || h['x-autoreply'] || h['x-autorespond']) return true;
