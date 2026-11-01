@@ -38,6 +38,20 @@ self.addEventListener('fetch', (event) => {
   // fazendo o app parecer não ter atualizado mesmo já publicado o novo HTML.
   const reqFresca = new Request(req, { cache: 'reload' });
 
+  // Imagens (logos, fundos, ícones) quase nunca mudam: saem do cache na hora e são
+  // atualizadas em segundo plano. Antes até a logomarca era baixada de novo a cada
+  // abertura, o que deixava a entrada lenta no celular. HTML e scripts continuam
+  // "network-first" (sempre a versão publicada mais nova).
+  if (req.destination === 'image' || /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => cache.match(req).then((cached) => {
+        const rede = fetch(req).then((res) => { if (res && res.ok) cache.put(req, res.clone()); return res; }).catch(() => cached);
+        return cached || rede;
+      }))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(reqFresca)
       .then((res) => {
