@@ -237,6 +237,25 @@ if ($html -eq $original) {
     exit 0
 }
 
+# ---------- 5b) Travas de seguranca (revisao 01/11/2026) ----------
+# Esta pagina e publicada no site aberto. So os totais do DJEN podem ir para ela: nunca nomes de clientes
+# nem numeros de processo. E o commit so acontece na branch main sem outras alteracoes preparadas,
+# para nao publicar trabalho em andamento de outra branch.
+if ($html -match '\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}' -or $html -match 'topClientes(Demais|Condo)\s*"?\s*:') {
+    Write-Warning 'O HTML contem numero de processo ou lista de clientes. Nada foi gravado nem publicado.'
+    Stop-Transcript | Out-Null
+    exit 1
+}
+Push-Location $RepoDir
+$branchAtual = (git rev-parse --abbrev-ref HEAD).Trim()
+$preparados = git diff --cached --name-only
+Pop-Location
+if ($branchAtual -ne 'main' -or -not [string]::IsNullOrWhiteSpace(($preparados -join ''))) {
+    Write-Warning ('Publicacao automatica so roda na branch main sem alteracoes preparadas (branch atual: ' + $branchAtual + '). Nada foi gravado.')
+    Stop-Transcript | Out-Null
+    exit 1
+}
+
 Set-Content -Path $IndexPath -Value $html -Encoding UTF8 -NoNewline
 
 # ---------- 6) Commit + push ----------
@@ -247,7 +266,7 @@ try {
     if ([string]::IsNullOrWhiteSpace($statusPorcelain)) {
         Write-Host "Sem diferencas apos git add - nada a commitar."
     } else {
-        git commit -m ("Atualiza numeros de publicacoes DJEN (automatico, " + $DataFim + ")") --author="jowjo <jowjow07@gmail.com>" | Out-Null
+        git commit -m ("Atualiza numeros de publicacoes DJEN (automatico, " + $DataFim + ")") --author="jowjo <jowjow07@gmail.com>" -- "tools/numeros-escritorio/index.html" | Out-Null
         git push
         Write-Host "Commit e push realizados com sucesso."
     }

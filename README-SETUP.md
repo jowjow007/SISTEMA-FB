@@ -45,57 +45,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
-    // exists() antes do get(): sem cadastro (ex.: no próprio autocadastro) o get() dá erro de avaliação,
-    // e um erro dentro de "isAdmin() || ..." nega a regra inteira em vez de seguir para o outro lado.
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Revisão de segurança (01/11/2026, OWASP ASVS 4.0.3 V4 — controle de acesso).
+    // Estar logado NÃO basta: o acesso depende do campo users/{uid}.acesso == 'ativo', que só o admin grava
+    // (aprovação explícita em Administração › Usuários). Autocadastro entra como 'pendente'; "Revogar" grava
+    // 'bloqueado'; "Excluir" apaga o cadastro e cria acessosRevogados/{uid}, que impede o autocadastro de novo.
+    // As abas (tabs) só montam o menu — não liberam dados. mustChangePassword é só aviso de tela (a própria
+    // pessoa consegue zerá-lo), por isso não entra em nenhuma decisão de acesso.
+    function temCadastro() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-    function isGestor() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'gestor';
-    }
-    // Revisão de segurança (01/11/2026, OWASP ASVS 4.0.3 V4 — controle de acesso):
-    // estar logado NÃO basta. "Ativo" = tem cadastro em users, não está com troca de senha pendente e
-    // (é admin ou tem ao menos uma aba liberada). Autocadastro sem abas, conta revogada (abas zeradas) e
-    // conta excluída (sem users) ficam sem acesso aos dados. "Equipe" = ativo e não é cliente.
     function meuCadastro() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     function isAtivo() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && meuCadastro().get('mustChangePassword', false) != true
-        && (meuCadastro().role == 'admin' || meuCadastro().get('tabs', []).size() > 0);
+      return temCadastro() && meuCadastro().get('acesso', '') == 'ativo'
+        && meuCadastro().get('role', '') in ['admin', 'gestor', 'membro', 'cliente'];
     }
     function isEquipe() {
       return isAtivo() && meuCadastro().role in ['admin', 'gestor', 'membro'];
     }
-    // Conta(s) dos robôs (Agenda Astrea no PC do escritório). Liberar por e-mail aqui OU criando
-    // o documento robos/{uid} pelo console (só o admin escreve nessa coleção).
+    function isAdmin() {
+      return isAtivo() && meuCadastro().role == 'admin';
+    }
+    function isGestor() {
+      return isAtivo() && meuCadastro().role == 'gestor';
+    }
+    function acessoRevogado() {
+      return exists(/databases/$(database)/documents/acessosRevogados/$(request.auth.uid));
+    }
+    // Robô (Agenda Astrea no PC do escritório): só pela UID, com robos/{uid} criado pelo admin.
+    // E-mail não serve: qualquer pessoa pode criar no Auth uma conta com um e-mail ainda não usado.
     function isRobo() {
-      return isSignedIn() && (
-        request.auth.token.email in ['robo@fonsecaebraga.com.br']
-        || exists(/databases/$(database)/documents/robos/$(request.auth.uid)));
+      return isSignedIn() && exists(/databases/$(database)/documents/robos/$(request.auth.uid));
     }
     match /users/{userId} {
+      // a própria pessoa lê o próprio cadastro mesmo pendente/bloqueada (é o que mostra a tela de "aguardando")
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // admin cria contas (Administração › Usuários); o autocadastro entra sem abas, como membro,
-      // só com os campos do formulário e sem poder se dar acesso a todo o patrimônio
+      // admin cria contas (Administração › Usuários). O autocadastro entra 'pendente', sem abas, como membro,
+      // só com os campos do formulário — e não é aceito para quem foi excluído (acessosRevogados).
       allow create: if isAdmin() || (
                       isSignedIn() && request.auth.uid == userId
+                      && !acessoRevogado()
                       && request.resource.data.role == 'membro'
                       && request.resource.data.tabs.size() == 0
+                      && request.resource.data.get('acesso', 'pendente') == 'pendente'
                       && request.resource.data.get('patrimonioVerTudo', false) == false
                       && request.resource.data.get('deptoAtual', '') == ''
-                      && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'tabs', 'cpf', 'rg', 'oab',
+                      && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'tabs', 'acesso', 'cpf', 'rg', 'oab',
                            'estadoCivil', 'nacionalidade', 'telefone', 'endereco', 'dataIngresso', 'pixTipo', 'pixChave',
                            'banco', 'agencia', 'conta', 'deptoAtual', 'patrimonioVerTudo', 'createdAt'])
                     );
-      // a própria pessoa só altera dados pessoais/bancários; papel, abas, remuneração, cargo, permissões
-      // e visão do patrimônio são do admin. A data de entrada só pode ser preenchida enquanto estiver vazia.
+      // a própria pessoa (ativa) só altera dados pessoais/bancários; papel, acesso, abas, remuneração, cargo,
+      // permissões e visão do patrimônio são do admin. A data de entrada só pode ser preenchida enquanto vazia.
       allow update: if isAdmin() || (
-                      isSignedIn() && request.auth.uid == userId
+                      isAtivo() && request.auth.uid == userId
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cpf', 'rg', 'oab', 'estadoCivil',
                            'nacionalidade', 'telefone', 'endereco', 'emailAlternativo', 'dataIngresso', 'mustChangePassword',
                            'pixTipo', 'pixChave', 'banco', 'agencia', 'conta', 'dadosBancariosEm', 'sugestoesNotificadas'])
@@ -105,13 +108,37 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
+    // Contas excluídas: impede recriar o próprio cadastro com uma sessão que ainda esteja aberta.
+    match /acessosRevogados/{uid} {
+      allow read, write: if isAdmin();
+    }
+    // Registro das ações de segurança do admin (migração de acesso, patrimônio, robôs): só cria e lê.
+    match /auditoriaSeguranca/{docId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.porUid == request.auth.uid
+                    && request.resource.data.em == request.time;
+      allow update, delete: if false;
+    }
+    // Dados que antes ficavam no HTML público (painel de Números, clientes de Condomínios e relatórios em PDF).
+    match /dadosPrivados/{chave} {
+      allow read: if isEquipe();
+      allow write: if isAdmin();
+    }
+    match /arquivosPrivados/{arquivoId} {
+      allow read: if isEquipe();
+      allow write: if isAdmin();
+      match /partes/{n} {
+        allow read: if isEquipe();
+        allow write: if isAdmin();
+      }
+    }
     match /tabs/{tabId} {
       allow read: if isSignedIn();   // catálogo de abas (rótulos/URLs), necessário para montar o menu
       allow write: if isAdmin();
     }
     match /perfis/{uid} {
-      allow read: if isAtivo() || (isSignedIn() && request.auth.uid == uid);
-      allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if isAtivo() || (isAtivo() && request.auth.uid == uid);
+      allow write: if isAtivo() && (request.auth.uid == uid || isAdmin());
     }
     match /sugestoes/{sugestaoId} {
       allow read: if isAtivo();
@@ -163,44 +190,44 @@ service cloud.firestore {
         allow create: if isAtivo()
                       && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
                       && request.resource.data.autorUid == request.auth.uid;
-        allow update: if isSignedIn()
+        allow update: if isAtivo()
                       && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor','reacoes']);
         allow delete: if false;
       }
     }
     match /chatPrefs/{uid}/{document=**} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read, write: if isAtivo() && request.auth.uid == uid;
     }
     match /pendGrupos/{grupoId} {
-      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
-      allow create: if isSignedIn()
+      allow read, delete: if isAtivo() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAtivo()
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.nome is string
                     && request.resource.data.nome.size() > 0
                     && request.resource.data.nome.size() <= 80
                     && request.resource.data.emoji is string;
-      allow update: if isSignedIn()
+      allow update: if isAtivo()
                     && resource.data.ownerUid == request.auth.uid
                     && request.resource.data.ownerUid == request.auth.uid;
     }
     match /pendTarefas/{tarefaId} {
-      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
-      allow create: if isSignedIn()
+      allow read, delete: if isAtivo() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAtivo()
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.texto is string
                     && request.resource.data.texto.size() > 0
                     && request.resource.data.texto.size() <= 2000
                     && request.resource.data.grupoId is string
                     && request.resource.data.concluida == false;
-      allow update: if isSignedIn()
+      allow update: if isAtivo()
                     && resource.data.ownerUid == request.auth.uid
                     && request.resource.data.ownerUid == request.auth.uid;
     }
     match /tarefasEnviadas/{envioId} {
-      allow read: if isSignedIn() &&
+      allow read: if isAtivo() &&
                     (resource.data.remetenteUid == request.auth.uid || resource.data.destinatarioUid == request.auth.uid);
-      allow create: if isSignedIn() && (isAdmin() || isGestor())
+      allow create: if isAtivo() && (isAdmin() || isGestor())
                     && request.resource.data.remetenteUid == request.auth.uid
                     && request.resource.data.destinatarioUid is string
                     && request.resource.data.destinatarioUid != request.auth.uid
@@ -208,7 +235,7 @@ service cloud.firestore {
                     && request.resource.data.texto.size() > 0
                     && request.resource.data.texto.size() <= 2000
                     && request.resource.data.status == 'pendente';
-      allow update: if isSignedIn() && (
+      allow update: if isAtivo() && (
                       (
                         request.auth.uid == resource.data.destinatarioUid
                         && resource.data.status in ['pendente', 'reprovada']
@@ -229,13 +256,13 @@ service cloud.firestore {
                             || (request.resource.data.motivoReprovacao is string && request.resource.data.motivoReprovacao.size() > 0))
                       )
                     );
-      allow delete: if isSignedIn() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
+      allow delete: if isAtivo() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
     }
     // Comunicados (lista em comunicados.js): cada pessoa grava só a própria ciência, uma vez, com a hora do servidor.
     // A pessoa lê as próprias ciências; o administrador lê todas (botão "Ver ciências" no histórico do megafone).
     match /comunicadosCiencia/{docId} {
-      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
-      allow create: if isSignedIn()
+      allow read: if isAtivo() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAtivo()
                     && request.resource.data.uid == request.auth.uid
                     && docId == request.resource.data.comunicadoId + '_' + request.auth.uid
                     && request.resource.data.em == request.time;
@@ -245,7 +272,7 @@ service cloud.firestore {
     // Remuneração variável (tools/remuneracao): só o dono configura, lança o lucro e libera pessoas.
     // Cada pessoa liberada lê apenas o próprio cadastro e o próprio extrato — nem outros admins veem o resto.
     function isDonoRemuneracao() {
-      return isSignedIn() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
+      return isAtivo() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
     }
     match /remuneracaoConfig/{docId} {
       allow read, write: if isDonoRemuneracao();
@@ -255,12 +282,12 @@ service cloud.firestore {
     }
     match /remuneracaoPessoas/{uid} {
       allow read: if isDonoRemuneracao()
-                  || (isSignedIn() && request.auth.uid == uid && resource.data.liberado == true);
+                  || (isAtivo() && request.auth.uid == uid && resource.data.liberado == true);
       allow write: if isDonoRemuneracao();
     }
     match /remuneracaoExtrato/{uid}/meses/{mes} {
       allow read: if isDonoRemuneracao()
-                  || (isSignedIn() && request.auth.uid == uid
+                  || (isAtivo() && request.auth.uid == uid
                       && exists(/databases/$(database)/documents/remuneracaoPessoas/$(uid))
                       && get(/databases/$(database)/documents/remuneracaoPessoas/$(uid)).data.liberado == true);
       allow write: if isDonoRemuneracao();
@@ -294,7 +321,7 @@ service cloud.firestore {
       allow read: if isAdmin()
                   || (isAtivo() && resource.data.responsavelEmail == request.auth.token.email);
       allow update: if isAdmin()
-                    || (isSignedIn()
+                    || (isAtivo()
                         && resource.data.responsavelEmail == request.auth.token.email
                         && resource.data.status == 'pendente'
                         && request.resource.data.status == 'respondido'
@@ -313,12 +340,12 @@ service cloud.firestore {
     // Textos dos e-mails e das respostas (nunca apagados) e lista do que o robô descartou: só o dono lê.
     // O responsável só pode gravar a própria anotação de "Marcar respondido" (nota), nada mais.
     function isDonoConferencia() {
-      return isSignedIn() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
+      return isAtivo() && request.auth.token.email == 'jonathan@fonsecaebraga.com.br';
     }
     match /emailsConferenciaTextos/{docId} {
       allow read: if isDonoConferencia();
       allow create, update: if isDonoConferencia()
-                            || (isSignedIn()
+                            || (isAtivo()
                                 && get(/databases/$(database)/documents/emailsConferencia/$(docId)).data.responsavelEmail == request.auth.token.email
                                 && request.resource.data.notaPor == request.auth.token.email
                                 && request.resource.data.notaEm == request.time
@@ -339,16 +366,16 @@ service cloud.firestore {
                     && request.resource.data.nomeDisplay is string
                     && request.resource.data.dados is map;
       allow update: if false;
-      allow delete: if isSignedIn() && (resource.data.criadoPorUid == request.auth.uid || isAdmin());
+      allow delete: if isAtivo() && (resource.data.criadoPorUid == request.auth.uid || isAdmin());
     }
     match /peticoes_historico/{docId} {
-      allow read: if isSignedIn() && resource.data.criadoPor == request.auth.uid;
-      allow create: if isSignedIn()
+      allow read: if isAtivo() && resource.data.criadoPor == request.auth.uid;
+      allow create: if isAtivo()
                     && request.resource.data.criadoPor == request.auth.uid
                     && request.resource.data.nomeArquivo is string
                     && request.resource.data.docsUrl is string;
       allow update: if false;
-      allow delete: if isSignedIn() && (resource.data.criadoPor == request.auth.uid || isAdmin());
+      allow delete: if isAtivo() && (resource.data.criadoPor == request.auth.uid || isAdmin());
     }
     // Espelho do diretório de colegas: só nome, e-mail, departamento, ingresso e cargo.
     // Remuneração e custos NÃO podem mais ser gravados aqui (ficam só em users, legível pelo admin).
@@ -357,7 +384,7 @@ service cloud.firestore {
       allow write: if isAdmin()
                    && !('remuneracao' in request.resource.data && request.resource.data.remuneracao != '')
                    && !('custos' in request.resource.data && request.resource.data.custos != null);
-      allow create: if isSignedIn() && request.auth.uid == uid
+      allow create: if isSignedIn() && request.auth.uid == uid && !acessoRevogado()
                     && request.resource.data.displayName is string
                     && request.resource.data.displayName.size() > 0
                     && request.resource.data.deptoAtual == ''
@@ -366,7 +393,7 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly(['displayName', 'email', 'deptoAtual', 'dataIngresso', 'remuneracao', 'updatedAt']);
     }
     function isAprovadorDoCondo(slug) {
-      return isSignedIn() &&
+      return isAtivo() &&
         exists(/databases/$(database)/documents/condoAprovadores/$(slug)) &&
         get(/databases/$(database)/documents/condoAprovadores/$(slug)).data.aprovadorUid == request.auth.uid;
     }
@@ -391,7 +418,7 @@ service cloud.firestore {
                     && request.resource.data.condominio is string
                     && request.resource.data.condominioSlug is string
                     && request.resource.data.texto is string && request.resource.data.texto.size() > 0;
-      allow update: if isSignedIn() && (
+      allow update: if isAtivo() && (
                       (
                         resource.data.criadoPorUid == request.auth.uid
                         && resource.data.status == 'rejeitada'
@@ -414,13 +441,13 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
-    // cadastro sem o campo continua vendo tudo (como a tela "⚙ Quem vê tudo" mostra); false = só o próprio
+    // só quem o admin marcou em "⚙ Quem vê tudo" (patrimonioVerTudo == true) vê todo o patrimônio;
+    // sem o campo, vê só o que está sob a própria responsabilidade (migração explícita antes de publicar)
     function podeVerTudoPatrimonio() {
-      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('patrimonioVerTudo', true) != false);
+      return isAdmin() || (isEquipe() && meuCadastro().get('patrimonioVerTudo', false) == true);
     }
     function temPermGestao(campo) {
-      return isSignedIn() &&
+      return isAtivo() &&
         exists(/databases/$(database)/documents/permissoesGestao/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/permissoesGestao/$(request.auth.uid)).data.get(campo, false) == true;
     }
@@ -428,7 +455,7 @@ service cloud.firestore {
       return isAdmin() || temPermGestao('patrimonioCadastro');
     }
     match /permissoesGestao/{uid} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if isAtivo() && (request.auth.uid == uid || isAdmin());
       allow write: if isAdmin();
     }
     // Gestão › Colaboradores › Pagamentos (só admin): pagamentos marcados por mês e colaboradores
@@ -446,7 +473,7 @@ service cloud.firestore {
       return isAdmin() || temPermGestao('lancarHolerites');
     }
     match /holeritesDocs/{docId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (isAtivo() && resource.data.uid == request.auth.uid);
       allow create: if podeLancarHolerites()
                     && request.resource.data.enviadoPorUid == request.auth.uid
                     && request.resource.data.tipo in ['holerite', 'fgts', 'inss', 'tributo']
@@ -455,7 +482,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
       match /partes/{n} {
         allow read: if isAdmin()
-                    || (isSignedIn() && get(/databases/$(database)/documents/holeritesDocs/$(docId)).data.uid == request.auth.uid);
+                    || (isAtivo() && get(/databases/$(database)/documents/holeritesDocs/$(docId)).data.uid == request.auth.uid);
         allow create: if podeLancarHolerites();
         allow update: if false;
         allow delete: if isAdmin();
@@ -476,21 +503,21 @@ service cloud.firestore {
                     && request.resource.data.codigo is string
                     && request.resource.data.criadoPorUid == request.auth.uid;
       allow update: if podeCadastrarPatrimonio()
-                    || (isSignedIn()
+                    || (isAtivo()
                         && resource.data.pendenteParaUid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['responsavelUid', 'responsavel', 'pendenteParaUid', 'pendente', 'ultimaRecusa', 'termoAtualId', 'historico', 'atualizadoEm'])
                         && (request.resource.data.responsavelUid == request.auth.uid
                             || request.resource.data.responsavelUid == resource.data.responsavelUid))
-                    || (isSignedIn()
+                    || (isAtivo()
                         && resource.data.responsavelUid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['devolucao', 'devolucaoPendente', 'historico', 'atualizadoEm']));
       allow delete: if isAdmin();
     }
     match /termosPatrimonio/{termoId} {
-      allow read: if podeCadastrarPatrimonio() || (isSignedIn() && resource.data.colaboradorUid == request.auth.uid);
-      allow create: if isSignedIn()
+      allow read: if podeCadastrarPatrimonio() || (isAtivo() && resource.data.colaboradorUid == request.auth.uid);
+      allow create: if isAtivo()
                     && request.resource.data.itemId is string
                     && request.resource.data.assinaturaPng is string
                     && request.resource.data.assinadoEm == request.time
@@ -524,7 +551,7 @@ service cloud.firestore {
                     && request.resource.data.status in ['rascunho', 'pendente']
                     && request.resource.data.solicitanteUid == request.auth.uid;
       allow update: if isAdmin() || (
-                      isSignedIn()
+                      isAtivo()
                       && resource.data.solicitanteUid == request.auth.uid
                       && resource.data.status == 'rascunho'
                       && request.resource.data.status == 'pendente'
@@ -532,13 +559,13 @@ service cloud.firestore {
                       && request.resource.data.solicitanteUid == resource.data.solicitanteUid
                     );
       allow delete: if isAdmin() || (
-                      isSignedIn()
+                      isAtivo()
                       && resource.data.solicitanteUid == request.auth.uid
                       && resource.data.status == 'rascunho'
                     );
     }
     match /treinamentoProgresso/{uid} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin() || isGestor());
+      allow read: if isAtivo() && (request.auth.uid == uid || isAdmin() || isGestor());
       allow create, update: if isAtivo() && request.auth.uid == uid;
       allow delete: if isAdmin();
     }

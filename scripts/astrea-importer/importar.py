@@ -319,7 +319,10 @@ def get_firebase_token() -> str:
     if not resp.ok:
         log(f"ERRO Firebase auth: {resp.text}")
         sys.exit(1)
-    return resp.json()["idToken"]
+    dados = resp.json()
+    # As regras do Firestore só deixam gravar a agenda quem tem robos/{uid} (criado pelo admin no console).
+    log(f"Robô autenticado. UID (para robos/{{uid}} no Firestore): {dados.get('localId', '?')}")
+    return dados["idToken"]
 
 
 def _chave_tarefa(r: dict) -> str:

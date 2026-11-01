@@ -1,46 +1,25 @@
 # Testes de segurança do portal
 
-Testes de regressão criados na revisão de segurança de 01/11/2026 (referência: OWASP ASVS 4.0.3).
-Eles rodam **só na máquina local**. Usam dados fictícios (`@exemplo.test`) e não acessam produção.
-
-## 1. Regras do Firestore (`tests/firestore-rules/`)
-
-Os testes conferem, no emulador do Firestore, quem lê e quem grava cada coleção. Cobrem:
-
-- autocadastro;
-- escalada de privilégio no próprio cadastro;
-- contas pendentes, excluídas e com troca de senha;
-- salário no organograma;
-- robô do Astrea;
-- presença;
-- chat;
-- holerites;
-- pagamentos;
-- senhas;
-- remuneração;
-- conferência de e-mails;
-- patrimônio.
+Testes de regressão da revisão de segurança de 01/11/2026 (referência: OWASP ASVS 4.0.3). Rodam **só na máquina local**, nos emuladores do Firebase, com dados fictícios (`@exemplo.test`). Nada vai para produção.
 
 Pré-requisitos: Node 20+ e Java 11+.
 
 ```bash
-cd tests/firestore-rules
+cd tests
 npm install
-npm test          # sobe o emulador, roda regras.test.js e derruba o emulador
+npm test                 # Firestore + Storage + Worker
+npm run test:firestore   # só as regras do Firestore (tests/firestore-rules)
+npm run test:storage     # regras do Storage, com o emulador do Firestore junto (as regras consultam o cadastro)
+npm run test:worker      # Worker do Assistente IA, com rede simulada
 ```
 
-Para comparar com outra versão das regras, por exemplo as publicadas hoje, copie as regras do console para um arquivo e rode:
+Para provar que os testes pegam as falhas, rode os mesmos casos contra uma versão antiga das regras. Eles **devem** reprovar:
 
 ```bash
-REGRAS_ARQUIVO=/caminho/regras-publicadas.rules npm test
+git show 4d115d5:README-SETUP.md > /tmp/readme.md   # extraia o bloco rules_version... até o fim do bloco de código
+REGRAS_ARQUIVO=/tmp/regras-antigas.rules npm run test:firestore
+REGRAS_STORAGE=/tmp/storage-antigo.rules npm run test:storage
+WORKER_ARQUIVO=/tmp/worker-antigo.mjs npm run test:worker
 ```
 
-> Se o Java estiver em português e o emulador travar com `MissingResourceException ... locale pt_BR`, rode o emulador com `JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US"`.
-
-## 2. Worker do Assistente IA (`tests/worker-assistente/`)
-
-Os testes conferem que o Worker exige o token do Firebase de alguém da equipe ativa. Também conferem que a rota `/rss` só busca os feeds da lista. A rede é simulada.
-
-```bash
-node tests/worker-assistente/worker.test.mjs
-```
+Se o Java estiver em português e o emulador travar com `MissingResourceException ... locale pt_BR`, defina `JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US"`.

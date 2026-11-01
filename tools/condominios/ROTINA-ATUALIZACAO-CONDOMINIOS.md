@@ -1,3 +1,5 @@
+> **Desde 01/11/2026 (revisão de segurança):** a lista de clientes (`CONDOMINIOS`: síndicos, CNPJ, endereço, observações), os `RELATORIOS` e os PDFs/PNGs dos relatórios **não ficam mais no HTML nem no repositório**, porque tudo aqui é publicado no site aberto. Eles ficam no Firestore (`dadosPrivados/condominios` e `arquivosPrivados/{arquivo}`), com leitura só para a equipe. Para atualizar, edite `privado/condominios.json` (pasta local, fora do git), coloque o PDF/PNG em `privado/condominios-pdfs/` e envie os arquivos pela página `tools/admin-seguranca` (passo 4). **Nunca** faça commit de relatório ou dado de cliente em `tools/`.
+
 # Rotina de atualização — Manual (Condomínios)
 
 Esta aba replica o manual "FB Onboard Guide" (`https://fb-onboard-guide.lovable.app/`)

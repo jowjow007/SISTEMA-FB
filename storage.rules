@@ -1,27 +1,40 @@
 rules_version = '2';
-// Regras RECOMENDADAS para o Firebase Storage (revisão de segurança 01/11/2026).
-// O único uso de Storage no portal é o anexo do Chat: chat/{uid}/{arquivo}.
-// Publicar em: Console do Firebase › Storage › Regras (substitui as regras atuais —
-// confira antes se não há outra pasta em uso no bucket).
+// Regras do Firebase Storage (revisão de segurança 01/11/2026). Publicar em: Console do Firebase › Storage › Regras
+// (substitui as regras atuais — confira antes se não há outra pasta em uso no bucket).
+// O único uso de Storage no portal é o anexo do Chat:
+//   chat/{conversaId}/{uid}/{arquivo}  — formato novo: só quem participa daquela conversa lê ou envia;
+//   chat/{uid}/{arquivo}               — formato antigo (antes de 01/11/2026): só o próprio autor lê pelo SDK.
+// ATENÇÃO: links de download já emitidos (getDownloadURL, gravados nas mensagens) carregam um token e
+// funcionam sem passar por estas regras. Ver SEGURANCA-PUBLICACAO.md, "Links de download já emitidos".
 service firebase.storage {
   match /b/{bucket}/o {
-    // mesmo critério do isAtivo() do Firestore: cadastro existe, senha já trocada e com abas liberadas
+    // mesmo critério do isAtivo() do Firestore: cadastro existe e acesso == 'ativo' (gravado só pelo admin)
     function ativo() {
       return request.auth != null
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('mustChangePassword', false) != true
-        && (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
-            || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('tabs', []).size() > 0);
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('acesso', '') == 'ativo';
+    }
+    function participa(conversaId) {
+      return firestore.exists(/databases/(default)/documents/conversas/$(conversaId))
+        && request.auth.uid in firestore.get(/databases/(default)/documents/conversas/$(conversaId)).data.participantes;
+    }
+    // até 10 MB (limite do Chat); sem HTML/SVG/JS/XML, que o navegador executaria ao abrir o link
+    function arquivoPermitido() {
+      return request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType != null
+        && !request.resource.contentType.matches('(?i)(text/html|image/svg|application/xhtml|text/xml|application/xml|.*javascript|.*ecmascript).*');
+    }
+
+    match /chat/{conversaId}/{uid}/{arquivo} {
+      allow read: if ativo() && participa(conversaId);
+      // resource == null: só arquivo novo (o envio para um caminho que já existe não pode trocar o anexo)
+      allow create: if resource == null && ativo() && request.auth.uid == uid && participa(conversaId) && arquivoPermitido();
+      allow update, delete: if false;
     }
 
     match /chat/{uid}/{arquivo} {
-      allow read: if ativo();
-      // cada pessoa só grava na própria pasta; até 10 MB (limite do Chat);
-      // sem HTML/SVG/JS, que o navegador executaria ao abrir o link
-      allow create: if ativo() && request.auth.uid == uid
-        && request.resource.size <= 10 * 1024 * 1024
-        && !request.resource.contentType.matches('(?i)text/html.*|image/svg.*|.*javascript.*|application/xhtml.*');
-      allow update, delete: if false;
+      allow read: if ativo() && request.auth.uid == uid;
+      allow write: if false;
     }
 
     match /{tudo=**} {

@@ -201,9 +201,9 @@ async function exigirEquipe(request, env) {
   if (!r.ok) throw Object.assign(new Error('Acesso não liberado ao Assistente.'), { status: 403 });
   const f = (await r.json()).fields || {};
   const role = f.role && f.role.stringValue;
-  const abas = (f.tabs && f.tabs.arrayValue && f.tabs.arrayValue.values) || [];
-  const trocaSenha = f.mustChangePassword && f.mustChangePassword.booleanValue === true;
-  const equipe = ['admin', 'gestor', 'membro'].indexOf(role) !== -1 && (role === 'admin' || abas.length > 0) && !trocaSenha;
+  // mesmo critério do isEquipe() do Firestore: acesso aprovado pelo admin (acesso == 'ativo') e papel de equipe
+  const acesso = f.acesso && f.acesso.stringValue;
+  const equipe = ['admin', 'gestor', 'membro'].indexOf(role) !== -1 && acesso === 'ativo';
   if (!equipe) throw Object.assign(new Error('Acesso não liberado ao Assistente.'), { status: 403 });
   return uid;
 }

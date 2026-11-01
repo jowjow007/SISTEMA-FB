@@ -2769,7 +2769,7 @@
         .sort(function(a, b){ return (a.displayName || '').localeCompare(b.displayName || ''); });
       document.getElementById('pat-permissoes-lista').innerHTML = usuarios.length
         ? usuarios.map(function(u){
-            const marcado = u.patrimonioVerTudo !== false;
+            const marcado = u.patrimonioVerTudo === true;   // mesmo critério das regras: só quem foi marcado
             return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.85rem;">' +
               '<input type="checkbox" class="pat-perm-cb" data-uid="' + u.uid + '"' + (marcado ? ' checked' : '') + '>' +
               '<span>' + escapeHtml(u.displayName || u.email || u.uid) + '</span>' +
@@ -3792,7 +3792,7 @@
     db.collection('users').doc(user.uid).get().then(function(doc){
       souAdmin = !!doc.exists && doc.data().role === 'admin';
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
-      meuPatrimonioVerTudo = !doc.exists || doc.data().patrimonioVerTudo !== false;
+      meuPatrimonioVerTudo = souAdmin || (doc.exists && doc.data().patrimonioVerTudo === true);
     }).catch(function(){
       // sem acesso ao próprio users/{uid}: segue com a visão mais restrita, que nunca dá erro
       meuPatrimonioVerTudo = false;

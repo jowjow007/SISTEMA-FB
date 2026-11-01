@@ -1384,7 +1384,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v176</span>
+      <span class="version-tag">v177</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2481,6 +2481,7 @@
           displayName: nome,
           role: 'membro',
           tabs: [],
+          acesso: 'pendente',   // só o admin aprova (Administração › Usuários › Aprovar acesso)
           cpf: cpf,
           rg: rg,
           oab: oab,
@@ -2554,6 +2555,18 @@
         return;
       }
       currentProfile = Object.assign({}, doc.data(), {uid:user.uid, email:user.email});
+
+      // Acesso explícito (revisão de segurança 01/11/2026): só entra quem o admin aprovou (acesso == 'ativo').
+      // Cadastros de antes da migração (sem o campo) seguem o critério antigo até o admin rodar a migração.
+      if (currentProfile.acesso && currentProfile.acesso !== 'ativo') {
+        els.loginError.textContent = currentProfile.acesso === 'pendente'
+          ? 'Seu cadastro foi recebido e aguarda a aprovação do administrador.'
+          : 'Seu acesso ao portal está bloqueado. Fale com o administrador.';
+        els.loginError.style.display = 'block';
+        currentProfile = null;
+        auth.signOut();
+        return;
+      }
 
       if (currentProfile.mustChangePassword) {
         els.loginScreen.style.display = 'none';
@@ -4564,6 +4577,7 @@
             displayName: nome,
             role: papel,
             tabs: tabs,
+            acesso: 'ativo',   // criada pelo próprio admin: aprovada
             mustChangePassword: true,
             dataIngresso: ingresso,
             patrimonioVerTudo: false,   // padrão: só vê o próprio patrimônio até um admin liberar (Gestão > Patrimônio > "⚙ Quem vê tudo")
@@ -4598,20 +4612,29 @@
     });
   }
 
+  // Acesso explícito: 'ativo' (aprovado pelo admin), 'pendente' (autocadastro) ou 'bloqueado' (revogado).
+  // Sem o campo (cadastros de antes da migração), vale o critério antigo: sem abas = pendente.
+  function acessoPendente(u){
+    if (u.acesso) return u.acesso !== 'ativo';
+    return u.role !== 'admin' && (u.tabs || []).length === 0;
+  }
   function renderUsersTable(users){
     const tbody = document.getElementById('users-tbody');
-    pendingCount = users.filter(function(u){ return u.role !== 'admin' && (u.tabs || []).length === 0; }).length;
+    pendingCount = users.filter(acessoPendente).length;
     updatePendingBadge();
 
     // Pendentes (aguardando liberação) aparecem primeiro na lista
     const ordenados = users.slice().sort(function(a, b){
-      const pa = a.role !== 'admin' && (a.tabs || []).length === 0;
-      const pb = b.role !== 'admin' && (b.tabs || []).length === 0;
+      const pa = acessoPendente(a);
+      const pb = acessoPendente(b);
       return (pb ? 1 : 0) - (pa ? 1 : 0);
     });
 
     tbody.innerHTML = ordenados.map(function(u){
-      const pendente = u.role !== 'admin' && (u.tabs || []).length === 0;
+      const pendente = acessoPendente(u);
+      const situacao = u.acesso === 'bloqueado' ? '<span class="chip chip-pending">⛔ Bloqueado</span> '
+        : (u.acesso === 'pendente' ? '<span class="chip chip-pending">⏳ Aguardando aprovação</span> '
+        : (!u.acesso ? '<span class="chip" title="Rode a migração de acesso (tools/admin-seguranca)">sem status</span> ' : ''));
       const chips = (u.tabs || []).map(function(id){
         const t = tabsCatalog.find(function(x){return x.id===id;});
         return '<span class="chip">' + escapeHtml(t ? t.label : id) + '</span>';
@@ -4622,8 +4645,9 @@
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
         '<td>' + roleLabel(u.role) + '</td>' +
-        '<td>' + chips + '</td>' +
+        '<td>' + situacao + chips + '</td>' +
         '<td class="actions-cell">' +
+          (u.acesso !== 'ativo' ? '<button class="btn small" onclick="window.__aprovarUser(\'' + u.uid + '\')">Aprovar acesso</button>' : '') +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserSistemas(\'' + u.uid + '\')">Sistemas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserDados(\'' + u.uid + '\')">Dados</button>' +
@@ -4929,10 +4953,27 @@
     db.collection('users').doc(editTabsTargetUid).update({ tabs: novaLista, subtabs: novasSubtabs }).then(fecharModalEditTabs);
   });
 
-  window.__revokeUser = function(uid){
-    if (!confirm('Revogar o acesso deste usuário? Ele não conseguirá mais ver nenhuma aba.\n(A conta de login continua existindo — para excluí-la de vez, remova em Firebase Console > Authentication.)')) return;
-    db.collection('users').doc(uid).update({ tabs: [] });
+  // Aprovação explícita: é o campo acesso == 'ativo' (e não as abas) que libera os dados nas regras do Firestore.
+  window.__aprovarUser = function(uid){
+    if (!confirm('Aprovar o acesso deste usuário ao portal?\nDepois, libere as abas em "Editar abas".')) return;
+    db.collection('users').doc(uid).update({ acesso: 'ativo', acessoAprovadoPor: currentProfile.uid,
+      acessoAprovadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch(function(err){ alert('Não foi possível aprovar: ' + err.message); });
   };
+  window.__revokeUser = function(uid){
+    if (uid === currentProfile.uid) { alert('Você não pode revogar o próprio acesso.'); return; }
+    if (!confirm('Revogar o acesso deste usuário? Ele perde o acesso aos dados na hora, mesmo com o portal aberto.\n(A conta de login continua existindo — para excluí-la de vez, use "Excluir".)')) return;
+    db.collection('users').doc(uid).update({ tabs: [], acesso: 'bloqueado', acessoRevogadoPor: currentProfile.uid,
+      acessoRevogadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch(function(err){ alert('Não foi possível revogar: ' + err.message); });
+  };
+  // Antes de apagar o cadastro: marca a UID como revogada, para uma sessão ainda aberta não recriar o próprio
+  // cadastro pelo autocadastro. Melhor esforço: antes das regras novas publicadas, a coleção é recusada.
+  function marcarAcessoRevogado(uid, nome){
+    return db.collection('acessosRevogados').doc(uid).set({
+      nome: nome || '', por: currentProfile.uid, em: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(err){ console.warn('acessosRevogados não gravado:', err.message); });
+  }
 
   // Antes de excluir um colaborador, guarda o que o pagamento do mês precisa (cargo, remuneração, entrada,
   // saída e dados bancários) em colaboradoresDesligados/{uid}: ele continua em Gestão › Pagamentos até
@@ -4976,11 +5017,11 @@
 
     if (!workerConfigurado) {
       if (!confirm('Excluir "' + nome + '" definitivamente do portal?\n\nIsso apaga o cadastro dela aqui (acesso, abas e perfil) — ela para de conseguir entrar no sistema imediatamente.\n\nATENÇÃO: o Worker de exclusão definitiva ainda não foi configurado neste Portal (veja README-SETUP.md, seção 10) — por enquanto o login (e-mail/senha) tecnicamente continua existindo no Firebase, e a pessoa NÃO conseguirá se cadastrar de novo com o mesmo e-mail até você apagar o login manualmente em Firebase Console > Authentication > Users.')) return;
-      Promise.all([
+      marcarAcessoRevogado(uid, nome).then(function(){ return Promise.all([
         db.collection('users').doc(uid).delete(),
         db.collection('perfis').doc(uid).delete(),
         db.collection('organograma').doc(uid).delete()
-      ]);
+      ]); });
       return;
     }
 
@@ -4990,7 +5031,7 @@
     btn.disabled = true;
     btn.textContent = 'Excluindo...';
 
-    firebase.auth().currentUser.getIdToken().then(function(idToken){
+    marcarAcessoRevogado(uid, nome).then(function(){ return firebase.auth().currentUser.getIdToken(); }).then(function(idToken){
       return fetch(ADMIN_WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
