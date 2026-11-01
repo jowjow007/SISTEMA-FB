@@ -151,6 +151,7 @@ var TEMPLATE =
     '<div class="pz-card pz-big" id="agr-pz-big"></div><div class="pz-card pz-bars" id="agr-pz-bars"></div>'+
     '<div class="pz-card pz-chart" id="agr-pz-chart"></div><div class="pz-card pz-led" id="agr-pz-led"></div>'+
     '<div class="pz-card pz-act" id="agr-pz-act"></div><div class="pz-card pz-cal" id="agr-pz-cal"></div><div class="pz-card pz-rings" id="agr-pz-rings"></div>'+
+    '<div class="pz-card pz-pi" id="agr-pz-pi"></div>'+
   '</div>'+
 '</section>'+
 '<section aria-label="Visão geral"><div class="kpis" id="agr-kpis"></div></section>'+
@@ -159,6 +160,11 @@ var TEMPLATE =
   '<div class="grid-2"><div><h3 class="sub-h">Distribuição por período</h3><div id="agr-agBars"></div></div>'+
   '<div><h3 class="sub-h">Data da agenda vencida há mais tempo <small>— 10 maiores atrasos</small></h3><div id="agr-agLate"></div></div></div>'+
   '<p class="note">'+ic('info')+'<span>A data exibida é a <b>data cadastrada na agenda do Astrea</b>, não um prazo processual confirmado. "Vencida" significa apenas que essa data é anterior à data-base e a atividade continua na exportação de itens em aberto. O atraso é contado a partir da data da agenda e <b>não equivale a tempo sem movimentação</b>.</span></p>'+
+'</section>'+
+'<section class="card" aria-labelledby="agr-h-etq">'+
+  '<div class="sec-head"><div class="sec-ic">'+ic('flag')+'</div><div><h2 id="agr-h-etq">Prazos pelas etiquetas</h2><p>Como a equipe sinaliza o prazo no Astrea: só <b>PRAZO FATAL</b> = vence no dia; <b>PRAZO FATAL + PRAZO INTERNO</b> = vence no próximo dia útil; só <b>PRAZO INTERNO</b> = faltam 2 dias ou mais. Clique numa atividade para ver os detalhes.</p></div></div>'+
+  '<div class="etq-cols" id="agr-etqCols"></div>'+
+  '<p class="note">'+ic('info')+'<span>As colunas seguem as etiquetas da seleção atual (os filtros acima valem aqui). A data mostrada é a da agenda no Astrea; "agenda vencida" indica que essa data já passou e a etiqueta pode estar desatualizada.</span></p>'+
 '</section>'+
 '<section class="card" aria-labelledby="agr-h-prazos">'+
   '<div class="sec-head"><div class="sec-ic">'+ic('flag')+'</div><div><h2 id="agr-h-prazos">Prazos fatais</h2><p>Atividades identificadas pelos campos existentes na exportação.</p></div></div>'+
@@ -564,7 +570,7 @@ function montar(root, payload, opts){
     $('pz-bars').querySelectorAll('.pz-gbar').forEach(function(b){ b.addEventListener('click',function(){ toggle('resp',b.dataset.key); }); });
     grow($('pz-bars'),'.pz-gbar-f','width');
 
-    renderPainelGrafico(); renderPainelLed(); renderPainelAtividades(); renderPainelCalendario(); renderPainelSemanas();
+    renderPainelGrafico(); renderPainelLed(); renderPainelAtividades(); renderPainelCalendario(); renderPainelSemanas(); renderPainelPeticoes();
   }
 
   function renderPainelGrafico(){
@@ -698,6 +704,70 @@ function montar(root, payload, opts){
     if(!RM) requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.querySelectorAll('.pz-ring-arc').forEach(function(c){ c.setAttribute('stroke-dasharray', c.getAttribute('data-to')); }); }); });
   }
 
+
+  /* Petições iniciais por responsável: atividades da seleção com a etiqueta PETIÇÃO INICIAL. */
+  function ehPeticaoInicial(t){ return /^peticao inicial$/.test(norm(t)); }
+  function renderPainelPeticoes(){
+    var el=$('pz-pi'), rows=SEL.filter(function(r){ return r.tags.some(ehPeticaoInicial); });
+    var tagReal=null; RECS.some(function(r){ return r.tags.some(function(t){ if(ehPeticaoInicial(t)){ tagReal=t; return true; } return false; }); });
+    var m={};
+    rows.forEach(function(r){ var a=m[r.resp]=m[r.resp]||{nome:r.resp,n:0,venc:0,hoje:0}; a.n++; var s=situacao(r); if(s==='vencida') a.venc++; if(s==='hoje') a.hoje++; });
+    var lista=Object.keys(m).map(function(k){ return m[k]; }).sort(function(a,b){ return b.n-a.n || a.nome.localeCompare(b.nome,'pt-BR'); });
+    var max=lista.length?lista[0].n:1, venc=lista.reduce(function(s,a){ return s+a.venc; },0);
+    var h='<div class="pz-pi-head"><div><div class="pz-t" style="color:'+NEON.orange+'">Petições iniciais</div>'
+      +'<div class="pz-sub">quem está com atividades etiquetadas como PETIÇÃO INICIAL na seleção · clique para filtrar</div></div>'
+      +'<div class="pz-pi-tot"><b>'+nf.format(rows.length)+'</b><span>'+(rows.length===1?'petição':'petições')+(venc?' · <em>'+nf.format(venc)+' com agenda vencida</em>':'')+'</span></div></div>';
+    if(!lista.length){ el.innerHTML=h+'<p class="pz-desc">Nenhuma atividade com a etiqueta PETIÇÃO INICIAL na seleção.</p>'; return; }
+    h+='<div class="pz-pi-grid">'+lista.map(function(a){
+      var at=S.resp===a.nome && tagReal && S.tag===tagReal;
+      var sub=[]; if(a.venc) sub.push('<em>'+plural(a.venc,'vencida','vencidas')+'</em>'); if(a.hoje) sub.push(plural(a.hoje,'para hoje','para hoje'));
+      return '<button type="button" class="pz-gbar'+(at?' is-active':'')+'" data-resp="'+esc(a.nome)+'" aria-pressed="'+!!at+'"><span class="pz-gbar-l"><span>'+esc(a.nome)+(sub.length?'<small>'+sub.join(' · ')+'</small>':'')+'</span><b>'+nf.format(a.n)+'</b></span>'
+        +'<span class="pz-gbar-t"><span class="pz-gbar-f" data-to="'+(a.n/max*100).toFixed(1)+'%"></span></span></button>';
+    }).join('')+'</div>';
+    el.innerHTML=h;
+    el.querySelectorAll('.pz-gbar').forEach(function(b){ b.addEventListener('click',function(){
+      var nome=b.dataset.resp, ativo=S.resp===nome && S.tag===tagReal;
+      if(ativo){ S.resp=''; S.tag=''; } else { S.resp=nome; S.tag=tagReal||''; }
+      syncControls(); render();
+    }); });
+    grow(el,'.pz-gbar-f','width');
+  }
+
+  /* Prazos pelas etiquetas (regra do escritório):
+     só PRAZO FATAL = vence no dia · PRAZO FATAL + PRAZO INTERNO = vence no próximo dia útil · só PRAZO INTERNO = faltam 2+ dias. */
+  var ETQ_COLS = [
+    {id:'fatal', titulo:'Vence hoje', regra:'só PRAZO FATAL', cls:'b-red', tom:'red'},
+    {id:'d1', titulo:'Vence no próximo dia útil', regra:'PRAZO FATAL + PRAZO INTERNO', cls:'b-amber', tom:'amber'},
+    {id:'interno', titulo:'Faltam 2 dias ou mais', regra:'só PRAZO INTERNO', cls:'b-green', tom:'green'}
+  ];
+  var etqTodos = {};
+  function renderPrazosEtiqueta(){
+    var el=$('etqCols'), grupos={fatal:[],d1:[],interno:[]};
+    SEL.forEach(function(r){ var c=catsDoCompromisso(r); ['fatal','d1','interno'].forEach(function(k){ if(c[k]) grupos[k].push(r); }); });
+    // primeiro de hoje em diante (pela data), depois as de agenda vencida (etiqueta possivelmente desatualizada)
+    var chaveOrd=function(r){ return r.ag==null ? 2e9 : (r.ag<S.base ? 1e9+r.ag : r.ag); };
+    Object.keys(grupos).forEach(function(k){ grupos[k].sort(function(a,b){ return chaveOrd(a)-chaveOrd(b) || a.i-b.i; }); });
+    el.innerHTML = ETQ_COLS.map(function(c){
+      var rows=grupos[c.id], resp={};
+      rows.forEach(function(r){ resp[r.resp]=(resp[r.resp]||0)+1; });
+      var porResp=Object.keys(resp).sort(function(a,b){ return resp[b]-resp[a]; });
+      var lim=etqTodos[c.id]?rows.length:8, vis=rows.slice(0,lim);
+      return '<div class="etq-col t-'+c.tom+'"><div class="etq-head"><span class="badge '+c.cls+'">'+c.regra+'</span>'
+        +'<div class="etq-tit"><b>'+nf.format(rows.length)+'</b><span>'+c.titulo+'</span></div></div>'
+        +(porResp.length?'<div class="etq-resp">'+porResp.map(function(n){ return '<span>'+esc(n)+' <b>'+resp[n]+'</b></span>'; }).join('')+'</div>':'')
+        +(vis.length?'<ul class="pz-act-list">'+vis.map(function(r,i){
+            var venc=r.ag!=null && r.ag<S.base;
+            return '<li><button type="button" data-c="'+c.id+'" data-i="'+i+'"><span class="pz-act-d'+(venc?' hoje':'')+'">'+(r.ag!=null?dayToBR(r.ag):'sem data')+(r.hora?' · '+esc(r.hora):'')+(venc?'<span class="badge b-red">agenda vencida</span>':'')+'</span>'
+              +'<span class="pz-act-t">'+esc(r.titulo)+'</span><span class="pz-act-r">'+esc(r.resp)+(r.caso&&r.caso!==r.titulo?' · '+esc(r.caso):'')+(r.proc?' · '+esc(r.proc):'')+'</span></button></li>';
+          }).join('')+'</ul>':'<p class="pz-desc">Nenhuma atividade nesta situação.</p>')
+        +(rows.length>8?'<button type="button" class="pz-mais" data-mais="'+c.id+'">'+(etqTodos[c.id]?'Mostrar menos':'Mostrar todas ('+nf.format(rows.length)+')')+'</button>':'')
+        +'</div>';
+    }).join('');
+    el.querySelectorAll('button[data-c]').forEach(function(b){ b.addEventListener('click',function(){
+      var lista=grupos[b.dataset.c].slice(0, etqTodos[b.dataset.c]?undefined:8), i=+b.dataset.i; openModal(lista[i], lista, i); }); });
+    el.querySelectorAll('[data-mais]').forEach(function(b){ b.addEventListener('click',function(){ etqTodos[b.dataset.mais]=!etqTodos[b.dataset.mais]; renderPrazosEtiqueta(); }); });
+  }
+
   /* -------- renderização -------- */
   var SEL = [];
   var T = {};
@@ -705,7 +775,7 @@ function montar(root, payload, opts){
     SEL = RECS.filter(pass);
     var f0=S.from, t0=S.to; S.from=null; S.to=null; SEL_NP = RECS.filter(pass); S.from=f0; S.to=t0;
     renderPainel();
-    renderSelBar(); renderKPIs(); renderAgenda(); renderFatal(); renderRevisao(); renderResp(); renderCriador();
+    renderSelBar(); renderKPIs(); renderAgenda(); renderPrazosEtiqueta(); renderFatal(); renderRevisao(); renderResp(); renderCriador();
     renderClass(); renderIdade(); renderMov(); renderMensal(); renderConc(); renderQual();
     T.main.setRows(SEL);
   }
