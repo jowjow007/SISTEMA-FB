@@ -59,8 +59,8 @@ const ALLOWED_ORIGINS = [
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : 'null',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin'
   };
 }
@@ -138,6 +138,79 @@ async function getAccessToken(clientEmail, privateKeyPem) {
   return data.access_token;
 }
 
+function base64urlToBytes(b64url) {
+  var b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  var bin = atob(b64);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+// Verifica a assinatura e as claims de um idToken do Firebase Auth, usando
+// as chaves públicas do Google (JWK). Retorna o uid (claim "sub") se válido.
+async function verifyFirebaseIdToken(idToken, projectId) {
+  var parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Token mal formado.');
+
+  var header = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[0])));
+  var payload = JSON.parse(new TextDecoder().decode(base64urlToBytes(parts[1])));
+  var signature = base64urlToBytes(parts[2]);
+  var signedData = new TextEncoder().encode(parts[0] + '.' + parts[1]);
+
+  var now = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp < now) throw new Error('Token expirado.');
+  if (!payload.iat || payload.iat > now + 60) throw new Error('Token com data inválida.');
+  if (payload.aud !== projectId) throw new Error('Token de outro projeto.');
+  if (payload.iss !== 'https://securetoken.google.com/' + projectId) throw new Error('Emissor do token inválido.');
+  if (!payload.sub) throw new Error('Token sem uid.');
+
+  var jwkResp = await fetch('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com');
+  var jwkData = await jwkResp.json();
+  var jwk = (jwkData.keys || []).find(function (k) { return k.kid === header.kid; });
+  if (!jwk) throw new Error('Chave pública do Google não encontrada para este token.');
+
+  var cryptoKey = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  var valido = await crypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, cryptoKey, signature, signedData);
+  if (!valido) throw new Error('Assinatura do token inválida.');
+
+  return payload.sub;
+}
+
+// Revisão de segurança (01/11/2026, ASVS 4.0.3 V4.1/V13.1): o cabeçalho Origin não autentica ninguém
+// (qualquer cliente fora do navegador o forja). Agora o pedido precisa trazer o ID token do Firebase
+// do usuário logado; o Worker confere a assinatura e, com o próprio token da pessoa, lê users/{uid}
+// no Firestore — as regras só deixam ler o próprio cadastro — e exige equipe ativa (mesma regra do
+// isEquipe() do Firestore).
+async function exigirEquipe(request, env) {
+  const projectId = env.FIREBASE_PROJECT_ID || 'sistema-fb-4cce5';
+  const auth = request.headers.get('Authorization') || '';
+  const idToken = auth.indexOf('Bearer ') === 0 ? auth.slice(7).trim() : '';
+  if (!idToken) throw Object.assign(new Error('Faça login no portal para usar o Assistente.'), { status: 401 });
+  let uid;
+  try { uid = await verifyFirebaseIdToken(idToken, projectId); }
+  catch (e) { throw Object.assign(new Error('Sessão inválida. Recarregue o portal e tente de novo.'), { status: 401 }); }
+  const url = 'https://firestore.googleapis.com/v1/projects/' + projectId + '/databases/(default)/documents/users/' + encodeURIComponent(uid);
+  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + idToken } });
+  if (!r.ok) throw Object.assign(new Error('Acesso não liberado ao Assistente.'), { status: 403 });
+  const f = (await r.json()).fields || {};
+  const role = f.role && f.role.stringValue;
+  const abas = (f.tabs && f.tabs.arrayValue && f.tabs.arrayValue.values) || [];
+  const trocaSenha = f.mustChangePassword && f.mustChangePassword.booleanValue === true;
+  const equipe = ['admin', 'gestor', 'membro'].indexOf(role) !== -1 && (role === 'admin' || abas.length > 0) && !trocaSenha;
+  if (!equipe) throw Object.assign(new Error('Acesso não liberado ao Assistente.'), { status: 403 });
+  return uid;
+}
+
+// Feeds que a rota /rss pode buscar (antes buscava qualquer URL: proxy aberto / SSRF).
+const RSS_PERMITIDOS = ['www.conjur.com.br', 'res.stj.jus.br', 'www.jota.info', 'condo.news', 'jornaldosindico.com.br'];
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -155,10 +228,15 @@ export default {
     if (request.method === 'GET' && reqUrl.pathname === '/rss') {
       const feedUrl = reqUrl.searchParams.get('url');
       if (!feedUrl) return jsonResponse({ error: 'Parâmetro url ausente.' }, 400, origin);
+      let alvo;
+      try { alvo = new URL(feedUrl); } catch (e) { return jsonResponse({ error: 'URL inválida.' }, 400, origin); }
+      if (alvo.protocol !== 'https:' || RSS_PERMITIDOS.indexOf(alvo.hostname) === -1) {
+        return jsonResponse({ error: 'Feed não permitido.' }, 403, origin);
+      }
       try {
-        const resp = await fetch(feedUrl, {
+        const resp = await fetch(alvo.toString(), {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PortalFB/1.0)' },
-          redirect: 'follow'
+          redirect: 'manual'
         });
         const text = await resp.text();
         return new Response(text, {
@@ -173,6 +251,12 @@ export default {
 
     if (request.method !== 'POST') {
       return jsonResponse({ error: 'Método não suportado.' }, 405, origin);
+    }
+
+    try {
+      await exigirEquipe(request, env);
+    } catch (e) {
+      return jsonResponse({ error: e.message }, e.status || 401, origin);
     }
 
     // Desde out/2026 o Google recusa token de conta de serviço no Gemini ("Access to Gemini

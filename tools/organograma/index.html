@@ -680,9 +680,9 @@
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
 <script>
 (function(){
@@ -938,12 +938,12 @@
       const valor = grupo.reduce(function(soma, p){ return soma + valorRemuneracao(p.remuneracao); }, 0);
       return '<div class="resumo-card"><div class="resumo-top"><div class="label">' + escapeHtml(cat.label) + '</div><span class="resumo-icon">' + iconeResumo(cat.chave) + '</span></div>' +
         '<div class="valor">' + iconeResumo('pessoas') + '<span>' + grupo.length + (grupo.length === 1 ? ' pessoa' : ' pessoas') + '</span></div>' +
-        '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(valor) + '</span></div></div>';
+        (souAdmin ? '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(valor) + '</span></div>' : '') + '</div>';
     }).join('');
     const semCategoria = pessoas.filter(function(p){ return !categorias.some(function(cat){ return normalizarTexto(p.tipoColaborador) === cat.chave; }); }).length;
     els.resumo.innerHTML = cards + '<div class="resumo-card"><div class="resumo-top"><div class="label">Total</div><span class="resumo-icon">' + iconeResumo('total') + '</span></div>' +
       '<div class="valor">' + iconeResumo('pessoas') + '<span>' + total.quantidade + (total.quantidade === 1 ? ' pessoa' : ' pessoas') + '</span></div>' +
-      '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(total.valor) + (semCategoria ? ' · ' + semCategoria + ' sem categoria' : '') + '</span></div></div>';
+      (souAdmin ? '<div class="subvalor">' + iconeResumo('moeda') + '<span>' + formatarMoeda(total.valor) + (semCategoria ? ' · ' + semCategoria + ' sem categoria' : '') + '</span></div>' : '') + '</div>';
   }
 
   function classificarDepartamento(depto){
@@ -1057,6 +1057,31 @@
   window.addEventListener('resize', atualizarConexoes);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(atualizarConexoes);
 
+  // Remuneração e custos só para o admin, lidos de users/{uid} (o espelho organograma não os guarda mais).
+  function comValores(uid){
+    const d = Object.assign({ uid: uid }, organogramaMap[uid]);
+    const u = souAdmin ? usersMap[uid] : null;
+    d.remuneracao = u ? (u.remuneracao || '') : '';
+    d.custos = u ? (u.custos || null) : null;
+    return d;
+  }
+
+  // Correção de segurança (01/11/2026): versões anteriores copiavam remuneração e custos para o
+  // organograma, que toda a equipe lê. O admin, ao abrir a tela, remove esses campos do espelho
+  // (os valores continuam em users/{uid}, legível só pelo admin).
+  let limpezaFeita = false;
+  function limparValoresDoEspelho(docs){
+    if (limpezaFeita) return;
+    const sujos = docs.filter(function(d){ const x = d.data(); return x.remuneracao !== undefined || x.custos !== undefined; });
+    if (!sujos.length) { limpezaFeita = true; return; }
+    limpezaFeita = true;
+    const batch = db.batch();
+    sujos.slice(0, 450).forEach(function(d){
+      batch.update(d.ref, { remuneracao: firebase.firestore.FieldValue.delete(), custos: firebase.firestore.FieldValue.delete() });
+    });
+    batch.commit().catch(function(err){ console.warn('Não foi possível limpar valores do organograma:', err.message); limpezaFeita = false; });
+  }
+
   function render(){
     const uids = Object.keys(organogramaMap);
 
@@ -1073,14 +1098,14 @@
     }
     els.empty.style.display = 'none';
 
-    const pessoas = uids.map(function(uid){ return Object.assign({uid: uid}, organogramaMap[uid]); });
+    const pessoas = uids.map(comValores);
     renderResumo(pessoas);
     const ramos = { diretoria:[], juridico:[], condominio:[], secretaria:[] };
     uids.forEach(function(uid){
       const d = organogramaMap[uid];
       const depto = (d.deptoAtual || '').trim() || 'Sem departamento definido';
       const ramo = classificarDepartamento(depto);
-      ramos[ramo].push(Object.assign({uid: uid}, d));
+      ramos[ramo].push(comValores(uid));
     });
 
     els.secoes.innerHTML = '<div class="org-tree"><svg class="org-connectors" aria-hidden="true"></svg>' +
@@ -1140,8 +1165,7 @@
         (p.email ? '<div class="email">' + escapeHtml(p.email) + '</div>' : '') + '</div></div>' +
       '<div class="row"><span class="k">Departamento</span><span class="v">' + escapeHtml((p.deptoAtual || '').trim() || 'não informado') + '</span></div>' +
       '<div class="row"><span class="k">Ingresso</span><span class="v">' + ingresso + '</span></div>' +
-      '<div class="row"><span class="k">' + (p.custos ? 'Custo total' : 'Remuneração') + '</span><span class="v">' + remuneracao + '</span></div>' +
-      custosDoCard(p) +
+      (souAdmin ? '<div class="row"><span class="k">' + (p.custos ? 'Custo total' : 'Remuneração') + '</span><span class="v">' + remuneracao + '</span></div>' + custosDoCard(p) : '') +
       rodapeAdmin +
     '</div>';
   }
@@ -1530,8 +1554,9 @@
       displayName: nomeCompleto || (usersMap[uid] && usersMap[uid].displayName) || '',
       deptoAtual: deptoAtual,
       dataIngresso: dataIngresso,
-      remuneracao: remuneracao,
-      custos: custos,
+      // remuneração e custos NÃO entram aqui: organograma é lido por toda a equipe
+      remuneracao: firebase.firestore.FieldValue.delete(),
+      custos: firebase.firestore.FieldValue.delete(),
       tipoColaborador: tipoColaborador,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: meuUid
@@ -1578,8 +1603,8 @@
         email: u.email || '',
         deptoAtual: u.deptoAtual || '',
         dataIngresso: u.dataIngresso || '',
-        remuneracao: u.remuneracao || '',
-        custos: u.custos || null,
+        remuneracao: firebase.firestore.FieldValue.delete(),
+        custos: firebase.firestore.FieldValue.delete(),
         tipoColaborador: u.tipoColaborador || '',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: meuUid
@@ -1631,6 +1656,7 @@
       db.collection('organograma').onSnapshot(function(snap){
         organogramaMap = {};
         snap.docs.forEach(function(d){ organogramaMap[d.id] = d.data(); });
+        if (souAdmin) limparValoresDoEspelho(snap.docs);
         render();
       });
 

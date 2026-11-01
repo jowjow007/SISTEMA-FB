@@ -207,9 +207,9 @@
   </div>
 </main>
 
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
 <script>
 (function(){
@@ -225,6 +225,7 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
 
+  let ingressoTravado = false;
   const els = {
     gate: document.getElementById('gate'),
     appBox: document.getElementById('app'),
@@ -380,6 +381,10 @@
         const nacEl = document.getElementById('nacionalidade-input');
         if (!nacEl.value && u.nacionalidade) nacEl.value = u.nacionalidade;
         document.getElementById('ingresso-input').value = u.dataIngresso || '';
+        // a data de entrada define o pagamento proporcional: depois de preenchida, só o admin altera
+        ingressoTravado = !!u.dataIngresso;
+        document.getElementById('ingresso-input').disabled = ingressoTravado;
+        if (ingressoTravado) document.getElementById('ingresso-input').title = 'Para corrigir a data de entrada, fale com o administrador.';
         els.telefoneInput.value = formatarTelefone(u.telefone || '');
         els.enderecoInput.value = u.endereco || '';
         els.emailAltInput.value = u.emailAlternativo || '';
@@ -450,12 +455,12 @@
       oab: oab,
       estadoCivil: els.estadoCivilInput.value,
       nacionalidade: document.getElementById('nacionalidade-input').value.trim().toLowerCase(),
-      dataIngresso: document.getElementById('ingresso-input').value,
       telefone: telefone,
       endereco: endereco,
       emailAlternativo: els.emailAltInput.value.trim()
     };
 
+    if (!ingressoTravado) dadosCadastrais.dataIngresso = document.getElementById('ingresso-input').value;
     Promise.all([
       db.collection('perfis').doc(currentUid).set(dados, { merge: true }),
       db.collection('users').doc(currentUid).update(dadosCadastrais)

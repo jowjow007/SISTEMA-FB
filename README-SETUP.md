@@ -45,39 +45,77 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
+    // exists() antes do get(): sem cadastro (ex.: no próprio autocadastro) o get() dá erro de avaliação,
+    // e um erro dentro de "isAdmin() || ..." nega a regra inteira em vez de seguir para o outro lado.
     function isAdmin() {
-      return isSignedIn() &&
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     function isGestor() {
-      return isSignedIn() &&
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'gestor';
+    }
+    // Revisão de segurança (01/11/2026, OWASP ASVS 4.0.3 V4 — controle de acesso):
+    // estar logado NÃO basta. "Ativo" = tem cadastro em users, não está com troca de senha pendente e
+    // (é admin ou tem ao menos uma aba liberada). Autocadastro sem abas, conta revogada (abas zeradas) e
+    // conta excluída (sem users) ficam sem acesso aos dados. "Equipe" = ativo e não é cliente.
+    function meuCadastro() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAtivo() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && meuCadastro().get('mustChangePassword', false) != true
+        && (meuCadastro().role == 'admin' || meuCadastro().get('tabs', []).size() > 0);
+    }
+    function isEquipe() {
+      return isAtivo() && meuCadastro().role in ['admin', 'gestor', 'membro'];
+    }
+    // Conta(s) dos robôs (Agenda Astrea no PC do escritório). Liberar por e-mail aqui OU criando
+    // o documento robos/{uid} pelo console (só o admin escreve nessa coleção).
+    function isRobo() {
+      return isSignedIn() && (
+        request.auth.token.email in ['robo@fonsecaebraga.com.br']
+        || exists(/databases/$(database)/documents/robos/$(request.auth.uid)));
     }
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == userId
-                    && request.resource.data.role == 'membro'
-                    && request.resource.data.tabs.size() == 0;
+      // admin cria contas (Administração › Usuários); o autocadastro entra sem abas, como membro,
+      // só com os campos do formulário e sem poder se dar acesso a todo o patrimônio
+      allow create: if isAdmin() || (
+                      isSignedIn() && request.auth.uid == userId
+                      && request.resource.data.role == 'membro'
+                      && request.resource.data.tabs.size() == 0
+                      && request.resource.data.get('patrimonioVerTudo', false) == false
+                      && request.resource.data.get('deptoAtual', '') == ''
+                      && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'tabs', 'cpf', 'rg', 'oab',
+                           'estadoCivil', 'nacionalidade', 'telefone', 'endereco', 'dataIngresso', 'pixTipo', 'pixChave',
+                           'banco', 'agencia', 'conta', 'deptoAtual', 'patrimonioVerTudo', 'createdAt'])
+                    );
+      // a própria pessoa só altera dados pessoais/bancários; papel, abas, remuneração, cargo, permissões
+      // e visão do patrimônio são do admin. A data de entrada só pode ser preenchida enquanto estiver vazia.
       allow update: if isAdmin() || (
-                      isSignedIn() && request.auth.uid == userId &&
-                      request.resource.data.role == resource.data.role &&
-                      request.resource.data.tabs == resource.data.tabs &&
-                      request.resource.data.email == resource.data.email &&
-                      request.resource.data.displayName == resource.data.displayName
+                      isSignedIn() && request.auth.uid == userId
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cpf', 'rg', 'oab', 'estadoCivil',
+                           'nacionalidade', 'telefone', 'endereco', 'emailAlternativo', 'dataIngresso', 'mustChangePassword',
+                           'pixTipo', 'pixChave', 'banco', 'agencia', 'conta', 'dadosBancariosEm', 'sugestoesNotificadas'])
+                      && (!('dataIngresso' in request.resource.data.diff(resource.data).affectedKeys())
+                          || resource.data.get('dataIngresso', '') == '')
+                      && request.resource.data.get('mustChangePassword', false) == false
                     );
       allow delete: if isAdmin();
     }
     match /tabs/{tabId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn();   // catálogo de abas (rótulos/URLs), necessário para montar o menu
       allow write: if isAdmin();
     }
     match /perfis/{uid} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo() || (isSignedIn() && request.auth.uid == uid);
       allow write: if isSignedIn() && (request.auth.uid == uid || isAdmin());
     }
     match /sugestoes/{sugestaoId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isAtivo();
+      allow create: if isAtivo()
                     && request.resource.data.autorUid == request.auth.uid
                     && request.resource.data.status == 'aberta'
                     && request.resource.data.texto is string
@@ -109,20 +147,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /conversas/{conversaId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.participantes;
-      allow create: if isSignedIn()
+      allow read: if isAtivo() && request.auth.uid in resource.data.participantes;
+      allow create: if isAtivo()
                     && request.auth.uid in request.resource.data.participantes
                     && request.resource.data.participantes.size() >= 2
                     && request.resource.data.criadoPor == request.auth.uid;
-      allow update: if isSignedIn()
+      allow update: if isAtivo()
                     && request.auth.uid in resource.data.participantes
                     && request.auth.uid in request.resource.data.participantes;
       allow delete: if false;
 
       match /mensagens/{mensagemId} {
-        allow read: if isSignedIn()
+        allow read: if isAtivo()
                     && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes;
-        allow create: if isSignedIn()
+        allow create: if isAtivo()
                       && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
                       && request.resource.data.autorUid == request.auth.uid;
         allow update: if isSignedIn()
@@ -229,18 +267,24 @@ service cloud.firestore {
     }
 
     // Agenda do Astrea (Números do Escritório › Agenda — Astrea): o robô do PC do escritório
-    // (scripts/astrea-importer, conta do robô no login do portal) grava a agenda do dia e o delta; todos os logados leem.
-    // A gravação fica aberta a qualquer conta logada (como era antes de 28/10/2026): travar no e-mail do robô
-    // bloqueou o robô do escritório (403), cuja conta configurada no credenciais.env de lá não é conferível daqui.
+    // (scripts/astrea-importer, conta do robô no login do portal) grava a agenda do dia e o delta.
     // astreaTrigger/pedido é o botão "Executar robô agora": o portal cria/apaga o pedido, o robô atualiza o status.
+    // Revisão de segurança (01/11/2026): só a equipe lê a agenda; só o robô (ou o admin) grava a agenda e o delta.
+    // Antes de publicar, confirme o e-mail do robô do PC do escritório em isRobo() ou crie robos/{uid}.
     match /astreaDiario/{data} {
-      allow read, write: if isSignedIn();
+      allow read: if isEquipe() || isRobo();
+      allow write: if isRobo() || isAdmin();
     }
     match /astreaDelta/{data} {
-      allow read, write: if isSignedIn();
+      allow read: if isEquipe() || isRobo();
+      allow write: if isRobo() || isAdmin();
     }
     match /astreaTrigger/{docId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isEquipe() || isRobo();
+    }
+    match /robos/{uid} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
     }
 
     // Conferência de e-mails (tools/conferencia-emails): o robô (conta de serviço, fora destas regras) cria
@@ -248,7 +292,7 @@ service cloud.firestore {
     // vê só os seus e pode apenas marcar como respondido.
     match /emailsConferencia/{docId} {
       allow read: if isAdmin()
-                  || (isSignedIn() && resource.data.responsavelEmail == request.auth.token.email);
+                  || (isAtivo() && resource.data.responsavelEmail == request.auth.token.email);
       allow update: if isAdmin()
                     || (isSignedIn()
                         && resource.data.responsavelEmail == request.auth.token.email
@@ -263,7 +307,7 @@ service cloud.firestore {
     }
     // Resumo da última rodada do robô (data/hora mostrada a todos na aba; contagens e erro só aparecem para admin).
     match /emailsConferenciaMeta/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo();
       allow write: if false;
     }
     // Textos dos e-mails e das respostas (nunca apagados) e lista do que o robô descartou: só o dono lê.
@@ -288,8 +332,8 @@ service cloud.firestore {
       allow write: if false;
     }
     match /contratosGerados/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isEquipe();
+      allow create: if isEquipe()
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.tipo is string
                     && request.resource.data.nomeDisplay is string
@@ -306,15 +350,20 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isSignedIn() && (resource.data.criadoPor == request.auth.uid || isAdmin());
     }
+    // Espelho do diretório de colegas: só nome, e-mail, departamento, ingresso e cargo.
+    // Remuneração e custos NÃO podem mais ser gravados aqui (ficam só em users, legível pelo admin).
     match /organograma/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if isAtivo();
+      allow write: if isAdmin()
+                   && !('remuneracao' in request.resource.data && request.resource.data.remuneracao != '')
+                   && !('custos' in request.resource.data && request.resource.data.custos != null);
       allow create: if isSignedIn() && request.auth.uid == uid
                     && request.resource.data.displayName is string
                     && request.resource.data.displayName.size() > 0
                     && request.resource.data.deptoAtual == ''
                     && request.resource.data.dataIngresso == ''
-                    && request.resource.data.remuneracao == '';
+                    && request.resource.data.get('remuneracao', '') == ''
+                    && request.resource.data.keys().hasOnly(['displayName', 'email', 'deptoAtual', 'dataIngresso', 'remuneracao', 'updatedAt']);
     }
     function isAprovadorDoCondo(slug) {
       return isSignedIn() &&
@@ -322,20 +371,20 @@ service cloud.firestore {
         get(/databases/$(database)/documents/condoAprovadores/$(slug)).data.aprovadorUid == request.auth.uid;
     }
     match /condoAprovadores/{slug} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo();
       allow write: if isAdmin();
     }
     match /unidadeResets/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo();
       allow write: if isAdmin();
     }
     match /condoUnidades/{slug} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo();
       allow write: if isAdmin();
     }
     match /notificacoesGeradas/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isAtivo();
+      allow create: if isAtivo()
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.status == 'pendente'
                     && request.resource.data.tentativa == 1
@@ -365,9 +414,10 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin();
     }
+    // cadastro sem o campo continua vendo tudo (como a tela "⚙ Quem vê tudo" mostra); false = só o próprio
     function podeVerTudoPatrimonio() {
-      return isAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.patrimonioVerTudo != false;
+      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('patrimonioVerTudo', true) != false);
     }
     function temPermGestao(campo) {
       return isSignedIn() &&
@@ -412,12 +462,12 @@ service cloud.firestore {
       }
     }
     match /materiaisMarca/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isAtivo();
       allow create: if isAdmin();
       allow delete: if isAdmin();
     }
     match /patrimonio/{itemId} {
-      allow read: if isSignedIn() && (podeVerTudoPatrimonio()
+      allow read: if isEquipe() && (podeVerTudoPatrimonio()
                     || podeCadastrarPatrimonio()
                     || resource.data.responsavelUid == request.auth.uid
                     || resource.data.pendenteParaUid == request.auth.uid);
@@ -461,16 +511,15 @@ service cloud.firestore {
       allow write: if false;
     }
     match /senhasSync/{colecao} {
-      allow read: if isSignedIn();
+      allow read: if isEquipe();
       allow write: if false;
     }
     match /contadores/{contadorId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if isEquipe();
     }
     match /compras/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isEquipe();
+      allow create: if isEquipe()
                     && request.resource.data.item is string && request.resource.data.item.size() > 0
                     && request.resource.data.status in ['rascunho', 'pendente']
                     && request.resource.data.solicitanteUid == request.auth.uid;
@@ -490,12 +539,13 @@ service cloud.firestore {
     }
     match /treinamentoProgresso/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin() || isGestor());
-      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isAtivo() && request.auth.uid == uid;
       allow delete: if isAdmin();
     }
     match /presencaDiaria/{docId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isEquipe();
+      allow create, update: if isAtivo() && request.resource.data.uid == request.auth.uid
+                            && docId.matches(request.auth.uid + '_.*');
     }
   }
 }

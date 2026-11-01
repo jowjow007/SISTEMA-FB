@@ -1,0 +1,31 @@
+rules_version = '2';
+// Regras RECOMENDADAS para o Firebase Storage (revisão de segurança 01/11/2026).
+// O único uso de Storage no portal é o anexo do Chat: chat/{uid}/{arquivo}.
+// Publicar em: Console do Firebase › Storage › Regras (substitui as regras atuais —
+// confira antes se não há outra pasta em uso no bucket).
+service firebase.storage {
+  match /b/{bucket}/o {
+    // mesmo critério do isAtivo() do Firestore: cadastro existe, senha já trocada e com abas liberadas
+    function ativo() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('mustChangePassword', false) != true
+        && (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+            || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('tabs', []).size() > 0);
+    }
+
+    match /chat/{uid}/{arquivo} {
+      allow read: if ativo();
+      // cada pessoa só grava na própria pasta; até 10 MB (limite do Chat);
+      // sem HTML/SVG/JS, que o navegador executaria ao abrir o link
+      allow create: if ativo() && request.auth.uid == uid
+        && request.resource.size <= 10 * 1024 * 1024
+        && !request.resource.contentType.matches('(?i)text/html.*|image/svg.*|.*javascript.*|application/xhtml.*');
+      allow update, delete: if false;
+    }
+
+    match /{tudo=**} {
+      allow read, write: if false;
+    }
+  }
+}
