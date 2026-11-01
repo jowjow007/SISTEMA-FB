@@ -2,7 +2,7 @@
 // Rodam localmente com Node 20+, sem rede: o fetch global é substituído por um dublê e o "Google" é uma chave RSA
 // gerada na hora. Nenhum dado real, nenhuma chamada a produção.  Uso:  node tests/worker-assistente/worker.test.mjs
 import { webcrypto } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const subtle = webcrypto.subtle;
@@ -40,7 +40,9 @@ globalThis.fetch = async (url, opts = {}) => {
   return new Response('inesperado', { status: 599 });
 };
 
-const worker = (await import(pathToFileURL(path.resolve(process.env.WORKER_ARQUIVO || 'tools/assistente-ia/worker.js')).href)).default;
+// caminho a partir deste arquivo (funciona rodando da raiz ou de tests/)
+const PADRAO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'assistente-ia', 'worker.js');
+const worker = (await import(pathToFileURL(path.resolve(process.env.WORKER_ARQUIVO || PADRAO)).href)).default;
 const env = { FIREBASE_PROJECT_ID: PROJETO, GEMINI_API_KEY: 'chave-ficticia' };
 const post = (headers = {}) => new Request('https://worker.test/', { method: 'POST', headers: Object.assign({ Origin: ORIGEM, 'Content-Type': 'application/json' }, headers), body: '{"contents":[]}' });
 const rss = (alvo, origem = ORIGEM) => new Request('https://worker.test/rss?url=' + encodeURIComponent(alvo), { headers: { Origin: origem } });
