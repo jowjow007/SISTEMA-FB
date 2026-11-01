@@ -898,6 +898,19 @@
   .modal-foot{display:flex;gap:10px;justify-content:flex-end;}
   .modal-foot .btn{width:auto;padding:9px 16px;}
 
+  /* ---------- Dados de pagamento (PIX) e Meus holerites ---------- */
+  #banco-backdrop{z-index:65;}
+  #banco-backdrop .modal-box,#hol-backdrop .modal-box{width:min(480px,100%);box-sizing:border-box;max-height:88vh;overflow-y:auto;display:block;}
+  .banco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  .banco-grid label{display:flex;flex-direction:column;gap:5px;font-size:.74rem;color:var(--muted);font-weight:600;}
+  .banco-grid label.largo{grid-column:1/-1;}
+  .banco-grid input,.banco-grid select{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font:inherit;font-size:.86rem;padding:9px 10px;}
+  #banco-err{display:none;margin-bottom:10px;}
+  .hol-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.86rem;}
+  .hol-item small{display:block;color:var(--muted);font-size:.72rem;}
+  .hol-item .btn{width:auto;padding:6px 12px;font-size:.76rem;}
+  @media (max-width:520px){ .banco-grid{grid-template-columns:1fr;} }
+
   /* ---------- Aviso obrigatório: foto de perfil faltando ---------- */
   #aviso-foto-backdrop{z-index:300;}
   #aviso-foto-backdrop .modal-box{width:min(400px,94vw);text-align:center;padding:30px 26px 24px;}
@@ -1261,6 +1274,21 @@
           <input type="text" id="register-endereco" required>
         </div>
         <div class="field">
+          <label>Chave PIX (para receber pagamentos)<span class="obrig">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <select id="register-pix-tipo" style="flex:1;"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="aleatoria">Chave aleatória</option></select>
+            <input type="text" id="register-pix" placeholder="sua chave PIX" style="flex:2;" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Banco, agência e conta <span style="opacity:.7;">(opcional)</span></label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="register-banco" placeholder="Banco" style="flex:1.6;">
+            <input type="text" id="register-agencia" placeholder="Agência" inputmode="numeric" style="flex:1;">
+            <input type="text" id="register-conta" placeholder="Conta" style="flex:1.2;">
+          </div>
+        </div>
+        <div class="field">
           <label>Senha<span class="obrig">*</span></label>
           <input type="password" id="register-password" autocomplete="new-password" placeholder="mín. 6 caracteres" required>
         </div>
@@ -1356,7 +1384,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v174</span>
+      <span class="version-tag">v175</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1747,6 +1775,32 @@
 </div>
 
 <!-- ================= MODAL: AVISO OBRIGATÓRIO DE FOTO DE PERFIL ================= -->
+<div class="modal-backdrop" id="banco-backdrop">
+  <div class="modal-box">
+    <h3>Atualize seus dados de pagamento</h3>
+    <p class="sub">O escritório passou a fazer os pagamentos pelo portal. Confira sua chave PIX, banco, agência e conta — só o administrador vê esses dados.</p>
+    <div class="banco-grid">
+      <label>Tipo de chave<select id="banco-pix-tipo"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="aleatoria">Chave aleatória</option></select></label>
+      <label><span>Chave PIX <span class="obrig">*</span></span><input type="text" id="banco-pix"></label>
+      <label class="largo">Banco<input type="text" id="banco-banco" placeholder="Ex.: Banco do Brasil, Nubank, Inter…"></label>
+      <label>Agência<input type="text" id="banco-agencia" inputmode="numeric"></label>
+      <label>Conta (com dígito)<input type="text" id="banco-conta"></label>
+    </div>
+    <div class="error-msg" id="banco-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn secondary" id="banco-depois">Lembrar depois</button>
+      <button type="button" class="btn" id="banco-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="hol-backdrop">
+  <div class="modal-box">
+    <h3>📄 Meus holerites</h3>
+    <p class="sub">Holerites lançados pelo escritório. Só você vê os seus.</p>
+    <div class="list" id="hol-lista"></div>
+    <div class="modal-foot"><button type="button" class="btn secondary" id="hol-fechar">Fechar</button></div>
+  </div>
+</div>
 <div class="modal-backdrop" id="aviso-foto-backdrop">
   <div class="modal-box">
     <div class="aviso-selo-wrap">
@@ -2382,6 +2436,8 @@
     const telefone = els.registerTelefone.value.trim();
     const endereco = els.registerEndereco.value.trim();
     const ingresso = els.registerIngresso.value;
+    const pixEl = document.getElementById('register-pix');
+    const pixChave = pixEl.value.trim();
 
     const camposObrigatorios = [
       { el: els.registerName, ok: !!primeiroNome },
@@ -2398,6 +2454,7 @@
       { el: els.registerEndereco, ok: !!endereco },
       { el: els.registerBirthdate, ok: !!nascimento },
       { el: els.registerIngresso, ok: !!ingresso },
+      { el: pixEl, ok: !!pixChave },
       { el: document.getElementById('register-photo-btns'), ok: !!registerPhotoDataUrl }
     ];
     const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
@@ -2432,6 +2489,12 @@
           telefone: telefone,
           endereco: endereco,
           dataIngresso: ingresso,
+          // dados para pagamento (Gestão › Colaboradores › Pagamentos, só o admin vê)
+          pixTipo: document.getElementById('register-pix-tipo').value,
+          pixChave: pixChave,
+          banco: document.getElementById('register-banco').value.trim(),
+          agencia: document.getElementById('register-agencia').value.trim(),
+          conta: document.getElementById('register-conta').value.trim(),
           deptoAtual: '',   // o departamento é definido só pelo admin (Gestão > Colaboradores)
           patrimonioVerTudo: false,   // padrão: só vê o próprio patrimônio até um admin liberar (Gestão > Patrimônio > "⚙ Quem vê tudo")
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2500,7 +2563,8 @@
       }
 
       entrarNoApp();
-    }).catch(function(err){
+    }, function(err){
+      // só falha na LEITURA do cadastro cai aqui (erros dentro de entrarNoApp não devolvem para o login)
       fimRestauracao();
       els.loginScreen.style.display = 'flex';
       els.loginError.textContent = 'Não foi possível carregar seu cadastro (' + (err && err.code || 'sem conexão') + '). Tente de novo.';
@@ -2518,6 +2582,7 @@
     // agendado à parte: uma falha em outra inicialização abaixo não impede o comunicado obrigatório.
     // Depois dos comunicados pendentes, vêm os cards de aniversário/tempo de escritório.
     setTimeout(iniciarComunicados, 0);
+    setTimeout(verificarDadosBancarios, 0);   // pop-up da chave PIX (espera os comunicados fecharem)
     renderUserInfo();
     renderSistemasStatus();
     subscribeTabsCatalog();
@@ -3243,6 +3308,78 @@
   }
   const AVISO_FOTO_ALVOS = ['hecy braga de oliveira'];
 
+  // ---------- Dados de pagamento: pop-up para quem ainda não informou a chave PIX ----------
+  // Aparece depois dos comunicados obrigatórios; "Lembrar depois" adia só até o próximo acesso.
+  function verificarDadosBancarios(){
+    if (!currentProfile || currentProfile.role === 'cliente' || currentProfile.pixChave) return;
+    let tentativas = 0;
+    const esperar = function(){
+      const com = document.getElementById('com-backdrop');
+      if (com && com.classList.contains('show') && tentativas++ < 600) { setTimeout(esperar, 1500); return; }
+      document.getElementById('banco-pix-tipo').value = currentProfile.pixTipo || 'cpf';
+      document.getElementById('banco-pix').value = currentProfile.pixChave || '';
+      document.getElementById('banco-banco').value = currentProfile.banco || '';
+      document.getElementById('banco-agencia').value = currentProfile.agencia || '';
+      document.getElementById('banco-conta').value = currentProfile.conta || '';
+      document.getElementById('banco-backdrop').classList.add('show');
+    };
+    setTimeout(esperar, 2500);
+  }
+  document.getElementById('banco-depois').addEventListener('click', function(){ document.getElementById('banco-backdrop').classList.remove('show'); });
+  document.getElementById('banco-salvar').addEventListener('click', function(){
+    const err = document.getElementById('banco-err');
+    const dados = {
+      pixTipo: document.getElementById('banco-pix-tipo').value,
+      pixChave: document.getElementById('banco-pix').value.trim(),
+      banco: document.getElementById('banco-banco').value.trim(),
+      agencia: document.getElementById('banco-agencia').value.trim(),
+      conta: document.getElementById('banco-conta').value.trim(),
+      dadosBancariosEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (!dados.pixChave) { err.textContent = 'Informe a chave PIX.'; err.style.display = 'block'; return; }
+    const btn = this; btn.disabled = true;
+    db.collection('users').doc(currentProfile.uid).update(dados).then(function(){
+      Object.assign(currentProfile, dados);
+      document.getElementById('banco-backdrop').classList.remove('show');
+    }).catch(function(e){ err.textContent = 'Não foi possível salvar: ' + e.message; err.style.display = 'block'; })
+      .finally(function(){ btn.disabled = false; });
+  });
+
+  // ---------- Meus holerites (CLT): lista e download dos holerites lançados na Gestão ----------
+  function abrirMeusHolerites(){
+    const lista = document.getElementById('hol-lista');
+    lista.innerHTML = '<p class="empty-hint">Carregando…</p>';
+    document.getElementById('hol-backdrop').classList.add('show');
+    db.collection('holeritesDocs').where('uid', '==', currentProfile.uid).get().then(function(snap){
+      const docs = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); })
+        .sort(function(a, b){ return (b.competencia || '').localeCompare(a.competencia || ''); });
+      if (!docs.length) { lista.innerHTML = '<p class="empty-hint">Nenhum holerite lançado ainda.</p>'; return; }
+      const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      lista.innerHTML = docs.map(function(d){
+        const p = String(d.competencia || '').split('-');
+        const comp = p.length === 2 ? MESES[+p[1] - 1] + ' de ' + p[0] : d.competencia;
+        return '<div class="hol-item"><div><b>Holerite — ' + escapeHtml(comp) + '</b><small>' + escapeHtml(d.arquivoNome || '') + '</small></div>' +
+          '<button type="button" class="btn" data-hol="' + d.id + '" data-nome="' + escapeHtml(d.arquivoNome || 'holerite.pdf') + '" data-tipo="' + escapeHtml(d.arquivoTipo || 'application/pdf') + '">Baixar</button></div>';
+      }).join('');
+    }).catch(function(e){ lista.innerHTML = '<p class="empty-hint">Não foi possível carregar: ' + escapeHtml(e.message) + '</p>'; });
+  }
+  document.getElementById('hol-fechar').addEventListener('click', function(){ document.getElementById('hol-backdrop').classList.remove('show'); });
+  document.getElementById('hol-lista').addEventListener('click', function(e){
+    const b = e.target.closest('[data-hol]');
+    if (!b) return;
+    const txt = b.textContent; b.disabled = true; b.textContent = 'Baixando…';
+    db.collection('holeritesDocs').doc(b.dataset.hol).collection('partes').get().then(function(snap){
+      const b64 = snap.docs.map(function(x){ return x.data(); }).sort(function(x, y){ return x.n - y.n; }).map(function(x){ return x.dados; }).join('');
+      const bin = atob(b64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: b.dataset.tipo }));
+      const a = document.createElement('a'); a.href = url; a.download = b.dataset.nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    }).catch(function(e){ alert('Não foi possível baixar: ' + e.message); })
+      .finally(function(){ b.disabled = false; b.textContent = txt; });
+  });
+
   function verificarAvisoFotoObrigatoria(){
     const nome = normalizarNome(currentProfile.displayName);
     if (AVISO_FOTO_ALVOS.indexOf(nome) === -1) return;
@@ -3775,6 +3912,14 @@
       const div = document.createElement('div');
       div.className = 'user-menu-divider';
       els.userMenuDropdown.appendChild(div);
+    }
+
+    if (currentProfile && currentProfile.tipoColaborador === 'clt') {
+      const holBtn = document.createElement('button');
+      holBtn.type = 'button';
+      holBtn.innerHTML = iconeSvg('download') + '<span>Meus holerites</span>';
+      holBtn.addEventListener('click', function(){ closeUserMenu(); abrirMeusHolerites(); });
+      els.userMenuDropdown.appendChild(holBtn);
     }
 
     const logoBtn = document.createElement('button');
@@ -4788,11 +4933,41 @@
     db.collection('users').doc(uid).update({ tabs: [] });
   };
 
+  // Antes de excluir um colaborador, guarda o que o pagamento do mês precisa (cargo, remuneração, entrada,
+  // saída e dados bancários) em colaboradoresDesligados/{uid}: ele continua em Gestão › Pagamentos até
+  // o admin marcar o pagamento e tirá-lo da lista.
+  function registrarDesligamento(uid){
+    return db.collection('users').doc(uid).get().then(function(doc){
+      if (!doc.exists) return true;
+      const u = doc.data();
+      if (u.role === 'cliente') return true;
+      const hoje = new Date();
+      const padrao = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+      const resp = prompt('Data de saída de ' + (u.displayName || 'colaborador') + ' (para o pagamento proporcional do mês):', padrao);
+      if (resp === null) return false;
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(resp.trim());
+      if (!m) { alert('Data inválida. Use o formato dd/mm/aaaa.'); return false; }
+      const dataSaida = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+      return db.collection('colaboradoresDesligados').doc(uid).set({
+        displayName: u.displayName || '', email: u.email || '', cpf: u.cpf || '',
+        tipoColaborador: u.tipoColaborador || '', remuneracao: u.remuneracao || '', custos: u.custos || null,
+        dataIngresso: u.dataIngresso || '', dataSaida: dataSaida,
+        pixTipo: u.pixTipo || '', pixChave: u.pixChave || '', banco: u.banco || '', agencia: u.agencia || '', conta: u.conta || '',
+        desligadoEm: firebase.firestore.FieldValue.serverTimestamp(), desligadoPor: currentProfile.uid
+      }).then(function(){ return true; }).catch(function(e){
+        return confirm('Não foi possível guardar os dados para o pagamento (' + e.message + '). Excluir mesmo assim?');
+      });
+    });
+  }
+
   window.__deleteUser = function(btn, uid, nome){
     if (uid === currentProfile.uid) {
       alert('Você não pode excluir a si mesmo.');
       return;
     }
+    registrarDesligamento(uid).then(function(seguir){ if (seguir) excluirUsuarioDeVez(btn, uid, nome); });
+  };
+  function excluirUsuarioDeVez(btn, uid, nome){
 
     const workerConfigurado = typeof ADMIN_WORKER_URL !== 'undefined'
       && ADMIN_WORKER_URL
@@ -4830,7 +5005,7 @@
       btn.disabled = false;
       btn.textContent = textoOriginal;
     });
-  };
+  }
 
   // Converte o texto do textarea "id:Nome" (uma por linha) em [{id,label}].
   // Linhas em branco ou sem ":" são ignoradas.

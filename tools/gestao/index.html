@@ -104,6 +104,23 @@
     padding:7px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
     font-size:.76rem;color:var(--muted);
   }
+  .frame-toolbar .ft-acoes{display:flex;gap:6px;margin-left:auto;margin-right:10px;flex-wrap:wrap;}
+  .pg-nota{font-size:.74rem;color:var(--muted);margin-top:12px;line-height:1.5;}
+  .pg-pix{font-family:Consolas,monospace;font-size:.78rem;word-break:break-all;}
+  .pg-ok{color:#4caf6e;font-weight:600;font-size:.76rem;}
+  tr.pg-pago td{opacity:.7;}
+  input[type=month]{background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;color:var(--paper);font:inherit;font-size:.8rem;padding:6px 10px;color-scheme:dark;}
+  :root[data-theme="light"] input[type=month]{color-scheme:light;}
+  .pgb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;}
+  .pgb-grid label,.hl-form label{display:flex;flex-direction:column;gap:5px;font-size:.74rem;color:var(--muted);font-weight:600;}
+  .pgb-grid input,.pgb-grid select,.hl-form input,.hl-form select{background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font:inherit;font-size:.85rem;padding:8px 10px;}
+  .hl-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end;background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .hl-form .hl-arq{grid-column:span 2;}
+  .hl-enviar{display:flex;align-items:center;gap:10px;font-size:.8rem;}
+  .hl-ok{background:rgba(76,175,110,.10);border:1px solid rgba(76,175,110,.4);border-radius:10px;padding:10px 14px;font-size:.8rem;margin-bottom:14px;}
+  .hl-ok ul{margin:6px 0 0;padding-left:18px;}
+  .hl-sub{font-family:var(--font-display);font-weight:600;font-size:1rem;margin:18px 0 10px;}
+  @media (max-width:640px){ .hl-form .hl-arq{grid-column:auto;} .pgb-grid{grid-template-columns:1fr;} }
   .frame-toolbar a{color:var(--silver);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
   .frame-toolbar a:hover{color:#fff;}
   iframe.tool-frame{flex:1 1 auto;width:100%;border:none;background:#fff;}
@@ -768,6 +785,24 @@
 </div>
 
 <!-- Modal genérico: quem tem uma permissão da Gestão (cadastrar patrimônio, senhas…) -->
+<div class="modal-backdrop" id="pgb-backdrop">
+  <div class="modal">
+    <h3>Dados bancários</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;" id="pgb-nome"></p>
+    <div class="pgb-grid">
+      <label>Tipo de chave<select id="pgb-pix-tipo"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="aleatoria">Chave aleatória</option></select></label>
+      <label>Chave PIX<input type="text" id="pgb-pix"></label>
+      <label>Banco<input type="text" id="pgb-banco"></label>
+      <label>Agência<input type="text" id="pgb-agencia"></label>
+      <label>Conta<input type="text" id="pgb-conta"></label>
+    </div>
+    <div class="msg-err" id="pgb-err"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" id="pgb-cancelar">Cancelar</button>
+      <button type="button" class="btn primary" id="pgb-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-backdrop" id="perm-backdrop">
   <div class="modal">
     <h3 id="perm-titulo"></h3>
@@ -843,7 +878,7 @@
   let meuPatrimonioVerTudo = true;   // false só se um admin restringiu essa pessoa a ver só o próprio patrimônio
   // Permissões da Gestão que o admin dá a cada pessoa (coleção permissoesGestao/{uid}):
   // cadastrar/editar patrimônio (e receber devoluções) e ver as senhas diversas / restritas.
-  let minhasPerms = { patrimonioCadastro: false, senhasDiversas: false, senhasRestritas: false };
+  let minhasPerms = { patrimonioCadastro: false, senhasDiversas: false, senhasRestritas: false, lancarHolerites: false };
   function podeCadastrarPat(){ return souAdmin || minhasPerms.patrimonioCadastro === true; }
   function temAcesso(campo){ return souAdmin || minhasPerms[campo] === true; }
 
@@ -898,7 +933,10 @@
     { id: 'patrimonio', label: 'Patrimônio', type: 'patrimonio' },
     { id: 'compras', label: 'Controle de Compras', type: 'compras' },
     { id: 'senhas-diversas', label: 'Senhas diversas', type: 'senhas', colecao: 'senhasDiversas', perm: 'senhasDiversas' },
-    { id: 'senhas-restritas', label: 'Senhas restritas', type: 'senhas', colecao: 'senhasRestritas', perm: 'senhasRestritas' }
+    { id: 'senhas-restritas', label: 'Senhas restritas', type: 'senhas', colecao: 'senhasRestritas', perm: 'senhasRestritas' },
+    // abertas pelos botões da barra de "Colaboradores" (não aparecem na barra de sub-abas)
+    { id: 'pagamentos', label: 'Pagamentos', type: 'pagamentos', interna: true },
+    { id: 'holerites', label: 'Holerites e guias', type: 'holerites', interna: true }
   ];
 
   // O Portal (index.html raiz) pode restringir quais sub-abas este usuário
@@ -910,8 +948,10 @@
     const raw = params.get('_subtabs');
     if (!raw) return SUBTABS;
     const permitidas = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-    const filtradas = SUBTABS.filter(function(t){ return t.type === 'senhas' || permitidas.indexOf(t.id) !== -1; });
-    return filtradas.some(function(t){ return t.type !== 'senhas'; }) ? filtradas : SUBTABS;
+    // as internas (Pagamentos / Holerites) dependem de quem pode ver "Colaboradores"
+    const comColab = permitidas.indexOf('colaboradores') !== -1;
+    const filtradas = SUBTABS.filter(function(t){ return t.type === 'senhas' || permitidas.indexOf(t.id) !== -1 || (t.interna && comColab); });
+    return filtradas.some(function(t){ return t.type !== 'senhas' && !t.interna; }) ? filtradas : SUBTABS;
   }
 
   const ATIVAS = subtabsPermitidas();
@@ -973,7 +1013,7 @@
     const btn = document.createElement('button');
     btn.textContent = t.label;
     btn.dataset.subtabId = t.id;
-    if (t.type === 'senhas') btn.style.display = 'none';
+    if (t.type === 'senhas' || t.interna) btn.style.display = 'none';
     btn.addEventListener('click', function(){ selectSubtab(t.id); });
     nav.appendChild(btn);
 
@@ -983,6 +1023,8 @@
     if (t.type === 'patrimonio') panel.innerHTML = '<div class="mod-scroll" id="pat-scroll"></div>';
     if (t.type === 'compras') panel.innerHTML = '<div class="mod-scroll" id="cp-scroll"></div>';
     if (t.type === 'senhas') panel.innerHTML = '<div class="mod-scroll" id="sn-scroll-' + t.id + '"></div>';
+    if (t.type === 'pagamentos') panel.innerHTML = '<div class="mod-scroll" id="pg-scroll"></div>';
+    if (t.type === 'holerites') panel.innerHTML = '<div class="mod-scroll" id="hl-scroll"></div>';
     panelsEl.appendChild(panel);
   });
 
@@ -1002,6 +1044,7 @@
       const toolbar = document.createElement('div');
       toolbar.className = 'frame-toolbar';
       toolbar.innerHTML = '<span>' + escapeHtml(t.label) + '</span>' +
+        (id === 'colaboradores' ? '<span class="ft-acoes" id="colab-acoes"></span>' : '') +
         '<a href="' + t.url + '" target="_blank" rel="noopener">Abrir em nova aba ↗</a>';
       const ifr = document.createElement('iframe');
       ifr.className = 'tool-frame';
@@ -1009,6 +1052,13 @@
       panel.insertBefore(ifr, panel.firstChild);
       panel.insertBefore(toolbar, ifr);
       iframes[id] = ifr;
+      if (id === 'colaboradores') quandoPerfilPronto(preencherAcoesColab);
+    } else if (t && t.type === 'pagamentos' && !initedModulo.pagamentos) {
+      initedModulo.pagamentos = true;
+      quandoPerfilPronto(initPagamentos);
+    } else if (t && t.type === 'holerites' && !initedModulo.holerites) {
+      initedModulo.holerites = true;
+      quandoPerfilPronto(initHolerites);
     } else if (t && t.type === 'patrimonio' && !initedModulo.patrimonio) {
       initedModulo.patrimonio = true;
       quandoPerfilPronto(initPatrimonio);
@@ -1032,6 +1082,331 @@
     perfilPronto = true;
     while (filaPerfil.length) filaPerfil.shift()();
   }
+
+
+  // ============================================================
+  // Colaboradores: botões de Pagamentos (só admin) e Holerites e guias (admin + quem lança)
+  // ============================================================
+  function preencherAcoesColab(){
+    const el = document.getElementById('colab-acoes');
+    if (!el) return;
+    let h = '';
+    if (souAdmin) h += '<button type="button" class="btn small" data-abre="pagamentos">💳 Pagamentos</button>';
+    if (temAcesso('lancarHolerites')) h += '<button type="button" class="btn small" data-abre="holerites">📄 Holerites e guias</button>';
+    el.innerHTML = h;
+    Array.prototype.forEach.call(el.querySelectorAll('[data-abre]'), function(b){
+      b.addEventListener('click', function(){ selectSubtab(b.dataset.abre); });
+    });
+  }
+  function voltarColabHtml(){ return '<button type="button" class="btn small" data-voltar-colab>← Colaboradores</button>'; }
+  document.addEventListener('click', function(e){
+    if (e.target.closest('[data-voltar-colab]')) selectSubtab('colaboradores');
+  });
+  function copiarTexto(btn, texto){
+    const ok = function(){ const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(function(){ btn.textContent = t; }, 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, function(){ prompt('Copie:', texto); });
+    else prompt('Copie:', texto);
+  }
+  const TIPOS_PIX = { cpf: 'CPF', cnpj: 'CNPJ', email: 'E-mail', telefone: 'Telefone', aleatoria: 'Chave aleatória' };
+
+  // ============================================================
+  // Módulo: Pagamentos do mês (só admin) — quem não é CLT, com proporcional de entrada/saída
+  // ============================================================
+  let pgMes = hojeISO().slice(0, 7);
+  let pgUsuarios = [], pgDesligados = [], pgPagos = {};
+  let pgUnsub = null;
+  function diasNoMes(mes){ const p = mes.split('-'); return new Date(+p[0], +p[1], 0).getDate(); }
+  function isoParaData(iso){ const p = String(iso || '').split('-'); return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null; }
+  function valorBase(u){
+    if (u.custos && Number(u.custos.remuneracao) > 0) return Number(u.custos.remuneracao);
+    return moedaParaNumero(u.remuneracao);
+  }
+  // Valor do mês: dias corridos em que a pessoa esteve no escritório (entrada e saída inclusive) / dias do mês.
+  function calcularPagamento(p, mes){
+    const nDias = diasNoMes(mes), ini = isoParaData(mes + '-01'), fim = isoParaData(mes + '-' + String(nDias).padStart(2, '0'));
+    const entrada = isoParaData(p.dataIngresso), saida = isoParaData(p.dataSaida);
+    const de = entrada && entrada > ini ? entrada : ini;
+    const ate = saida && saida < fim ? saida : fim;
+    const dias = Math.round((ate - de) / 864e5) + 1;
+    const base = valorBase(p);
+    if (dias <= 0) return { dias: 0, nDias: nDias, base: base, valor: 0, proporcional: false };
+    const proporcional = dias < nDias;
+    return { dias: dias, nDias: nDias, base: base, valor: Math.round(base * dias / nDias * 100) / 100, proporcional: proporcional };
+  }
+  function initPagamentos(){
+    if (!souAdmin) { document.getElementById('pg-scroll').innerHTML = '<p style="color:var(--muted)">Somente o administrador vê os pagamentos.</p>'; return; }
+    document.getElementById('pg-scroll').innerHTML =
+      '<div class="mod-head"><div><h2>💳 Pagamentos do mês</h2><p>Quem não é CLT (estagiários, associados e sócios). O valor é proporcional aos dias no escritório quando a pessoa entrou ou saiu no mês. Só você vê esta tela.</p></div>' +
+        '<div class="actions-cell">' + voltarColabHtml() + '<input type="month" id="pg-mes" value="' + pgMes + '"></div></div>' +
+      '<div class="stat-row" id="pg-stats"></div>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+        '<th>Colaborador</th><th>Período no mês</th><th>Valor mensal</th><th>A pagar</th><th>PIX</th><th>Conta</th><th></th>' +
+      '</tr></thead><tbody id="pg-tbody"></tbody></table></div>' +
+      '<p class="pg-nota">Valor mensal = campo "Remuneração" dos custos do colaborador (Colaboradores › editar). Quem foi excluído do portal continua aqui, com a data de saída, até o pagamento ser marcado e você clicar em "Tirar da lista".</p>';
+    document.getElementById('pg-mes').addEventListener('change', function(e){ pgMes = e.target.value || hojeISO().slice(0, 7); ouvirPagos(); renderPagamentos(); });
+    db.collection('users').onSnapshot(function(snap){
+      pgUsuarios = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
+        .filter(function(u){ return u.role !== 'cliente' && u.tipoColaborador !== 'clt'; });
+      renderPagamentos();
+    }, function(err){ document.getElementById('pg-tbody').innerHTML = '<tr><td colspan="7">Erro: ' + escapeHtml(err.message) + '</td></tr>'; });
+    db.collection('colaboradoresDesligados').onSnapshot(function(snap){
+      pgDesligados = snap.docs.map(function(d){ return Object.assign({ uid: d.id, desligado: true }, d.data()); })
+        .filter(function(u){ return !u.removidoDaLista && u.tipoColaborador !== 'clt'; });
+      renderPagamentos();
+    }, function(){ pgDesligados = []; });
+    ouvirPagos();
+  }
+  function ouvirPagos(){
+    if (pgUnsub) pgUnsub();
+    pgPagos = {};
+    pgUnsub = db.collection('pagamentosColaboradores').where('mes', '==', pgMes).onSnapshot(function(snap){
+      pgPagos = {};
+      snap.docs.forEach(function(d){ pgPagos[d.data().uid] = Object.assign({ id: d.id }, d.data()); });
+      renderPagamentos();
+    }, function(){ pgPagos = {}; });
+  }
+  function renderPagamentos(){
+    const tbody = document.getElementById('pg-tbody');
+    if (!tbody) return;
+    const linhas = pgUsuarios.concat(pgDesligados).map(function(u){ return { u: u, c: calcularPagamento(u, pgMes) }; })
+      .filter(function(x){ return x.c.dias > 0 || pgPagos[x.u.uid]; })
+      .sort(function(a, b){ return (a.u.displayName || '').localeCompare(b.u.displayName || ''); });
+    const total = linhas.reduce(function(s, x){ return s + x.c.valor; }, 0);
+    const pago = linhas.reduce(function(s, x){ return s + (pgPagos[x.u.uid] ? (pgPagos[x.u.uid].valor || 0) : 0); }, 0);
+    const semPix = linhas.filter(function(x){ return !x.u.pixChave; }).length;
+    document.getElementById('pg-stats').innerHTML =
+      '<div class="stat-card"><div class="n">' + formatBRL(total) + '</div><div class="l">total do mês</div></div>' +
+      '<div class="stat-card"><div class="n" style="color:#4caf6e">' + formatBRL(pago) + '</div><div class="l">já pago</div></div>' +
+      '<div class="stat-card"><div class="n" style="color:var(--gold)">' + formatBRL(Math.max(0, total - pago)) + '</div><div class="l">a pagar</div></div>' +
+      '<div class="stat-card"><div class="n">' + linhas.length + '</div><div class="l">pessoas' + (semPix ? ' · <b style="color:#e0614f">' + semPix + ' sem PIX</b>' : '') + '</div></div>';
+    const tipoLbl = { estagiario: 'Estagiário(a)', associado: 'Associado(a)', socio: 'Sócio(a)' };
+    tbody.innerHTML = linhas.length ? linhas.map(function(x){
+      const u = x.u, c = x.c, pg = pgPagos[u.uid];
+      const periodo = c.proporcional
+        ? '<b style="color:var(--gold)">' + c.dias + ' de ' + c.nDias + ' dias</b><br><small>' +
+            (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? 'entrou ' + formatDataBR(u.dataIngresso) : '') +
+            (u.dataSaida && u.dataSaida.slice(0, 7) === pgMes ? (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? ' · ' : '') + 'saiu ' + formatDataBR(u.dataSaida) : '') + '</small>'
+        : 'mês inteiro';
+      const pix = u.pixChave
+        ? '<span class="pg-pix">' + escapeHtml(u.pixChave) + '</span><br><small>' + escapeHtml(TIPOS_PIX[u.pixTipo] || 'PIX') + '</small> <button type="button" class="btn small" data-copiar="' + escapeHtml(u.pixChave) + '">Copiar PIX</button>'
+        : '<span style="color:#e0614f">sem chave PIX</span>';
+      const conta = (u.banco || u.agencia || u.conta)
+        ? '<small>' + escapeHtml(u.banco || '') + '<br>Ag. ' + escapeHtml(u.agencia || '—') + ' · C/C ' + escapeHtml(u.conta || '—') + '</small> <button type="button" class="btn small" data-copiar="' + escapeHtml((u.displayName || '') + '\nBanco: ' + (u.banco || '') + '\nAgência: ' + (u.agencia || '') + '\nConta: ' + (u.conta || '') + (u.cpf ? '\nCPF: ' + u.cpf : '')) + '">Copiar</button>'
+        : '<small style="color:var(--muted)">—</small>';
+      let acoes = pg
+        ? '<span class="pg-ok">✓ Pago ' + formatDataBR(pg.pagoEm) + '</span><button type="button" class="btn small" data-desfazer="' + u.uid + '">Desfazer</button>'
+        : '<button type="button" class="btn primary small" data-pagar="' + u.uid + '">Marcar pago</button>';
+      if (u.desligado && pg) acoes += '<button type="button" class="btn small" data-tirar="' + u.uid + '">Tirar da lista</button>';
+      acoes += '<button type="button" class="btn small" data-editar-banco="' + u.uid + '" title="Editar dados bancários">✎</button>';
+      return '<tr' + (pg ? ' class="pg-pago"' : '') + '><td><b>' + escapeHtml(u.displayName || u.email || '') + '</b><br><small>' + escapeHtml(tipoLbl[u.tipoColaborador] || 'Cargo não definido') + (u.desligado ? ' · <b style="color:#e0614f">desligado(a)</b>' : '') + '</small></td>' +
+        '<td>' + periodo + '</td><td>' + (c.base ? formatBRL(c.base) : '<span style="color:#e0614f">sem valor</span>') + '</td>' +
+        '<td><b style="font-size:1rem">' + formatBRL(pg ? pg.valor : c.valor) + '</b></td><td>' + pix + '</td><td>' + conta + '</td>' +
+        '<td class="actions-cell">' + acoes + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="color:var(--muted)">Ninguém para pagar neste mês.</td></tr>';
+  }
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('[data-copiar],[data-pagar],[data-desfazer],[data-tirar],[data-editar-banco]');
+    if (!t || !souAdmin) return;
+    const achar = function(uid){ return pgUsuarios.concat(pgDesligados).find(function(u){ return u.uid === uid; }); };
+    if (t.dataset.copiar !== undefined) { copiarTexto(t, t.dataset.copiar); return; }
+    if (t.dataset.pagar) {
+      const u = achar(t.dataset.pagar); if (!u) return;
+      const c = calcularPagamento(u, pgMes);
+      t.disabled = true;
+      db.collection('pagamentosColaboradores').doc(pgMes + '_' + u.uid).set({
+        uid: u.uid, nome: u.displayName || u.email || '', mes: pgMes, valor: c.valor, dias: c.dias, diasMes: c.nDias,
+        pixChave: u.pixChave || '', pagoEm: firebase.firestore.FieldValue.serverTimestamp(), pagoPor: meuUid
+      }).catch(function(err){ alert('Não foi possível marcar: ' + err.message); t.disabled = false; });
+      return;
+    }
+    if (t.dataset.desfazer) {
+      if (!confirm('Desfazer o "pago" deste mês?')) return;
+      db.collection('pagamentosColaboradores').doc(pgMes + '_' + t.dataset.desfazer).delete().catch(function(err){ alert(err.message); });
+      return;
+    }
+    if (t.dataset.tirar) {
+      if (!confirm('Tirar esta pessoa desligada da lista de pagamentos?')) return;
+      db.collection('colaboradoresDesligados').doc(t.dataset.tirar).update({ removidoDaLista: true }).catch(function(err){ alert(err.message); });
+      return;
+    }
+    if (t.dataset.editarBanco) abrirEdicaoBanco(achar(t.dataset.editarBanco));
+  });
+  // Edição dos dados bancários pelo admin (o próprio colaborador também atualiza pelo pop-up do portal)
+  let pgEditando = null;
+  function abrirEdicaoBanco(u){
+    if (!u) return;
+    pgEditando = u;
+    document.getElementById('pgb-nome').textContent = u.displayName || u.email || '';
+    document.getElementById('pgb-pix-tipo').value = u.pixTipo || 'cpf';
+    document.getElementById('pgb-pix').value = u.pixChave || '';
+    document.getElementById('pgb-banco').value = u.banco || '';
+    document.getElementById('pgb-agencia').value = u.agencia || '';
+    document.getElementById('pgb-conta').value = u.conta || '';
+    document.getElementById('pgb-err').style.display = 'none';
+    document.getElementById('pgb-backdrop').classList.add('show');
+  }
+  document.getElementById('pgb-cancelar').addEventListener('click', function(){ document.getElementById('pgb-backdrop').classList.remove('show'); });
+  document.getElementById('pgb-salvar').addEventListener('click', function(){
+    if (!pgEditando) return;
+    const dados = { pixTipo: document.getElementById('pgb-pix-tipo').value, pixChave: document.getElementById('pgb-pix').value.trim(),
+      banco: document.getElementById('pgb-banco').value.trim(), agencia: document.getElementById('pgb-agencia').value.trim(),
+      conta: document.getElementById('pgb-conta').value.trim(), dadosBancariosEm: firebase.firestore.FieldValue.serverTimestamp() };
+    const ref = db.collection(pgEditando.desligado ? 'colaboradoresDesligados' : 'users').doc(pgEditando.uid);
+    ref.update(dados).then(function(){ document.getElementById('pgb-backdrop').classList.remove('show'); })
+      .catch(function(err){ const el = document.getElementById('pgb-err'); el.textContent = 'Erro: ' + err.message; el.style.display = 'block'; });
+  });
+
+  // ============================================================
+  // Módulo: Holerites e guias — quem lança (admin ou permissão "lancarHolerites") só envia;
+  // o admin vê tudo; cada CLT vê só o próprio holerite (no portal, menu ⚙ › Meus holerites).
+  // Os arquivos ficam no próprio Firestore, em partes de ~700 mil caracteres (base64).
+  // ============================================================
+  const HL_TIPOS = { holerite: 'Holerite', fgts: 'Guia de FGTS', inss: 'Guia de INSS', tributo: 'Outro tributo' };
+  const HL_PARTE = 700000, HL_MAX = 7 * 1024 * 1024;
+  let hlColabs = [], hlDocs = [], hlEnviadosSessao = [];
+  function initHolerites(){
+    if (!temAcesso('lancarHolerites')) { document.getElementById('hl-scroll').innerHTML = '<p style="color:var(--muted)">Você não tem permissão para lançar holerites.</p>'; return; }
+    document.getElementById('hl-scroll').innerHTML =
+      '<div class="mod-head"><div><h2>📄 Holerites e guias</h2><p>' + (souAdmin
+        ? 'Holerites dos CLTs (cada um vê só o próprio, no menu ⚙ › Meus holerites) e guias de FGTS, INSS e tributos (só você vê).'
+        : 'Envie aqui os holerites e as guias. Depois de enviados, os documentos ficam com o administrador e com cada colaborador — você não vê a lista.') + '</p></div>' +
+        '<div class="actions-cell">' + voltarColabHtml() + (souAdmin ? '<button type="button" class="btn small" id="hl-perm-btn">⚙ Quem lança</button>' : '') + '</div></div>' +
+      '<div class="hl-form">' +
+        '<label>Tipo<select id="hl-tipo">' + Object.keys(HL_TIPOS).map(function(k){ return '<option value="' + k + '">' + HL_TIPOS[k] + '</option>'; }).join('') + '</select></label>' +
+        '<label>Competência<input type="month" id="hl-comp" value="' + hojeISO().slice(0, 7) + '"></label>' +
+        '<label id="hl-colab-wrap">Colaborador(a) CLT<select id="hl-colab"><option value="">Carregando…</option></select></label>' +
+        '<label class="hl-guia">Vencimento<input type="date" id="hl-venc"></label>' +
+        '<label class="hl-guia">Valor (R$)<input type="text" id="hl-valor" inputmode="numeric" placeholder="0,00"></label>' +
+        '<label class="hl-arq">Arquivo (PDF ou imagem, até 7 MB)<input type="file" id="hl-arquivo" accept=".pdf,image/*"></label>' +
+        '<div class="hl-enviar"><button type="button" class="btn primary" id="hl-enviar">Enviar</button><span id="hl-status"></span></div>' +
+      '</div>' +
+      '<div id="hl-sessao"></div>' +
+      (souAdmin ? '<h3 class="hl-sub">Documentos lançados</h3><div class="toolbar"><select id="hl-f-tipo"><option value="">Todos os tipos</option>' +
+        Object.keys(HL_TIPOS).map(function(k){ return '<option value="' + k + '">' + HL_TIPOS[k] + '</option>'; }).join('') +
+        '</select><input type="month" id="hl-f-comp" title="Competência"><span class="spacer"></span></div>' +
+        '<div class="table-wrap"><table class="data-table"><thead><tr><th>Competência</th><th>Tipo</th><th>Colaborador</th><th>Vencimento / valor</th><th>Arquivo</th><th>Enviado por</th><th></th></tr></thead><tbody id="hl-tbody"></tbody></table></div>' : '');
+    ligarMascaraMoeda(document.getElementById('hl-valor'));
+    const tipoSel = document.getElementById('hl-tipo');
+    const ajustarTipo = function(){
+      const holerite = tipoSel.value === 'holerite';
+      document.getElementById('hl-colab-wrap').style.display = holerite ? '' : 'none';
+      Array.prototype.forEach.call(document.querySelectorAll('.hl-guia'), function(el){ el.style.display = holerite ? 'none' : ''; });
+    };
+    tipoSel.addEventListener('change', ajustarTipo); ajustarTipo();
+    document.getElementById('hl-enviar').addEventListener('click', enviarHolerite);
+    const permBtn = document.getElementById('hl-perm-btn');
+    if (permBtn) permBtn.addEventListener('click', function(){
+      abrirModalPermissao('lancarHolerites', 'Quem lança holerites e guias',
+        'Quem estiver marcado pode ENVIAR holerites e guias de FGTS/INSS/tributos. Não vê valores de pagamento, chaves PIX nem os documentos já lançados. Precisa também ter acesso à aba Gestão › Colaboradores.');
+    });
+    // CLTs pelo espelho do organograma (legível por todos os logados; users/* é só do admin)
+    db.collection('organograma').onSnapshot(function(snap){
+      hlColabs = snap.docs.map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim(), tipo: d.data().tipoColaborador || '' }; })
+        .filter(function(u){ return u.nome; })
+        .sort(function(a, b){ return (a.tipo === 'clt' ? 0 : 1) - (b.tipo === 'clt' ? 0 : 1) || a.nome.localeCompare(b.nome); });
+      const sel = document.getElementById('hl-colab'), atual = sel.value;
+      const clts = hlColabs.filter(function(u){ return u.tipo === 'clt'; }), outros = hlColabs.filter(function(u){ return u.tipo !== 'clt'; });
+      sel.innerHTML = '<option value="">Escolha…</option>' +
+        (clts.length ? '<optgroup label="CLT">' + clts.map(function(u){ return '<option value="' + u.uid + '">' + escapeHtml(u.nome) + '</option>'; }).join('') + '</optgroup>' : '') +
+        (outros.length ? '<optgroup label="Outros (cargo não é CLT)">' + outros.map(function(u){ return '<option value="' + u.uid + '">' + escapeHtml(u.nome) + '</option>'; }).join('') + '</optgroup>' : '');
+      sel.value = atual;
+    });
+    if (souAdmin) {
+      document.getElementById('hl-f-tipo').addEventListener('change', renderHolerites);
+      document.getElementById('hl-f-comp').addEventListener('change', renderHolerites);
+      db.collection('holeritesDocs').onSnapshot(function(snap){
+        hlDocs = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        renderHolerites();
+      }, function(err){ document.getElementById('hl-tbody').innerHTML = '<tr><td colspan="7">Erro: ' + escapeHtml(err.message) + ' — publique as regras novas do Firestore.</td></tr>'; });
+    }
+  }
+  function lerArquivoBase64(f){
+    return new Promise(function(ok, falha){
+      const r = new FileReader();
+      r.onload = function(){ ok(String(r.result).split(',')[1] || ''); };
+      r.onerror = function(){ falha(r.error); };
+      r.readAsDataURL(f);
+    });
+  }
+  function enviarHolerite(){
+    const status = document.getElementById('hl-status');
+    const tipo = document.getElementById('hl-tipo').value, comp = document.getElementById('hl-comp').value;
+    const uid = tipo === 'holerite' ? document.getElementById('hl-colab').value : null;
+    const f = document.getElementById('hl-arquivo').files[0];
+    const erro = function(m){ status.innerHTML = '<span style="color:#e0614f">' + escapeHtml(m) + '</span>'; };
+    if (!comp) return erro('Escolha a competência.');
+    if (tipo === 'holerite' && !uid) return erro('Escolha o(a) colaborador(a).');
+    if (!f) return erro('Escolha o arquivo.');
+    if (f.size > HL_MAX) return erro('Arquivo maior que 7 MB.');
+    const btn = document.getElementById('hl-enviar');
+    btn.disabled = true; status.textContent = 'Enviando…';
+    const colab = uid ? hlColabs.find(function(u){ return u.uid === uid; }) : null;
+    lerArquivoBase64(f).then(function(b64){
+      const partes = [];
+      for (let i = 0; i < b64.length; i += HL_PARTE) partes.push(b64.slice(i, i + HL_PARTE));
+      const ref = db.collection('holeritesDocs').doc();
+      const batch = db.batch();
+      batch.set(ref, {
+        tipo: tipo, competencia: comp, uid: uid, colaboradorNome: colab ? colab.nome : '',
+        vencimento: tipo === 'holerite' ? '' : document.getElementById('hl-venc').value,
+        valor: tipo === 'holerite' ? 0 : moedaParaNumero(document.getElementById('hl-valor').value),
+        arquivoNome: f.name, arquivoTipo: f.type || 'application/pdf', tamanho: f.size, partes: partes.length,
+        enviadoPorUid: meuUid, enviadoPorNome: meuNome, enviadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      partes.forEach(function(dados, n){ batch.set(ref.collection('partes').doc(String(n)), { n: n, dados: dados }); });
+      return batch.commit().then(function(){
+        hlEnviadosSessao.unshift((HL_TIPOS[tipo] || tipo) + ' · ' + comp.split('-').reverse().join('/') + (colab ? ' · ' + colab.nome : '') + ' · ' + f.name);
+        document.getElementById('hl-sessao').innerHTML = '<div class="hl-ok"><b>✓ Enviados agora:</b><ul>' + hlEnviadosSessao.map(function(t){ return '<li>' + escapeHtml(t) + '</li>'; }).join('') + '</ul></div>';
+        document.getElementById('hl-arquivo').value = '';
+        status.innerHTML = '<span style="color:#4caf6e">Enviado.</span>';
+      });
+    }).catch(function(err){
+      erro(err.code === 'permission-denied' ? 'Sem permissão — confira se o administrador liberou "Quem lança" e publicou as regras novas.' : 'Erro: ' + err.message);
+    }).finally(function(){ btn.disabled = false; });
+  }
+  function renderHolerites(){
+    const tbody = document.getElementById('hl-tbody');
+    if (!tbody) return;
+    const ft = document.getElementById('hl-f-tipo').value, fc = document.getElementById('hl-f-comp').value;
+    const lista = hlDocs.filter(function(d){ return (!ft || d.tipo === ft) && (!fc || d.competencia === fc); })
+      .sort(function(a, b){ return (b.competencia || '').localeCompare(a.competencia || '') || (a.colaboradorNome || '').localeCompare(b.colaboradorNome || ''); });
+    tbody.innerHTML = lista.length ? lista.map(function(d){
+      return '<tr><td>' + escapeHtml((d.competencia || '').split('-').reverse().join('/')) + '</td><td>' + escapeHtml(HL_TIPOS[d.tipo] || d.tipo) + '</td>' +
+        '<td>' + escapeHtml(d.colaboradorNome || '—') + '</td>' +
+        '<td>' + (d.tipo === 'holerite' ? '—' : (d.vencimento ? formatDataBR(d.vencimento) : '') + (d.valor ? ' · ' + formatBRL(d.valor) : '')) + '</td>' +
+        '<td><small>' + escapeHtml(d.arquivoNome || '') + '</small></td><td><small>' + escapeHtml(d.enviadoPorNome || '') + '<br>' + formatDataBR(d.enviadoEm) + '</small></td>' +
+        '<td class="actions-cell"><button type="button" class="btn small" data-hl-baixar="' + d.id + '">Baixar</button><button type="button" class="btn small" data-hl-excluir="' + d.id + '">Excluir</button></td></tr>';
+    }).join('') : '<tr><td colspan="7" style="color:var(--muted)">Nenhum documento.</td></tr>';
+  }
+  function baixarHolerite(id, btn){
+    const d = hlDocs.find(function(x){ return x.id === id; });
+    if (!d) return;
+    const txt = btn.textContent; btn.disabled = true; btn.textContent = 'Baixando…';
+    db.collection('holeritesDocs').doc(id).collection('partes').get().then(function(snap){
+      const b64 = snap.docs.map(function(x){ return x.data(); }).sort(function(a, b){ return a.n - b.n; }).map(function(x){ return x.dados; }).join('');
+      const bin = atob(b64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: d.arquivoTipo || 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url; a.download = d.arquivoNome || 'documento.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    }).catch(function(err){ alert('Não foi possível baixar: ' + err.message); })
+      .finally(function(){ btn.disabled = false; btn.textContent = txt; });
+  }
+  document.addEventListener('click', function(e){
+    const b = e.target.closest('[data-hl-baixar],[data-hl-excluir]');
+    if (!b || !souAdmin) return;
+    if (b.dataset.hlBaixar) { baixarHolerite(b.dataset.hlBaixar, b); return; }
+    const d = hlDocs.find(function(x){ return x.id === b.dataset.hlExcluir; });
+    if (!d || !confirm('Excluir "' + (d.arquivoNome || 'documento') + '"? Não dá para desfazer.')) return;
+    const ref = db.collection('holeritesDocs').doc(d.id);
+    ref.collection('partes').get().then(function(snap){
+      const batch = db.batch();
+      snap.docs.forEach(function(x){ batch.delete(x.ref); });
+      batch.delete(ref);
+      return batch.commit();
+    }).catch(function(err){ alert('Não foi possível excluir: ' + err.message); });
+  });
 
   // ============================================================
   // Módulo: Patrimônio
@@ -3382,6 +3757,7 @@
       }).catch(function(){ /* regra ainda não publicada: fica sem permissões extras */ });
     }).then(function(){
       aplicarPermissoesNaTela();
+      preencherAcoesColab();
       if (podeCadastrarPat()) ouvirDevolucoesPendentes();
       marcarPerfilPronto();
     });

@@ -381,6 +381,36 @@ service cloud.firestore {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow write: if isAdmin();
     }
+    // Gestão › Colaboradores › Pagamentos (só admin): pagamentos marcados por mês e colaboradores
+    // excluídos do portal que ainda aguardam o pagamento proporcional (com data de saída e dados bancários).
+    match /pagamentosColaboradores/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /colaboradoresDesligados/{uid} {
+      allow read, write: if isAdmin();
+    }
+    // Gestão › Colaboradores › Holerites e guias: quem lança (admin ou permissão "lancarHolerites") só cria;
+    // o admin lê e apaga tudo; cada colaborador lê só os documentos com o próprio uid (holerite).
+    // Guias de FGTS/INSS/tributos não têm uid: só o admin vê. O arquivo fica em partes (base64) na subcoleção.
+    function podeLancarHolerites() {
+      return isAdmin() || temPermGestao('lancarHolerites');
+    }
+    match /holeritesDocs/{docId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if podeLancarHolerites()
+                    && request.resource.data.enviadoPorUid == request.auth.uid
+                    && request.resource.data.tipo in ['holerite', 'fgts', 'inss', 'tributo']
+                    && request.resource.data.partes is int && request.resource.data.partes <= 20;
+      allow update: if false;
+      allow delete: if isAdmin();
+      match /partes/{n} {
+        allow read: if isAdmin()
+                    || (isSignedIn() && get(/databases/$(database)/documents/holeritesDocs/$(docId)).data.uid == request.auth.uid);
+        allow create: if podeLancarHolerites();
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
     match /materiaisMarca/{docId} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
