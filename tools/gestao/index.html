@@ -1112,7 +1112,8 @@
   // ============================================================
   // Módulo: Pagamentos do mês (só admin) — quem não é CLT, com proporcional de entrada/saída
   // ============================================================
-  let pgMes = hojeISO().slice(0, 7);
+  // abre no mês anterior: o pagamento é feito no começo do mês, pelo mês trabalhado
+  let pgMes = (function(){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
   let pgUsuarios = [], pgDesligados = [], pgPagos = {};
   let pgUnsub = null;
   function diasNoMes(mes){ const p = mes.split('-'); return new Date(+p[0], +p[1], 0).getDate(); }
@@ -1142,7 +1143,7 @@
       '<div class="table-wrap"><table class="data-table"><thead><tr>' +
         '<th>Colaborador</th><th>Período no mês</th><th>Valor mensal</th><th>A pagar</th><th>PIX</th><th>Conta</th><th></th>' +
       '</tr></thead><tbody id="pg-tbody"></tbody></table></div>' +
-      '<p class="pg-nota">Valor mensal = campo "Remuneração" dos custos do colaborador (Colaboradores › editar). Quem foi excluído do portal continua aqui, com a data de saída, até o pagamento ser marcado e você clicar em "Tirar da lista".</p>';
+      '<p class="pg-nota">A tela abre no mês anterior (o mês trabalhado); troque o mês no campo acima. O proporcional usa a data de ingresso e a de saída da ficha de cada um — sem data de ingresso, conta o mês inteiro. Valor mensal = campo "Remuneração" dos custos do colaborador (Colaboradores › editar). Quem foi excluído do portal continua aqui, com a data de saída, até o pagamento ser marcado e você clicar em "Tirar da lista".</p>';
     document.getElementById('pg-mes').addEventListener('change', function(e){ pgMes = e.target.value || hojeISO().slice(0, 7); ouvirPagos(); renderPagamentos(); });
     db.collection('users').onSnapshot(function(snap){
       pgUsuarios = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
@@ -1186,7 +1187,7 @@
         ? '<b style="color:var(--gold)">' + c.dias + ' de ' + c.nDias + ' dias</b><br><small>' +
             (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? 'entrou ' + formatDataBR(u.dataIngresso) : '') +
             (u.dataSaida && u.dataSaida.slice(0, 7) === pgMes ? (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? ' · ' : '') + 'saiu ' + formatDataBR(u.dataSaida) : '') + '</small>'
-        : 'mês inteiro';
+        : (u.dataIngresso ? 'mês inteiro' : 'mês inteiro<br><small style="color:#e0614f">sem data de ingresso na ficha</small>');
       const pix = u.pixChave
         ? '<span class="pg-pix">' + escapeHtml(u.pixChave) + '</span><br><small>' + escapeHtml(TIPOS_PIX[u.pixTipo] || 'PIX') + '</small> <button type="button" class="btn small" data-copiar="' + escapeHtml(u.pixChave) + '">Copiar PIX</button>'
         : '<span style="color:#e0614f">sem chave PIX</span>';
