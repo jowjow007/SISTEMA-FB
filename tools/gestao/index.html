@@ -106,9 +106,40 @@
   }
   .frame-toolbar .ft-acoes{display:flex;gap:6px;margin-left:auto;margin-right:10px;flex-wrap:wrap;}
   .pg-nota{font-size:.74rem;color:var(--muted);margin-top:12px;line-height:1.5;}
-  .pg-pix{font-family:Consolas,monospace;font-size:.78rem;word-break:break-all;}
-  .pg-ok{color:#4caf6e;font-weight:600;font-size:.76rem;}
-  tr.pg-pago td{opacity:.7;}
+  .pg-cab,.pg-linha{display:grid;grid-template-columns:minmax(170px,1.6fr) minmax(130px,1fr) 130px 140px 190px;gap:14px;align-items:center;}
+  .pg-cab{padding:0 16px 8px;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;}
+  .pg-cab .dir,.pg-num{text-align:right;} .pg-cab .centro{text-align:center;}
+  .pg-lista{display:flex;flex-direction:column;gap:8px;}
+  .pg-card{background:var(--panel);border:1px solid var(--line-strong);border-left:4px solid var(--gold);border-radius:12px;padding:12px 16px;}
+  .pg-card.pago{border-left-color:#4caf6e;}
+  .pg-nome b{display:block;font-size:.9rem;}
+  .pg-nome small,.pg-periodo small{display:block;font-size:.72rem;color:var(--muted);margin-top:2px;}
+  .pg-periodo{font-size:.82rem;}
+  .pg-parcial{color:var(--gold);}
+  .pg-num{font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .pg-total{font-size:1.05rem;font-weight:700;}
+  .pg-card.pago .pg-total{color:#4caf6e;}
+  .pg-alerta{color:#e0614f !important;}
+  .pg-sit{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:38px;text-align:center;}
+  .pg-sit .pg-pagar{width:100%;}
+  .pg-sit.pago span{color:#4caf6e;font-weight:600;font-size:.78rem;white-space:nowrap;}
+  .pg-link{background:none;border:0;padding:0;color:var(--muted);font:inherit;font-size:.72rem;text-decoration:underline;cursor:pointer;}
+  .pg-link:hover{color:var(--paper);}
+  .pg-dados{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line-strong);}
+  .pg-pilula{display:inline-flex;align-items:center;gap:8px;max-width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:99px;padding:3px 4px 3px 12px;font-size:.78rem;}
+  .pg-pilula .rot{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+  .pg-pilula .val{font-family:Consolas,monospace;font-size:.78rem;overflow-wrap:anywhere;}
+  .pg-pilula.falta{color:#e0614f;padding:4px 12px;}
+  .pg-copiar{flex:0 0 auto;background:var(--panel);border:1px solid var(--line-strong);border-radius:99px;color:var(--paper);font:inherit;font-size:.72rem;font-weight:600;padding:4px 10px;cursor:pointer;white-space:nowrap;}
+  .pg-copiar:hover{border-color:var(--gold);color:var(--gold);}
+  .pg-editar{margin-left:auto;}
+  .pg-vazio{color:var(--muted);font-size:.85rem;padding:14px;}
+  @media (max-width:860px){
+    .pg-cab{display:none;}
+    .pg-linha{grid-template-columns:1fr 1fr;gap:8px 12px;}
+    .pg-nome{grid-column:1/-1;} .pg-num{text-align:left;} .pg-sit{grid-column:1/-1;align-items:stretch;}
+    .pg-editar{margin-left:0;}
+  }
   input[type=month]{background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;color:var(--paper);font:inherit;font-size:.8rem;padding:6px 10px;color-scheme:dark;}
   :root[data-theme="light"] input[type=month]{color-scheme:light;}
   .pgb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;}
@@ -1140,16 +1171,15 @@
       '<div class="mod-head"><div><h2>💳 Pagamentos do mês</h2><p>Quem não é CLT (estagiários, associados e sócios). O valor é proporcional aos dias no escritório quando a pessoa entrou ou saiu no mês. Só você vê esta tela.</p></div>' +
         '<div class="actions-cell">' + voltarColabHtml() + '<input type="month" id="pg-mes" value="' + pgMes + '"></div></div>' +
       '<div class="stat-row" id="pg-stats"></div>' +
-      '<div class="table-wrap"><table class="data-table"><thead><tr>' +
-        '<th>Colaborador</th><th>Período no mês</th><th>Valor mensal</th><th>A pagar</th><th>PIX</th><th>Conta</th><th></th>' +
-      '</tr></thead><tbody id="pg-tbody"></tbody></table></div>' +
+      '<div class="pg-cab"><span>Colaborador</span><span>Período no mês</span><span class="dir">Valor mensal</span><span class="dir">A pagar</span><span class="centro">Situação</span></div>' +
+      '<div class="pg-lista" id="pg-tbody"></div>' +
       '<p class="pg-nota">A tela abre no mês anterior (o mês trabalhado); troque o mês no campo acima. O proporcional usa a data de ingresso e a de saída da ficha de cada um — sem data de ingresso, conta o mês inteiro. Valor mensal = campo "Remuneração" dos custos do colaborador (Colaboradores › editar). Quem foi excluído do portal continua aqui, com a data de saída, até o pagamento ser marcado e você clicar em "Tirar da lista".</p>';
     document.getElementById('pg-mes').addEventListener('change', function(e){ pgMes = e.target.value || hojeISO().slice(0, 7); ouvirPagos(); renderPagamentos(); });
     db.collection('users').onSnapshot(function(snap){
       pgUsuarios = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
         .filter(function(u){ return u.role !== 'cliente' && u.tipoColaborador !== 'clt'; });
       renderPagamentos();
-    }, function(err){ document.getElementById('pg-tbody').innerHTML = '<tr><td colspan="7">Erro: ' + escapeHtml(err.message) + '</td></tr>'; });
+    }, function(err){ document.getElementById('pg-tbody').innerHTML = '<p class="pg-vazio">Erro: ' + escapeHtml(err.message) + '</p>'; });
     db.collection('colaboradoresDesligados').onSnapshot(function(snap){
       pgDesligados = snap.docs.map(function(d){ return Object.assign({ uid: d.id, desligado: true }, d.data()); })
         .filter(function(u){ return !u.removidoDaLista && u.tipoColaborador !== 'clt'; });
@@ -1183,27 +1213,40 @@
     const tipoLbl = { estagiario: 'Estagiário(a)', associado: 'Associado(a)', socio: 'Sócio(a)' };
     tbody.innerHTML = linhas.length ? linhas.map(function(x){
       const u = x.u, c = x.c, pg = pgPagos[u.uid];
+      const entrouNoMes = u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes;
+      const saiuNoMes = u.dataSaida && u.dataSaida.slice(0, 7) === pgMes;
       const periodo = c.proporcional
-        ? '<b style="color:var(--gold)">' + c.dias + ' de ' + c.nDias + ' dias</b><br><small>' +
-            (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? 'entrou ' + formatDataBR(u.dataIngresso) : '') +
-            (u.dataSaida && u.dataSaida.slice(0, 7) === pgMes ? (u.dataIngresso && u.dataIngresso.slice(0, 7) === pgMes ? ' · ' : '') + 'saiu ' + formatDataBR(u.dataSaida) : '') + '</small>'
-        : (u.dataIngresso ? 'mês inteiro' : 'mês inteiro<br><small style="color:#e0614f">sem data de ingresso na ficha</small>');
+        ? '<b class="pg-parcial">' + c.dias + ' de ' + c.nDias + ' dias</b><small>' +
+            (entrouNoMes ? 'entrou ' + formatDataBR(u.dataIngresso) : '') + (entrouNoMes && saiuNoMes ? ' · ' : '') +
+            (saiuNoMes ? 'saiu ' + formatDataBR(u.dataSaida) : '') + '</small>'
+        : 'mês inteiro' + (u.dataIngresso ? '' : '<small class="pg-alerta">sem data de ingresso na ficha</small>');
+      // situação: mesma largura com ou sem pagamento, para nada "pular" ao clicar
+      const situacao = pg
+        ? '<div class="pg-sit pago"><span>✓ Pago em ' + formatDataBR(pg.pagoEm) + '</span><button type="button" class="pg-link" data-desfazer="' + u.uid + '">desfazer</button>' +
+            (u.desligado ? '<button type="button" class="pg-link" data-tirar="' + u.uid + '">tirar da lista</button>' : '') + '</div>'
+        : '<div class="pg-sit"><button type="button" class="btn primary small pg-pagar" data-pagar="' + u.uid + '">Marcar pago</button></div>';
       const pix = u.pixChave
-        ? '<span class="pg-pix">' + escapeHtml(u.pixChave) + '</span><br><small>' + escapeHtml(TIPOS_PIX[u.pixTipo] || 'PIX') + '</small> <button type="button" class="btn small" data-copiar="' + escapeHtml(u.pixChave) + '">Copiar PIX</button>'
-        : '<span style="color:#e0614f">sem chave PIX</span>';
-      const conta = (u.banco || u.agencia || u.conta)
-        ? '<small>' + escapeHtml(u.banco || '') + '<br>Ag. ' + escapeHtml(u.agencia || '—') + ' · C/C ' + escapeHtml(u.conta || '—') + '</small> <button type="button" class="btn small" data-copiar="' + escapeHtml((u.displayName || '') + '\nBanco: ' + (u.banco || '') + '\nAgência: ' + (u.agencia || '') + '\nConta: ' + (u.conta || '') + (u.cpf ? '\nCPF: ' + u.cpf : '')) + '">Copiar</button>'
-        : '<small style="color:var(--muted)">—</small>';
-      let acoes = pg
-        ? '<span class="pg-ok">✓ Pago ' + formatDataBR(pg.pagoEm) + '</span><button type="button" class="btn small" data-desfazer="' + u.uid + '">Desfazer</button>'
-        : '<button type="button" class="btn primary small" data-pagar="' + u.uid + '">Marcar pago</button>';
-      if (u.desligado && pg) acoes += '<button type="button" class="btn small" data-tirar="' + u.uid + '">Tirar da lista</button>';
-      acoes += '<button type="button" class="btn small" data-editar-banco="' + u.uid + '" title="Editar dados bancários">✎</button>';
-      return '<tr' + (pg ? ' class="pg-pago"' : '') + '><td><b>' + escapeHtml(u.displayName || u.email || '') + '</b><br><small>' + escapeHtml(tipoLbl[u.tipoColaborador] || 'Cargo não definido') + (u.desligado ? ' · <b style="color:#e0614f">desligado(a)</b>' : '') + '</small></td>' +
-        '<td>' + periodo + '</td><td>' + (c.base ? formatBRL(c.base) : '<span style="color:#e0614f">sem valor</span>') + '</td>' +
-        '<td><b style="font-size:1rem">' + formatBRL(pg ? pg.valor : c.valor) + '</b></td><td>' + pix + '</td><td>' + conta + '</td>' +
-        '<td class="actions-cell">' + acoes + '</td></tr>';
-    }).join('') : '<tr><td colspan="7" style="color:var(--muted)">Ninguém para pagar neste mês.</td></tr>';
+        ? '<span class="pg-pilula"><span class="rot">PIX ' + escapeHtml(TIPOS_PIX[u.pixTipo] || '') + '</span><span class="val">' + escapeHtml(u.pixChave) + '</span>' +
+            '<button type="button" class="pg-copiar" data-copiar="' + escapeHtml(u.pixChave) + '" title="Copiar chave PIX">⧉ Copiar</button></span>'
+        : '<span class="pg-pilula falta">sem chave PIX</span>';
+      const temConta = u.banco || u.agencia || u.conta;
+      const conta = temConta
+        ? '<span class="pg-pilula"><span class="rot">' + escapeHtml(u.banco || 'Conta') + '</span><span class="val">Ag. ' + escapeHtml(u.agencia || '—') + ' · C/C ' + escapeHtml(u.conta || '—') + '</span>' +
+            '<button type="button" class="pg-copiar" data-copiar="' + escapeHtml((u.displayName || '') + '\nBanco: ' + (u.banco || '') + '\nAgência: ' + (u.agencia || '') + '\nConta: ' + (u.conta || '') + (u.cpf ? '\nCPF: ' + u.cpf : '')) + '" title="Copiar dados da conta">⧉ Copiar</button></span>'
+        : '';
+      return '<div class="pg-card' + (pg ? ' pago' : '') + '">' +
+        '<div class="pg-linha">' +
+          '<div class="pg-nome"><b>' + escapeHtml(u.displayName || u.email || '') + '</b><small>' + escapeHtml(tipoLbl[u.tipoColaborador] || 'Cargo não definido') +
+            (u.desligado ? ' · <span class="pg-alerta">desligado(a)</span>' : '') + '</small></div>' +
+          '<div class="pg-periodo">' + periodo + '</div>' +
+          '<div class="pg-num">' + (c.base ? formatBRL(c.base) : '<span class="pg-alerta">sem valor</span>') + '</div>' +
+          '<div class="pg-num pg-total">' + formatBRL(pg ? pg.valor : c.valor) + '</div>' +
+          situacao +
+        '</div>' +
+        '<div class="pg-dados">' + pix + conta +
+          '<button type="button" class="pg-link pg-editar" data-editar-banco="' + u.uid + '">✎ editar dados bancários</button></div>' +
+      '</div>';
+    }).join('') : '<p class="pg-vazio">Ninguém para pagar neste mês.</p>';
   }
   document.addEventListener('click', function(e){
     const t = e.target.closest('[data-copiar],[data-pagar],[data-desfazer],[data-tirar],[data-editar-banco]');
