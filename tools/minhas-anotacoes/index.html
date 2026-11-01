@@ -93,6 +93,9 @@
   .view-btn{background:transparent;border:none;color:var(--muted);font-size:.76rem;font-weight:600;padding:6px 13px;border-radius:16px;cursor:pointer;white-space:nowrap;}
   .view-btn.active{background:var(--red-deep);color:#fff;}
   #topbar .status{font-size:.68rem;color:var(--muted);white-space:nowrap;flex:0 0 auto;}
+  .editar-texto{width:100%;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.88rem;padding:9px 10px;resize:vertical;min-height:110px;}
+  .editar-texto:focus{outline:none;border-color:var(--red);}
+  .kanban-card-top .icon-btn{margin-left:2px;}
   .imprimir-btn{background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);font-size:.76rem;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
   .imprimir-btn:hover{color:var(--paper);border-color:var(--silver);}
   .lista-header .imprimir-lista{margin-left:auto;}
@@ -450,6 +453,20 @@
   </div>
 
   <div id="enviadasBoard"></div>
+</div>
+
+<!-- Modal: editar tarefa (só as próprias; tarefas enviadas/recebidas não são editáveis) -->
+<div class="modal-backdrop" id="editarBackdrop">
+  <div class="modal">
+    <h3>Editar tarefa</h3>
+    <p>Altere o texto da anotação. Enter salva; Shift+Enter quebra a linha.</p>
+    <textarea id="editarTexto" maxlength="2000" rows="5" class="editar-texto"></textarea>
+    <div class="modal-err" id="editarErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="editarCancelar">Cancelar</button>
+      <button class="btn" id="editarSalvar">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: imprimir / exportar listas -->
@@ -1376,6 +1393,37 @@
     return out;
   }
 
+  // ---------- Editar tarefa (só as próprias, de pendTarefas) ----------
+  let editandoId = null;
+  const ed = { backdrop: document.getElementById('editarBackdrop'), texto: document.getElementById('editarTexto'), err: document.getElementById('editarErr') };
+  window.__editarTarefa = function(id){
+    const t = tarefas.find(function(x){ return x.id === id; });
+    if (!t) return;
+    editandoId = id;
+    ed.texto.value = t.texto || '';
+    ed.err.textContent = '';
+    ed.backdrop.classList.add('open');
+    setTimeout(function(){ ed.texto.focus(); ed.texto.setSelectionRange(ed.texto.value.length, ed.texto.value.length); }, 30);
+  };
+  function fecharEdicao(){ ed.backdrop.classList.remove('open'); editandoId = null; }
+  function salvarEdicao(){
+    const id = editandoId, texto = ed.texto.value.trim();
+    if (!id) return;
+    if (!texto) { ed.err.textContent = 'A tarefa não pode ficar em branco.'; return; }
+    const t = tarefas.find(function(x){ return x.id === id; });
+    if (t && t.texto === texto) { fecharEdicao(); return; }
+    db.collection('pendTarefas').doc(id).update({ texto: texto, editadoEm: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(fecharEdicao)
+      .catch(function(e){ ed.err.textContent = 'Não foi possível salvar: ' + e.message; });
+  }
+  document.getElementById('editarCancelar').addEventListener('click', fecharEdicao);
+  document.getElementById('editarSalvar').addEventListener('click', salvarEdicao);
+  ed.backdrop.addEventListener('click', function(e){ if (e.target === ed.backdrop) fecharEdicao(); });
+  ed.texto.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); salvarEdicao(); }
+    if (e.key === 'Escape') fecharEdicao();
+  });
+
   // ---------- Imprimir / exportar (PDF com a logomarca e/ou Excel) ----------
   const imp = {
     backdrop: document.getElementById('imprimirBackdrop'),
@@ -1568,7 +1616,7 @@
       });
       out += '</select>';
     }
-    out += '<div class="tarefa-actions"><button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button></div>';
+    out += '<div class="tarefa-actions"><button type="button" class="icon-btn" onclick="__editarTarefa(\'' + t.id + '\')" title="Editar tarefa">✎</button><button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button></div>';
     out += '</div>';
     return out;
   }
@@ -1793,6 +1841,7 @@
     out += '<div class="kanban-card-top">';
     out += '<button type="button" class="tarefa-check" onclick="__toggleTarefa(\'' + t.id + '\',false)" title="Marcar como concluída"></button>';
     out += '<div class="kanban-card-texto">' + linkify(t.texto) + '</div>';
+    out += '<button type="button" class="icon-btn" onclick="__editarTarefa(\'' + t.id + '\')" title="Editar tarefa">✎</button>';
     out += '<button type="button" class="icon-btn danger" onclick="__excluirTarefa(\'' + t.id + '\')" title="Excluir tarefa">✕</button>';
     out += '</div>';
     out += '<div class="kanban-card-foot">';
