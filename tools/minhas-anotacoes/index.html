@@ -93,6 +93,13 @@
   .view-btn{background:transparent;border:none;color:var(--muted);font-size:.76rem;font-weight:600;padding:6px 13px;border-radius:16px;cursor:pointer;white-space:nowrap;}
   .view-btn.active{background:var(--red-deep);color:#fff;}
   #topbar .status{font-size:.68rem;color:var(--muted);white-space:nowrap;flex:0 0 auto;}
+  .imprimir-btn{background:var(--panel-2);border:1px solid var(--line-strong);color:var(--muted);font-size:.76rem;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
+  .imprimir-btn:hover{color:var(--paper);border-color:var(--silver);}
+  .lista-header .imprimir-lista{margin-left:auto;}
+  .imp-opcoes{display:flex;flex-direction:column;gap:6px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;}
+  .imp-opcoes.linha{flex-direction:row;flex-wrap:wrap;gap:6px 18px;}
+  .modal label.imp-opt{display:flex;align-items:center;gap:7px;margin:0;font-size:.84rem;color:var(--paper);cursor:pointer;flex-wrap:wrap;}
+  .imp-opt select{background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;color:var(--paper);font:inherit;font-size:.8rem;padding:4px 6px;max-width:230px;}
 
   /* ---------- Layout: Lista ---------- */
   #shell{display:flex;height:calc(100vh - var(--topbar-h));}
@@ -417,6 +424,7 @@
       <button type="button" class="view-btn" id="viewBtnKanban">▦ Kanban</button>
       <button type="button" class="view-btn" id="viewBtnEnviadas" style="display:none;">📨 Enviadas</button>
     </div>
+    <button type="button" class="imprimir-btn" id="imprimirBtn" title="Imprimir ou exportar listas (PDF / Excel)">🖨 Imprimir</button>
     <span class="status" id="status">carregando…</span>
   </div>
 
@@ -442,6 +450,39 @@
   </div>
 
   <div id="enviadasBoard"></div>
+</div>
+
+<!-- Modal: imprimir / exportar listas -->
+<div class="modal-backdrop" id="imprimirBackdrop">
+  <div class="modal">
+    <h3>Imprimir listas</h3>
+    <p>Escolha o que sai e em qual formato. Pode marcar os dois formatos de uma vez.</p>
+
+    <label>O que imprimir</label>
+    <div class="imp-opcoes">
+      <label class="imp-opt"><input type="radio" name="impEscopo" value="uma" checked> Uma lista:
+        <select id="impLista"></select></label>
+      <label class="imp-opt"><input type="radio" name="impEscopo" value="todas"> Todas as listas</label>
+    </div>
+
+    <label>Tarefas</label>
+    <div class="imp-opcoes linha">
+      <label class="imp-opt"><input type="checkbox" id="impAbertas" checked> Abertas</label>
+      <label class="imp-opt"><input type="checkbox" id="impConcluidas"> Concluídas</label>
+    </div>
+
+    <label>Formato</label>
+    <div class="imp-opcoes linha">
+      <label class="imp-opt"><input type="checkbox" id="impPdf" checked> 📄 PDF (com a logomarca)</label>
+      <label class="imp-opt"><input type="checkbox" id="impExcel"> 📊 Excel</label>
+    </div>
+
+    <div class="modal-err" id="imprimirErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="imprimirCancelar">Cancelar</button>
+      <button class="btn" id="imprimirConfirmar">Gerar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: nova lista -->
@@ -526,6 +567,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -1334,6 +1376,164 @@
     return out;
   }
 
+  // ---------- Imprimir / exportar (PDF com a logomarca e/ou Excel) ----------
+  const imp = {
+    backdrop: document.getElementById('imprimirBackdrop'),
+    lista: document.getElementById('impLista'),
+    abertas: document.getElementById('impAbertas'),
+    concluidas: document.getElementById('impConcluidas'),
+    pdf: document.getElementById('impPdf'),
+    excel: document.getElementById('impExcel'),
+    err: document.getElementById('imprimirErr')
+  };
+  function listasOrdenadas(){
+    // mesma ordem da barra lateral: listas fixas primeiro, depois as demais
+    return listas.filter(function(g){ return g.fixa; }).concat(listas.filter(function(g){ return !g.fixa; }));
+  }
+  window.__abrirImprimir = function(listaId){
+    const ls = listasOrdenadas();
+    if (!ls.length) { alert('Você ainda não tem listas para imprimir.'); return; }
+    imp.lista.innerHTML = ls.map(function(g){ return '<option value="' + g.id + '">' + g.emoji + ' ' + escapeHtml(g.nome) + '</option>'; }).join('');
+    const alvo = listaId || (selectedListaId && selectedListaId !== LISTA_RECEBIDAS_ID ? selectedListaId : ls[0].id);
+    imp.lista.value = ls.some(function(g){ return g.id === alvo; }) ? alvo : ls[0].id;
+    document.querySelector('input[name="impEscopo"][value="uma"]').checked = true;
+    imp.err.textContent = '';
+    imp.backdrop.classList.add('open');
+  };
+  document.getElementById('imprimirBtn').addEventListener('click', function(){ window.__abrirImprimir(null); });
+  imp.lista.addEventListener('change', function(){ document.querySelector('input[name="impEscopo"][value="uma"]').checked = true; });
+  document.getElementById('imprimirCancelar').addEventListener('click', function(){ imp.backdrop.classList.remove('open'); });
+  imp.backdrop.addEventListener('click', function(e){ if (e.target === imp.backdrop) imp.backdrop.classList.remove('open'); });
+
+  function dataHoraBR(ts){
+    if (!ts || !ts.seconds) return '';
+    const d = new Date(ts.seconds * 1000);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+  // Monta os dados que saem no PDF e no Excel: [{ lista, tarefas:[{texto, situacao, vencimento, criada, concluida, atrasada}] }]
+  function dadosParaImprimir(ids, comAbertas, comConcluidas){
+    return ids.map(function(id){
+      const g = listas.find(function(x){ return x.id === id; });
+      const ts = tarefas.filter(function(t){ return t.grupoId === id && (t.concluida ? comConcluidas : comAbertas); })
+        .sort(function(a, b){
+          if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
+          return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0);
+        });
+      return { lista: g, tarefas: ts.map(function(t){
+        return { texto: t.texto || '', situacao: t.concluida ? 'Concluída' : (isAtrasada(t) ? 'Atrasada' : 'Aberta'),
+          vencimento: formatarDataBR(t.dataVencimento), criada: dataHoraBR(t.criadoEm), concluida: dataHoraBR(t.concluidaEm), atrasada: isAtrasada(t) };
+      }) };
+    });
+  }
+  function nomeArquivo(dados){
+    const hoje = hojeStr();
+    const base = dados.length === 1 ? String(dados[0].lista.nome).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').toLowerCase() : 'todas-as-listas';
+    return 'minhas-anotacoes_' + (base || 'lista') + '_' + hoje;
+  }
+
+  function gerarPdf(dados, janela){
+    const logo = new URL('../../assets/logo-light.png', location.href).href;
+    const agora = new Date();
+    const total = dados.reduce(function(s, d){ return s + d.tarefas.length; }, 0);
+    const secoes = dados.map(function(d){
+      const linhas = d.tarefas.length ? d.tarefas.map(function(t, i){
+        return '<tr class="' + (t.situacao === 'Concluída' ? 'feita' : t.atrasada ? 'atrasada' : '') + '"><td class="n">' + (i + 1) + '</td>' +
+          '<td class="caixa">' + (t.situacao === 'Concluída' ? '☑' : '☐') + '</td><td class="txt">' + escapeHtml(t.texto) + '</td>' +
+          '<td>' + t.situacao + '</td><td>' + (t.vencimento || '—') + '</td><td>' + (t.situacao === 'Concluída' ? t.concluida : t.criada) + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="vazio">Nenhuma tarefa nesta seleção.</td></tr>';
+      return '<section><h2><span>' + d.lista.emoji + '</span> ' + escapeHtml(d.lista.nome) + ' <small>' + d.tarefas.length + ' tarefa(s)</small></h2>' +
+        '<table><thead><tr><th class="n">#</th><th class="caixa"></th><th>Tarefa</th><th>Situação</th><th>Vencimento</th><th>Criada / concluída em</th></tr></thead><tbody>' + linhas + '</tbody></table></section>';
+    }).join('');
+    const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + nomeArquivo(dados) + '</title><style>' +
+      '@page{size:A4;margin:14mm 13mm 16mm;}' +
+      'body{font-family:"Segoe UI",Arial,sans-serif;color:#241c1b;margin:0;font-size:11pt;}' +
+      '@media screen{body{max-width:900px;margin:0 auto;padding:24px 28px;}}' +
+      '.cab{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:2px solid #8e2b25;padding-bottom:10px;margin-bottom:16px;}' +
+      '.cab img{height:52px;}' +
+      '.cab .info{text-align:right;font-size:9pt;color:#6f625c;line-height:1.45;}' +
+      '.cab .info b{display:block;font-family:Georgia,"Times New Roman",serif;font-size:14pt;color:#5c1a16;}' +
+      'section{margin-bottom:20px;break-inside:auto;}' +
+      'h2{font-family:Georgia,"Times New Roman",serif;font-size:13pt;color:#5c1a16;margin:0 0 8px;break-after:avoid;}' +
+      'h2 small{font-family:"Segoe UI",Arial,sans-serif;font-size:8.5pt;color:#8a7d77;font-weight:400;margin-left:6px;}' +
+      'table{width:100%;border-collapse:collapse;}' +
+      'th{background:#f3ece6;color:#5c1a16;font-size:8pt;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:6px 7px;border-bottom:1.5px solid #8e2b25;}' +
+      'td{padding:6px 7px;border-bottom:1px solid #e7ded7;vertical-align:top;font-size:9.5pt;}' +
+      'tr{break-inside:avoid;}' +
+      'td.n,th.n{width:22px;color:#8a7d77;text-align:right;}' +
+      'td.caixa,th.caixa{width:16px;font-size:11pt;color:#8e2b25;}' +
+      'td.txt{white-space:pre-wrap;word-break:break-word;width:52%;}' +
+      'tr.feita td{color:#8a7d77;} tr.feita td.txt{text-decoration:line-through;}' +
+      'tr.atrasada td:nth-child(4){color:#c0392b;font-weight:700;}' +
+      'td.vazio{color:#8a7d77;font-style:italic;text-align:center;}' +
+      '.rodape{position:fixed;bottom:0;left:0;right:0;font-size:7.5pt;color:#a8988f;text-align:center;}' +
+      '</style></head><body>' +
+      '<div class="cab"><img src="' + logo + '" alt="Fonseca e Braga — Sociedade de Advogados">' +
+        '<div class="info"><b>Minhas Anotações</b>' + escapeHtml(currentUser.displayName) + '<br>' +
+        dados.length + ' lista(s) · ' + total + ' tarefa(s)<br>Emitido em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div></div>' +
+      secoes +
+      '<div class="rodape">Fonseca e Braga — Sociedade de Advogados · Portal do escritório</div>' +
+      '<script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script></body></html>';
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
+  }
+
+  function gerarExcel(dados){
+    const wb = XLSX.utils.book_new();
+    const usados = {};
+    const nomeAba = function(nome){
+      let n = String(nome || 'Lista').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Lista';
+      let k = n, i = 2;
+      while (usados[k.toLowerCase()]) k = n.slice(0, 25) + ' (' + (i++) + ')';
+      usados[k.toLowerCase()] = true;
+      return k;
+    };
+    const colunas = function(d, comLista){
+      return d.tarefas.map(function(t){
+        const o = {};
+        if (comLista) o['Lista'] = d.lista.nome;
+        o['Tarefa'] = t.texto; o['Situação'] = t.situacao; o['Vencimento'] = t.vencimento;
+        o['Criada em'] = t.criada; o['Concluída em'] = t.concluida;
+        return o;
+      });
+    };
+    const largura = function(ws, comLista){ ws['!cols'] = (comLista ? [{ wch: 26 }] : []).concat([{ wch: 70 }, { wch: 12 }, { wch: 12 }, { wch: 17 }, { wch: 17 }]); };
+    if (dados.length > 1) {
+      const todas = [];
+      dados.forEach(function(d){ colunas(d, true).forEach(function(l){ todas.push(l); }); });
+      const ws = XLSX.utils.json_to_sheet(todas.length ? todas : [{ 'Aviso': 'Nenhuma tarefa nesta seleção.' }]);
+      if (todas.length) largura(ws, true);
+      XLSX.utils.book_append_sheet(wb, ws, nomeAba('Todas as listas'));
+    }
+    dados.forEach(function(d){
+      const linhas = colunas(d, false);
+      const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ 'Aviso': 'Nenhuma tarefa nesta seleção.' }]);
+      if (linhas.length) largura(ws, false);
+      XLSX.utils.book_append_sheet(wb, ws, nomeAba(d.lista.nome));
+    });
+    XLSX.writeFile(wb, nomeArquivo(dados) + '.xlsx');
+  }
+
+  document.getElementById('imprimirConfirmar').addEventListener('click', function(){
+    const todas = document.querySelector('input[name="impEscopo"]:checked').value === 'todas';
+    const comAbertas = imp.abertas.checked, comConcluidas = imp.concluidas.checked;
+    const querPdf = imp.pdf.checked, querExcel = imp.excel.checked;
+    if (!comAbertas && !comConcluidas) { imp.err.textContent = 'Marque abertas, concluídas ou as duas.'; return; }
+    if (!querPdf && !querExcel) { imp.err.textContent = 'Escolha PDF, Excel ou os dois.'; return; }
+    if (querExcel && typeof XLSX === 'undefined') { imp.err.textContent = 'Não foi possível carregar o gerador de Excel. Recarregue a página e tente de novo.'; return; }
+    const ids = todas ? listasOrdenadas().map(function(g){ return g.id; }) : [imp.lista.value];
+    const dados = dadosParaImprimir(ids, comAbertas, comConcluidas);
+    // a janela do PDF precisa ser aberta já no clique, senão o navegador bloqueia
+    let janela = null;
+    if (querPdf) {
+      janela = window.open('', '_blank');
+      if (!janela) { imp.err.textContent = 'O navegador bloqueou a janela do PDF. Permita pop-ups para o portal e tente de novo.'; return; }
+    }
+    if (querExcel) gerarExcel(dados);
+    if (janela) gerarPdf(dados, janela);
+    imp.backdrop.classList.remove('open');
+  });
+
   function renderSidebar(){
     const pecas = [];
     if (recebidas.length) pecas.push(recebidasListaBtnHtml());
@@ -1386,7 +1586,8 @@
     const abertasColapsado = !!collapsed[abertasKey];
     const concluidasColapsado = !!collapsed[concluidasKey];
 
-    let out = '<div class="lista-header"><span class="emoji">' + g.emoji + '</span><span class="nome">' + escapeHtml(g.nome) + '</span></div>';
+    let out = '<div class="lista-header"><span class="emoji">' + g.emoji + '</span><span class="nome">' + escapeHtml(g.nome) + '</span>' +
+      '<button type="button" class="imprimir-btn imprimir-lista" onclick="__abrirImprimir(\'' + g.id + '\')" title="Imprimir esta lista (PDF / Excel)">🖨 Imprimir</button></div>';
 
     // Abertas
     out += '<div class="sec">';
