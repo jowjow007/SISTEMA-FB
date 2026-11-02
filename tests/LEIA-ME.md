@@ -42,6 +42,7 @@ firebase emulators:exec --only auth,firestore,storage --project demo-portal-func
 python djen/testar-djen.py      # script real do DJEN numa cópia descartável, com uma API do CNJ falsa
 python djen/testar-diagnostico-astrea.py  # diagnóstico supervisionado do robô (robô e Firestore falsos)
 python djen/testar-delta-astrea.py        # delta da agenda: artefato NaN x null, repetições e a análise só de leitura
+python djen/testar-watcher-supervisionado.py  # watcher.py real em um ciclo supervisionado, sem importar (Firestore falso)
 ```
 
 ## Comparar com as regras publicadas hoje

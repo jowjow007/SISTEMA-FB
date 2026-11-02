@@ -13,7 +13,7 @@ A ordem leva em conta as regras **realmente publicadas hoje** (copiadas do conso
 | # | O quê | Situação |
 |---|---|---|
 | **P1** ✅ (02/11/2026: cópia concluída e verificada; **restauração não testada**) | **Cópia dos dados em produção.** Firestore: Console › Firestore › aba "Importar/exportar" (ou `gcloud firestore export gs://<bucket-de-backup>/2026-11-portal`). Storage, anexos do Chat: `gsutil -m cp -r gs://sistema-fb-4cce5.firebasestorage.app/chat <pasta local>`. Confira se a exportação terminou e quantos arquivos foram copiados. | **Depende de você.** Exige o console ou o gcloud com a sua conta. |
-| **P2** ✅ conferida em 02/11/2026, sem alterações; pendentes R0 (robô), Cloudflare e GitHub (seção 12) | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
+| **P2** ✅ conferida em 02/11/2026, sem alterações; R0 concluído; Cloudflare e GitHub pendentes (seção 14) | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
 | **P3** | **Cópia local recuperável** em `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01`: os dados privados que ficaram fora do git, as regras publicadas hoje, o repositório completo (bundle de todas as branches e do histórico), as configurações, o Worker que se presume publicado, a tarefa do DJEN e o seu trabalho não commitado. Tem manifesto SHA-256. | **Feita e testada** em 01/11/2026: o clone do bundle restaurou a `main` e esta branch idênticas, o manifesto conferiu, e `privado/` está idêntica ao original. |
 | **P4** | **Testes** (`tests/LEIA-ME.md`): regras, funções, Storage, Worker, funcional, migração dos anexos e DJEN, com 0 reprovados. | Feitos em 01/11/2026 (totais no fim). Repetir no dia, se houver qualquer mudança. |
 | **P5** | **DJEN desativado.** A tarefa `PortalFB_AtualizarPublicacoesDJEN` está **Desativada** e só volta em E12. | Conferido. |
@@ -42,7 +42,7 @@ Passe à etapa seguinte só com a verificação ✓. Em "**Parar se**", interrom
 | **E4** | Publicar `firestore.rules`. | Você recarrega (Ctrl+F5) e entra. | Você não entra. | Console: confira `acesso`, `role` e a UID do seu cadastro. **Não** republique as regras antigas. |
 | **E5** | Página `tools/admin-seguranca`: passo 1 (acesso: desmarque os **⚠ conferir**), passo 2 (patrimônio: marque **só** os admins e as pessoas que você autorizar; ninguém vem marcado). Baixe o CSV. | Um colaborador entra e abre a Agenda. | Alguém da equipe continua sem acesso **e** "Aprovar acesso" não resolve. | Reabra a página; ela grava só o que mudou. Pessoa sem aba: Usuários › Editar abas. |
 | **E6** | Publicar `storage.rules` (antes, confira que só existe `chat/`) e **aceitar a permissão "cross-service"** que o console pedir. | Enviar um PDF numa conversa de teste funciona; um anexo antigo continua abrindo. | O envio falha com "unauthorized". | Conceda a permissão cross-service (Storage › Regras). Não volte às regras antigas do Storage. |
-| **E7** | `wrangler deploy` do Worker. | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
+| **E7** | **Worker do Assistente pelo painel da Cloudflare** (não há `wrangler.toml` no repositório): Workers & Pages › `portal-fb-gemini` › Edit code › colar `tools/assistente-ia/worker.js` › Deploy; depois, em **Deployments**, conferir que a versão nova está em "Active deployment" (100%). Não precisa de variável nova (as Secrets e o `USAGE_KV` atuais continuam). | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
 | **E8** | Página admin, passo 4: `privado/numeros-stats.json`, `privado/condominios.json` e os 6 PDF/PNG. | Abas de clientes voltam; um PDF baixa. | O envio dá erro. | Enviar de novo (substitui). |
 | **E9** | Conferir remuneração, custos, data de entrada e tipo de colaborador de cada pessoa (Gestão), porque hoje a própria pessoa podia alterá-los. | Valores conferem. | Algum valor foi alterado indevidamente. | Corrigir pelo admin e registrar como incidente. |
 | **E10** | **Migração dos anexos antigos do Chat** (seção 6): primeiro a **simulação**, e **só com a sua autorização** a execução. **Não revogar links nesta publicação.** | V10 ✓. | Erros na simulação ou a execução com erro em algum anexo. | `--desfazer <registro.csv>` volta os links. Nada é apagado. |
@@ -76,7 +76,7 @@ Use **dados fictícios** e uma conversa ou documento de teste com o nome "TESTE 
 | V6 | **Assistente IA** 🔒 autorização (envia uma pergunta fictícia ao Gemini) | Uma pergunta "Teste: responda OK" como membro, e uma tentativa sem login. | Responde ao membro e recusa sem login. |
 | V7 | **Google Docs** (Petições e Documentos) 🔒 autorização (cria um arquivo no seu Drive) | Gerar uma petição "TESTE – apagar". | Abre no Docs e aparece no histórico. Depois apagar os dois. |
 | V8 | **Gmail** (somente leitura, **nenhum envio**) | Entrar na aba Gmail e listar a caixa de entrada. | Igual a hoje. Não enviar nem responder nada. |
-| V9 | **Robô do Astrea** 🔒 autorização (o robô entra no Astrea com a conta do escritório) | "Executar robô agora". | O log mostra a UID e a gravação, sem 403. |
+| V9 | **Robô do Astrea** 🔒 autorização (o robô entra no Astrea com a conta do escritório; exige o watcher religado, seção 13) | "Executar robô agora". | O log mostra a UID e a gravação, sem 403. |
 | V10 | **Anexos antigos do Chat**: fica **só em simulação** até você revisar o registro gerado e autorizar a execução 🔒 (grava no Storage e no Firestore de produção) | (a) Simulação: `python scripts/seguranca/migrar-anexos-chat.py --producao` (só lê); (b) com autorização: `--executar`; (c) um participante que **não** é o autor abre um anexo antigo. | Simulação sem erros; anexos abrem para os participantes; nada apagado. |
 | V11 | **Robôs do Google** (conferência de e-mails e sincronização das senhas) | Passivo: no dia seguinte, conferir a "última atualização" na Conferência e a data em Gestão › Senhas. | Datas atualizadas. |
 | V12 | **DJEN** 🔒 autorização (consulta a API pública do CNJ) | Num clone só da `main`: `powershell -File tools\numeros-escritorio\atualizar_publicacoes.ps1 -SemPublicar` e depois `git show --stat HEAD`. | Commit só com a página de Números e sem nomes nem processos. Só então reativar (E12). |
@@ -380,7 +380,7 @@ Em todas as fases, o diagnóstico:
 |---|---|---|---|---|
 | **A** ✓ **aprovada em 02/11/2026** | `python diagnostico_astrea.py` | Login e exportação da agenda (só leitura). | **Nada.** | Planilha mantida em `Downloads\astrea-import`. |
 | **B1** (só leitura) | `python diagnostico_astrea.py --leitura` | O mesmo da Fase A. | **Login** com `robo.astrea@…` (atualiza o "último login"). **Lê só** `astreaDiario` e `astreaDelta`: se existem `astreaDiario/{hoje}`, `astreaDelta/{hoje}` e `astreaDiario/{ontem}` (total e data de atualização), e quais são os 5 dias mais recentes de `astreaDiario`. Calcula o delta que seria gravado (só totais). **Não grava nada.** | Planilha não arquivada. |
-| **B2** (`--completo`, **só com a sua autorização**) | `python diagnostico_astrea.py --completo` | O mesmo da Fase A. | Tudo da B1, depois **salva uma cópia local** dos dois documentos de hoje (se existirem) e então **grava**. A trava só permite gravar `astreaDiario/{hoje}` e `astreaDelta/{hoje}`; qualquer outra gravação é bloqueada. No fim, relê e confere o total gravado contra a planilha. | Arquiva a planilha em `historico\`, como no uso normal. Cópias `copia-anterior-*.json` na pasta do diagnóstico, **com dados de clientes**: apagar depois de conferir. |
+| **B2** (`--completo`): **dispensada em 02/11/2026** | `python diagnostico_astrea.py --completo` | O mesmo da Fase A. | Tudo da B1, depois **salva uma cópia local** dos dois documentos de hoje (se existirem) e então **grava**. A trava só permite gravar `astreaDiario/{hoje}` e `astreaDelta/{hoje}`; qualquer outra gravação é bloqueada. No fim, relê e confere o total gravado contra a planilha. | Arquiva a planilha em `historico\`, como no uso normal. Cópias `copia-anterior-*.json` na pasta do diagnóstico, **com dados de clientes**: apagar depois de conferir. |
 
 **Fase A (02/11/2026): aprovada**, com código 0.
 - Commit do robô `4d115d5`, com 2 arquivos alterados localmente (preservados).
@@ -405,7 +405,7 @@ Em todas as fases, o diagnóstico:
 - O delta simulado deu 627 novos e 627 concluídos, investigado abaixo.
 - Como os locais são não versionados e o `importar.py` não tem alteração local, o `git pull` da publicação **não** será recusado por eles.
 
-### Delta de 627 + 627: causa encontrada (artefato da comparação, não movimento real)
+### Delta de 627 + 627: defeito de comparação (artefato, não movimento real)
 
 - **Mecanismo.** O `processar_arquivo` troca NaN por `None` com `df.where(pd.notnull(df), None)`, mas o pandas devolve NaN nas colunas com células vazias. A chave (`_chave_tarefa`) usa `str(valor or '')`, e NaN conta como verdadeiro, então uma célula vazia vira `"nan"` na planilha do dia. O dia anterior volta do Firestore com `null` (o robô grava NaN como null), e a mesma célula vira `""`. Resultado: **toda tarefa sem número de processo** muda de chave e conta como 1 concluída e 1 nova, sempre em pares iguais.
 - **Evidência local**, só contagens, com as duas exportações antigas que existem neste PC (14/10 e 23/10):
@@ -433,7 +433,7 @@ Conferências:
 - **Os `astreaDelta` já gravados continuam inflados.** Recalculá-los a partir dos `astreaDiario` gravados seria uma gravação em produção, que fica como operação separada, só com autorização.
 - A troca de data/hora pela data de criação na chave depende dos números da análise.
 
-### Análise só de leitura no PC do escritório (preparada; não executada)
+### Análise só de leitura no PC do escritório (executada em 02/11/2026; resultado abaixo)
 
 O arquivo é `scripts/seguranca/analisar_delta_astrea.py`. Copie para `C:\Users\FB\diagnostico-astrea\` e rode com o python.exe da tarefa:
 - `python analisar_delta_astrea.py`: **sem rede**. Não abre o Astrea, não grava nada e não faz `git pull`.
@@ -447,23 +447,80 @@ O que ela mostra (só nomes de colunas, contagens, datas e códigos):
 
 **Origem da gravação de 07:02:54:** a análise cruza a última execução de cada tarefa e o resultado dela com o horário da planilha arquivada `2026-11-02_*` e com o `atualizadoEm`. A falha de 01/11 (resultado 1) **não** prova que o robô está parado: a gravação de hoje indica uma execução de 02/11 que funcionou. Qual tarefa a fez (a das 7h ou o watcher) a análise vai mostrar.
 
-### A Fase B2 ainda é necessária?
+### Resultado da análise no escritório (02/11/2026): código 0, sem rede, repositório inalterado
 
-**Recomendação: não executar a B2.**
-- **O que ela validaria já foi validado.** O login e a leitura passaram na B1. A gravação aconteceu hoje às 07:02, com 1.676 registros, igual à exportação manual.
-- **Ela não testa as regras novas.** Roda com as regras atuais, que aceitam qualquer conta logada. A gravação com `robos/{uid}` só se testa depois da E3b, na **V9**.
-- **Ela pioraria o dado.** Rodaria o código em uso, que regravaria `astreaDelta/2026-11-02` com o mesmo delta falso, e substituiria uma agenda correta de hoje sem ganho.
+- **Origem da gravação de 07:02:54:** a tarefa **`AstreaImportDiario`** rodou em 02/11/2026 às 07:00:01 com **resultado 0**. A planilha de hoje foi arquivada às 07:02:50, compatível com o `atualizadoEm` de 07:02:54. **O robô diário está funcionando.** A causa do resultado 1 de 01/11 continua **não comprovada**; o log próprio (depois da publicação) vai registrar as próximas falhas.
+- **`AstreaWatcher`:** Ready, última execução em 27/10 com resultado 0x41306 (encerrada). **Não está em execução.**
+  - A tarefa só inicia **no logon** (`AtLogOn`) e tem **limite de 23 horas**. Um logoff, ou o limite, encerra o watcher, e ele só volta no próximo logon. Isso é compatível com o 0x41306, mas não está comprovado.
+- O histórico do Agendador está indisponível (log desligado). O `importar.py` continua no commit `4d115d5`, sem alteração local.
+- **Delta entre as planilhas arquivadas de 01/11 e 02/11** (1.676 registros em ambas):
+  - o código atual dá **623 novos e 623 concluídos**; a comparação corrigida dá **0 e 0**;
+  - 695 registros têm a chave alterada só pelo percurso de serialização;
+  - 36 chaves repetidas somam 84 registros que o código antigo desconsidera.
+  - **O defeito está reproduzido nesses dois arquivos.** Isso **não** prova que reproduz exatamente os 627/627 da B1, que usou uma exportação posterior.
 
-A B2 só volta a fazer sentido se a análise mostrar que a gravação das 07:02 **não** veio do robô.
+### Fase B2: dispensada (02/11/2026)
 
-**Ordem:**
-1. Rodar a análise sem rede.
-2. Se preciso, rodar a análise com `--firebase`.
-3. Você revisa a saída.
-4. Decidimos a chave do delta e se os `astreaDelta` antigos serão recalculados (operação separada).
+Dispensada por decisão do responsável. O motivo: o login e a leitura passaram na B1, e a gravação diária funcionou hoje (resultado 0). A B2 não testaria as regras novas, que são cobertas pela V9, e regravaria o delta com o defeito.
 
-Mande só as linhas `[análise …]` e o resultado (código).
+### Recuperação do watcher: execução única e supervisionada (preparada; não iniciada)
 
-**Depois:**
-- O log próprio do robô (depois da publicação) mostra o erro real de qualquer execução das 7h que falhar.
-- **Nenhuma mudança na tarefa agendada** até combinarmos.
+O arquivo é `scripts/seguranca/watcher_supervisionado.py`. Copie para `C:\Users\FB\diagnostico-astrea\` e rode com o **python.exe** da tarefa (não o pythonw):
+
+| Passo | Comando | O que faz | Firebase | Importação |
+|---|---|---|---|---|
+| **W1** | `python watcher_supervisionado.py` | Consulta a tarefa `AstreaWatcher` (estado, último resultado, gatilho, limite) e se há algum `watcher.py` rodando. Faz o login do robô e **lê** `astreaTrigger/pedido`, mostrando o status e os horários. | Login + 1 leitura | **Nenhuma** |
+| **W2** (depois de revisar a W1) | `python watcher_supervisionado.py --um-ciclo` | Roda **um** ciclo do `watcher.py` **real**, em primeiro plano, e termina. | Login + leitura | **Nenhuma** |
+
+Proteções da W2:
+- Recusa rodar se já houver um watcher ativo (código 4) ou se o pedido estiver **pendente** (código 5), porque o ciclo dispararia uma importação.
+- A trava de rede só permite o login e a **leitura** do pedido. Se alguém clicar no portal durante o ciclo, a troca para "executando" é bloqueada e nada é importado (código 6).
+- Não inicia, não para e não altera a tarefa. Não faz `git pull`: a atualização automática fica desligada também para processos filhos.
+- Teste: `tests/djen/testar-watcher-supervisionado.py`, 9 de 9, com o `watcher.py` real e um Firestore falso.
+
+**Como ler o status do pedido na W1:**
+- **Não existe:** iniciar o watcher não dispara nada.
+- **`pendente`:** iniciar o watcher **dispara uma importação completa em até 90 s**. Não iniciar sem combinar; quem pediu precisa saber.
+- **`executando`:** o pedido ficou travado, provavelmente pelo encerramento de 27/10. O watcher o ignora, mas o botão do portal fica bloqueado. Liberar exige **apagar** o documento, uma gravação que só acontece com autorização (pelo console).
+- **`concluido` ou `erro`:** o watcher ignora; o portal apaga o documento quando um admin abre a página.
+
+**Religar a tarefa** (`Start-ScheduledTask -TaskName AstreaWatcher`) só com autorização, depois de W1 e W2.
+- **Recomendação:** religar **depois da publicação**, junto da **V9**, porque é o watcher que atende o botão "Executar robô agora". Antes da publicação, ele rodaria o código atual, que grava o delta com o defeito.
+- Com as regras novas, o watcher também precisa de `robos/{uid}` (E3b).
+- A configuração da tarefa (só no logon, limite de 23 h) faz o watcher parar sozinho. Mudá-la é uma alteração de tarefa, que fica para depois e só com autorização.
+
+## 14. Pendências consolidadas para a publicação (02/11/2026)
+
+### Antes de marcar o horário
+
+| # | Pendência | Como conferir (sem alterar nada) | Situação |
+|---|---|---|---|
+| 1 | **Acesso à Cloudflare** (E7 e R6) | Entrar em dash.cloudflare.com com a conta dona do Worker. Abrir Workers & Pages › `portal-fb-gemini` e (a) ver que **Edit code** abre; (b) em **Deployments**, a versão ativa; (c) em **Settings**, só os **nomes** de `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` e `USAGE_KV` (sem abrir valores). Opcional: copiar o código ativo para `Backups\...\worker\` e confirmar se é o "presumido". O `portal-fb-admin` fica na mesma conta. **Não** clicar em Deploy. | ☐ |
+| 2 | **Acesso ao GitHub** (E1 e R7) | (a) Entrar em github.com/jowjo007/SISTEMA-FB com a conta dona; em **Settings › Pages**, a fonte é a `main`; em **Settings › Branches**, ver se há proteção que impeça o push. (b) No terminal: `git ls-remote origin main` e `git push --dry-run origin seguranca/revisao-asvs:main`. O dry-run autentica e simula sem enviar nada. | ☐ |
+| 3 | **Watcher W1 e W2** (seção 13) | Só leitura. | ☐ preparados |
+| 4 | **Robô diário em 03/11** | Na manhã seguinte: `Get-ScheduledTaskInfo AstreaImportDiario` com resultado 0 e `historico\2026-11-03_*`. Confirma que 02/11 não foi caso isolado. | ☐ |
+| 5 | **Horário da publicação** | A sua confirmação (janela fora do expediente, 40 a 60 min, mais as verificações). | ☐ aguardando |
+| 6 | **Testes no dia (P4)** | Repetir todos os testes de `tests/LEIA-ME.md` se houver qualquer mudança até lá. Agora incluem `testar-delta-astrea.py` (17) e `testar-watcher-supervisionado.py` (9). | ☐ |
+
+### Já concluídas
+- P1 (cópia verificada; restauração **não** testada, B7).
+- P2 (acesso no Google).
+- P3 (cópia local com manifesto).
+- P5 (DJEN desativado).
+- R0: identidade do robô, Fases A e B1, análise do delta e da origem; B2 dispensada.
+
+### No dia: etapas que pedem a sua autorização no momento
+- **E10:** execução da migração dos anexos do Chat (a simulação vem antes).
+- **V6** (Assistente) e **V7** (Docs).
+- **V9:** robô; exige o watcher religado.
+- **V10:** anexos.
+- **V12 e E12:** DJEN.
+
+### Operações separadas: fora desta publicação, cada uma só com autorização
+- **Recalcular os `astreaDelta` históricos**, inflados pelo defeito. É uma gravação em produção a partir dos `astreaDiario` gravados. **Aguardando autorização.**
+- Mudar a chave do delta (data de criação no lugar de data/hora), conforme a sua decisão.
+- Ajustar a tarefa `AstreaWatcher` (gatilho e limite de 23 h) e, se quiser, remover os argumentos `>> log-diario.txt 2>&1` da `AstreaImportDiario`. O log próprio já não depende disso.
+- Liberar um `astreaTrigger/pedido` travado, se a W1 mostrar `executando`.
+- Revogar os tokens dos links antigos do Chat (só depois da V10).
+- Limpar branches e histórico (seção 8).
+- Teste de restauração em projeto separado (B7).
