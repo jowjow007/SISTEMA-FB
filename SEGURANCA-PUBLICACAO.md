@@ -13,7 +13,7 @@ A ordem leva em conta as regras **realmente publicadas hoje** (copiadas do conso
 | # | O quê | Situação |
 |---|---|---|
 | **P1** ✅ (02/11/2026: cópia concluída e verificada; **restauração não testada**) | **Cópia dos dados em produção.** Firestore: Console › Firestore › aba "Importar/exportar" (ou `gcloud firestore export gs://<bucket-de-backup>/2026-11-portal`). Storage, anexos do Chat: `gsutil -m cp -r gs://sistema-fb-4cce5.firebasestorage.app/chat <pasta local>`. Confira se a exportação terminou e quantos arquivos foram copiados. | **Depende de você.** Exige o console ou o gcloud com a sua conta. |
-| **P2** | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
+| **P2** ✅ conferida em 02/11/2026, sem alterações; pendentes R0 (robô), Cloudflare e GitHub (seção 12) | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
 | **P3** | **Cópia local recuperável** em `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01`: os dados privados que ficaram fora do git, as regras publicadas hoje, o repositório completo (bundle de todas as branches e do histórico), as configurações, o Worker que se presume publicado, a tarefa do DJEN e o seu trabalho não commitado. Tem manifesto SHA-256. | **Feita e testada** em 01/11/2026: o clone do bundle restaurou a `main` e esta branch idênticas, o manifesto conferiu, e `privado/` está idêntica ao original. |
 | **P4** | **Testes** (`tests/LEIA-ME.md`): regras, funções, Storage, Worker, funcional, migração dos anexos e DJEN, com 0 reprovados. | Feitos em 01/11/2026 (totais no fim). Repetir no dia, se houver qualquer mudança. |
 | **P5** | **DJEN desativado.** A tarefa `PortalFB_AtualizarPublicacoesDJEN` está **Desativada** e só volta em E12. | Conferido. |
@@ -298,3 +298,54 @@ Até isso ser feito, a situação é: **"cópia concluída e verificada; restaur
 1. **Authentication › Users:** anote a UID da sua conta e a UID da conta do robô. É o e-mail do `credenciais.env` do PC do escritório; não abra a senha.
 2. **Firestore › Dados › `users/{sua UID}`:** `role = "admin"`. Não salve nada.
 3. **B3 (permissões efetivas)** é a comprovação de que você consegue restaurar e publicar regras. Abrir telas não comprova.
+
+## 12. Procedimentos de recuperação (com base nas permissões verificadas em B3)
+
+**P2 conferida em 02/11/2026, sem alterações.** As UIDs ficam no registro local (`Backups\...\REGISTRO-PUBLICACAO.md`), fora do repositório público.
+- O seu cadastro é `role = "admin"`, ainda sem o campo `acesso`.
+- A conta do robô **configurada neste PC** tem o último login em **23/10/2026**: a identidade foi conferida, mas **o funcionamento diário não**.
+- A coleção `robos` ainda não existe.
+
+Regra comum a todos os procedimentos: **corrigir para frente**. Nunca republique as regras antigas, o Worker antigo nem o HTML com dados. O console do Firestore **não passa pelas regras**, então você consegue corrigir dados mesmo com as regras novas publicadas.
+
+| # | Situação | Procedimento | Permissão (B3) | Tempo |
+|---|---|---|---|---|
+| R1 | Você não entra depois de E4 | Console › Firestore › Dados › `users/{sua UID}`: confira `role = "admin"` e **adicione** o campo `acesso` (texto) = `ativo`. Recarregue o portal com Ctrl+F5. | `datastore.entities.update` ✓ | 1–2 min |
+| R2 | Robô com 403 depois de E4 | Console › Firestore: coleção `robos`, documento com ID = **UID da conta que o robô realmente usa** (ver R0) e campo `descricao`. Rode "Executar robô agora". | `datastore.entities.update` ✓ | 2 min |
+| R3 | Colaborador legítimo sem acesso | Portal › Usuários › **Aprovar acesso** e, se faltar, **Editar abas**. Pelo console: `acesso = "ativo"` e uma aba em `tabs`. | admin do portal / `datastore.entities.update` ✓ | 1 min |
+| R4 | Uma função legítima parou ("permissão negada") | Anotar a tela e o perfil. Corrigir **só** a regra daquela coleção no repositório, acrescentar o caso em `tests/firestore-rules/funcoes.test.js`, rodar os testes e publicar a regra corrigida. Enquanto isso, a função fica parada; ela não volta abrindo a regra para "qualquer logado". | `firebaserules.rulesets.create` e `releases.update` ✓ | 15–40 min |
+| R5 | Chat: envio de anexo falha depois de E6 | Console › Storage › Regras: conceder a permissão "cross-service" (o console mostra o aviso). Conferir que o envio é numa conversa da qual a pessoa participa. | regras ✓ | 2 min |
+| R6 | Assistente: 401/403 para toda a equipe | Conferir E5 (acesso e abas). Se precisar, desativar a rota do Worker no painel da Cloudflare. **Não** voltar o Worker antigo. | ⚠️ conta da Cloudflare **não verificada** em B3 | 5 min |
+| R7 | Erro de página no site | Novo commit corrigindo e push na `main`. **Nunca** reverter o commit que tirou os dados. | ⚠️ push no GitHub **não verificado** em B3 | 5–15 min |
+| R8 | Documento apagado ou corrompido | Recuperar **pontualmente**: importar a exportação num **projeto separado** e copiar só o necessário pelo console. Importar sobre produção só em desastre, porque grava por cima e desfaz o que mudou depois. | `datastore.databases.import` ✓ (**não testado**: B7) | 30–60 min |
+| R9 | Anexo do Chat perdido | `gcloud storage cp gs://sistema-fb-4cce5-backup/storage-2026-11-02-01/chat/... gs://sistema-fb-4cce5.firebasestorage.app/chat/...`. Os metadados com o token vêm junto. | `storage.objects.create` no bucket original ✓; leitura do backup ✓ | 5 min |
+| R10 | Migração dos anexos com problema (quando autorizada) | `migrar-anexos-chat.py --producao --desfazer <registro.csv>` volta os links antigos nas mensagens. Nada foi apagado. | `datastore.entities.update` ✓ | 5 min |
+
+Antes do horário, falta conferir o acesso de recuperação **fora do Google**:
+- **Cloudflare:** entrar no painel e ver o Worker `portal-fb-gemini` (para R6).
+- **GitHub:** a sua conta consegue fazer push na `main` (para R7).
+
+### R0. Investigar o último login antigo do robô (sem alterar produção)
+
+Objetivo: descobrir **qual conta o robô do escritório usa** e **se ele roda todo dia**, antes de criar `robos/{uid}` em E3. Tudo abaixo é leitura.
+
+1. **No PC do escritório** (`C:\Users\FB\portal-fb`), no PowerShell, mostrar **só o e-mail**, sem a senha:
+   `Select-String -Path C:\Users\FB\portal-fb\scripts\astrea-importer\credenciais.env -Pattern '^FIREBASE_ROBO_EMAIL='`
+   Se o e-mail for **diferente** de `robo@fonsecaebraga.com.br`, a UID certa para `robos` é a **dessa** conta (procure em Authentication).
+2. **Agendamento no PC do escritório:**
+   `Get-ScheduledTask | Where-Object { $_.TaskName -match 'astrea|robo|agenda' } | Get-ScheduledTaskInfo | Format-List TaskName,LastRunTime,LastTaskResult,NextRunTime`
+   - `LastTaskResult = 0` com data recente: o agendamento roda.
+   - Data antiga ou outro código: parou.
+3. **Log do robô no PC do escritório:** veja as últimas linhas do log em `scripts\astrea-importer` (nome do arquivo conforme o `LEIA-ME.md` de lá). Procure "ERRO Firebase auth" ou "Robô autenticado". Se houver um `.log`, rode:
+   `Get-ChildItem C:\Users\FB\portal-fb\scripts\astrea-importer\*.log | Sort-Object LastWriteTime | Select-Object -Last 1 | Get-Content -Tail 30`
+4. **Versão do código no PC do escritório:**
+   `git -C C:\Users\FB\portal-fb log -1 --format="%h %ad %s" --date=iso`
+   Ele deveria acompanhar a `main` pelo `git pull` automático.
+5. **Última gravação da Agenda no Firestore**, pelo Cloud Shell. Só lê e imprime **apenas datas e quantidades**:
+   ```
+   curl -s -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" "https://firestore.googleapis.com/v1/projects/sistema-fb-4cce5/databases/(default)/documents:runQuery" -d '{"structuredQuery":{"from":[{"collectionId":"astreaDiario"}],"orderBy":[{"field":{"fieldPath":"data"},"direction":"DESCENDING"}],"limit":3,"select":{"fields":[{"fieldPath":"data"},{"fieldPath":"total"},{"fieldPath":"atualizadoEm"}]}}}' | python3 -c "import sys,json;[print(d['document']['name'].split('/')[-1], {k:list(v.values())[0] for k,v in d['document'].get('fields',{}).items()}) for d in json.load(sys.stdin) if 'document' in d]"
+   ```
+   Se houver gravações **depois de 23/10**, o robô roda e entra com **outra conta** (volte ao passo 1). Se a última gravação for de 23/10, o robô parou.
+6. **(Opcional) Outras contas candidatas:** Console › Authentication › Users, ordenado por "Último login". Uma conta com login diário perto das 7h é a candidata.
+
+**Resultado esperado de R0:** a UID da conta que o robô realmente usa, anotada no registro local, e a confirmação de que ele roda, ou a causa de ter parado. **Sem isso, não faça E3b (`robos/{uid}`).** Se o robô estiver parado, a publicação não piora nada para ele, mas a Agenda já está desatualizada e isso entra como pendência.
