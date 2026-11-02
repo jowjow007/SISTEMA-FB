@@ -36,13 +36,13 @@
 <body>
 <main>
   <h1>Migração de segurança</h1>
-  <p class="sub">Só para o administrador. Rode os passos 1 e 2 <b>antes</b> de publicar as novas regras do Firestore, e os passos 3 e 4 <b>logo depois</b>. Cada alteração fica registrada no próprio cadastro (quem aprovou e quando), e você pode baixar o registro em CSV.</p>
+  <p class="sub">Só para o administrador. Rode <b>depois</b> de publicar as novas regras do Firestore. Antes disso, pelo console, grave <code>acesso = "ativo"</code> no seu próprio cadastro, ou esta página não abre. Nas regras antigas, cada pessoa podia alterar o próprio cadastro, inclusive <code>acesso</code> e <code>patrimonioVerTudo</code>. Por isso esta página <b>não confia</b> nesses valores: a sugestão de acesso vem das abas, que só o admin libera. Cada gravação fica registrada em <code>auditoriaSeguranca</code> e no CSV.</p>
   <div id="gate" class="msg">Verificando login…</div>
 
   <div id="conteudo" hidden>
     <section>
       <h2><span class="passo">1</span>Acesso explícito</h2>
-      <p class="sub">As novas regras só liberam dados para quem tem <code>acesso = ativo</code>. A sugestão abaixo repete quem tem acesso hoje (admin ou alguma aba liberada). Desmarque quem não deve continuar.</p>
+      <p class="sub">As novas regras só liberam dados para quem tem <code>acesso = ativo</code>. A sugestão repete quem tinha acesso pelas abas (admin ou alguma aba liberada). Um <span class="tag warn">⚠</span> indica alguém marcado como "ativo" sem abas, que pode ter gravado isso por conta própria nas regras antigas. Desmarque quem não deve continuar.</p>
       <div class="wrap"><table><thead><tr><th>Aprovar</th><th>Nome</th><th>E-mail</th><th>Papel</th><th>Abas</th><th>Hoje</th></tr></thead><tbody id="t-acesso"></tbody></table></div>
       <div class="linha"><button id="b-acesso">Gravar acesso</button><button class="sec" id="b-csv">Baixar registro (CSV)</button></div>
       <div class="msg" id="m-acesso"></div>
@@ -50,22 +50,22 @@
 
     <section>
       <h2><span class="passo">2</span>Quem vê todo o patrimônio</h2>
-      <p class="sub">Hoje, quem não tem o campo <code>patrimonioVerTudo</code> vê todo o patrimônio. Depois da publicação, só verá tudo quem estiver marcado aqui. Os demais continuam vendo os itens sob a própria responsabilidade. Quem cadastra patrimônio (permissão de Gestão) e os administradores veem tudo de qualquer forma.</p>
+      <p class="sub">Nas regras antigas, quem não tinha o campo via todo o patrimônio, e a própria pessoa podia gravar <code>true</code> no próprio cadastro. Por isso <b>ninguém vem marcado</b>: marque só quem deve ver tudo. Os demais veem os itens sob a própria responsabilidade. Quem cadastra patrimônio (permissão de Gestão) e os administradores veem tudo de qualquer forma.</p>
       <div class="wrap"><table><thead><tr><th>Vê tudo</th><th>Nome</th><th>Situação hoje</th><th>Cadastra patrimônio?</th></tr></thead><tbody id="t-pat"></tbody></table></div>
       <div class="linha"><button id="b-pat">Gravar patrimônio</button></div>
       <div class="msg" id="m-pat"></div>
     </section>
 
     <section>
-      <h2><span class="passo">3</span>Robôs (depois de publicar as regras)</h2>
-      <p class="sub">O robô do Astrea só grava a agenda se a UID dele estiver em <code>robos</code>. A UID aparece no log do robô ("UID para robos/{uid}") e em Firebase Console › Authentication. Se preferir, crie o documento pelo console antes de publicar.</p>
+      <h2><span class="passo">3</span>Robôs</h2>
+      <p class="sub">O robô do Astrea só grava a agenda se a UID dele estiver em <code>robos</code>. A UID aparece no log do robô ("UID para robos/{uid}") e em Firebase Console › Authentication, na conta do robô.</p>
       <div class="wrap"><table><thead><tr><th>UID</th><th>Descrição</th><th>Criado em</th></tr></thead><tbody id="t-robos"></tbody></table></div>
       <div class="linha"><input type="text" id="r-uid" placeholder="UID do robô"><input type="text" id="r-desc" placeholder="Descrição (ex.: PC do escritório — Agenda Astrea)"><button id="b-robo">Cadastrar robô</button></div>
       <div class="msg" id="m-robo"></div>
     </section>
 
     <section>
-      <h2><span class="passo">4</span>Dados que saíram do site público (depois de publicar as regras)</h2>
+      <h2><span class="passo">4</span>Dados que saíram do site público</h2>
       <p class="sub">Selecione os arquivos da pasta <code>privado/</code> do computador. Eles vão para o Firestore com leitura só para a equipe: <code>numeros-stats.json</code> (painel de Números), <code>condominios.json</code> (clientes e relatórios de Condomínios) e os PDFs/PNGs de <code>privado/condominios-pdfs/</code>.</p>
       <div class="linha"><input type="file" id="f-dados" multiple accept=".json,.pdf,.png"><button id="b-dados">Enviar</button></div>
       <div class="msg" id="m-dados"></div>
@@ -86,6 +86,10 @@
   const MIGRACAO = 'migracao-seguranca-2026-11';
   let eu = null, usuarios = [], permissoes = {}, registro = [];
 
+  function auditar(acao, itens){
+    return db.collection('auditoriaSeguranca').add({ acao: acao, itens: itens.slice(0, 400), porUid: eu.uid,
+      porEmail: eu.email || '', em: FV.serverTimestamp() }).catch(function(e){ console.warn('auditoria não gravada:', e.message); });
+  }
   function msg(id, txt, cls){ const el = $(id); el.className = 'msg ' + (cls || ''); el.textContent = txt; }
 
   auth.onAuthStateChanged(function(user){
@@ -112,13 +116,17 @@
   }
 
   // ---------- 1) acesso ----------
+  // Só pelas abas, que só o admin grava, também nas regras antigas. "acesso" e "patrimonioVerTudo"
+  // gravados antes da publicação podem ter sido escritos pela própria pessoa.
   function sugestao(u){
-    if (u.acesso) return u.acesso === 'ativo';
+    if (u.acesso === 'bloqueado') return false;
     return u.role === 'admin' || (u.tabs || []).length > 0;
   }
+  function suspeito(u){ return u.acesso === 'ativo' && !sugestao(u) && u.uid !== eu.uid; }
   function renderAcesso(){
     $('t-acesso').innerHTML = usuarios.map(function(u){
-      const hoje = u.acesso ? '<span class="tag">' + esc(u.acesso) + '</span>' : '<span class="tag warn">sem status</span>';
+      const hoje = (u.acesso ? '<span class="tag">' + esc(u.acesso) + '</span>' : '<span class="tag warn">sem status</span>')
+        + (suspeito(u) ? ' <span class="tag warn" title="Marcado como ativo sem abas: pode ter sido gravado pela própria pessoa nas regras antigas">⚠ conferir</span>' : '');
       const travado = u.uid === eu.uid ? ' checked disabled title="Você (admin) precisa continuar ativo"' : (sugestao(u) ? ' checked' : '');
       return '<tr><td><input type="checkbox" class="cb-acesso" data-uid="' + esc(u.uid) + '"' + travado + '></td>'
         + '<td>' + esc(u.displayName || '-') + '</td><td>' + esc(u.email || '-') + '</td><td>' + esc(u.role || '-') + '</td>'
@@ -141,7 +149,8 @@
     if (!n) { msg('m-acesso', 'Nada a alterar.', 'ok'); return; }
     // o próprio admin primeiro (as regras novas exigem acesso ativo do admin)
     $('b-acesso').disabled = true;
-    batch.commit().then(function(){ msg('m-acesso', n + ' cadastro(s) atualizado(s). Baixe o registro em CSV para guardar.', 'ok'); return carregar(); })
+    const itensAcesso = registro.filter((r) => r[1] === 'acesso').map((r) => ({ uid: r[2], antes: r[4], depois: r[5] }));
+    batch.commit().then(function(){ return auditar('acesso', itensAcesso); }).then(function(){ msg('m-acesso', n + ' cadastro(s) atualizado(s). Baixe o registro em CSV para guardar.', 'ok'); return carregar(); })
       .catch(function(e){ msg('m-acesso', 'Falhou: ' + e.message, 'err'); })
       .finally(function(){ $('b-acesso').disabled = false; });
   });
@@ -157,11 +166,11 @@
   function renderPat(){
     $('t-pat').innerHTML = usuarios.filter((u) => u.role !== 'admin' && u.role !== 'cliente').map(function(u){
       const v = u.patrimonioVerTudo;
-      const hoje = v === true ? '<span class="tag ok">vê tudo (marcado)</span>'
+      const hoje = v === true ? '<span class="tag warn">true hoje (conferir quem gravou)</span>'
         : v === false ? '<span class="tag">só o próprio</span>'
         : '<span class="tag warn">sem o campo — hoje vê tudo</span>';
       const cad = permissoes[u.uid] && permissoes[u.uid].patrimonioCadastro === true ? 'sim (vê tudo de qualquer forma)' : 'não';
-      return '<tr><td><input type="checkbox" class="cb-pat" data-uid="' + esc(u.uid) + '"' + (v === true ? ' checked' : '') + '></td>'
+      return '<tr><td><input type="checkbox" class="cb-pat" data-uid="' + esc(u.uid) + '"' + '' + '></td>'
         + '<td>' + esc(u.displayName || u.email || u.uid) + '</td><td>' + hoje + '</td><td>' + cad + '</td></tr>';
     }).join('');
   }
@@ -177,7 +186,8 @@
       n++;
     });
     if (!n) { msg('m-pat', 'Nada a alterar.', 'ok'); return; }
-    batch.commit().then(function(){ msg('m-pat', n + ' cadastro(s) atualizado(s).', 'ok'); return carregar(); })
+    const itensPat = registro.filter((r) => r[1] === 'patrimonioVerTudo').map((r) => ({ uid: r[2], antes: r[4], depois: r[5] }));
+    batch.commit().then(function(){ return auditar('patrimonioVerTudo', itensPat); }).then(function(){ msg('m-pat', n + ' cadastro(s) atualizado(s).', 'ok'); return carregar(); })
       .catch(function(e){ msg('m-pat', 'Falhou: ' + e.message, 'err'); });
   });
 

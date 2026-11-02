@@ -49,7 +49,7 @@ service cloud.firestore {
     // Estar logado NÃO basta: o acesso depende do campo users/{uid}.acesso == 'ativo', que só o admin grava
     // (aprovação explícita em Administração › Usuários). Autocadastro entra como 'pendente'; "Revogar" grava
     // 'bloqueado'; "Excluir" apaga o cadastro e cria acessosRevogados/{uid}, que impede o autocadastro de novo.
-    // As abas (tabs) só montam o menu — não liberam dados. mustChangePassword é só aviso de tela (a própria
+    // As abas sozinhas não liberam dados (ver isAtivo). mustChangePassword é só aviso de tela (a própria
     // pessoa consegue zerá-lo), por isso não entra em nenhuma decisão de acesso.
     function temCadastro() {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
@@ -57,9 +57,13 @@ service cloud.firestore {
     function meuCadastro() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
+    // Além da aprovação explícita, exige ao menos uma aba (ou ser admin). Abas e papel só o admin grava, também nas
+    // regras antigas; já o campo "acesso" a própria pessoa podia gravar antes desta versão ser publicada. Assim, um
+    // autocadastro (sem abas) que tenha se marcado como "ativo" antes da publicação continua sem acesso.
     function isAtivo() {
       return temCadastro() && meuCadastro().get('acesso', '') == 'ativo'
-        && meuCadastro().get('role', '') in ['admin', 'gestor', 'membro', 'cliente'];
+        && meuCadastro().get('role', '') in ['admin', 'gestor', 'membro', 'cliente']
+        && (meuCadastro().get('role', '') == 'admin' || meuCadastro().get('tabs', []).size() > 0);
     }
     function isEquipe() {
       return isAtivo() && meuCadastro().role in ['admin', 'gestor', 'membro'];

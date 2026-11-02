@@ -203,7 +203,8 @@ async function exigirEquipe(request, env) {
   const role = f.role && f.role.stringValue;
   // mesmo critério do isEquipe() do Firestore: acesso aprovado pelo admin (acesso == 'ativo') e papel de equipe
   const acesso = f.acesso && f.acesso.stringValue;
-  const equipe = ['admin', 'gestor', 'membro'].indexOf(role) !== -1 && acesso === 'ativo';
+  const abas = (f.tabs && f.tabs.arrayValue && f.tabs.arrayValue.values) || [];
+  const equipe = ['admin', 'gestor', 'membro'].indexOf(role) !== -1 && acesso === 'ativo' && (role === 'admin' || abas.length > 0);
   if (!equipe) throw Object.assign(new Error('Acesso não liberado ao Assistente.'), { status: 403 });
   return uid;
 }

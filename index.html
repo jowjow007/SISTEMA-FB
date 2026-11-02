@@ -4621,7 +4621,8 @@
   // Acesso explícito: 'ativo' (aprovado pelo admin), 'pendente' (autocadastro) ou 'bloqueado' (revogado).
   // Sem o campo (cadastros de antes da migração), vale o critério antigo: sem abas = pendente.
   function acessoPendente(u){
-    if (u.acesso) return u.acesso !== 'ativo';
+    // as regras exigem aprovação E ao menos uma aba (ou admin): aprovado sem abas ainda não acessa nada
+    if (u.acesso) return u.acesso !== 'ativo' || (u.role !== 'admin' && (u.tabs || []).length === 0);
     return u.role !== 'admin' && (u.tabs || []).length === 0;
   }
   function renderUsersTable(users){

@@ -1,32 +1,39 @@
 # Publicação da revisão de segurança (branch `seguranca/revisao-asvs`)
 
-Roteiro para publicar as correções de 01/11/2026 com o menor tempo possível de dados expostos ou permissões amplas. Esta é a **única** sequência válida: as etapas vão de **E0 a E11**, e o restante do documento usa os mesmos números. As etapas **E3 a E8** devem ser feitas na mesma sessão de trabalho, porque é nesse intervalo que as permissões antigas, amplas, ainda valem.
+Roteiro para publicar as correções de 01/11/2026 com o menor tempo possível de dados expostos ou permissões amplas. Esta é a **única** sequência válida: as etapas vão de **E0 a E12**, e o restante do documento usa os mesmos números.
+
+A ordem leva em conta as regras **realmente publicadas hoje**, comparadas em 01/11/2026. Elas são idênticas às do README antes da revisão. Nelas, cada pessoa pode gravar qualquer campo do próprio cadastro, exceto papel, abas, e-mail e nome: inclusive `acesso`, `patrimonioVerTudo` e `remuneracao`. Por isso:
+- **a migração de acesso só roda depois de publicar as regras novas** (E5), quando ninguém mais consegue escrever no próprio cadastro;
+- as regras novas exigem **aprovação (`acesso = "ativo"`) e ao menos uma aba** (ou ser admin). As abas só o admin consegue gravar, também hoje. Assim, uma conta que se marque "ativa" antes da publicação continua sem acesso.
 
 > **Não restaure as regras antigas para "consertar" uma falha de funcionamento.** As regras antigas deixam qualquer conta logada ler os dados. Corrija a regra específica (seção 4, "Recuperação").
 
 ## 1. Dependências entre as etapas
 
 ```
-E0 preparação (testes, cópia das regras atuais, UID do robô, DJEN desligado)
- │
-E1 site (merge na main) ── tira os dados pessoais da página pública
- │
-E2 conferência pública do site  ◄── não siga se algum dado ainda aparecer
- │
-E3 migração de acesso e patrimônio (página admin; as regras ANTIGAS aceitam essa gravação)
- │
-E4 robos/{uid} pelo console (as regras antigas não têm a coleção robos)
- │
-E5 Worker do Assistente (exige acesso == 'ativo', criado em E3)
- │
-E6 regras do Firestore ──► E7 regras do Storage
- │
-E8 dados privados pela página admin (as coleções só existem nas regras novas)
- │
-E9 links antigos do Chat (revogação dos tokens: decisão sua)
- │
-E10 verificação final com usuários reais ──► E11 reativar o DJEN
+E0 preparação ─► E1 site (tira os dados pessoais da página pública) ─► E2 conferência pública
+                                                                          │
+E3 pelo console: users/{seu UID}.acesso = "ativo"  +  robos/{UID do robô}
+                                                                          │
+E4 regras do Firestore ──(todos menos o admin ficam sem acesso até E5: minutos)
+                                                                          │
+E5 migração de acesso e patrimônio (página admin; agora ninguém escreve no próprio cadastro)
+                                                                          │
+E6 regras do Storage (anexos do Chat voltam a funcionar) ─► E7 Worker do Assistente
+                                                                          │
+E8 dados privados ─► E9 conferir remunerações ─► E10 links antigos do Chat ─► E11 verificação ─► E12 DJEN
 ```
+
+O que fica fora do ar e por quanto tempo:
+
+| Função | Para em | Volta em | Por quê |
+|---|---|---|---|
+| Envio de anexos no Chat | E1 | E6 | O site novo grava em `chat/{conversa}/{uid}/`, e as regras de Storage atuais só aceitam `chat/{uid}/`. |
+| Assistente IA | E1 | E7 | O Worker atual recusa o cabeçalho com o token, e o Worker novo exige a migração. |
+| Abas Clientes/Juízo/Efetividade/Qualidade (Números) e Clientes/Relatórios (Condomínios) | E1 | E8 | Os dados saíram do HTML e só entram no Firestore com as regras novas. |
+| Todo o portal para quem não é admin | E4 | E5 | Ninguém tem `acesso = "ativo"` até a migração. |
+
+**Recomendação:** faça de E1 a E8 numa só sessão, fora do expediente (cerca de 40 a 60 minutos). Se a prioridade for tirar os dados do ar já, E1 e E2 podem ir sozinhos agora. As funções da tabela ficam paradas até o restante, mas nenhum dado fica exposto por isso.
 
 ## 2. Sequência, com verificação entre as etapas
 
@@ -34,20 +41,19 @@ Só passe para a etapa seguinte quando a verificação da etapa atual der o resu
 
 | Etapa | Ação | Verificação antes de seguir | Se falhar |
 |---|---|---|---|
-| **E0** | **Preparação.** <br>a) Rode `npm test` e `firebase emulators:exec … funcional` (`tests/LEIA-ME.md`): **0 reprovados**. <br>b) Copie as regras atuais do Firestore e do Storage para um arquivo local; é registro, não plano de volta. <br>c) Anote a UID da conta do robô (Console › Authentication, conta do `credenciais.env` do PC do escritório). <br>d) Confirme que a tarefa `PortalFB_AtualizarPublicacoesDJEN` está **Desativada**. | Testes 0 reprovados; UID anotada; tarefa desativada. | Não publique. |
-| **E1** | Merge de `seguranca/revisao-asvs` na `main` e push. O GitHub Pages publica em até ~10 min. | Em **Settings › Pages** do GitHub, o último deploy aparece como concluído. | Corrija com um novo commit. Não reverta o commit que tirou os dados. |
-| **E2** | Em aba anônima: abra `/tools/numeros-escritorio/` e `/tools/condominios/`, use Ctrl+F para procurar um nome de cliente e um de síndico que você conheça, e abra `/tools/condominios/pdfs/relatorio-duo-2026-08.pdf`. | Nenhum nome encontrado; o PDF responde **404**. A aba Clientes mostra "Faça login…". | Espere o cache de ~10 min e confira de novo. Se persistir, há um arquivo que não saiu: pare e me chame. |
-| **E3** | Abra `/tools/admin-seguranca/` logado como admin. <br>**Passo 1 (acesso):** confira a lista; desmarque ex-colaboradores e contas desconhecidas; grave. <br>**Passo 2 (patrimônio):** marque só quem deve ver tudo (seção 3); grave. <br>Baixe o **CSV** do registro. | Em Administração › Usuários ninguém aparece como "sem status". O CSV tem uma linha por alteração. | Repita o passo; ele grava só o que mudou. |
-| **E4** | No console: Firestore › coleção `robos` › documento com ID = **UID do robô** e campo `descricao` = "PC do escritório — Agenda Astrea". | O documento existe com o ID exato da UID. | Corrija o ID; tem de ser a UID, não o e-mail. |
-| **E5** | Publique o Worker: `cd tools/assistente-ia && wrangler deploy`. | Logado como membro, o Assistente responde. Numa aba anônima sem login, a página não consegue usá-lo. | `wrangler rollback` **não**: o Worker antigo era um proxy aberto. Se precisar, desative a rota e me chame. |
-| **E6** | Cole `firestore.rules` em Console › Firestore › Regras e publique. Até ~1 min para valer. | Admin e um membro recarregam (Ctrl+F5) e abrem Agenda, Chat, Gestão e Anotações sem "permissão negada". | Seção 4. Admin trancado: no console, `users/{UID}.acesso = "ativo"`. |
-| **E7** | Cole `storage.rules` em Console › Storage › Regras e publique. Antes, confira em Storage › Arquivos que só existe a pasta `chat/`. Se houver outra, **pare**: a regra nova bloqueia pastas desconhecidas. | No Chat: enviar um PDF numa conversa funciona; um anexo antigo continua abrindo. | Se houver outra pasta em uso, me mande o nome antes de publicar. |
-| **E8** | Na página admin, **passo 4**: selecione `privado/numeros-stats.json`, `privado/condominios.json` e os 6 arquivos de `privado/condominios-pdfs/`. | Recarregue Números (aba Clientes) e Condomínios (Consultar Clientes e Relatórios): os dados voltam, e um relatório em PDF baixa. | Envie de novo; o envio substitui. |
-| **E9** | **Links antigos do Chat** (seção 5). Escolha uma opção: (a) não revogar; (b) revogar arquivos específicos pelo console; (c) revogar todos com o script em modo de simulação e depois em modo real. | Para (b) ou (c): o link antigo copiado antes responde 403/404, e o arquivo continua visível para os participantes **se** o script também atualizar as mensagens. | Sem revogação, o risco continua (seção 5). |
-| **E10** | Verificação com pessoas reais: <br>• um membro abre a Agenda, os holerites (se for CLT), o próprio patrimônio, o Chat e o Assistente; <br>• um síndico (cliente) entra e **não** vê clientes de Condomínios; <br>• clique em "Executar robô agora": o log do robô mostra a UID e a gravação, sem 403. | Tudo conforme. | Seção 4. |
-| **E11** | Reative o DJEN só com `C:\Users\jowjo\portal-fb` na `main` e limpo: `Enable-ScheduledTask PortalFB_AtualizarPublicacoesDJEN`. O ideal é apontá-lo para um clone separado, só da `main`. | No dia seguinte o log diz "Commit e push" ou "Sem diferenças", nunca "Nada foi gravado". | Desative de novo e me chame. |
-
-Entre E1 e E5, o Assistente fica fora do ar. Entre E1 e E8, as abas restritas de Números e Condomínios aparecem como "restrito" ou "ainda não carregado". As duas coisas são perda de função temporária, não exposição de dados.
+| **E0** | **Preparação.** <br>a) Rode os testes (`tests/LEIA-ME.md`): regras, Storage, Worker e funcional, com **0 reprovados**. <br>b) Guarde a cópia das regras atuais (já feita em 01/11/2026). <br>c) Anote **a sua UID** e a **UID do robô** (Console › Authentication). <br>d) Confirme que a tarefa `PortalFB_AtualizarPublicacoesDJEN` está **Desativada**. | Tudo conferido. | Não publique. |
+| **E1** | Merge de `seguranca/revisao-asvs` na `main` e push. O GitHub Pages publica em até ~10 min. | Em Settings › Pages, o deploy aparece como concluído. | Corrija com um novo commit. Não reverta o commit que tirou os dados. |
+| **E2** | Em aba anônima: abra `/tools/numeros-escritorio/` e `/tools/condominios/`, use Ctrl+F para procurar um nome de cliente e um de síndico que você conheça, e abra `/tools/condominios/pdfs/relatorio-duo-2026-08.pdf`. | Nenhum nome encontrado; o PDF responde **404**. | Espere o cache de ~10 min. Se persistir, pare e me chame. |
+| **E3** | **Pelo console** do Firestore (que não passa pelas regras): <br>a) em `users/{SUA UID}`, crie o campo `acesso` = `ativo` (texto); <br>b) crie a coleção `robos` com um documento cujo ID é a **UID do robô** e o campo `descricao` = "PC do escritório — Agenda Astrea". | Os dois documentos aparecem como descrito. | Corrija o ID: tem de ser a UID, não o e-mail. |
+| **E4** | Cole `firestore.rules` em Console › Firestore › Regras e publique. Até ~1 min para valer. | Você (admin) recarrega o portal (Ctrl+F5) e entra normalmente. | Se você não entrar, confira o passo E3a. Não volte às regras antigas. |
+| **E5** | Abra `/tools/admin-seguranca/`. <br>**Passo 1 (acesso):** confira a lista. Quem aparece com **⚠ conferir** estava "ativo" sem abas (pode ter se marcado sozinho): deixe desmarcado. Grave. <br>**Passo 2 (patrimônio):** ninguém vem marcado; marque só quem deve ver tudo (seção 3). Grave. <br>Baixe o **CSV**. | Em Administração › Usuários, as pessoas da equipe aparecem sem "aguardando aprovação". Um colaborador consegue entrar e abrir a Agenda. | Repita o passo; ele grava só o que mudou. |
+| **E6** | Cole `storage.rules` em Console › Storage › Regras e publique. Antes, confira em Storage › Arquivos que só existe a pasta `chat/`. **O console vai pedir permissão para as regras do Storage consultarem o Firestore ("cross-service rules"): aceite**, porque sem ela ninguém lê nem envia anexos. | No Chat, enviar um PDF numa conversa funciona; um anexo antigo continua abrindo. | Se o envio falhar com "unauthorized", confira se a permissão foi concedida (Storage › Regras mostra um aviso). |
+| **E7** | Publique o Worker: `cd tools/assistente-ia && wrangler deploy`. | Logado como membro, o Assistente responde. | Não volte o Worker antigo (era um proxy aberto). Se precisar, desative a rota e me chame. |
+| **E8** | Na página admin, **passo 4**: selecione `privado/numeros-stats.json`, `privado/condominios.json` e os 6 arquivos de `privado/condominios-pdfs/`. | Números (aba Clientes) e Condomínios (Clientes e Relatórios) voltam; um PDF baixa. | Envie de novo; o envio substitui. |
+| **E9** | **Conferir remunerações e cadastros.** Nas regras de hoje, cada pessoa podia alterar a própria `remuneracao`, `custos`, `dataIngresso` e `tipoColaborador`. Em Gestão › Colaboradores (Pagamentos e Dados), confira esses valores de cada pessoa antes do próximo pagamento. | Valores conferem com o combinado. | Corrija pelo admin; se houver alteração indevida, trate como incidente. |
+| **E10** | **Links antigos do Chat** (seção 5). Escolha uma opção: (a) não revogar; (b) revogar arquivos específicos pelo console; (c) revogar todos pelo script, primeiro em simulação. | Para (b) ou (c): o link antigo copiado antes responde 403/404. | Sem revogação, o risco continua (seção 5). |
+| **E11** | Verificação com pessoas reais: <br>• um membro abre a Agenda, os holerites (se for CLT), o próprio patrimônio, o Chat e o Assistente; <br>• um síndico (cliente) entra e **não** vê clientes de Condomínios; <br>• clique em "Executar robô agora": o log do robô mostra a UID e a gravação, sem 403. | Tudo conforme. | Seção 4. |
+| **E12** | Reative o DJEN só com `C:\Users\jowjo\portal-fb` na `main` e limpo: `Enable-ScheduledTask PortalFB_AtualizarPublicacoesDJEN`. O ideal é apontá-lo para um clone separado, só da `main`. | No dia seguinte o log diz "Commit e push" ou "Sem diferenças". | Desative de novo e me chame. |
 
 ## 3. Quem deve receber acesso
 

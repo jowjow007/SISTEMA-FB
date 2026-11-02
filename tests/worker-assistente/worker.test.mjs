@@ -62,7 +62,8 @@ usuarios = {
   'u-abas':     { role: { stringValue: 'membro' }, tabs: { arrayValue: { values: [{ stringValue: 'assistente' }] } } },   // abas sem aprovação
   'u-bloq':     { role: { stringValue: 'membro' }, tabs: { arrayValue: { values: [{ stringValue: 'assistente' }] } }, acesso: { stringValue: 'bloqueado' } },
   'u-cliente':  Object.assign({ role: { stringValue: 'cliente' }, tabs: { arrayValue: { values: [{ stringValue: 'condominio' }] } } }, ativo),
-  'u-troca':    Object.assign({ role: { stringValue: 'membro' }, tabs: { arrayValue: {} }, mustChangePassword: { booleanValue: true } }, ativo),
+  'u-troca':    Object.assign({ role: { stringValue: 'membro' }, tabs: { arrayValue: { values: [{ stringValue: 'x' }] } }, mustChangePassword: { booleanValue: true } }, ativo),
+  'u-auto':     Object.assign({ role: { stringValue: 'membro' }, tabs: { arrayValue: {} } }, ativo),   // se marcou ativo antes da publicação, sem abas
 };
 
 await caso('origem estranha é recusada', async () => {
@@ -95,6 +96,9 @@ await caso('conta com abas mas sem aprovação explícita é recusada', async ()
 });
 await caso('conta bloqueada (sessão ainda válida) é recusada', async () => {
   const r = await worker.fetch(post({ Authorization: 'Bearer ' + await token('u-bloq') }), env); espera(r.status === 403, 'status ' + r.status); espera(!chamouGemini(), 'chamou o Gemini');
+});
+await caso('ativo sem nenhuma aba (autoaprovado antes da publicação) é recusado', async () => {
+  const r = await worker.fetch(post({ Authorization: 'Bearer ' + await token('u-auto') }), env); espera(r.status === 403, 'status ' + r.status);
 });
 await caso('mustChangePassword não decide acesso: aprovada é aceita', async () => {
   const r = await worker.fetch(post({ Authorization: 'Bearer ' + await token('u-troca') }), env); espera(r.status === 200, 'status ' + r.status);

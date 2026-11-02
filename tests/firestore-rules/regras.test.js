@@ -21,6 +21,8 @@ const P = {
   membro:    { uid: 'u-membro',    email: 'membro@exemplo.test',    doc: { role: 'membro', tabs: ['agenda'], acesso: 'ativo', patrimonioVerTudo: false } },
   outro:     { uid: 'u-outro',     email: 'outro@exemplo.test',     doc: { role: 'membro', tabs: ['agenda'], acesso: 'ativo' } },
   semAbas:   { uid: 'u-semabas',   email: 'semabas@exemplo.test',   doc: { role: 'membro', tabs: [], acesso: 'ativo' } },
+  // gravou nas regras antigas, no próprio cadastro: acesso, aprovador e patrimônio (as abas ele não consegue mudar)
+  autoAprovado: { uid: 'u-auto', email: 'auto@exemplo.test', doc: { role: 'membro', tabs: [], acesso: 'ativo', acessoAprovadoPor: 'u-admin', patrimonioVerTudo: true } },
   pendente:  { uid: 'u-pendente',  email: 'pendente@exemplo.test',  doc: { role: 'membro', tabs: [], acesso: 'pendente' } },
   comAbasSemAprovacao: { uid: 'u-abas', email: 'abas@exemplo.test', doc: { role: 'membro', tabs: ['agenda', 'gestao'] } },
   bloqueado: { uid: 'u-bloq',      email: 'bloq@exemplo.test',      doc: { role: 'membro', tabs: ['agenda'], acesso: 'bloqueado' } },
@@ -89,7 +91,9 @@ async function main() {
   let G = '1. Acesso explícito (não depende de abas nem de mustChangePassword)';
   await caso(G, 'anônimo não lê organograma', () => assertFails(anon().doc('organograma/u-membro').get()));
   await caso(G, 'membro aprovado lê organograma', () => assertSucceeds(db(P.membro).doc('organograma/u-membro').get()));
-  await caso(G, 'aprovado mesmo sem abas lê (abas só montam o menu)', () => assertSucceeds(db(P.semAbas).doc('organograma/u-membro').get()));
+  await caso(G, 'aprovado mas sem nenhuma aba não lê (exige aprovação E aba)', () => assertFails(db(P.semAbas).doc('organograma/u-membro').get()));
+  await caso(G, 'autocadastro que se marcou "ativo" antes da publicação (sem abas) não lê', () => assertFails(db(P.autoAprovado).doc('organograma/u-membro').get()));
+  await caso(G, '…nem com aprovação forjada (acessoAprovadoPor = admin)', () => assertFails(db(P.autoAprovado).doc('contadores/c1').get()));
   await caso(G, 'pendente não lê organograma', () => assertFails(db(P.pendente).doc('organograma/u-membro').get()));
   await caso(G, 'com abas mas sem aprovação não lê organograma', () => assertFails(db(P.comAbasSemAprovacao).doc('organograma/u-membro').get()));
   await caso(G, 'com abas mas sem aprovação não lê contadores', () => assertFails(db(P.comAbasSemAprovacao).doc('contadores/c1').get()));
