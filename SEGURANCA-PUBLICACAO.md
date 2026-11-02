@@ -42,7 +42,7 @@ Passe à etapa seguinte só com a verificação ✓. Em "**Parar se**", interrom
 | **E4** | Publicar `firestore.rules`. | Você recarrega (Ctrl+F5) e entra. | Você não entra. | Console: confira `acesso`, `role` e a UID do seu cadastro. **Não** republique as regras antigas. |
 | **E5** | Página `tools/admin-seguranca`: passo 1 (acesso: desmarque os **⚠ conferir**), passo 2 (patrimônio: marque **só** os admins e as pessoas que você autorizar; ninguém vem marcado). Baixe o CSV. | Um colaborador entra e abre a Agenda. | Alguém da equipe continua sem acesso **e** "Aprovar acesso" não resolve. | Reabra a página; ela grava só o que mudou. Pessoa sem aba: Usuários › Editar abas. |
 | **E6** | Publicar `storage.rules` (antes, confira que só existe `chat/`) e **aceitar a permissão "cross-service"** que o console pedir. | Enviar um PDF numa conversa de teste funciona; um anexo antigo continua abrindo. | O envio falha com "unauthorized". | Conceda a permissão cross-service (Storage › Regras). Não volte às regras antigas do Storage. |
-| **E7** | **Worker do Assistente pelo painel da Cloudflare** (não há `wrangler.toml` no repositório): Workers & Pages › `portal-fb-gemini` › Edit code › colar `tools/assistente-ia/worker.js` › Deploy; depois, em **Deployments**, conferir que a versão nova está em "Active deployment" (100%). Não precisa de variável nova (as Secrets e o `USAGE_KV` atuais continuam). | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
+| **E7** | **Worker do Assistente pelo painel da Cloudflare** (não há `wrangler.toml` no repositório): Workers & Pages › `portal-fb-gemini` › Edit code › colar `tools/assistente-ia/worker.js` › Deploy; depois, em **Deployments**, conferir que a versão nova está em "Active deployment" (100%). Não precisa de variável nova: as Secrets atuais (`GEMINI_API_KEY` e as duas `GOOGLE_SA_*`) e a variável `GEMINI_MODEL` continuam. **Não há `USAGE_KV`** (conferido em 02/11/2026), então o Worker publicado continua **sem limite diário próprio** (pendência C1, seção 14). **Antes** do Deploy, anotar em Deployments qual versão está ativa (a última vista foi `fdcad971`), para saber a que voltar. | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
 | **E8** | Página admin, passo 4: `privado/numeros-stats.json`, `privado/condominios.json` e os 6 PDF/PNG. | Abas de clientes voltam; um PDF baixa. | O envio dá erro. | Enviar de novo (substitui). |
 | **E9** | Conferir remuneração, custos, data de entrada e tipo de colaborador de cada pessoa (Gestão), porque hoje a própria pessoa podia alterá-los. | Valores conferem. | Algum valor foi alterado indevidamente. | Corrigir pelo admin e registrar como incidente. |
 | **E10** | **Migração dos anexos antigos do Chat** (seção 6): primeiro a **simulação**, e **só com a sua autorização** a execução. **Não revogar links nesta publicação.** | V10 ✓. | Erros na simulação ou a execução com erro em algum anexo. | `--desfazer <registro.csv>` volta os links. Nada é apagado. |
@@ -315,7 +315,7 @@ Regra comum a todos os procedimentos: **corrigir para frente**. Nunca republique
 | R3 | Colaborador legítimo sem acesso | Portal › Usuários › **Aprovar acesso** e, se faltar, **Editar abas**. Pelo console: `acesso = "ativo"` e uma aba em `tabs`. | admin do portal / `datastore.entities.update` ✓ | 1 min |
 | R4 | Uma função legítima parou ("permissão negada") | Anotar a tela e o perfil. Corrigir **só** a regra daquela coleção no repositório, acrescentar o caso em `tests/firestore-rules/funcoes.test.js`, rodar os testes e publicar a regra corrigida. Enquanto isso, a função fica parada; ela não volta abrindo a regra para "qualquer logado". | `firebaserules.rulesets.create` e `releases.update` ✓ | 15–40 min |
 | R5 | Chat: envio de anexo falha depois de E6 | Console › Storage › Regras: conceder a permissão "cross-service" (o console mostra o aviso). Conferir que o envio é numa conversa da qual a pessoa participa. | regras ✓ | 2 min |
-| R6 | Assistente: 401/403 para toda a equipe | Conferir E5 (acesso e abas). Se precisar, desativar a rota do Worker no painel da Cloudflare. **Não** voltar o Worker antigo. | ⚠️ conta da Cloudflare **não verificada** em B3 | 5 min |
+| R6 | Assistente: 401/403 para toda a equipe | Conferir E5 (acesso e abas). Se precisar, desativar a rota do Worker no painel da Cloudflare. **Não** voltar o Worker antigo. | ✅ acesso ao painel conferido em 02/11/2026 (editor abre) | 5 min |
 | R7 | Erro de página no site | Novo commit corrigindo e push na `main`. **Nunca** reverter o commit que tirou os dados. | ⚠️ push no GitHub **não verificado** em B3 | 5–15 min |
 | R8 | Documento apagado ou corrompido | Recuperar **pontualmente**: importar a exportação num **projeto separado** e copiar só o necessário pelo console. Importar sobre produção só em desastre, porque grava por cima e desfaz o que mudou depois. | `datastore.databases.import` ✓ (**não testado**: B7) | 30–60 min |
 | R9 | Anexo do Chat perdido | `gcloud storage cp gs://sistema-fb-4cce5-backup/storage-2026-11-02-01/chat/... gs://sistema-fb-4cce5.firebasestorage.app/chat/...`. Os metadados com o token vêm junto. | `storage.objects.create` no bucket original ✓; leitura do backup ✓ | 5 min |
@@ -502,12 +502,39 @@ Proteções da W2:
 
 | # | Pendência | Como conferir (sem alterar nada) | Situação |
 |---|---|---|---|
-| 1 | **Acesso à Cloudflare** (E7 e R6) | Entrar em dash.cloudflare.com com a conta dona do Worker. Abrir Workers & Pages › `portal-fb-gemini` e (a) ver que **Edit code** abre; (b) em **Deployments**, a versão ativa; (c) em **Settings**, só os **nomes** de `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` e `USAGE_KV` (sem abrir valores). Opcional: copiar o código ativo para `Backups\...\worker\` e confirmar se é o "presumido". O `portal-fb-admin` fica na mesma conta. **Não** clicar em Deploy. | ☐ |
+| 1 | **Acesso à Cloudflare** (E7 e R6) | Entrar em dash.cloudflare.com com a conta dona do Worker. Abrir Workers & Pages › `portal-fb-gemini` e (a) ver que **Edit code** abre; (b) em **Deployments**, a versão ativa; (c) em **Settings**, só os **nomes** de `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` e `USAGE_KV` (sem abrir valores). Opcional: copiar o código ativo para `Backups\...\worker\` e confirmar se é o "presumido". O `portal-fb-admin` fica na mesma conta. **Não** clicar em Deploy. | ✅ 02/11/2026, sem alterações (resultado abaixo) |
 | 2 | **Acesso ao GitHub** (E1 e R7) | (a) Entrar em github.com/jowjo007/SISTEMA-FB com a conta dona; em **Settings › Pages**, a fonte é a `main`; em **Settings › Branches**, ver se há proteção que impeça o push. (b) No terminal: `git ls-remote origin main` e `git push --dry-run origin seguranca/revisao-asvs:main`. O dry-run autentica e simula sem enviar nada. | ☐ |
 | 3 | **Watcher W1 e W2** (seção 13) | Só leitura. | ✅ aprovadas em 02/11/2026; religar a tarefa fica para a publicação, na V9 |
 | 4 | **Robô diário em 03/11** | Na manhã seguinte: `Get-ScheduledTaskInfo AstreaImportDiario` com resultado 0 e `historico\2026-11-03_*`. Confirma que 02/11 não foi caso isolado. | ☐ |
 | 5 | **Horário da publicação** | A sua confirmação (janela fora do expediente, 40 a 60 min, mais as verificações). | ☐ aguardando |
 | 6 | **Testes no dia (P4)** | Repetir todos os testes de `tests/LEIA-ME.md` se houver qualquer mudança até lá. Agora incluem `testar-delta-astrea.py` (17) e `testar-watcher-supervisionado.py` (9). | ☐ |
+
+### Resultado da conferência da Cloudflare (02/11/2026, sem alterações)
+
+- `portal-fb-gemini` e `portal-fb-admin` existem na conta. O editor do `portal-fb-gemini` abre.
+- Última versão visível: `fdcad971`, Ready, publicada manualmente há 19 dias. **Não** se confirmou explicitamente qual versão recebe o tráfego (anotar antes da E7).
+- Nomes conferidos, sem abrir valores:
+  - Secrets: `GEMINI_API_KEY`, `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY`.
+  - Variável: `GEMINI_MODEL`.
+  - Nenhum binding: **não há `USAGE_KV`**. Também não há `DAILY_LIMIT`, que sem o KV não teria efeito.
+
+**C1. Sem `USAGE_KV`, não há limite diário de uso** (pendência; nada alterado em produção):
+- No código (`tools/assistente-ia/worker.js`, `checkAndIncrementDailyUsage`), a falta do binding faz a função liberar todo pedido. O teto de 200 mensagens por dia para o escritório **não existe hoje** e **continuará sem existir** depois da E7. A revisão não mudou essa parte.
+- O único teto é a cota e o faturamento da chave do Gemini no Google.
+- **O que muda com o Worker novo:** hoje, qualquer cliente que forje o cabeçalho Origin chega ao Gemini. Depois da E7, só um membro ativo da equipe, com o token do Firebase, consegue. O risco passa de **gasto por qualquer pessoa** para **gasto por uma conta da equipe** (abuso ou conta comprometida).
+- O mesmo vale para a rota `/rss`: ela não usa o Gemini, mas também não tem limite.
+- **Correção possível (fora desta publicação, só com autorização):** criar um KV Namespace e ligá-lo como `USAGE_KV` em Settings › Bindings. Opcionalmente, criar `DAILY_LIMIT`. É uma mudança de infraestrutura, mas não exige código novo.
+- **Complemento independente:** um alerta de orçamento ou um limite de cota no projeto da chave do Gemini, no Google Cloud.
+
+**C2. `portal-fb-admin`: versão e integração não verificadas.**
+- No repositório, `admin-config.js` ainda tem `COLE_AQUI_A_URL_DO_SEU_WORKER`. Pelo código, **o portal não chama esse Worker** e o botão "Excluir" não apaga o login.
+- O Worker existe e, pelo README (seção 10), teria as Secrets `ADMIN_SA_*` de uma conta de serviço com papéis de **Firebase Authentication Admin** e **Cloud Datastore User**.
+- O `admin-worker.js` do repositório confere o token e exige `role == "admin"`. **Não se sabe** se a versão publicada é essa.
+- **Conferência sugerida (só leitura, no painel):**
+  - Deployments: data da versão ativa.
+  - Edit code: o código contém `verifyFirebaseIdToken` e `isAdmin`? Basta olhar, sem salvar.
+  - Settings: só os nomes das Secrets.
+- Se o Worker não é usado, desativá-lo, ou remover as Secrets e a chave da conta de serviço, é uma operação separada, só com autorização.
 
 ### Já concluídas
 - P1 (cópia verificada; restauração **não** testada, B7).
@@ -524,6 +551,8 @@ Proteções da W2:
 - **V12 e E12:** DJEN.
 
 ### Operações separadas: fora desta publicação, cada uma só com autorização
+- **C1:** ligar o `USAGE_KV` (e, se quiser, `DAILY_LIMIT`) ao `portal-fb-gemini`, para ter o limite diário. **Pendente.**
+- **C2:** conferir e decidir o destino do `portal-fb-admin`: manter, integrar ou desativar e revogar a conta de serviço. **Pendente.**
 - **Recalcular os `astreaDelta` históricos**, inflados pelo defeito. É uma gravação em produção a partir dos `astreaDiario` gravados. **Aguardando autorização.**
 - Mudar a chave do delta (data de criação no lugar de data/hora), conforme a sua decisão.
 - Ajustar a tarefa `AstreaWatcher` (gatilho e limite de 23 h) e, se quiser, remover os argumentos `>> log-diario.txt 2>&1` da `AstreaImportDiario`. O log próprio já não depende disso.
