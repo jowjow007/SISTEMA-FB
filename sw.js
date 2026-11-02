@@ -4,7 +4,9 @@
 // Isso garante que o app atualiza sozinho a cada alteracao publicada no site,
 // sem precisar reinstalar nada.
 
-const CACHE_NAME = 'portal-fb-cache-v3';
+// v4 (revisão de segurança, 01/11/2026): trocar o nome faz o "activate" apagar o cache antigo, que podia guardar
+// cópias offline das páginas de Números e Condomínios com dados de clientes (versões anteriores do portal).
+const CACHE_NAME = 'portal-fb-cache-v4';
 const OFFLINE_FALLBACK = './index.html';
 
 self.addEventListener('install', () => {

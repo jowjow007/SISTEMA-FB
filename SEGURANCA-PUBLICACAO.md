@@ -37,7 +37,7 @@ Passe à etapa seguinte só com a verificação ✓. Em "**Parar se**", interrom
 | Etapa | Ação | Verificação (✓ para seguir) | Parar se | Recuperar (sem voltar ao vulnerável) |
 |---|---|---|---|---|
 | **E1** | Merge de `seguranca/revisao-asvs` na `main` e push. | Settings › Pages: deploy concluído. | O deploy falha. | Corrigir com um novo commit. Nunca reverter o commit que tirou os dados. |
-| **E2** | Aba anônima: Números e Condomínios sem nomes de clientes ou síndicos; `/tools/condominios/pdfs/relatorio-duo-2026-08.pdf` responde 404. | Nenhum dado encontrado. | Algum dado aparece depois de ~10 min. | Parar e me chamar: algum arquivo não saiu. |
+| **E2** | **Versão nova chegou ao navegador.** <br>a) Aba anônima: Números e Condomínios sem nomes de clientes ou síndicos; `/tools/condominios/pdfs/relatorio-duo-2026-08.pdf` responde 404. <br>b) **No navegador de uso diário** (com o service worker antigo instalado): Ctrl+F5 no portal; no topo deve aparecer **v177**; se aparecer "Atualizar agora", clique. <br>c) F12 › Aplicação › Service workers: `sw.js` ativo; em "Armazenamento em cache" deve existir só `portal-fb-cache-v4` (o v3, que guardava cópias antigas, é apagado). <br>d) Na aba Rede, ao recarregar, `index.html` vem do servidor (200), não "(ServiceWorker)" sem rede. <br>e) Ctrl+U na ferramenta Condomínios: o código **não** tem `sindico:`. | a–e conferem. O GitHub Pages pode levar até ~10 min para entregar a versão nova. | Depois de 10 min ainda aparece v176 ou dado antigo. | Ctrl+F5; fechar todas as abas do portal; F12 › Aplicação › "Limpar dados do site" naquele navegador. Se persistir em todos os navegadores, parar e me chamar. |
 | **E3** | Console: `users/{sua UID}.acesso = "ativo"`; `robos/{UID do robô}` com `descricao`. | Os dois documentos existem. | Você não consegue editar pelo console (P2 falhou). | Não seguir para E4 sem acesso de recuperação. |
 | **E4** | Publicar `firestore.rules`. | Você recarrega (Ctrl+F5) e entra. | Você não entra. | Console: confira `acesso`, `role` e a UID do seu cadastro. **Não** republique as regras antigas. |
 | **E5** | Página `tools/admin-seguranca`: passo 1 (acesso: desmarque os **⚠ conferir**), passo 2 (patrimônio: marque **só** os admins e as pessoas que você autorizar; ninguém vem marcado). Baixe o CSV. | Um colaborador entra e abre a Agenda. | Alguém da equipe continua sem acesso **e** "Aprovar acesso" não resolve. | Reabra a página; ela grava só o que mudou. Pessoa sem aba: Usuários › Editar abas. |
@@ -77,7 +77,7 @@ Use **dados fictícios** e uma conversa ou documento de teste com o nome "TESTE 
 | V7 | **Google Docs** (Petições e Documentos) 🔒 autorização (cria um arquivo no seu Drive) | Gerar uma petição "TESTE – apagar". | Abre no Docs e aparece no histórico. Depois apagar os dois. |
 | V8 | **Gmail** (somente leitura, **nenhum envio**) | Entrar na aba Gmail e listar a caixa de entrada. | Igual a hoje. Não enviar nem responder nada. |
 | V9 | **Robô do Astrea** 🔒 autorização (o robô entra no Astrea com a conta do escritório) | "Executar robô agora". | O log mostra a UID e a gravação, sem 403. |
-| V10 | **Anexos antigos do Chat** 🔒 autorização para a execução (grava no Storage e no Firestore de produção) | (a) Simulação: `python scripts/seguranca/migrar-anexos-chat.py --producao` (só lê); (b) com autorização: `--executar`; (c) um participante que **não** é o autor abre um anexo antigo. | Simulação sem erros; anexos abrem para os participantes; nada apagado. |
+| V10 | **Anexos antigos do Chat**: fica **só em simulação** até você revisar o registro gerado e autorizar a execução 🔒 (grava no Storage e no Firestore de produção) | (a) Simulação: `python scripts/seguranca/migrar-anexos-chat.py --producao` (só lê); (b) com autorização: `--executar`; (c) um participante que **não** é o autor abre um anexo antigo. | Simulação sem erros; anexos abrem para os participantes; nada apagado. |
 | V11 | **Robôs do Google** (conferência de e-mails e sincronização das senhas) | Passivo: no dia seguinte, conferir a "última atualização" na Conferência e a data em Gestão › Senhas. | Datas atualizadas. |
 | V12 | **DJEN** 🔒 autorização (consulta a API pública do CNJ) | Num clone só da `main`: `powershell -File tools\numeros-escritorio\atualizar_publicacoes.ps1 -SemPublicar` e depois `git show --stat HEAD`. | Commit só com a página de Números e sem nomes nem processos. Só então reativar (E12). |
 
@@ -92,6 +92,7 @@ Use **dados fictícios** e uma conversa ou documento de teste com o nome "TESTE 
 ## 6. Anexos antigos do Chat: migração antes de qualquer revogação
 
 - **Situação hoje:** os anexos antigos (`chat/{uid}/arquivo`) abrem pelo link com token gravado na mensagem.
+- **Risco registrado (01/11/2026):** os links antigos podem ter sido **compartilhados ou vazados** (encaminhados por e-mail ou WhatsApp, salvos por ex-colaboradores). Eles **continuam funcionando até a revogação**, independentemente das regras novas.
 - **Risco temporário, enquanto os tokens não forem revogados:** quem tiver um link, mesmo ex-colaborador ou alguém que o recebeu encaminhado fora do portal, continua baixando o arquivo. Os links são longos e aleatórios, ou seja, não dá para adivinhá-los; o risco é de um link já conhecido.
 - **Migração (E10):** `scripts/seguranca/migrar-anexos-chat.py` copia cada anexo antigo para a pasta de **cada** conversa em que ele foi enviado, inclusive os encaminhados, e atualiza a mensagem para o link novo. Ela guarda a origem e não apaga nem revoga nada. Por padrão só simula, e tem a opção "desfazer". **Testada no emulador: 19 de 19.**
 - **Revogação (fora desta publicação):** só depois de V10 ✓. Com os anexos migrados, revogar o token antigo não tira o acesso dos participantes, porque eles usam o link novo e as regras os liberam na pasta da conversa.
@@ -162,3 +163,63 @@ git push --force --mirror                              # DESTRUTIVO — só com 
 | Abertura das 27 páginas × 3 perfis | 0 erros só nas regras novas | — |
 | Migração dos anexos do Chat | 19 de 19 | — |
 | DJEN (script real, cópia descartável) | 14 de 14 | — |
+
+## 11. Guia passo a passo de P1 (cópia dos dados) e P2 (acesso de recuperação)
+
+Não compartilhe senhas, tokens nem chaves. Para combinar a publicação, basta me passar os **números** de conferência: estado da exportação, quantidade de documentos e de arquivos, e tamanhos.
+
+### Custo e interrupção (antes de começar)
+
+- **Exportação do Firestore:** cobrada como leitura de documentos, 1 leitura por documento. Na tabela padrão do Blaze, isso dá centavos de dólar para dezenas de milhares de documentos.
+- **Guarda das cópias no Cloud Storage:** cerca de US$ 0,02 a 0,03 por GB por mês. Recomendo apagar as cópias depois de 90 dias, se não precisar delas.
+- **Cópia dos arquivos do Storage para o bucket de backup, na mesma região:** só operações, centavos, sem tráfego de saída.
+- **Cloud Shell:** gratuito.
+- **Interrupção:** nenhuma; o portal continua funcionando. A exportação **não é um retrato instantâneo**: o que for gravado durante ela pode ou não entrar. Faça fora do expediente; a cópia leva poucos minutos.
+
+### P1. Cópia de produção
+
+1. **Localização do banco:** abra `console.cloud.google.com/firestore/databases?project=sistema-fb-4cce5` e anote a coluna **Local** (ex.: `southamerica-east1` ou `nam5`).
+2. **Criar o bucket de backup:** abra `console.cloud.google.com/storage/browser?project=sistema-fb-4cce5` › **Criar**.
+   - **Nome:** `sistema-fb-4cce5-backup` (se estiver em uso, acrescente `-fb`).
+   - **Local:** o **mesmo** do passo 1. Se for região (ex.: `southamerica-east1`), escolha essa região. Se for `nam5`, escolha a multirregião `us`.
+   - **Classe:** Standard.
+   - **Proteção:** deixe **"Impedir o acesso público"** marcado e o controle de acesso **uniforme**.
+   - Clique em **Criar**.
+3. **Abrir o Cloud Shell:** ícone `>_` no topo do console (é um terminal no navegador, já com o seu login). Rode `gcloud config set project sistema-fb-4cce5`.
+4. **Nome exato do bucket do Storage:** Console do Firebase › Storage. O topo mostra `gs://...`, provavelmente `sistema-fb-4cce5.firebasestorage.app`.
+5. **Exportar o Firestore:**
+   `gcloud firestore export gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD`
+   O comando espera terminar. Pela tela, o caminho é: Firestore › Importar/exportar › Exportar › Todo o banco de dados.
+6. **Copiar os arquivos do Storage:**
+   `gcloud storage cp -r "gs://BUCKET-DO-STORAGE/*" gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/`
+7. **(Opcional) Cópia fora do Google:** no Cloud Shell, rode
+   `gcloud storage cp -r gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD ~/storage && cd ~ && zip -qr storage.zip storage`
+   e baixe o zip pelo menu ⋮ › **Baixar**. Guarde junto com a pasta `Backups` local (tem dados de clientes).
+
+### P1. Conferir que terminou corretamente
+
+- **Firestore:**
+  `gcloud firestore operations list --limit=1 --format="table(metadata.operationState,metadata.progressDocuments.completedWork,metadata.endTime)"`
+  Esperado: **SUCCESSFUL**, com a quantidade de documentos.
+  Depois rode `gcloud storage ls gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD/`. Esperado: um arquivo `.overall_export_metadata` e a pasta `all_namespaces/`.
+- **Storage:** as duas contagens e os dois tamanhos precisam ser **iguais**.
+  - `gcloud storage ls -r "gs://BUCKET-DO-STORAGE/**" | wc -l` e `gcloud storage ls -r "gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/**" | wc -l`
+  - `gcloud storage du -s gs://BUCKET-DO-STORAGE` e `gcloud storage du -s gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD`
+- **Metadados preservados:** `gcloud storage objects describe` sobre um arquivo da cópia em `chat/` deve mostrar `firebaseStorageDownloadTokens`. **Não me mande esse valor**: ele é o "token" do link.
+
+### Como se restauraria (só explicação; não execute)
+
+- **Firestore:** `gcloud firestore import gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD` grava **por cima** dos documentos com o mesmo ID e **não apaga** os criados depois.
+  - Restaurar o banco inteiro desfaria o que mudou depois, como aprovações, acessos e tarefas. Por isso é só para desastre.
+  - Para recuperar algo pontual, importe num **projeto de teste** e copie só o necessário.
+  - A importação **não** mexe nas regras, e as regras antigas **não** devem voltar.
+- **Storage:** `gcloud storage cp -r "gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/*" gs://BUCKET-DO-STORAGE/` recria os arquivos com os mesmos metadados. Os links com o mesmo token voltam a abrir.
+- **Código, regras de hoje e dados privados:** pasta local `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01` (P3), com `LEIA-ME.txt`.
+
+### P2. Acesso de recuperação (só olhar, sem alterar)
+
+1. **Authentication › Users:** procure o seu e-mail e copie a coluna **UID do usuário**. Faça o mesmo com o **e-mail do robô**, o mesmo configurado no `credenciais.env` do PC do escritório (não abra nem compartilhe a senha). Anote as duas UIDs no registro (seção 5). Elas não são segredo.
+2. **Firestore Database › Dados › `users` › documento com a sua UID:** confira `role = "admin"`. O campo `acesso` ainda não existe, e isso é normal antes de E3. Passe o mouse sobre um campo: o ícone de lápis aparece. **Não salve nada.**
+3. **⚙ Configurações do projeto › Usuários e permissões:** o seu e-mail precisa ter o papel **Proprietário**. Anote também quem mais tem Proprietário ou Editor, para revisão.
+4. **Firestore › Regras e Storage › Regras:** abrem, e o botão **Publicar** existe. **Não clique.**
+5. **Cloud Shell** abre (usado em P1): sinal de que você tem o acesso necessário para restaurar.
