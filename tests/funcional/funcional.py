@@ -94,6 +94,8 @@ class Site(http.server.SimpleHTTPRequestHandler):
             caminho += 'index.html'
         if caminho.endswith('.html'):
             arq = os.path.join(RAIZ, caminho.lstrip('/').replace('/', os.sep))
+            if caminho == '/tools/chat/index.html' and os.environ.get('CHAT_HTML'):
+                arq = os.environ['CHAT_HTML']   # controle: versão antiga do Chat, para provar que o teste de XSS detecta a falha
             if os.path.isfile(arq):
                 html = io.open(arq, encoding='utf-8-sig').read()
                 html = SDK_RE.sub(r'\1<script src="/__emuladores.js"></script>', html, count=1)
@@ -336,6 +338,15 @@ def semear():
                                'titulo': 'Conversa fictícia', 'atualizadoEm': {'__ts__': '2026-10-01T12:00:00Z'}, 'ultimaMensagemEm': {'__ts__': '2026-10-01T12:00:00Z'}})
     gravar('conversas/convA/mensagens/m-antiga', {'autorUid': U['membro'], 'tipo': 'documento', 'documentoUrl': link_antigo,
                                                   'documentoNome': 'anexo-antigo.pdf', 'documentoTamanho': len(PDF_FALSO), 'texto': '', 'criadoEm': {'__ts__': '2026-10-01T12:00:00Z'}})
+    # mensagens antigas JÁ GRAVADAS no banco: formato antigo (base64) legítimo e uma maliciosa (gravada antes da correção)
+    gravar('conversas/convA/mensagens/m-antiga-base64', {'autorUid': U['colega'], 'tipo': 'documento', 'documentoBase64': 'data:application/pdf;base64,' + base64.b64encode(PDF_FALSO).decode(),
+                                                         'documentoNome': 'anexo-base64-antigo.pdf', 'documentoTamanho': len(PDF_FALSO), 'texto': '', 'criadoEm': {'__ts__': '2026-09-01T12:00:00Z'}})
+    gravar('conversas/convA/mensagens/m-antiga-foto', {'autorUid': U['colega'], 'tipo': 'foto', 'fotoBase64': 'data:image/jpeg;base64,' + base64.b64encode(JPG_FALSO).decode(),
+                                                       'texto': '', 'criadoEm': {'__ts__': '2026-09-01T12:01:00Z'}})
+    gravar('conversas/convA/mensagens/m-antiga-xss', {'autorUid': U['colega'], 'tipo': 'documento', 'documentoUrl': 'javascript:window.__xssAntigo=1', 'documentoNome': 'malicioso',
+                                                      'texto': '', 'criadoEm': {'__ts__': '2026-09-01T12:02:00Z'}})
+    gravar('conversas/convA/mensagens/m-antiga-xss2', {'autorUid': U['colega'], 'tipo': 'foto', 'fotoUrl': 'https://x.example/a.jpg" onerror="window.__xssAntigo=2',
+                                                       'texto': '', 'criadoEm': {'__ts__': '2026-09-01T12:03:00Z'}})
     gravar('conversas/convB', {'participantes': [U['colega'], U['vetudo']], 'criadoPor': U['colega']})
     comunicados = re.findall(r"^\s*id:\s*'([^']+)'", io.open(os.path.join(RAIZ, 'comunicados.js'), encoding='utf-8').read(), re.M)
     for k, uid in U.items():
@@ -517,6 +528,15 @@ def main():
             esperar(pch, "document.querySelector('.conv-item[data-id=\"convA\"]') !== null", 25000)
             pch.click('.conv-item[data-id="convA"]')
             caso(G, 'chat: anexo antigo aparece na conversa', esperar(pch, "document.querySelector('a.msg-doc') !== null", 15000))
+            pch.wait_for_timeout(2000)
+            caso(G, 'chat (mensagens antigas): documento em base64 continua com link para baixar',
+                 pch.evaluate("Array.from(document.querySelectorAll('a.msg-doc')).some(a => (a.getAttribute('href') || '').startsWith('data:application/pdf'))"))
+            caso(G, 'chat (mensagens antigas): foto em base64 continua aparecendo',
+                 pch.evaluate("Array.from(document.querySelectorAll('img.msg-photo')).some(i => (i.getAttribute('src') || '').startsWith('data:image/jpeg'))"))
+            caso(G, 'chat (mensagem antiga maliciosa já gravada): link javascript: não vira link',
+                 pch.evaluate("!Array.from(document.querySelectorAll('a.msg-doc')).some(a => (a.getAttribute('href') || '').toLowerCase().startsWith('javascript'))"))
+            caso(G, 'chat (mensagem antiga maliciosa já gravada): aspas não injetam onerror e nada executa',
+                 pch.evaluate("window.__xssAntigo === undefined && !document.querySelector('img.msg-photo[onerror]')"))
             r = requests.get(link_antigo)
             caso(G, 'chat: link ANTIGO (token já emitido) continua abrindo — risco documentado', r.status_code == 200)
             pdf_novo = os.path.join(pasta_priv, 'anexo-novo.pdf'); io.open(pdf_novo, 'wb').write(PDF_FALSO)

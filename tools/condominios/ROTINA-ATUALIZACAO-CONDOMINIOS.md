@@ -53,7 +53,7 @@ em `README-SETUP.md` do repositório raiz — procure por `condoAprovadores` e
 no console do Firebase** para isso funcionar em produção):
 
 - **`condoAprovadores/{slug}`** — um aprovador por condomínio (`slug` =
-  nome do condomínio simplificado, ex. `mirante-das-brisas`, gerado pela
+  nome do condomínio simplificado, ex. `condominio-exemplo`, gerado pela
   função `slugify()`). Só admin do Portal atribui, pela própria aba
   "Notificações Prontas" (botão "⚙ Atribuir aprovadores por condomínio",
   só aparece para quem tem `role:'admin'` em `users/{uid}`).

@@ -141,3 +141,27 @@ Depois:
 - peça ao suporte do GitHub para remover as visualizações em cache e os commits órfãos (*"Removing sensitive data from a repository"*);
 - reclone em todos os PCs: o do escritório (robô Astrea) e este;
 - apague as branches remotas antigas que não forem mais usadas.
+
+## 8. Verificações controladas depois da publicação (o que depende de serviço real)
+
+Estas funções usam serviços que não existem no ambiente de teste. Confira cada uma logo depois da etapa indicada, com **dados fictícios** e uma pessoa de cada vez.
+
+| Função | Por que não foi testada aqui | Verificação controlada | Quando |
+|---|---|---|---|
+| **Integração Gmail** (`tools/gmail`) | Login direto no Google (Google Identity Services); não usa Firestore nem as regras. A página abriu sem erros nos 3 perfis. | Abra a aba Gmail, entre com a conta do escritório e liste a caixa de entrada. Esperado: igual a hoje. | E11 |
+| **Petições e Documentos no Google Docs** | O arquivo é criado no Drive da própria pessoa (login Google); só o histórico usa o Firestore, e esse foi testado. | Gere uma petição fictícia ("Teste – apagar") e confira: abre no Docs e aparece no histórico. Depois apague o documento e o item do histórico. | E11 |
+| **Conferência de e-mails: robô** (Apps Script + conta de serviço) | O robô grava com credencial do Google, que não passa pelas regras. A tela (ler, marcar respondido, nota, reatribuir) foi testada. | Depois da próxima rodada do robô, confira a "última atualização" na aba e marque um e-mail como respondido. | Dia seguinte a E4 |
+| **Senhas: sincronização com a planilha** (Apps Script) | Grava com o OAuth do dono da planilha, fora das regras. A leitura no portal foi testada. | Rode a sincronização na planilha e confira a data em Gestão › Senhas. | Dia seguinte a E4 |
+| **Robô do Astrea**, login no Astrea e exportação | Exige as credenciais reais. A gravação no Firebase foi testada com o `importar.py` real. | "Executar robô agora" (E11): o log mostra a UID e a gravação. | E11 |
+| **Assistente IA com o Worker real** | O emulador não emite tokens assinados pelo Google. O Worker foi testado com tokens assinados por chave de teste e a página com Worker simulado. | Uma pergunta como membro (deve responder) e uma tentativa sem login (deve recusar). | E7 |
+| **Revogar o token de um anexo antigo do Chat** | O emulador do Storage aceita a troca do token, mas não invalida o link antigo; só o serviço real confirma. | Em Storage › Arquivos, envie um PDF de teste numa conversa de teste e copie o link. Use "Revogar token" e confira: o link antigo dá erro; o autor ainda abre pelo portal; o outro participante não. Depois apague o arquivo de teste. | E10 |
+| **Exclusão do login (Auth)** | O Worker de exclusão (`admin-worker`) não está publicado. | Depois de publicá-lo: exclua um usuário de teste e confira em Authentication que o login sumiu. | Quando publicar |
+
+## 9. Como aprovar um administrador que não tem abas
+
+As regras dispensam o administrador da exigência de abas. As regras exigem `role = "admin"` **e** `acesso = "ativo"`. Os testes cobrem o admin com `tabs: []` funcionando e o "admin pendente" sem poder nenhum.
+
+- **Novo administrador:** em Administração › Usuários › Novo usuário, escolha o papel **Administrador**. A conta criada pelo admin já nasce com `acesso = "ativo"`, e não precisa de abas.
+- **Pessoa que já existe e vai virar administradora:** em Administração › Usuários › **Dados**, troque o Papel para Administrador e salve. Se a linha mostrar "Aguardando aprovação", clique em **Aprovar acesso**.
+- **O seu próprio cadastro, ou se nenhum admin conseguir entrar:** pelo console do Firestore, em `users/{UID}`, `role = "admin"` e `acesso = "ativo"`. A tela não deixa a pessoa mudar o próprio papel, e as regras também não.
+- **Nunca** dê papel de admin só para "liberar uma tela". Para uma ferramenta, libere a aba e mantenha o papel membro ou gestor.

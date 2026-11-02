@@ -219,6 +219,13 @@ service cloud.firestore {
                             || (request.resource.data.motivoReprovacao is string && request.resource.data.motivoReprovacao.size() > 0))
                       )
                     );
+      // histórico da tarefa (Minhas Anotações › registrarHistorico): remetente ou destinatário só acrescentam
+      // ao campo historico. Antes não havia regra para isso e o histórico nunca era gravado (erro silencioso).
+      allow update: if isAtivo()
+                    && (resource.data.remetenteUid == request.auth.uid || resource.data.destinatarioUid == request.auth.uid)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['historico'])
+                    && request.resource.data.historico is list
+                    && request.resource.data.historico.size() > resource.data.get('historico', []).size();
       allow delete: if isAtivo() && (resource.data.remetenteUid == request.auth.uid || isAdmin());
     }
     // Comunicados (lista em comunicados.js): cada pessoa grava só a própria ciência, uma vez, com a hora do servidor.
