@@ -143,9 +143,14 @@
     background:#000 url('assets/login-bg.jpg') no-repeat center center;background-size:cover;
   }
   .login-left{
-    position:relative;flex:1 1 52%;min-width:0;display:flex;flex-direction:column;justify-content:center;
-    padding:48px clamp(24px,6vw,96px);overflow:hidden;
+    position:relative;flex:1 1 52%;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;
+    padding:48px clamp(24px,6vw,96px);overflow-x:hidden;overflow-y:auto;
+    /* o cadastro é mais alto que a tela: a coluna rola (html/body não rolam) */
+    max-height:100vh;max-height:100dvh;box-sizing:border-box;
   }
+  /* centraliza na vertical quando cabe; quando não cabe, as margens zeram e o topo continua acessível pela rolagem */
+  .login-left > :first-child{margin-top:auto;}
+  .login-left > :last-child{margin-bottom:auto;}
   .login-right{
     position:relative;flex:1 1 48%;min-width:0;
   }
@@ -1226,7 +1231,7 @@
         <div class="field">
           <label>RG<span class="obrig">*</span></label>
           <div style="display:flex;gap:8px;">
-            <input type="text" inputmode="numeric" id="register-rg" placeholder="Número" style="flex:1.6;" required>
+            <input type="text" inputmode="numeric" id="register-rg" placeholder="Número (se houver)" style="flex:1.6;">
             <input type="text" id="register-rg-orgao" placeholder="Órgão expedidor" style="flex:1.3;" required>
             <select id="register-rg-uf" style="flex:.9;" required>
               <option value="" disabled selected>UF</option>
@@ -1384,7 +1389,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v178</span>
+      <span class="version-tag">v179</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2432,7 +2437,7 @@
     const rgNumero = els.registerRg.value.trim();
     const rgOrgao = els.registerRgOrgao.value.trim();
     const rgUf = els.registerRgUf.value;
-    const rg = rgNumero && rgOrgao && rgUf ? (rgNumero + ' ' + rgOrgao + '/' + rgUf) : '';
+    const rg = montarRG(rgNumero, rgOrgao, rgUf);
     const oabNumero = els.registerOab.value.trim();
     const oabUf = els.registerOabUf.value;
     const oab = oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero;
@@ -2449,7 +2454,6 @@
       { el: els.registerName, ok: !!primeiroNome },
       { el: els.registerSurname, ok: !!sobrenome },
       { el: els.registerCpf, ok: !!cpf },
-      { el: els.registerRg, ok: !!rgNumero },
       { el: els.registerRgOrgao, ok: !!rgOrgao },
       { el: els.registerRgUf, ok: !!rgUf },
       { el: els.registerEstadoCivil, ok: !!estadoCivil },
@@ -4792,10 +4796,15 @@
     });
   });
 
+  // RG gravado como "número órgão/UF"; a CIN nova não tem número de RG, então pode vir só "órgão/UF"
   function parseRG(v){
-    const m = /^(\d+)\s+(.+)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
-    if (m) return { numero: m[1], orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
+    const m = /^(?:(\d+)\s+)?(\D.*?)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1] || '', orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
     return { numero: apenasDigitos(v), orgao: '', uf: '' };
+  }
+  function montarRG(numero, orgao, uf){
+    if (orgao && uf) return (numero ? numero + ' ' : '') + orgao + '/' + uf;
+    return numero || '';
   }
   function parseOAB(v){
     const m = /^(\d+)\s*\/\s*([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
@@ -4903,7 +4912,7 @@
 
     const usersPatch = {
       cpf: document.getElementById('dados-cpf').value.trim(),
-      rg: rgNumero && rgOrgao && rgUf ? (rgNumero + ' ' + rgOrgao + '/' + rgUf) : rgNumero,
+      rg: montarRG(rgNumero, rgOrgao, rgUf),
       oab: oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero,
       estadoCivil: document.getElementById('dados-estado-civil').value,
       telefone: document.getElementById('dados-telefone').value.trim(),

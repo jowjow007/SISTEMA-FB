@@ -835,10 +835,15 @@
   function ligarMascaraMoeda(input){ input.addEventListener('input', function(){ input.value = formatarCampoMoeda(input.value); }); }
   function ligarSomenteDigitos(input){ input.addEventListener('input', function(){ input.value = apenasDigitos(input.value); }); }
   function ligarSomenteLetras(input){ input.addEventListener('input', function(){ input.value = apenasLetras(input.value).toUpperCase(); }); }
+  // RG gravado como "número órgão/UF"; a CIN nova não tem número de RG, então pode vir só "órgão/UF"
   function parseRG(v){
-    const m = /^(\d+)\s+(.+)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
-    if (m) return { numero: m[1], orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
+    const m = /^(?:(\d+)\s+)?(\D.*?)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1] || '', orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
     return { numero: apenasDigitos(v), orgao: '', uf: '' };
+  }
+  function montarRG(numero, orgao, uf){
+    if (orgao && uf) return (numero ? numero + ' ' : '') + orgao + '/' + uf;
+    return numero || '';
   }
   function parseOAB(v){
     const m = /^(\d+)\s*\/\s*([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
@@ -1526,7 +1531,7 @@
 
     const usersPatch = {
       cpf: els.editCpf.value.trim(),
-      rg: rgNumero && rgOrgao && rgUf ? (rgNumero + ' ' + rgOrgao + '/' + rgUf) : rgNumero,
+      rg: montarRG(rgNumero, rgOrgao, rgUf),
       oab: oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero,
       estadoCivil: els.editEstadoCivil.value,
       telefone: els.editTelefone.value.trim(),
