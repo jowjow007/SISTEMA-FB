@@ -29,7 +29,7 @@ Tudo fica em `tools/condominios/index.html`, num único arquivo. Estrutura:
   Administrativo, Contrato de Honorários — data no formato DD.MM.AA, 2
   dígitos de ano, confirmado no PDF real do POP) e um 4º tipo "Notificação
   Condominial", corrigido em 2026-08-17 a partir de nomes de arquivo reais
-  vistos na pasta de modelos do Mirante das Brisas: padrão
+  vistos na pasta de modelos de um dos condomínios: padrão
   `(COND. {NOME} X T{TORRE}, APTO {APTO}) #{OCORRÊNCIA} – {TÍTULO} - {CRIADOR} - {DD.MM.AAAA}`
   — sem a palavra "NOTIFICAÇÃO" (a tentativa anterior, sem evidência real,
   tinha isso errado) e com ano de 4 dígitos (diferente do padrão de 2 dígitos
@@ -64,44 +64,48 @@ no console do Firebase** para isso funcionar em produção):
   passada), `criadoPorUid`/`criadoPorNome`/`criadoEm`,
   `decididoPorUid`/`decididoPorNome`/`decididoEm`, `motivoRejeicao`.
 
-**Modelos reais do Mirante das Brisas (2026-08-17)**: o usuário compartilhou uma
-pasta do Google Drive com ~40 notificações reais já enviadas para esse
-condomínio, organizadas em 16 subpastas por categoria de infração. O texto
-jurídico fixo de cada categoria (fundamentação, artigos citados, chamada
-"NOTIFICA-SE") foi extraído verbatim desses documentos reais e vive em
-`MIRANTE_CATEGORIAS`, com `[DATA]`, `[HORA]` e `[DESCREVER: ...]` como os
-pontos que variam de caso a caso. O bloco "DO RECURSO" + assinaturas + rodapé
-(`MIRANTE_RODAPE_TPL`) é idêntico em todos os ~40 exemplos reais, por isso é
-compartilhado por todas as categorias. O bloco de penalidade
-(`PENALIDADE_ADVERTENCIA_TPL` / `penalidadeMultaTpl()`) segue o campo "Tipo"
-já existente no formulário.
+**Modelos de notificação por condomínio (desde 02/11/2026, fora do HTML público)**:
+os nomes dos condomínios, as regras especiais, os avisos e os modelos reais de
+notificação (texto jurídico de cada categoria, cabeçalho e o rodapé com as
+assinaturas) **não ficam mais no `index.html`**, que é público no GitHub Pages.
+Ficam no campo `procedimentos` do arquivo local `privado/condominios.json`, que o
+admin envia em `tools/admin-seguranca` (passo 4) para `dadosPrivados/condominios`,
+documento que só a equipe ativa lê. Formato:
+
+```json
+"procedimentos": {
+  "avisos":          [{ "condominio": "...", "texto": "..." }],
+  "regrasEspeciais": [{ "condominio": "...", "regra": "..." }],
+  "modelos": [{ "condominio": "...", "cabecalho": "... {TORRE} ... {APTO} ...",
+                "rodape": "... {DATA_NOTIF} ...",
+                "categorias": [{ "id": "...", "label": "...", "valorSugerido": "...", "corpo": "... [DATA] [HORA] [DESCREVER: ...] ..." }],
+                "mapaCategorias": { "<id em CATEGORIAS_INFRACAO>": "<id da categoria do modelo>" } }]
+}
+```
+
+Tudo é exibido com `escapeHtml` (texto, não HTML). O bloco de penalidade
+(`PENALIDADE_ADVERTENCIA_TPL` / `penalidadeMultaTpl()`) é genérico e continua
+no código, seguindo o campo "Tipo" do formulário.
 
 **Lista única de categorias, válida para todos os condomínios (2026-08-17,
 pedido explícito do usuário)**: `CATEGORIAS_INFRACAO` tem as ~42 categorias
 que o usuário ditou (USO INADEQUADO DA INFRAESTRUTURA, ADEQUAÇÃO, ALTA
 VELOCIDADE, ... — ver o array no código para a lista completa), na mesma
 ordem, com `id` gerado por `slugify()`. O campo "Categoria da infração"
-aparece sempre, para qualquer condomínio selecionado — não só Mirante das
-Brisas. `CATEGORIA_PARA_MIRANTE` liga 13 dessas categorias aos modelos reais
-já existentes (ex.: `'alta-velocidade': 'velocidade'`, `'criancas': 'criancas'`)
-via a função `getMirCategoria(condominio, categoriaId)`, que só retorna algo
-quando `condominio === 'Mirante das Brisas'` **e** a categoria está mapeada —
-as outras ~29 categorias (e todos os outros 9 condomínios, em qualquer
-categoria) mostram o aviso "ainda não temos modelo pronto" e o texto continua
-manual. **O usuário disse que vai mandar as convenções e regimentos de todos
-os condomínios** para virarem modelos de verdade — quando isso acontecer, o
-padrão é: extrair o texto jurídico fixo de cada categoria (igual foi feito
-para o Mirante), colocar num array `{CONDOMINIO}_CATEGORIAS` e um mapeamento
-`CATEGORIA_PARA_{CONDOMINIO}`, e estender `getMirCategoria` (bom candidato a
-renomear para algo tipo `getCategoriaTemplate` nesse momento, já que deixa de
-ser exclusivo do Mirante) para checar o condomínio certo.
+aparece sempre, para qualquer condomínio selecionado. `getCategoriaModelo(condominio,
+categoriaId)` só retorna um texto quando o condomínio tem modelo em
+`procedimentos.modelos` **e** a categoria está em `mapaCategorias`; nos demais casos
+aparece o aviso "ainda não temos modelo pronto" e o texto continua manual. Para
+incluir o modelo de outro condomínio: acrescentar um item em `procedimentos.modelos`
+no `privado/condominios.json` e reenviar o arquivo pela página de administração.
+**Nunca** colocar nomes de condomínios, síndicos ou textos de modelos no HTML.
 
 **Campos estruturados dos fatos (sem IA)**: perguntado explicitamente, o
 usuário preferiu **não** integrar uma IA de verdade para reescrever texto
 livre em português formal (isso exigiria backend novo — ex. Cloudflare
 Workers — mais uma chave de API da Anthropic paga por uso; ver decisão em
 2026-08-17). Em vez disso, quando existe modelo real para a categoria
-(`getMirCategoria` retorna algo), aparecem os campos "Data do fato", "Hora do
+(`getCategoriaModelo` retorna algo), aparecem os campos "Data do fato", "Hora do
 fato" e "O que aconteceu (em poucas palavras)" — o placeholder desse último
 campo é preenchido dinamicamente com o texto de exemplo que já estava dentro
 do `[DESCREVER: ...]` do modelo, para orientar o usuário sobre o nível de

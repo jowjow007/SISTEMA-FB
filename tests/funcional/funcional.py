@@ -11,6 +11,7 @@ Uso (de dentro de tests/):
   firebase emulators:exec --only auth,firestore,storage --project demo-portal-func "python funcional/funcional.py"
 Variáveis: REGRAS_ANTIGAS=<arquivo .rules> (regras de antes da revisão, para o passo da migração).
 """
+import urllib.request
 import base64, http.server, io, json, os, re, socketserver, sys, threading, time, urllib.parse, importlib.util
 import requests
 from playwright.sync_api import sync_playwright
@@ -378,7 +379,16 @@ def dados_privados_ficticios():
         stats = None
     io.open(os.path.join(pasta, 'numeros-stats.json'), 'w', encoding='utf-8').write(json.dumps(stats))
     condo = {'condominios': [{'nome': 'Condomínio Fictício', 'sindico': 'Síndico Fictício', 'plataforma': 'Teste', 'cnpj': '', 'endereco': '', 'nota': 'Observação fictícia'}],
-             'relatorios': {'Condomínio Fictício': [{'periodo': 'Out/2026', 'titulo': 'Relatório fictício', 'desc': 'teste', 'pdf': 'relatorio-ficticio.pdf'}]}}
+             'relatorios': {'Condomínio Fictício': [{'periodo': 'Out/2026', 'titulo': 'Relatório fictício', 'desc': 'teste', 'pdf': 'relatorio-ficticio.pdf'}]},
+             # nomes de condomínios e procedimentos internos: só no documento protegido, nunca no HTML público
+             'procedimentos': {
+                 'avisos': [{'condominio': 'Condomínio Fictício', 'texto': 'aviso fictício de modelo próprio'}],
+                 'regrasEspeciais': [{'condominio': 'Condomínio Fictício', 'regra': 'Regra fictícia <b>sem HTML</b>'}],
+                 'modelos': [{'condominio': 'Condomínio Fictício', 'cabecalho': 'CABEÇALHO FICTÍCIO {TORRE}/{APTO}' + chr(10) * 2,
+                              'rodape': chr(10) * 2 + 'RODAPÉ FICTÍCIO {DATA_NOTIF}',
+                              'categorias': [{'id': 'cat-ficticia', 'label': 'Categoria fictícia', 'valorSugerido': '1,00',
+                                              'corpo': 'Corpo fictício em [DATA] às [HORA]: [DESCREVER: o que houve].'}],
+                              'mapaCategorias': {'estacionamento': 'cat-ficticia'}}]}}
     io.open(os.path.join(pasta, 'condominios.json'), 'w', encoding='utf-8').write(json.dumps(condo, ensure_ascii=False))
     io.open(os.path.join(pasta, 'relatorio-ficticio.pdf'), 'wb').write(PDF_FALSO)
     return pasta, stats is not None
@@ -523,6 +533,19 @@ def main():
             with pc.expect_download(timeout=20000) as dl:
                 pc.evaluate("baixarArquivoPrivado('relatorio-ficticio.pdf', 'relatorio-ficticio.pdf')")
             caso(G, 'Condomínios: relatório em PDF baixa do Firestore', dl.value.suggested_filename == 'relatorio-ficticio.pdf')
+            fonte = urllib.request.urlopen(BASE + '/tools/condominios/index.html').read().decode('utf-8')
+            caso(G, 'Condomínios: HTML público sem modelos nem regras por condomínio embutidos',
+                 '_RODAPE_TPL' not in fonte and '_HEADER_TPL' not in fonte and "specialRule('" not in fonte
+                 and not re.search(r"Atenção — [^'<]", fonte) and 'PROCEDIMENTOS.modelos' in fonte)
+            pc.evaluate("state.section = 'notificacoes'; render();")
+            caso(G, 'Condomínios: regras especiais e aviso vêm do Firestore (texto escapado)',
+                 esperar(pc, "document.body.innerHTML.includes('Regra fictícia &lt;b&gt;sem HTML&lt;/b&gt;')", 10000)
+                 and pc.evaluate("state.section = 'brcondos'; render(); document.body.textContent.includes('aviso fictício de modelo próprio')"))
+            texto = pc.evaluate("""() => { state.section = 'gerar-notificacao'; gerarState.condSel = 'Condomínio Fictício'; gerarState.categoriaSel = 'estacionamento';
+                gerarState.tipoSel = 'Advertência'; gerarState.draft = { torre: '1', apto: '101', dataFato: '2026-11-02', horaFato: '10h', oQueAconteceu: 'fato fictício' };
+                gerarTextoDoModelo(); return gerarState.draft.texto || ''; }""")
+            caso(G, 'Condomínios: gera a notificação a partir do modelo protegido',
+                 texto.startswith('CABEÇALHO FICTÍCIO 1/101') and 'Corpo fictício em 02/11/2026 às 10h: fato fictício.' in texto and 'RODAPÉ FICTÍCIO' in texto and 'DAS PENALIDADES' in texto, texto[:200])
             pc.close()
             pch = cm.new_page(); pch.on('dialog', aceitar); pch.goto(BASE + '/tools/chat/index.html')
             esperar(pch, "document.querySelector('.conv-item[data-id=\"convA\"]') !== null", 25000)
@@ -581,7 +604,7 @@ def main():
             mc.close(); mc = None
             pcc = cc.new_page(); pcc.goto(BASE + '/tools/condominios/index.html')
             esperar(pcc, "typeof dadosCondoStatus !== 'undefined' && dadosCondoStatus !== 'carregando'", 25000)
-            caso(G, 'Condomínios: lista de clientes/relatórios fica restrita à equipe', pcc.evaluate("dadosCondoStatus") == 'sem-acesso' and pcc.evaluate("CONDOMINIOS.length") == 0, pcc.evaluate("dadosCondoStatus"))
+            caso(G, 'Condomínios: lista de clientes/relatórios fica restrita à equipe', pcc.evaluate("dadosCondoStatus") == 'sem-acesso' and pcc.evaluate("CONDOMINIOS.length") == 0 and pcc.evaluate("PROCEDIMENTOS.modelos.length + PROCEDIMENTOS.regrasEspeciais.length") == 0, pcc.evaluate("dadosCondoStatus"))
             caso(G, 'não lê painel de Números (SDK direto)', sdk(pcc, "await firebase.firestore().doc('dadosPrivados/numerosStats').get()").startswith('erro:permission-denied'))
             caso(G, 'não lê agenda Astrea (SDK direto)', sdk(pcc, f"await firebase.firestore().doc('astreaDiario/{time.strftime('%Y-%m-%d')}').get()").startswith('erro:permission-denied'))
             caso(G, 'não se aprova nem muda de papel (SDK direto)', sdk(pcc, f"await firebase.firestore().doc('users/{U['cliente']}').update({{role:'admin'}})").startswith('erro:permission-denied'))
