@@ -363,33 +363,48 @@ Objetivo: descobrir **qual conta o robô do escritório usa** e **se ele roda to
 **Correção da captura de log (preparada nesta branch; não publicada):** o `importar.py` passa a gravar o próprio log em `scripts\astrea-importer\logs\importar-AAAA-MM-DD.txt`, com o erro completo (traceback), e avisa dos argumentos de redirecionamento ignorados.
 - Funciona **com a tarefa do jeito que está**: a configuração da tarefa não muda.
 - Só chega ao PC do escritório pelo `git pull` automático, **depois** do merge na `main`.
-- Teste local: 12 de 12, `tests/djen/testar-diagnostico-astrea.py`.
+- Teste local: 25 de 25, `tests/djen/testar-diagnostico-astrea.py` (robô falso, Firestore falso em 127.0.0.1, repositório git temporário com alteração local).
 
 ### Execução supervisionada (antes da publicação, com o arquivo copiado à mão)
 
-O arquivo é `scripts/seguranca/diagnostico_astrea.py`. Copie **só ele** para `C:\Users\FB\diagnostico-astrea\`, **fora** do repositório, para não alterar a pasta que o `git pull` atualiza. Rode-o no PowerShell do PC do escritório, com o **mesmo python.exe da tarefa**. Para descobrir qual é, rode `(Get-ScheduledTask AstreaImportDiario).Actions | Format-List Execute`.
+O arquivo é `scripts/seguranca/diagnostico_astrea.py`. Copie **só ele** para `C:\Users\FB\diagnostico-astrea\`, **fora** do repositório, substituindo a versão anterior. Rode no PowerShell do PC do escritório, com o **mesmo python.exe da tarefa**, fora das 7h e longe da meia-noite (a data "de hoje" é a do PC no início da execução).
 
-Esse arquivo:
-- **não faz `git pull`**: desliga a atualização automática antes de carregar o robô;
-- **não altera a tarefa**;
-- **não imprime senhas nem e-mails completos**;
-- grava tudo em `diagnostico-AAAAMMDD-HHMMSS.txt`, na mesma pasta.
+Em todas as fases, o diagnóstico:
+- **não faz `git pull`**: desliga a atualização automática antes de carregar o robô e não roda o bloco principal dele;
+- **confere no fim que o repositório do robô ficou igual**: o mesmo commit e os mesmos arquivos alterados localmente, listados só pelo nome. Se algo mudar, termina com código 3;
+- **não cria `__pycache__`** na pasta do robô (a primeira versão, usada na Fase A, pode ter criado; veja abaixo);
+- **trava a rede do robô** (`requests`): bloqueia e registra qualquer chamada fora do permitido na fase;
+- não altera a tarefa e não imprime senhas, e-mails completos, UID completa nem registros da agenda (só contagens).
 
-Faça fora das 7h, para não coincidir com a tarefa diária.
-
-| Fase | Comando | O que acontece **no Astrea** | O que acontece **no Firebase** | No PC |
+| Fase | Comando | Astrea | Firebase | No PC |
 |---|---|---|---|---|
-| **A** (padrão) | `python diagnostico_astrea.py` | Abre o Chromium **visível** e **entra** com a conta do escritório configurada no `credenciais.env` (fica um registro de acesso no Astrea). Abre a agenda e **exporta a planilha**. Só lê: não altera tarefas, prazos nem eventos. | **Nada**: sem login, sem leitura, sem gravação. O teste confirma que o Firebase não é chamado. | Baixa a planilha para `Downloads\astrea-import` (não arquiva) e grava o log de diagnóstico. |
-| **B** (`--completo`, **só com a sua autorização**) | `python diagnostico_astrea.py --completo` | O mesmo da Fase A. | **Login** com `robo.astrea@…` (atualiza o "último login"). **Lê** a agenda dos dias anteriores (`astreaDiario`) para calcular a diferença. **Grava** `astreaDiario/{hoje}` (substitui o documento do dia inteiro pela agenda real) e `astreaDelta/{hoje}`. É exatamente o que a tarefa das 7h faz quando funciona. | Arquiva a planilha, como no uso normal. |
+| **A** ✓ **aprovada em 02/11/2026** | `python diagnostico_astrea.py` | Login e exportação da agenda (só leitura). | **Nada.** | Planilha mantida em `Downloads\astrea-import`. |
+| **B1** (só leitura) | `python diagnostico_astrea.py --leitura` | O mesmo da Fase A. | **Login** com `robo.astrea@…` (atualiza o "último login"). **Lê só** `astreaDiario` e `astreaDelta`: se existem `astreaDiario/{hoje}`, `astreaDelta/{hoje}` e `astreaDiario/{ontem}` (total e data de atualização), e quais são os 5 dias mais recentes de `astreaDiario`. Calcula o delta que seria gravado (só totais). **Não grava nada.** | Planilha não arquivada. |
+| **B2** (`--completo`, **só com a sua autorização**) | `python diagnostico_astrea.py --completo` | O mesmo da Fase A. | Tudo da B1, depois **salva uma cópia local** dos dois documentos de hoje (se existirem) e então **grava**. A trava só permite gravar `astreaDiario/{hoje}` e `astreaDelta/{hoje}`; qualquer outra gravação é bloqueada. No fim, relê e confere o total gravado contra a planilha. | Arquiva a planilha em `historico\`, como no uso normal. Cópias `copia-anterior-*.json` na pasta do diagnóstico, **com dados de clientes**: apagar depois de conferir. |
 
-**O que me mandar:**
-- as linhas `[diagnóstico ...]` do arquivo gerado;
-- o **resultado** (código);
-- se houver erro, o trecho do erro.
+**Fase A (02/11/2026): aprovada**, com código 0.
+- Commit do robô `4d115d5`, com 2 arquivos alterados localmente (preservados).
+- Login e exportação no Astrea funcionaram. A espera pelo arquivo foi de 09:29:50 a 09:35:40.
+- `Agenda.xlsx` de 1.250.162 bytes: 1.676 registros e 15 colunas.
+- O Firebase não foi chamado e a planilha não foi arquivada.
+- **A causa do resultado 1 na tarefa agendada continua não comprovada.** A Fase A só mostra que, rodando à mão, a parte do Astrea funciona.
 
-Antes de mandar, confira se não aparece nenhum dado de cliente. A planilha **não** é impressa, só a contagem de registros.
+**O que a Fase B2 substitui:**
+- **`astreaDiario/{hoje}`** é substituído **por inteiro**: o robô usa PATCH sem máscara de campos. Ficam só os campos `atualizadoEm`, `data`, `registros` (a agenda inteira), `colunas` e `total`. A Agenda e os Números do portal passam a mostrar essa agenda para toda a equipe, que é o mesmo efeito da tarefa das 7h.
+- **`astreaDelta/{hoje}`** é substituído por inteiro **só se existir `astreaDiario/{ontem}`**. Os campos são `data`, `atualizadoEm`, `totalHoje`, `totalOntem` e os novos e concluídos (totais e por responsável). Sem o dia anterior, o robô pula o delta. Um erro no delta só gera um aviso no log, e a conferência da B2 registra se o documento existe.
+- **Nenhum outro documento** é gravado: os dias anteriores não são alterados e nada é apagado.
+
+**Regras em vigor:** a B2 roda com as regras **atuais** de produção, em que qualquer conta logada grava `astreaDiario` e `astreaDelta`. Ela valida o login do robô, a gravação e a conferência, **não** as regras novas. Com as regras novas, a gravação exige `robos/{uid}` (E3b). Por isso a V9 continua necessária depois da publicação.
+
+**Antes da publicação, conferir os 2 arquivos alterados no PC:** a B1 lista os nomes. Se algum deles também mudar na `main` com a publicação (por exemplo, o `importar.py`), o `git pull --ff-only` automático vai **recusar** a atualização (nada se perde, mas o robô segue no código antigo, sem o log próprio). Nesse caso, combinar antes como preservar a alteração local. Um `?? scripts/astrea-importer/__pycache__/` que apareça na lista foi criado pela primeira versão do diagnóstico: não atrapalha o `git pull` e pode ser apagado.
+
+**Ordem:**
+1. B1.
+2. Você revisa as linhas `[diagnóstico …]`.
+3. B2, só com a sua autorização.
+
+Em cada fase, mande só as linhas `[diagnóstico …]`, o resultado (código) e, se houver, o trecho do erro.
 
 **Depois do diagnóstico:**
-- Com o erro real em mãos, preparo a correção (na branch). Ela entra na publicação ou fica registrada como pendência.
-- A Fase B só roda se você autorizar. Ela tem o mesmo efeito de uma execução diária normal: atualiza a Agenda do portal.
+- Se a B2 funcionar à mão, a hipótese principal para o resultado 1 passa a ser a execução pela tarefa: o usuário, a sessão ou o diretório de trabalho com que ela roda. Isso **não** fica comprovado; o log próprio do robô (depois da publicação) mostra o erro real da próxima execução das 7h.
 - **Nenhuma mudança na tarefa agendada** até combinarmos.
