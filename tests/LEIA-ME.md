@@ -40,6 +40,8 @@ REGRAS_ANTIGAS=/caminho/regras-de-antes.rules npm run test:funcional   # requer 
 cd tests
 firebase emulators:exec --only auth,firestore,storage --project demo-portal-func "python funcional/migracao_anexos.py"
 python djen/testar-djen.py      # script real do DJEN numa cópia descartável, com uma API do CNJ falsa
+python djen/testar-diagnostico-astrea.py  # diagnóstico supervisionado do robô (robô e Firestore falsos)
+python djen/testar-delta-astrea.py        # delta da agenda: artefato NaN x null, repetições e a análise só de leitura
 ```
 
 ## Comparar com as regras publicadas hoje

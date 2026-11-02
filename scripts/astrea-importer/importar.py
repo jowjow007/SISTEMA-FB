@@ -264,8 +264,9 @@ def processar_arquivo(caminho: Path) -> list[dict]:
             except Exception:
                 pass
 
-    # Substitui NaN por None (Firestore não aceita NaN)
-    registros = df.where(pd.notnull(df), None).to_dict(orient="records")
+    # Substitui NaN por None (Firestore não aceita NaN). O astype(object) é necessário: sem ele o pandas
+    # devolve NaN de novo nas colunas numéricas/vazias, e a comparação com o dia anterior falhava.
+    registros = df.astype(object).where(pd.notnull(df), None).to_dict(orient="records")
     log(f"Total de registros: {len(registros)}")
     return registros
 
@@ -325,12 +326,23 @@ def get_firebase_token() -> str:
     return dados["idToken"]
 
 
+def _texto(v) -> str:
+    """Valor de célula como texto comparável: vazio, None e NaN viram ''; 123.0 vira '123'; espaços normalizados.
+    Sem isso, uma célula vazia era 'nan' na planilha do dia e '' no dia anterior lido do Firestore (onde NaN é null),
+    e toda tarefa sem número de processo aparecia como concluída e nova ao mesmo tempo."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ''
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return ' '.join(str(v).split())
+
+
 def _chave_tarefa(r: dict) -> str:
     """Chave única para identificar uma tarefa entre dias diferentes."""
     def _get(r, *nomes):
         for k in r:
             if any(n.lower() in k.lower() for n in nomes):
-                return str(r[k] or '')
+                return _texto(r[k])
         return ''
     tipo = _get(r, 'tipo')
     num  = _get(r, 'número', 'numero')
@@ -344,7 +356,7 @@ def _responsaveis_de(r: dict) -> list[str]:
     """Extrai lista de responsáveis de um registro."""
     for k in r:
         if 'responsável' in k.lower() or 'responsavel' in k.lower():
-            v = str(r[k] or '')
+            v = _texto(r[k])
             return [n.strip() for n in v.replace(';', ',').split(',') if n.strip()]
     return []
 
@@ -363,12 +375,17 @@ def buscar_registros_firestore(token: str, data_iso: str) -> list[dict]:
 
 
 def calcular_delta(registros_hoje: list[dict], registros_ontem: list[dict]) -> dict:
-    """Compara dois snapshots e retorna contagens de novos e concluídos por responsável."""
-    chaves_hoje  = {_chave_tarefa(r): r for r in registros_hoje}
-    chaves_ontem = {_chave_tarefa(r): r for r in registros_ontem}
+    """Compara dois snapshots e retorna contagens de novos e concluídos por responsável.
+    Conta repetições: duas tarefas iguais ontem e uma hoje = uma concluída (antes as duas viravam uma só chave)."""
+    grupos_hoje: dict = {}
+    grupos_ontem: dict = {}
+    for r in registros_hoje:
+        grupos_hoje.setdefault(_chave_tarefa(r), []).append(r)
+    for r in registros_ontem:
+        grupos_ontem.setdefault(_chave_tarefa(r), []).append(r)
 
-    novos      = [r for k, r in chaves_hoje.items()  if k not in chaves_ontem]
-    concluidos = [r for k, r in chaves_ontem.items() if k not in chaves_hoje]
+    novos      = [r for k, rs in grupos_hoje.items()  for r in rs[len(grupos_ontem.get(k, [])):]]
+    concluidos = [r for k, rs in grupos_ontem.items() for r in rs[len(grupos_hoje.get(k, [])):]]
 
     def por_resp(lista: list[dict]) -> dict:
         d: dict = {}

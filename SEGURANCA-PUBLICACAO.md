@@ -398,13 +398,72 @@ Em todas as fases, o diagnóstico:
 
 **Antes da publicação, conferir os 2 arquivos alterados no PC:** a B1 lista os nomes. Se algum deles também mudar na `main` com a publicação (por exemplo, o `importar.py`), o `git pull --ff-only` automático vai **recusar** a atualização (nada se perde, mas o robô segue no código antigo, sem o log próprio). Nesse caso, combinar antes como preservar a alteração local. Um `?? scripts/astrea-importer/__pycache__/` que apareça na lista foi criado pela primeira versão do diagnóstico: não atrapalha o `git pull` e pode ser apagado.
 
+**Fase B1 (02/11/2026): aprovada**, com código 0.
+- Login confirmado (a UID começa com `EyREco`). Nenhuma gravação; o repositório ficou inalterado.
+- O `importar.py` está igual ao do commit `4d115d5`. Os itens locais não versionados são `__pycache__/`, `credenciais.env` e `log-watcher.txt`; preservar todos, e **as credenciais nunca vão para o Git**.
+- `astreaDiario/2026-11-02` tem 1.676 registros, com `atualizadoEm=2026-11-02T10:02:54Z` (07:02:54 de Brasília). Também existem `astreaDelta/2026-11-02` e `astreaDiario/2026-11-01`, este com 1.676 registros.
+- O delta simulado deu 627 novos e 627 concluídos, investigado abaixo.
+- Como os locais são não versionados e o `importar.py` não tem alteração local, o `git pull` da publicação **não** será recusado por eles.
+
+### Delta de 627 + 627: causa encontrada (artefato da comparação, não movimento real)
+
+- **Mecanismo.** O `processar_arquivo` troca NaN por `None` com `df.where(pd.notnull(df), None)`, mas o pandas devolve NaN nas colunas com células vazias. A chave (`_chave_tarefa`) usa `str(valor or '')`, e NaN conta como verdadeiro, então uma célula vazia vira `"nan"` na planilha do dia. O dia anterior volta do Firestore com `null` (o robô grava NaN como null), e a mesma célula vira `""`. Resultado: **toda tarefa sem número de processo** muda de chave e conta como 1 concluída e 1 nova, sempre em pares iguais.
+- **Evidência local**, só contagens, com as duas exportações antigas que existem neste PC (14/10 e 23/10):
+  - cada planilha comparada **com ela mesma** depois de gravar e ler do Firestore já dá 543 + 543 e 567 + 567;
+  - o único componente da chave que muda é o número do processo: 614 e 630 registros, exatamente as células vazias dessa coluna;
+  - 627 de 1.676 (37%) é a mesma proporção (630 de 1.536).
+- **Outros pontos revisados:**
+  - **Ordem das colunas:** a chave pega a primeira coluna que contém "data", "hora" etc. Com as 15 colunas do Astrea, a escolha é a mesma na ordem da planilha e na ordem alfabética do Firestore. Não é causa.
+  - **Repetições:** de 31 a 43 chaves aparecem mais de uma vez. O código atual conta cada chave uma vez, então uma tarefa repetida concluída não aparecia.
+  - **Campos que mudam:** a chave inclui data e hora, então **remarcar** uma tarefa conta como 1 concluída e 1 nova. A análise mede isso; a mudança da chave fica para você decidir.
+  - **Responsável vazio** virava a pessoa `"nan"` no delta por responsável.
+- **Impacto:** o gráfico de entradas e saídas da Agenda (Números, últimos 35 dias de `astreaDelta`) mostra centenas de entradas e saídas falsas por dia. A agenda em si (`astreaDiario`) está correta, porque NaN é gravado como null.
+
+**Correção preparada (`importar.py`; só chega ao escritório com a publicação):**
+- `astype(object)` antes do `where`, para não sobrar NaN;
+- `_texto()` normaliza os valores: vazio, None e NaN viram `""`; `123.0` vira `123`; espaços são normalizados;
+- o delta conta repetições.
+
+Conferências:
+- o **conteúdo gravado no Firestore é idêntico** ao da versão em uso, conferido nas duas exportações reais (só a comparação "igual ou não") e nos testes;
+- comparar um dia com ele mesmo passa a dar 0 + 0;
+- `tests/djen/testar-delta-astrea.py`: 17 de 17, com dados fictícios.
+
+**Fora desta correção:**
+- **Os `astreaDelta` já gravados continuam inflados.** Recalculá-los a partir dos `astreaDiario` gravados seria uma gravação em produção, que fica como operação separada, só com autorização.
+- A troca de data/hora pela data de criação na chave depende dos números da análise.
+
+### Análise só de leitura no PC do escritório (preparada; não executada)
+
+O arquivo é `scripts/seguranca/analisar_delta_astrea.py`. Copie para `C:\Users\FB\diagnostico-astrea\` e rode com o python.exe da tarefa:
+- `python analisar_delta_astrea.py`: **sem rede**. Não abre o Astrea, não grava nada e não faz `git pull`.
+- `python analisar_delta_astrea.py --firebase`: também faz o **login do robô** e **lê** `astreaDiario` e `astreaDelta`, sem gravar.
+
+O que ela mostra (só nomes de colunas, contagens, datas e códigos):
+1. **Tarefas agendadas**: cada tarefa com "astrea", `importar.py` ou `watcher.py`, com estado, última execução, resultado (com o significado), próxima execução, conta, tipo de logon, limite de tempo, gatilhos e ação. Também mostra o histórico do Agendador dos últimos 6 dias, se estiver ligado.
+2. **Arquivos**: as planilhas arquivadas em `historico\`, que só existem quando uma execução chegou ao fim, com horário; as planilhas soltas; as últimas 20 linhas do `log-watcher.txt`; e se existe a pasta `logs\`.
+3. **Delta entre as duas últimas planilhas do histórico**: o delta do código atual, o corrigido, o tamanho do artefato, as células NaN por coluna, as repetições, as remarcações e a chave alternativa.
+4. Com `--firebase`: os últimos 7 `astreaDiario` (total e horário), os últimos 12 `astreaDelta` (novos e concluídos gravados) e o mesmo cálculo com os dois dias gravados.
+
+**Origem da gravação de 07:02:54:** a análise cruza a última execução de cada tarefa e o resultado dela com o horário da planilha arquivada `2026-11-02_*` e com o `atualizadoEm`. A falha de 01/11 (resultado 1) **não** prova que o robô está parado: a gravação de hoje indica uma execução de 02/11 que funcionou. Qual tarefa a fez (a das 7h ou o watcher) a análise vai mostrar.
+
+### A Fase B2 ainda é necessária?
+
+**Recomendação: não executar a B2.**
+- **O que ela validaria já foi validado.** O login e a leitura passaram na B1. A gravação aconteceu hoje às 07:02, com 1.676 registros, igual à exportação manual.
+- **Ela não testa as regras novas.** Roda com as regras atuais, que aceitam qualquer conta logada. A gravação com `robos/{uid}` só se testa depois da E3b, na **V9**.
+- **Ela pioraria o dado.** Rodaria o código em uso, que regravaria `astreaDelta/2026-11-02` com o mesmo delta falso, e substituiria uma agenda correta de hoje sem ganho.
+
+A B2 só volta a fazer sentido se a análise mostrar que a gravação das 07:02 **não** veio do robô.
+
 **Ordem:**
-1. B1.
-2. Você revisa as linhas `[diagnóstico …]`.
-3. B2, só com a sua autorização.
+1. Rodar a análise sem rede.
+2. Se preciso, rodar a análise com `--firebase`.
+3. Você revisa a saída.
+4. Decidimos a chave do delta e se os `astreaDelta` antigos serão recalculados (operação separada).
 
-Em cada fase, mande só as linhas `[diagnóstico …]`, o resultado (código) e, se houver, o trecho do erro.
+Mande só as linhas `[análise …]` e o resultado (código).
 
-**Depois do diagnóstico:**
-- Se a B2 funcionar à mão, a hipótese principal para o resultado 1 passa a ser a execução pela tarefa: o usuário, a sessão ou o diretório de trabalho com que ela roda. Isso **não** fica comprovado; o log próprio do robô (depois da publicação) mostra o erro real da próxima execução das 7h.
+**Depois:**
+- O log próprio do robô (depois da publicação) mostra o erro real de qualquer execução das 7h que falhar.
 - **Nenhuma mudança na tarefa agendada** até combinarmos.
