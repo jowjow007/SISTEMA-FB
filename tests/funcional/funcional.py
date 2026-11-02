@@ -691,6 +691,12 @@ def main():
                 pa.evaluate(f"window.__aprovarUser('{novos_users[0][0]}')")
                 ate(lambda: (ler('users/' + novos_users[0][0]) or {}).get('acesso') == 'ativo', 15)
                 caso(G, 'admin aprova pela interface (Aprovar acesso)', (ler('users/' + novos_users[0][0]) or {}).get('acesso') == 'ativo')
+                # Administração › Usuários: coluna "Qtd. abas" = "N de M" (N = abas da pessoa no catálogo, M = total do catálogo)
+                total_abas = len(listar('tabs'))
+                esperado = {d.get('email'): len([t for t in (d.get('tabs') or []) if ler('tabs/' + t) is not None]) for _, d in listar('users')}
+                linhas = pa.evaluate("""() => Array.from(document.querySelectorAll('#users-tbody tr')).map(tr => [tr.children[1].textContent.trim(), tr.children[3].textContent.trim()])""")
+                caso(G, 'Administração › Usuários mostra a quantidade de abas de cada pessoa ("N de M")',
+                     len(linhas) == len(esperado) and all(q == f'{esperado.get(e)} de {total_abas}' for e, q in linhas), str(linhas[:4]))
                 bn0, cn0, pn0, okn0 = sessao('novo@exemplo.test')
                 caso(G, 'aprovado mas ainda sem abas: não lê dados', sdk(pn0, "await firebase.firestore().collection('organograma').get()").startswith('erro:permission-denied'))
                 bn0.close()

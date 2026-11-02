@@ -1389,7 +1389,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v180</span>
+      <span class="version-tag">v181</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1526,7 +1526,7 @@
           <div class="card">
             <h3>Usuários cadastrados</h3>
             <table id="users-table">
-              <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Abas</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Qtd. abas</th><th>Abas</th><th>Ações</th></tr></thead>
               <tbody id="users-tbody"></tbody>
             </table>
           </div>
@@ -2056,6 +2056,7 @@
 
   let currentProfile = null;
   let tabsCatalog = [];   // [{id,label,url,order}]
+  let ultimosUsuarios = null;   // última lista de Administração › Usuários (para redesenhar quando o catálogo chega)
   let activeTabId = null;
   let tabSlugs = {};      // tabId -> slug usado no #hash da URL
   let slugToTabId = {};   // slug -> tabId (inverso de tabSlugs)
@@ -3543,6 +3544,8 @@
       if (currentProfile.role === 'admin') {
         corrigirNomesDeAbas();
         renderAdminTabsTable();
+        // a lista de usuários pode ter chegado antes do catálogo: refaz nomes das abas e a contagem "N de M"
+        if (ultimosUsuarios) renderUsersTable(ultimosUsuarios);
       }
       renderNewUserTabsChecklist();
     });
@@ -4550,7 +4553,8 @@
     });
 
     db.collection('users').onSnapshot(function(snap){
-      renderUsersTable(snap.docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); }));
+      ultimosUsuarios = snap.docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); });
+      renderUsersTable(ultimosUsuarios);
     });
 
     document.getElementById('nu-criar').addEventListener('click', criarUsuario);
@@ -4651,6 +4655,11 @@
     if (u.acesso) return u.acesso !== 'ativo' || (u.role !== 'admin' && (u.tabs || []).length === 0);
     return u.role !== 'admin' && (u.tabs || []).length === 0;
   }
+  // "N de M": abas liberadas que ainda existem no catálogo, do total de abas do portal
+  function qtdAbas(u){
+    const n = (u.tabs || []).filter(function(id){ return tabsCatalog.some(function(t){ return t.id === id; }); }).length;
+    return '<b>' + n + '</b> de ' + tabsCatalog.length;
+  }
   function renderUsersTable(users){
     const tbody = document.getElementById('users-tbody');
     pendingCount = users.filter(acessoPendente).length;
@@ -4678,6 +4687,7 @@
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
         '<td>' + roleLabel(u.role) + '</td>' +
+        '<td style="white-space:nowrap;" title="Abas liberadas para a pessoa, do total de abas do portal">' + qtdAbas(u) + '</td>' +
         '<td>' + situacao + chips + '</td>' +
         '<td class="actions-cell">' +
           (u.acesso !== 'ativo' ? '<button class="btn small" onclick="window.__aprovarUser(\'' + u.uid + '\')">Aprovar acesso</button>' : '') +
