@@ -463,7 +463,7 @@ O que ela mostra (só nomes de colunas, contagens, datas e códigos):
 
 Dispensada por decisão do responsável. O motivo: o login e a leitura passaram na B1, e a gravação diária funcionou hoje (resultado 0). A B2 não testaria as regras novas, que são cobertas pela V9, e regravaria o delta com o defeito.
 
-### Recuperação do watcher: execução única e supervisionada (preparada; não iniciada)
+### Recuperação do watcher: execução única e supervisionada (W1 e W2 aprovadas em 02/11/2026; tarefa não religada)
 
 O arquivo é `scripts/seguranca/watcher_supervisionado.py`. Copie para `C:\Users\FB\diagnostico-astrea\` e rode com o **python.exe** da tarefa (não o pythonw):
 
@@ -484,6 +484,13 @@ Proteções da W2:
 - **`executando`:** o pedido ficou travado, provavelmente pelo encerramento de 27/10. O watcher o ignora, mas o botão do portal fica bloqueado. Liberar exige **apagar** o documento, uma gravação que só acontece com autorização (pelo console).
 - **`concluido` ou `erro`:** o watcher ignora; o portal apaga o documento quando um admin abre a página.
 
+**W1 e W2 (02/11/2026, PC do escritório): aprovadas**, com código 0 e o repositório inalterado.
+- O login do robô no Firebase funcionou.
+- Nenhum processo do watcher estava ativo.
+- `astreaTrigger/pedido` não existia nas duas consultas.
+- A W2 rodou um ciclo real do `watcher.py`, sem gravação e sem importação.
+- A tarefa permanente **não** foi religada. A recuperação permanente fica para a publicação, junto da **V9**.
+
 **Religar a tarefa** (`Start-ScheduledTask -TaskName AstreaWatcher`) só com autorização, depois de W1 e W2.
 - **Recomendação:** religar **depois da publicação**, junto da **V9**, porque é o watcher que atende o botão "Executar robô agora". Antes da publicação, ele rodaria o código atual, que grava o delta com o defeito.
 - Com as regras novas, o watcher também precisa de `robos/{uid}` (E3b).
@@ -497,7 +504,7 @@ Proteções da W2:
 |---|---|---|---|
 | 1 | **Acesso à Cloudflare** (E7 e R6) | Entrar em dash.cloudflare.com com a conta dona do Worker. Abrir Workers & Pages › `portal-fb-gemini` e (a) ver que **Edit code** abre; (b) em **Deployments**, a versão ativa; (c) em **Settings**, só os **nomes** de `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` e `USAGE_KV` (sem abrir valores). Opcional: copiar o código ativo para `Backups\...\worker\` e confirmar se é o "presumido". O `portal-fb-admin` fica na mesma conta. **Não** clicar em Deploy. | ☐ |
 | 2 | **Acesso ao GitHub** (E1 e R7) | (a) Entrar em github.com/jowjo007/SISTEMA-FB com a conta dona; em **Settings › Pages**, a fonte é a `main`; em **Settings › Branches**, ver se há proteção que impeça o push. (b) No terminal: `git ls-remote origin main` e `git push --dry-run origin seguranca/revisao-asvs:main`. O dry-run autentica e simula sem enviar nada. | ☐ |
-| 3 | **Watcher W1 e W2** (seção 13) | Só leitura. | ☐ preparados |
+| 3 | **Watcher W1 e W2** (seção 13) | Só leitura. | ✅ aprovadas em 02/11/2026; religar a tarefa fica para a publicação, na V9 |
 | 4 | **Robô diário em 03/11** | Na manhã seguinte: `Get-ScheduledTaskInfo AstreaImportDiario` com resultado 0 e `historico\2026-11-03_*`. Confirma que 02/11 não foi caso isolado. | ☐ |
 | 5 | **Horário da publicação** | A sua confirmação (janela fora do expediente, 40 a 60 min, mais as verificações). | ☐ aguardando |
 | 6 | **Testes no dia (P4)** | Repetir todos os testes de `tests/LEIA-ME.md` se houver qualquer mudança até lá. Agora incluem `testar-delta-astrea.py` (17) e `testar-watcher-supervisionado.py` (9). | ☐ |
