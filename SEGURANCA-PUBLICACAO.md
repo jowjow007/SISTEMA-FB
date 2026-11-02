@@ -42,7 +42,7 @@ Passe à etapa seguinte só com a verificação ✓. Em "**Parar se**", interrom
 | **E4** | Publicar `firestore.rules`. | Você recarrega (Ctrl+F5) e entra. | Você não entra. | Console: confira `acesso`, `role` e a UID do seu cadastro. **Não** republique as regras antigas. |
 | **E5** | Página `tools/admin-seguranca`: passo 1 (acesso: desmarque os **⚠ conferir**), passo 2 (patrimônio: marque **só** os admins e as pessoas que você autorizar; ninguém vem marcado). Baixe o CSV. | Um colaborador entra e abre a Agenda. | Alguém da equipe continua sem acesso **e** "Aprovar acesso" não resolve. | Reabra a página; ela grava só o que mudou. Pessoa sem aba: Usuários › Editar abas. |
 | **E6** | Publicar `storage.rules` (antes, confira que só existe `chat/`) e **aceitar a permissão "cross-service"** que o console pedir. | Enviar um PDF numa conversa de teste funciona; um anexo antigo continua abrindo. | O envio falha com "unauthorized". | Conceda a permissão cross-service (Storage › Regras). Não volte às regras antigas do Storage. |
-| **E7** | **Worker do Assistente pelo painel da Cloudflare** (não há `wrangler.toml` no repositório): Workers & Pages › `portal-fb-gemini` › Edit code › colar `tools/assistente-ia/worker.js` › Deploy; depois, em **Deployments**, conferir que a versão nova está em "Active deployment" (100%). Não precisa de variável nova: as Secrets atuais (`GEMINI_API_KEY` e as duas `GOOGLE_SA_*`) e a variável `GEMINI_MODEL` continuam. **Não há `USAGE_KV`** (conferido em 02/11/2026), então o Worker publicado continua **sem limite diário próprio** (pendência C1, seção 14). **Antes** do Deploy, anotar em Deployments qual versão está ativa (a última vista foi `fdcad971`), para saber a que voltar. | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
+| **E7** | **Worker do Assistente pelo painel da Cloudflare** (não há `wrangler.toml` no repositório): Workers & Pages › `portal-fb-gemini` › Edit code › colar `tools/assistente-ia/worker.js` › Deploy; depois, em **Deployments**, conferir que a versão nova está em "Active deployment" (100%). Não precisa de variável nova: as Secrets atuais (`GEMINI_API_KEY` e as duas `GOOGLE_SA_*`) e a variável `GEMINI_MODEL` continuam. **Não há `USAGE_KV`** (conferido em 02/11/2026), então o Worker publicado continua **sem limite diário próprio** (pendência C1, seção 14). **Antes** do Deploy, anotar em Deployments qual versão está ativa (a última vista foi `fdcad971`), **só como referência**. Essa versão é a anterior à revisão, que atende sem login: **nunca** voltar a ela (nem por "Rollback"). A recuperação é desligar o Assistente (R6), não reabri-lo. | V6 (Assistente) ✓. | Assistente com 401/403 para toda a equipe. | Conferir E5. Se persistir, desativar a rota do Worker. **Não** voltar o Worker antigo (era proxy aberto). |
 | **E8** | Página admin, passo 4: `privado/numeros-stats.json`, `privado/condominios.json` e os 6 PDF/PNG. | Abas de clientes voltam; um PDF baixa. | O envio dá erro. | Enviar de novo (substitui). |
 | **E9** | Conferir remuneração, custos, data de entrada e tipo de colaborador de cada pessoa (Gestão), porque hoje a própria pessoa podia alterá-los. | Valores conferem. | Algum valor foi alterado indevidamente. | Corrigir pelo admin e registrar como incidente. |
 | **E10** | **Migração dos anexos antigos do Chat** (seção 6): primeiro a **simulação**, e **só com a sua autorização** a execução. **Não revogar links nesta publicação.** | V10 ✓. | Erros na simulação ou a execução com erro em algum anexo. | `--desfazer <registro.csv>` volta os links. Nada é apagado. |
@@ -315,7 +315,7 @@ Regra comum a todos os procedimentos: **corrigir para frente**. Nunca republique
 | R3 | Colaborador legítimo sem acesso | Portal › Usuários › **Aprovar acesso** e, se faltar, **Editar abas**. Pelo console: `acesso = "ativo"` e uma aba em `tabs`. | admin do portal / `datastore.entities.update` ✓ | 1 min |
 | R4 | Uma função legítima parou ("permissão negada") | Anotar a tela e o perfil. Corrigir **só** a regra daquela coleção no repositório, acrescentar o caso em `tests/firestore-rules/funcoes.test.js`, rodar os testes e publicar a regra corrigida. Enquanto isso, a função fica parada; ela não volta abrindo a regra para "qualquer logado". | `firebaserules.rulesets.create` e `releases.update` ✓ | 15–40 min |
 | R5 | Chat: envio de anexo falha depois de E6 | Console › Storage › Regras: conceder a permissão "cross-service" (o console mostra o aviso). Conferir que o envio é numa conversa da qual a pessoa participa. | regras ✓ | 2 min |
-| R6 | Assistente: 401/403 para toda a equipe | Conferir E5 (acesso e abas). Se precisar, desativar a rota do Worker no painel da Cloudflare. **Não** voltar o Worker antigo. | ✅ acesso ao painel conferido em 02/11/2026 (editor abre) | 5 min |
+| R6 | Assistente: 401/403 para toda a equipe | Conferir E5 (acesso e abas). Se precisar, desligar o Assistente: em Settings › Domains & Routes, desativar o `workers.dev` do `portal-fb-gemini`. **Não** voltar o Worker antigo (`fdcad971` ou anterior), nem por Rollback: ele atende sem login. | ✅ acesso ao painel conferido em 02/11/2026 (editor abre) | 5 min |
 | R7 | Erro de página no site | Novo commit corrigindo e push na `main`. **Nunca** reverter o commit que tirou os dados. | ⚠️ push no GitHub **não verificado** em B3 | 5–15 min |
 | R8 | Documento apagado ou corrompido | Recuperar **pontualmente**: importar a exportação num **projeto separado** e copiar só o necessário pelo console. Importar sobre produção só em desastre, porque grava por cima e desfaz o que mudou depois. | `datastore.databases.import` ✓ (**não testado**: B7) | 30–60 min |
 | R9 | Anexo do Chat perdido | `gcloud storage cp gs://sistema-fb-4cce5-backup/storage-2026-11-02-01/chat/... gs://sistema-fb-4cce5.firebasestorage.app/chat/...`. Os metadados com o token vêm junto. | `storage.objects.create` no bucket original ✓; leitura do backup ✓ | 5 min |
@@ -505,7 +505,7 @@ Proteções da W2:
 | 1 | **Acesso à Cloudflare** (E7 e R6) | Entrar em dash.cloudflare.com com a conta dona do Worker. Abrir Workers & Pages › `portal-fb-gemini` e (a) ver que **Edit code** abre; (b) em **Deployments**, a versão ativa; (c) em **Settings**, só os **nomes** de `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` e `USAGE_KV` (sem abrir valores). Opcional: copiar o código ativo para `Backups\...\worker\` e confirmar se é o "presumido". O `portal-fb-admin` fica na mesma conta. **Não** clicar em Deploy. | ✅ 02/11/2026, sem alterações (resultado abaixo) |
 | 2 | **Acesso ao GitHub** (E1 e R7) | (a) Entrar em github.com/jowjo007/SISTEMA-FB com a conta dona; em **Settings › Pages**, a fonte é a `main`; em **Settings › Branches**, ver se há proteção que impeça o push. (b) No terminal: `git ls-remote origin main` e `git push --dry-run origin seguranca/revisao-asvs:main`. O dry-run autentica e simula sem enviar nada. | ✅ 02/11/2026, nada enviado (seção 15) |
 | 3 | **Watcher W1 e W2** (seção 13) | Só leitura. | ✅ aprovadas em 02/11/2026; religar a tarefa fica para a publicação, na V9 |
-| 4 | **Robô diário em 03/11** | Na manhã seguinte: `Get-ScheduledTaskInfo AstreaImportDiario` com resultado 0 e `historico\2026-11-03_*`. Confirma que 02/11 não foi caso isolado. | ☐ |
+| 4 | **Robô diário em 03/11** | Na manhã seguinte: `Get-ScheduledTaskInfo AstreaImportDiario` com resultado 0 e `historico\2026-11-03_*`. Confirma que 02/11 não foi caso isolado. | **Precaução opcional, não é impedimento** (seção 15) |
 | 5 | **Horário da publicação** | A sua confirmação (janela fora do expediente, 40 a 60 min, mais as verificações). | ☐ aguardando |
 | 6 | **Testes no dia (P4)** | Repetir todos os testes de `tests/LEIA-ME.md` se houver qualquer mudança até lá. Agora incluem `testar-delta-astrea.py` (17) e `testar-watcher-supervisionado.py` (9). | ☐ |
 
@@ -567,21 +567,28 @@ Proteções da W2:
 
 - **Commit:** `a8fbdba` na `seguranca/revisao-asvs`. São 20 commits sobre a `main` atual (`4d115d5`, conferida por `git ls-remote`), com avanço direto (fast-forward). `git push --dry-run origin seguranca/revisao-asvs:main` passou (`4d115d5..a8fbdba`) **sem enviar nada**.
 - Os commits posteriores a `a8fbdba` só mudam este roteiro (`SEGURANCA-PUBLICACAO.md`). Publica-se a ponta da branch, e no dia confirma-se com `git diff --stat a8fbdba HEAD` que nada além deste arquivo mudou.
-- **Testes refeitos em 02/11/2026 numa cópia limpa de `a8fbdba`** (git worktree, sem os arquivos locais não versionados). Todos rodaram em emuladores, com dados fictícios:
+- **Testes refeitos em 02/11/2026 numa cópia limpa do commit** (git worktree). Todos rodaram em emuladores, com dados fictícios:
 
 | Conjunto | Resultado | Controle (versão anterior) |
 |---|---|---|
 | Regras do Firestore | 221 de 221 | regras publicadas em 01/11: 69 reprovados |
 | Regras do Storage | 34 de 34 | regras publicadas em 01/11: 14 reprovados |
 | Worker do Assistente | 20 de 20 | `worker.js` de `4d115d5`: 18 reprovados |
-| Funcional com login (Playwright, regras antigas → novas) | 74 de 74 | — |
+| Funcional com login (Playwright, regras antigas → novas) | **75 de 75** (ver a nota) | — |
 | Migração dos anexos do Chat | 19 de 19 | — |
 | DJEN | 14 de 14 | — |
 | Diagnóstico do robô | 25 de 25 | — |
 | Delta da agenda | 17 de 17 | — |
 | Watcher supervisionado | 9 de 9 | — |
 
-- **Conteúdo conferido em `a8fbdba`:**
+**Nota sobre 75 → 74 → 75 no teste funcional:**
+- A primeira rodada na cópia limpa deu 74 de 74. O caso que faltou foi **"Números: painel de clientes carrega do Firestore"**.
+- Esse caso monta o arquivo fictício copiando a **estrutura** de `privado/numeros-stats.json`, com todo texto trocado por "Fictício N". Como esse arquivo local é ignorado pelo Git, ele não existe numa cópia limpa, e o teste registra o caso como **não testado** em vez de reprovar.
+- Nenhum teste foi removido nem alterado.
+- Refeito com a pasta `privado/` local ligada à cópia limpa (sem copiar o conteúdo): **75 de 75, com esse caso aprovado.**
+- **Nenhum cenário ficou sem cobertura.**
+
+- **Conteúdo conferido no commit:**
   - correção do delta (`_texto`, `astype(object)`, contagem de repetições);
   - Worker com login obrigatório e `/rss` restrito;
   - regras com `isRobo`;
@@ -593,52 +600,113 @@ Proteções da W2:
   - Não há regra de proteção nem Ruleset, então nada bloqueia o push da E1.
 - **Cloudflare:** ver a seção 14 (acesso ok; C1 e C2 pendentes).
 
-### 1. Impedimentos concretos para marcar o horário
+### Esperar o robô de 03/11: precaução opcional, não necessidade técnica
 
-| # | Impedimento | Como se resolve |
+- **Nenhuma etapa da publicação depende dessa execução.**
+  - O robô já gravou com sucesso em 02/11 (resultado 0, 07:02:54).
+  - No dia, a **V9** testa o robô diretamente, já com o código e as regras novas. Esse é o teste que importa.
+- Esperar por 03/11 também **não esclarece** a falha de 01/11: o código que roda hoje (`4d115d5`) não tem log próprio. O log só passa a existir depois da publicação.
+- **Custo de esperar:** a exposição atual continua em produção a cada dia de atraso. As exposições são:
+  - as regras de hoje deixam qualquer conta logada ler e gravar coleções sensíveis;
+  - o Worker em produção, presumido igual ao anterior à revisão (o código publicado não foi comparado linha a linha), atende qualquer origem forjada, sem login;
+  - há dados de clientes em páginas e arquivos públicos (E2).
+- **Recomendação:** não bloquear o horário por isso. Se o resultado de 03/11 sair antes do horário marcado, ele só é anotado.
+
+### Atualização do robô do escritório: conferir, não presumir
+
+- **Como o código decide** (`atualizar_codigo()` em `importar.py`, igual em `4d115d5` e na branch):
+  - o `credenciais.env` é carregado primeiro, mas **não sobrescreve** variáveis de ambiente já definidas no Windows;
+  - a atualização roda se `ASTREA_AUTO_UPDATE` estiver ausente ou valer `true`, e se `_ASTREA_ATUALIZADO` não estiver definida;
+  - ela faz `git pull --ff-only`. Se o pull falhar (sem git, sem rede, alteração local, branch sem upstream), **a importação segue com o código antigo** e só um aviso é registrado. No `4d115d5`, esse aviso vai para a saída da tarefa, que se perde.
+- **Indício atual (não é prova):** a B1 mostrou o robô no `4d115d5`, que é a ponta da `main`. É o esperado se a atualização funciona, mas também se ninguém mudou a `main` depois da última atualização manual.
+- **Conferência no PC do escritório**, só leitura: não executa `git pull` nem mostra credenciais.
+
+```powershell
+$r = 'C:\Users\FB\portal-fb'; $e = "$r\scripts\astrea-importer\credenciais.env"
+'1) credenciais.env (só esta chave):'
+$l = Select-String -Path $e -Pattern '^\s*ASTREA_AUTO_UPDATE\s*=' | ForEach-Object { $_.Line.Trim() }
+if ($l) { $l } else { '(ausente: vale o padrão, true)' }
+'2) variáveis do Windows (vazio = não definidas):'
+foreach ($n in 'ASTREA_AUTO_UPDATE','_ASTREA_ATUALIZADO') { foreach ($s in 'User','Machine') { "$n [$s] = '" + [Environment]::GetEnvironmentVariable($n, $s) + "'" } }
+'3) git:'; (Get-Command git -ErrorAction SilentlyContinue).Source
+git -C $r rev-parse HEAD; git -C $r rev-parse --abbrev-ref HEAD; git -C $r rev-parse --abbrev-ref '@{u}'
+'arquivos versionados alterados (vazio = nenhum):'; git -C $r status --porcelain -uno
+'remoto (sem usuário/token):'; (git -C $r remote get-url origin) -replace '//[^@/]+@', '//***@'
+'4) GitHub alcançável pelo PC (só leitura):'; git -C $r ls-remote origin refs/heads/main
+```
+
+- **Esperado:**
+  1. ausente ou `true`;
+  2. tudo vazio;
+  3. caminho do git, `4d115d5…`, `main`, `origin/main` e nenhuma alteração;
+  4. `4d115d5…`.
+- Se algo divergir, o dia inclui um **`git pull --ff-only` manual** no PC, com autorização, antes da V9.
+- **No dia, depois da E1:**
+  - conferir explicitamente o commit instalado: `git -C C:\Users\FB\portal-fb rev-parse HEAD` deve ser **igual** à ponta publicada;
+  - conferir o log novo (`scripts\astrea-importer\logs\importar-AAAA-MM-DD.txt`).
+  - Sem essa igualdade, a V9 **não** vale como teste do código novo.
+
+### Impedimentos reais restantes
+
+| # | Impedimento | Situação |
 |---|---|---|
-| I1 | **Robô diário de 03/11** com resultado 0. Confirma que o 0 de 02/11 não foi isolado, já que a causa do resultado 1 de 01/11 continua não comprovada. | Na manhã de 03/11, no PC do escritório: `Get-ScheduledTaskInfo AstreaImportDiario` e o arquivo `historico\2026-11-03_*`. Se der 1, investigar antes de marcar. |
-| I2 | **Horário confirmado por você:** fora do expediente, 40 a 60 min, mais as verificações, com o PC do escritório ligado e com sessão aberta (V9). | A sua confirmação. |
+| I1 | **Horário combinado e a sua autorização para publicar.** O horário fica fora do expediente e longe das 07:00 do robô. O PC do escritório precisa estar ligado e com sessão aberta (V9). | Aguardando você. |
 
-Não há outro impedimento: os testes passaram, os acessos à Cloudflare e ao GitHub estão confirmados e o push é fast-forward.
+A conferência da atualização do robô (acima) não impede marcar o horário. Ela é feita antes ou no início do dia, porque só decide se entra o `pull` manual.
 
-### 2. Conferências rápidas no início do dia (sem alterar nada)
+### Sequência final de publicação
 
-- **D1:** `git ls-remote origin main` ainda em `4d115d5`. Se a `main` andou, parar e reavaliar: o merge deixa de ser fast-forward e os testes precisam ser refeitos.
-- **D2:** `git diff --stat a8fbdba HEAD` mostra só este roteiro. Se algo mais mudou, refazer os testes (P4).
-- **D3:** na Cloudflare, Deployments do `portal-fb-gemini`: anotar a versão que **recebe o tráfego**, para saber a que voltar (E7).
-- **D4:** no Pages, a verificação de DNS concluída e o site abrindo em `https://portal.fonsecaebraga.com.br` antes de começar. Assim, um problema anterior não se confunde com a publicação.
+**Antes de começar (sem alterar nada):**
+- **D1:** `git ls-remote origin main` ainda em `4d115d5`. Se a `main` andou, parar: o push deixa de ser fast-forward e os testes precisam ser refeitos.
+- **D2:** `git diff --stat a8fbdba HEAD` mostra só este roteiro. Se algo mais mudou, refazer os testes.
+- **D3:** na Cloudflare, anotar a versão ativa do `portal-fb-gemini` **só como referência** (última vista: `fdcad971`). **Nunca** voltar a ela: ela atende sem login.
+- **D4:** o Pages com o DNS conferido e o site abrindo em `https://portal.fonsecaebraga.com.br`.
+- **D5:** conferência da atualização do robô (bloco acima), se ainda não tiver sido feita.
 
-### 3. Sequência do dia
+**Publicação** (detalhes, critérios de parada e recuperação nas seções 3, 4 e 12):
+1. **E1:** merge e push da `seguranca/revisao-asvs` na `main`; deploy do Pages concluído.
+2. **E2:** versão nova no navegador; páginas públicas sem dados de clientes.
+3. **E3 e E3b:** `users/{sua UID}.acesso = "ativo"` e `robos/{UID do robô}`. Vêm **antes** da E4.
+4. **E4:** publicar `firestore.rules` e recarregar o portal.
+5. **E5:** página admin: acesso e patrimônio; baixar o CSV.
+6. **E6:** publicar `storage.rules` e aceitar a permissão cross-service.
+7. **E7:** colar o `worker.js` novo no `portal-fb-gemini` e Deploy; conferir a versão ativa. Se falhar, **desligar** o Assistente (R6). Nunca voltar à versão anterior.
+8. **E8:** enviar os arquivos privados.
+9. **E9:** conferir remuneração, custos e cadastros.
+10. **E10:** migração dos anexos do Chat: simulação, e a execução **com a sua autorização**.
+11. **E11:** verificações V1–V12. As que pedem autorização no momento:
+    - **V6:** Assistente;
+    - **V7:** Docs;
+    - **V9:** robô. Antes dela: conferir o commit instalado no PC (igual à ponta publicada; se não, `pull` manual autorizado) e **religar o watcher** (`Start-ScheduledTask -TaskName AstreaWatcher`);
+    - **V10:** anexos;
+    - **V12:** DJEN.
+12. **E12:** reativar o DJEN, depois da V12.
 
-A ordem segue a seção 3: **E1** (merge e push) → **E2** → **E3** e **E3b** (`acesso` e `robos/{UID do robô}`, **antes** da E4) → **E4** (Firestore) → **E5** → **E6** (Storage) → **E7** (Worker) → **E8** → **E9** → **E10** → **E11** (V1–V12) → **E12**.
-- A interrupção e a recuperação seguem as seções 3, 4 e 12. Nunca republicar as regras antigas nem o Worker antigo.
-- O robô do escritório pega a correção do delta sozinho: o `importar.py` faz `git pull --ff-only` antes de importar. A primeira importação depois da E1 (o botão na V9, ou a tarefa das 07:00) já roda o código novo. Isso vale desde que o `credenciais.env` do PC não tenha `ASTREA_AUTO_UPDATE=false`, o que **não foi conferido**. Na V9, confirmar com `git -C C:\Users\FB\portal-fb log -1 --oneline`, que deve mostrar a nova ponta da `main`.
+**Recuperação, em qualquer etapa:** nunca reintroduzir o que a revisão fechou. Não se republicam as regras antigas, não se volta o Worker antigo (nem por Rollback) e não se repõem arquivos públicos. A recuperação é por **desligamento** ou correção para a frente.
 
-**Etapas que pedem a sua autorização no momento:**
-- **E10:** executar a migração, só depois da simulação.
-- **V6:** Assistente; envia uma pergunta fictícia ao Gemini.
-- **V7:** Docs; cria um arquivo no seu Drive.
-- **V9:** robô. Antes dela, **religar o watcher** (`Start-ScheduledTask -TaskName AstreaWatcher`), que é a recuperação permanente adiada na seção 13.
-- **V10:** anexos.
-- **V12 e E12:** DJEN.
+### Riscos pendentes de decisão
 
-### 4. Operações separadas: fora desta publicação, cada uma só com autorização
+Nenhum foi aceito expressamente. Nenhum deles impede a publicação, que reduz ou mantém cada um, sem piorar nenhum.
 
-- **C1:** ligar o `USAGE_KV` (e, se quiser, `DAILY_LIMIT`) para ter o limite diário. Complemento: um alerta de orçamento no Google.
+- **Sem limite diário no Assistente (C1).** Depois da E7, o uso fica restrito a contas da equipe, mas sem teto próprio.
+- **A restauração da cópia de produção não foi testada (B7).**
+- **A causa do resultado 1 do robô em 01/11 não está comprovada.**
+- **O watcher para no logoff ou depois de 23 h** até a tarefa ser ajustada.
+- **`portal-fb-admin` com versão desconhecida e conta de serviço privilegiada (C2).**
+- **`main` sem proteção (G1).**
+
+Esta revisão reduz riscos conhecidos e verificados em testes. **Não** torna o sistema "100% seguro".
+
+### Operações separadas: fora desta publicação, cada uma só com autorização
+
+- **C1:** ligar o `USAGE_KV` (e, se quiser, `DAILY_LIMIT`). Complemento: um alerta de orçamento no Google.
 - **C2:** decidir o destino do `portal-fb-admin`: conferir, integrar ou desativar e revogar a conta de serviço.
-- **G1 (sugestão nova, motivada pela conferência):** não há proteção na `main`, então qualquer conta com escrita publica direto no site. Depois da publicação, avaliar um Ruleset que bloqueie push forçado e exclusão da `main`. Não deve exigir PR, porque a tarefa do DJEN faz commit direto.
+- **G1:** proteger a `main`.
+  - O primeiro nível é um Ruleset que bloqueie push forçado e exclusão.
+  - Exigir pull request **também é possível**, mas o fluxo atual do DJEN, que faz commit direto na `main`, **precisaria ser adaptado**. Por exemplo, ele passaria a abrir um PR, ou usaria uma exceção (bypass) restrita à identidade que o executa.
 - Recalcular os `astreaDelta` históricos (inflados).
 - Mudar a chave do delta.
 - Ajustar a tarefa `AstreaWatcher` (gatilho e limite de 23 h) e os argumentos da `AstreaImportDiario`.
 - Revogar os tokens dos links antigos do Chat (depois da V10).
 - Limpar branches e histórico (seção 8).
 - Teste de restauração da cópia (B7).
-
-### Riscos aceitos e o que continua sem prova
-
-- **Sem limite diário no Assistente (C1).** O risco fica reduzido a contas da equipe pela E7, mas não eliminado.
-- **A restauração da cópia de produção não foi testada (B7).** A cópia existe e foi conferida.
-- **A causa do resultado 1 do robô em 01/11 não está comprovada.** O log próprio, depois da publicação, vai registrar as próximas falhas.
-- **O watcher para no logoff ou depois de 23 h** até a tarefa ser ajustada. O botão "Executar robô agora" depende dele.
-- Esta revisão reduz riscos conhecidos e verificados em testes. **Não** torna o sistema "100% seguro".
