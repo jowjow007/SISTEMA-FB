@@ -13,7 +13,7 @@ A ordem leva em conta as regras **realmente publicadas hoje** (copiadas do conso
 | # | O quê | Situação |
 |---|---|---|
 | **P1** | **Cópia dos dados em produção.** Firestore: Console › Firestore › aba "Importar/exportar" (ou `gcloud firestore export gs://<bucket-de-backup>/2026-11-portal`). Storage, anexos do Chat: `gsutil -m cp -r gs://sistema-fb-4cce5.firebasestorage.app/chat <pasta local>`. Confira se a exportação terminou e quantos arquivos foram copiados. | **Depende de você.** Exige o console ou o gcloud com a sua conta. |
-| **P2** | **Acesso de recuperação pelo console.** Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
+| **P2** | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
 | **P3** | **Cópia local recuperável** em `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01`: os dados privados que ficaram fora do git, as regras publicadas hoje, o repositório completo (bundle de todas as branches e do histórico), as configurações, o Worker que se presume publicado, a tarefa do DJEN e o seu trabalho não commitado. Tem manifesto SHA-256. | **Feita e testada** em 01/11/2026: o clone do bundle restaurou a `main` e esta branch idênticas, o manifesto conferiu, e `privado/` está idêntica ao original. |
 | **P4** | **Testes** (`tests/LEIA-ME.md`): regras, funções, Storage, Worker, funcional, migração dos anexos e DJEN, com 0 reprovados. | Feitos em 01/11/2026 (totais no fim). Repetir no dia, se houver qualquer mudança. |
 | **P5** | **DJEN desativado.** A tarefa `PortalFB_AtualizarPublicacoesDJEN` está **Desativada** e só volta em E12. | Conferido. |
@@ -164,62 +164,135 @@ git push --force --mirror                              # DESTRUTIVO — só com 
 | Migração dos anexos do Chat | 19 de 19 | — |
 | DJEN (script real, cópia descartável) | 14 de 14 | — |
 
-## 11. Guia passo a passo de P1 (cópia dos dados) e P2 (acesso de recuperação)
+## 11. P1 (cópia de produção) e P2 (acesso de recuperação): uma etapa de cada vez
 
-Não compartilhe senhas, tokens nem chaves. Para combinar a publicação, basta me passar os **números** de conferência: estado da exportação, quantidade de documentos e de arquivos, e tamanhos.
+Nesta fase **não se publica, não se restaura e não se revoga nada**. Você executa cada etapa no Cloud Shell, que já usa o seu login, e me manda só **números e estados**. Nunca mande tokens, chaves nem senhas. O script de conferência `scripts/seguranca/backup_conferencia.py` é **somente leitura**, não imprime tokens e foi testado no emulador (5 de 5). Os subcomandos `permissoes`, `bucket` e `exportacao` dependem de serviços reais do Google e só serão vistos funcionando na primeira execução.
 
-### Custo e interrupção (antes de começar)
+Para levar o script ao Cloud Shell: menu ⋮ › **Fazer upload** › escolha o arquivo `scripts/seguranca/backup_conferencia.py` deste repositório.
 
-- **Exportação do Firestore:** cobrada como leitura de documentos, 1 leitura por documento. Na tabela padrão do Blaze, isso dá centavos de dólar para dezenas de milhares de documentos.
-- **Guarda das cópias no Cloud Storage:** cerca de US$ 0,02 a 0,03 por GB por mês. Recomendo apagar as cópias depois de 90 dias, se não precisar delas.
-- **Cópia dos arquivos do Storage para o bucket de backup, na mesma região:** só operações, centavos, sem tráfego de saída.
-- **Cloud Shell:** gratuito.
-- **Interrupção:** nenhuma; o portal continua funcionando. A exportação **não é um retrato instantâneo**: o que for gravado durante ela pode ou não entrar. Faça fora do expediente; a cópia leva poucos minutos.
+### Situação de cada item (preencher)
 
-### P1. Cópia de produção
+| Item | Situação | Evidência |
+|---|---|---|
+| Projeto, localização do banco e volume conferidos (B1) | ☐ | |
+| Custo estimado com volume e região reais (B2) | ☐ | |
+| Permissões efetivas conferidas (B3) | ☐ | |
+| Bucket de backup criado, **privado e restrito** (B4) | ☐ | |
+| Exportação do Firestore **concluída e verificada** (B5) | ☐ | ID da operação: |
+| Cópia dos anexos **concluída e verificada** (B6) | ☐ | |
+| **Restauração efetivamente testada** em ambiente separado (B7) | ☐ **Não feita.** Só pode ser declarada depois de executada num projeto separado. | |
 
-1. **Localização do banco:** abra `console.cloud.google.com/firestore/databases?project=sistema-fb-4cce5` e anote a coluna **Local** (ex.: `southamerica-east1` ou `nam5`).
-2. **Criar o bucket de backup:** abra `console.cloud.google.com/storage/browser?project=sistema-fb-4cce5` › **Criar**.
-   - **Nome:** `sistema-fb-4cce5-backup` (se estiver em uso, acrescente `-fb`).
-   - **Local:** o **mesmo** do passo 1. Se for região (ex.: `southamerica-east1`), escolha essa região. Se for `nam5`, escolha a multirregião `us`.
-   - **Classe:** Standard.
-   - **Proteção:** deixe **"Impedir o acesso público"** marcado e o controle de acesso **uniforme**.
-   - Clique em **Criar**.
-3. **Abrir o Cloud Shell:** ícone `>_` no topo do console (é um terminal no navegador, já com o seu login). Rode `gcloud config set project sistema-fb-4cce5`.
-4. **Nome exato do bucket do Storage:** Console do Firebase › Storage. O topo mostra `gs://...`, provavelmente `sistema-fb-4cce5.firebasestorage.app`.
-5. **Exportar o Firestore:**
-   `gcloud firestore export gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD`
-   O comando espera terminar. Pela tela, o caminho é: Firestore › Importar/exportar › Exportar › Todo o banco de dados.
-6. **Copiar os arquivos do Storage:**
-   `gcloud storage cp -r "gs://BUCKET-DO-STORAGE/*" gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/`
-7. **(Opcional) Cópia fora do Google:** no Cloud Shell, rode
-   `gcloud storage cp -r gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD ~/storage && cd ~ && zip -qr storage.zip storage`
-   e baixe o zip pelo menu ⋮ › **Baixar**. Guarde junto com a pasta `Backups` local (tem dados de clientes).
+### B1. Projeto, localização do banco e volume (só leitura)
 
-### P1. Conferir que terminou corretamente
+```
+gcloud config set project sistema-fb-4cce5
+gcloud projects describe sistema-fb-4cce5 --format="value(projectId,projectNumber,name)"
+gcloud firestore databases list --format="table(name,locationId,type)"
+gcloud storage buckets list --format="table(name,location,locationType,storageClass)"
+python3 backup_conferencia.py volume <BUCKET_DO_STORAGE>
+```
 
-- **Firestore:**
-  `gcloud firestore operations list --limit=1 --format="table(metadata.operationState,metadata.progressDocuments.completedWork,metadata.endTime)"`
-  Esperado: **SUCCESSFUL**, com a quantidade de documentos.
-  Depois rode `gcloud storage ls gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD/`. Esperado: um arquivo `.overall_export_metadata` e a pasta `all_namespaces/`.
-- **Storage:** as duas contagens e os dois tamanhos precisam ser **iguais**.
-  - `gcloud storage ls -r "gs://BUCKET-DO-STORAGE/**" | wc -l` e `gcloud storage ls -r "gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/**" | wc -l`
-  - `gcloud storage du -s gs://BUCKET-DO-STORAGE` e `gcloud storage du -s gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD`
-- **Metadados preservados:** `gcloud storage objects describe` sobre um arquivo da cópia em `chat/` deve mostrar `firebaseStorageDownloadTokens`. **Não me mande esse valor**: ele é o "token" do link.
+O que me mandar:
+- a localização do banco (`locationId`);
+- o nome e a localização do bucket do Storage;
+- o total de documentos e o total de arquivos e bytes que o script mostrar.
 
-### Como se restauraria (só explicação; não execute)
+O `volume` conta documentos por agregação: cerca de 1 leitura por 1.000 documentos contados, ou seja, custo desprezível.
 
-- **Firestore:** `gcloud firestore import gs://sistema-fb-4cce5-backup/firestore-AAAA-MM-DD` grava **por cima** dos documentos com o mesmo ID e **não apaga** os criados depois.
-  - Restaurar o banco inteiro desfaria o que mudou depois, como aprovações, acessos e tarefas. Por isso é só para desastre.
-  - Para recuperar algo pontual, importe num **projeto de teste** e copie só o necessário.
-  - A importação **não** mexe nas regras, e as regras antigas **não** devem voltar.
-- **Storage:** `gcloud storage cp -r "gs://sistema-fb-4cce5-backup/storage-AAAA-MM-DD/*" gs://BUCKET-DO-STORAGE/` recria os arquivos com os mesmos metadados. Os links com o mesmo token voltam a abrir.
-- **Código, regras de hoje e dados privados:** pasta local `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01` (P3), com `LEIA-ME.txt`.
+### B2. Custo com o volume e a região reais
+
+Calculado depois de B1, com os preços da região na página de preços do Google Cloud. Os itens são:
+- **Exportação:** 1 leitura por documento exportado.
+- **Guarda:** tamanho da exportação + tamanho dos anexos, por GB por mês, na classe Standard da região.
+- **Cópia dos anexos para o bucket de backup:** 1 operação classe A por arquivo. Na mesma localização, não há cobrança de transferência; numa localização diferente, há cobrança por GB.
+- **Download opcional para o PC:** tráfego de saída para a internet, por GB.
+
+### B3. Permissões efetivas (sem restaurar nada)
+
+```
+python3 backup_conferencia.py permissoes <BUCKET_DO_STORAGE> <BUCKET_BACKUP>
+```
+
+Ele usa o teste de permissões do Google (`testIamPermissions`), que **só pergunta**, sem executar. É preciso ✓ em:
+- exportar e importar o Firestore;
+- ler e gravar os objetos dos dois buckets;
+- publicar regras.
+
+Abrir o Cloud Shell **não** comprova nada disso.
+
+### B4. Bucket de backup privado e restrito
+
+Crie o bucket pelo console, com:
+- a **mesma localização do banco** (B1);
+- classe Standard;
+- **"Impedir o acesso público"** marcado;
+- controle de acesso **uniforme**.
+
+Depois rode:
+
+```
+python3 backup_conferencia.py bucket <BUCKET_BACKUP>
+```
+
+O esperado:
+- ✓ prevenção de acesso público `enforced`;
+- ✓ acesso uniforme;
+- ✓ nenhum `allUsers` ou `allAuthenticatedUsers`.
+
+Revise a lista de quem tem acesso. A linha `projectViewer` dá leitura a quem tem papel Leitor no projeto.
+
+### B5. Exportação do Firestore: registrar o identificador e conferir aquela operação
+
+```
+gcloud firestore export gs://<BUCKET_BACKUP>/firestore-AAAA-MM-DD --async --format="value(name)"
+```
+
+Anote o **nome da operação** que aparecer; ele é o identificador. Quando terminar, rode:
+
+```
+python3 backup_conferencia.py exportacao <NOME_DA_OPERACAO>
+```
+
+O esperado:
+- `done: True` e estado `SUCCESSFUL`, sem erro;
+- documentos concluídos igual ao estimado;
+- destino correto e `overall_export_metadata` ✓.
+
+A exportação **não é um retrato instantâneo**: o que for gravado durante ela pode ou não entrar. Faça fora do expediente.
+
+### B6. Cópia dos anexos: caminhos, quantidade, tamanho, checksums e metadados
+
+```
+gcloud storage cp -r "gs://<BUCKET_DO_STORAGE>/*" gs://<BUCKET_BACKUP>/storage-AAAA-MM-DD/
+python3 backup_conferencia.py anexos <BUCKET_DO_STORAGE> gs://<BUCKET_BACKUP>/storage-AAAA-MM-DD
+```
+
+O script compara arquivo a arquivo:
+- caminho;
+- tamanho;
+- CRC32C e MD5;
+- tipo de conteúdo;
+- chaves de metadados;
+- o **token**, comparado por hash, sem imprimir o valor.
+
+O esperado é 0 em todas as diferenças. Diferenças possíveis e o significado de cada uma:
+- **"A mais na cópia"** só aparece se a pasta de destino já tinha algo: use uma pasta nova.
+- **"Faltando"** indica um arquivo enviado ao Chat durante a cópia: repita só esses arquivos.
+- **MD5 ausente** acontece em objetos compostos. Nesse caso vale o CRC32C.
+- **Token ou metadados diferentes** indicam que a cópia não preservou os metadados. Não siga sem entender o motivo, porque os links não abririam numa restauração.
+
+### B7. Restauração testada (opcional; só declarar se executada)
+
+Para declarar "restauração testada" é preciso fazê-la em um **projeto separado**, por exemplo `sistema-fb-restauro-teste`, nunca no de produção:
+1. Importar a exportação nesse projeto.
+2. Conferir as contagens por coleção.
+3. Copiar alguns anexos de volta para o bucket desse projeto.
+4. Abrir um link pelo token copiado.
+
+Até isso ser feito, a situação é: **"cópia concluída e verificada; restauração não testada"**.
 
 ### P2. Acesso de recuperação (só olhar, sem alterar)
 
-1. **Authentication › Users:** procure o seu e-mail e copie a coluna **UID do usuário**. Faça o mesmo com o **e-mail do robô**, o mesmo configurado no `credenciais.env` do PC do escritório (não abra nem compartilhe a senha). Anote as duas UIDs no registro (seção 5). Elas não são segredo.
-2. **Firestore Database › Dados › `users` › documento com a sua UID:** confira `role = "admin"`. O campo `acesso` ainda não existe, e isso é normal antes de E3. Passe o mouse sobre um campo: o ícone de lápis aparece. **Não salve nada.**
-3. **⚙ Configurações do projeto › Usuários e permissões:** o seu e-mail precisa ter o papel **Proprietário**. Anote também quem mais tem Proprietário ou Editor, para revisão.
-4. **Firestore › Regras e Storage › Regras:** abrem, e o botão **Publicar** existe. **Não clique.**
-5. **Cloud Shell** abre (usado em P1): sinal de que você tem o acesso necessário para restaurar.
+1. **Authentication › Users:** anote a UID da sua conta e a UID da conta do robô. É o e-mail do `credenciais.env` do PC do escritório; não abra a senha.
+2. **Firestore › Dados › `users/{sua UID}`:** `role = "admin"`. Não salve nada.
+3. **B3 (permissões efetivas)** é a comprovação de que você consegue restaurar e publicar regras. Abrir telas não comprova.
