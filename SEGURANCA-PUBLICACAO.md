@@ -279,6 +279,8 @@ O esperado é 0 em todas as diferenças. Diferenças possíveis e o significado 
 - **"A mais na cópia"** só aparece se a pasta de destino já tinha algo: use uma pasta nova.
 - **"Faltando"** indica um arquivo enviado ao Chat durante a cópia: repita só esses arquivos.
 - **MD5 ausente** acontece em objetos compostos. Nesse caso vale o CRC32C.
+- **Leitura negada em algum arquivo:** o bucket original usa ACL por objeto, com papéis legados (`legacyBucketOwner`). Em B3, o `testIamPermissions` acusou `storage.objects.get` negado no IAM do bucket, mas a leitura real funcionou, porque a ACL de cada objeto libera os donos do projeto. Um objeto com ACL diferente pode falhar na cópia. Por isso, confira o **código de saída e os erros do `gcloud storage cp`** e a contagem completa (59 de 59). **Não altere** as permissões do bucket original.
+- **ACL dos objetos não é copiada:** o bucket de backup tem acesso uniforme, então as ACLs por objeto não vão para a cópia, e isso é esperado. Os links do Firebase dependem do token, que fica nos metadados e é conferido por hash.
 - **Token ou metadados diferentes** indicam que a cópia não preservou os metadados. Não siga sem entender o motivo, porque os links não abririam numa restauração.
 
 ### B7. Restauração testada (opcional; só declarar se executada)
