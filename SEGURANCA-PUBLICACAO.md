@@ -12,7 +12,7 @@ A ordem leva em conta as regras **realmente publicadas hoje** (copiadas do conso
 
 | # | O quê | Situação |
 |---|---|---|
-| **P1** | **Cópia dos dados em produção.** Firestore: Console › Firestore › aba "Importar/exportar" (ou `gcloud firestore export gs://<bucket-de-backup>/2026-11-portal`). Storage, anexos do Chat: `gsutil -m cp -r gs://sistema-fb-4cce5.firebasestorage.app/chat <pasta local>`. Confira se a exportação terminou e quantos arquivos foram copiados. | **Depende de você.** Exige o console ou o gcloud com a sua conta. |
+| **P1** ✅ (02/11/2026: cópia concluída e verificada; **restauração não testada**) | **Cópia dos dados em produção.** Firestore: Console › Firestore › aba "Importar/exportar" (ou `gcloud firestore export gs://<bucket-de-backup>/2026-11-portal`). Storage, anexos do Chat: `gsutil -m cp -r gs://sistema-fb-4cce5.firebasestorage.app/chat <pasta local>`. Confira se a exportação terminou e quantos arquivos foram copiados. | **Depende de você.** Exige o console ou o gcloud com a sua conta. |
 | **P2** | **Acesso de recuperação** (ver seção 11, B3: permissões **efetivas**; abrir telas não comprova). Com a conta dona do projeto, confira, sem alterar nada: (a) Console › Firestore › Dados, abra `users/{sua UID}`: você consegue **ver e editar** campos; (b) Console › Authentication: sua conta e a do robô aparecem (anote as duas UIDs); (c) Console › Configurações do projeto › Usuários e permissões: seu papel é **Proprietário**; (d) Console › Firestore e Storage › Regras: o botão "Publicar" está habilitado. | **Depende de você.** Daqui não consigo verificar a sua conta. |
 | **P3** | **Cópia local recuperável** em `C:\Users\jowjo\Backups\portal-fb-seguranca-2026-11-01`: os dados privados que ficaram fora do git, as regras publicadas hoje, o repositório completo (bundle de todas as branches e do histórico), as configurações, o Worker que se presume publicado, a tarefa do DJEN e o seu trabalho não commitado. Tem manifesto SHA-256. | **Feita e testada** em 01/11/2026: o clone do bundle restaurou a `main` e esta branch idênticas, o manifesto conferiu, e `privado/` está idêntica ao original. |
 | **P4** | **Testes** (`tests/LEIA-ME.md`): regras, funções, Storage, Worker, funcional, migração dos anexos e DJEN, com 0 reprovados. | Feitos em 01/11/2026 (totais no fim). Repetir no dia, se houver qualquer mudança. |
@@ -174,12 +174,12 @@ Para levar o script ao Cloud Shell: menu ⋮ › **Fazer upload** › escolha o 
 
 | Item | Situação | Evidência |
 |---|---|---|
-| Projeto, localização do banco e volume conferidos (B1) | ☐ | |
-| Custo estimado com volume e região reais (B2) | ☐ | |
-| Permissões efetivas conferidas (B3) | ☐ | |
-| Bucket de backup criado, **privado e restrito** (B4) | ☐ | |
-| Exportação do Firestore **concluída e verificada** (B5) | ☐ | ID da operação: |
-| Cópia dos anexos **concluída e verificada** (B6) | ☐ | |
+| Projeto, localização do banco e volume conferidos (B1) | ✅ 02/11/2026 | `sistema-fb-4cce5`; Firestore `southamerica-east1`; ~2.536 documentos (contagem aproximada); Storage `sistema-fb-4cce5.firebasestorage.app` em `US-EAST1`, 59 arquivos (todos em `chat/`), 22.703.824 bytes |
+| Custo estimado com volume e região reais (B2) | ✅ 02/11/2026 | < US$ 0,01 uma vez + ~US$ 0,001/mês (estimativa por faixas de preço públicas; valor real no Faturamento) |
+| Permissões efetivas conferidas (B3) | ✅ 02/11/2026, com ressalva | `roles/owner`; permissões do projeto ✓. No bucket original, `objects.get` aparece negado no IAM (papéis legados), mas a leitura real funcionou pela ACL dos objetos. Permissões do bucket original **não alteradas**. |
+| Bucket de backup criado, **privado e restrito** (B4) | ✅ criado em 02/11/2026 | `gs://sistema-fb-4cce5-backup`, `southamerica-east1`. Anotar aqui a saída de `backup_conferencia.py bucket` e a revisão de Leitores, se ainda não estiverem registradas. |
+| Exportação do Firestore **concluída e verificada** (B5) | ✅ **cópia concluída e verificada** em 02/11/2026 | `SUCCESSFUL`, done=True, sem erro; 2.544 documentos; 26 arquivos, 19.324.792 bytes; `overall_export_metadata` presente; destino `gs://sistema-fb-4cce5-backup/firestore-2026-11-02-01`. ID da operação: anotar (`gcloud firestore operations list --limit=3`). A diferença para os ~2.536 de B1 (8 documentos) é esperada: a contagem de B1 era aproximada (coleções da raiz + subcoleções conhecidas) e pode ter havido gravações entre as duas. |
+| Cópia dos anexos **concluída e verificada** (B6) | ✅ **cópia concluída e verificada** em 02/11/2026 | `gs://sistema-fb-4cce5-backup/storage-2026-11-02-01/`: 59 de 59; nenhum arquivo faltando ou a mais; nenhuma diferença de tamanho, MD5, CRC32C, tipo, token (por hash) ou chaves de metadados |
 | **Restauração efetivamente testada** em ambiente separado (B7) | ☐ **Não feita.** Só pode ser declarada depois de executada num projeto separado. | |
 
 ### B1. Projeto, localização do banco e volume (só leitura)
