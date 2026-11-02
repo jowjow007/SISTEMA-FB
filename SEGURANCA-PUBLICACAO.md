@@ -38,7 +38,7 @@ Passe à etapa seguinte só com a verificação ✓. Em "**Parar se**", interrom
 |---|---|---|---|---|
 | **E1** | Merge de `seguranca/revisao-asvs` na `main` e push. | Settings › Pages: deploy concluído. | O deploy falha. | Corrigir com um novo commit. Nunca reverter o commit que tirou os dados. |
 | **E2** | **Versão nova chegou ao navegador.** <br>a) Aba anônima: Números e Condomínios sem nomes de clientes ou síndicos; `/tools/condominios/pdfs/relatorio-duo-2026-08.pdf` responde 404. <br>b) **No navegador de uso diário** (com o service worker antigo instalado): Ctrl+F5 no portal; no topo deve aparecer **v177**; se aparecer "Atualizar agora", clique. <br>c) F12 › Aplicação › Service workers: `sw.js` ativo; em "Armazenamento em cache" deve existir só `portal-fb-cache-v4` (o v3, que guardava cópias antigas, é apagado). <br>d) Na aba Rede, ao recarregar, `index.html` vem do servidor (200), não "(ServiceWorker)" sem rede. <br>e) Ctrl+U na ferramenta Condomínios: o código **não** tem `sindico:`. | a–e conferem. O GitHub Pages pode levar até ~10 min para entregar a versão nova. | Depois de 10 min ainda aparece v176 ou dado antigo. | Ctrl+F5; fechar todas as abas do portal; F12 › Aplicação › "Limpar dados do site" naquele navegador. Se persistir em todos os navegadores, parar e me chamar. |
-| **E3** | Console: `users/{sua UID}.acesso = "ativo"`; `robos/{UID do robô}` com `descricao`. | Os dois documentos existem. | Você não consegue editar pelo console (P2 falhou). | Não seguir para E4 sem acesso de recuperação. |
+| **E3** | Console: `users/{sua UID}.acesso = "ativo"`; **E3b:** `robos/{UID do robô do escritório}` com `descricao` (a UID da conta `robo.astrea@…`, anotada no registro local; ver seção 13). | Os dois documentos existem. | Você não consegue editar pelo console (P2 falhou). | Não seguir para E4 sem acesso de recuperação. |
 | **E4** | Publicar `firestore.rules`. | Você recarrega (Ctrl+F5) e entra. | Você não entra. | Console: confira `acesso`, `role` e a UID do seu cadastro. **Não** republique as regras antigas. |
 | **E5** | Página `tools/admin-seguranca`: passo 1 (acesso: desmarque os **⚠ conferir**), passo 2 (patrimônio: marque **só** os admins e as pessoas que você autorizar; ninguém vem marcado). Baixe o CSV. | Um colaborador entra e abre a Agenda. | Alguém da equipe continua sem acesso **e** "Aprovar acesso" não resolve. | Reabra a página; ela grava só o que mudou. Pessoa sem aba: Usuários › Editar abas. |
 | **E6** | Publicar `storage.rules` (antes, confira que só existe `chat/`) e **aceitar a permissão "cross-service"** que o console pedir. | Enviar um PDF numa conversa de teste funciona; um anexo antigo continua abrindo. | O envio falha com "unauthorized". | Conceda a permissão cross-service (Storage › Regras). Não volte às regras antigas do Storage. |
@@ -349,3 +349,47 @@ Objetivo: descobrir **qual conta o robô do escritório usa** e **se ele roda to
 6. **(Opcional) Outras contas candidatas:** Console › Authentication › Users, ordenado por "Último login". Uma conta com login diário perto das 7h é a candidata.
 
 **Resultado esperado de R0:** a UID da conta que o robô realmente usa, anotada no registro local, e a confirmação de que ele roda, ou a causa de ter parado. **Sem isso, não faça E3b (`robos/{uid}`).** Se o robô estiver parado, a publicação não piora nada para ele, mas a Agenda já está desatualizada e isso entra como pendência.
+
+## 13. Robô do Astrea: identidade confirmada e diagnóstico supervisionado (R0)
+
+**Resultado de R0 (02/11/2026, sem alterações):**
+- O robô do PC do escritório usa **outra conta** (`robo.astrea@…`), diferente da configurada neste PC. A UID dela está no registro local, e é **essa** que entra em `robos/` na E3b. A conta deste PC não é a do robô em uso.
+- **Identidade confirmada**: último login em 02/11/2026. **Sucesso da importação não confirmado.**
+- `AstreaImportDiario`: última execução em 01/11, **resultado 1**.
+  - A tarefa chama o `python.exe` com `>> log-diario.txt 2>&1` como argumentos. Sem um shell, esse redirecionamento não acontece, e por isso não há log.
+  - Não está comprovado que essa seja a causa da falha.
+- `AstreaWatcher`: última execução em 27/10, resultado 267014 (0x41306, tarefa encerrada).
+
+**Correção da captura de log (preparada nesta branch; não publicada):** o `importar.py` passa a gravar o próprio log em `scripts\astrea-importer\logs\importar-AAAA-MM-DD.txt`, com o erro completo (traceback), e avisa dos argumentos de redirecionamento ignorados.
+- Funciona **com a tarefa do jeito que está**: a configuração da tarefa não muda.
+- Só chega ao PC do escritório pelo `git pull` automático, **depois** do merge na `main`.
+- Teste local: 12 de 12, `tests/djen/testar-diagnostico-astrea.py`.
+
+### Execução supervisionada (antes da publicação, com o arquivo copiado à mão)
+
+O arquivo é `scripts/seguranca/diagnostico_astrea.py`. Copie **só ele** para `C:\Users\FB\diagnostico-astrea\`, **fora** do repositório, para não alterar a pasta que o `git pull` atualiza. Rode-o no PowerShell do PC do escritório, com o **mesmo python.exe da tarefa**. Para descobrir qual é, rode `(Get-ScheduledTask AstreaImportDiario).Actions | Format-List Execute`.
+
+Esse arquivo:
+- **não faz `git pull`**: desliga a atualização automática antes de carregar o robô;
+- **não altera a tarefa**;
+- **não imprime senhas nem e-mails completos**;
+- grava tudo em `diagnostico-AAAAMMDD-HHMMSS.txt`, na mesma pasta.
+
+Faça fora das 7h, para não coincidir com a tarefa diária.
+
+| Fase | Comando | O que acontece **no Astrea** | O que acontece **no Firebase** | No PC |
+|---|---|---|---|---|
+| **A** (padrão) | `python diagnostico_astrea.py` | Abre o Chromium **visível** e **entra** com a conta do escritório configurada no `credenciais.env` (fica um registro de acesso no Astrea). Abre a agenda e **exporta a planilha**. Só lê: não altera tarefas, prazos nem eventos. | **Nada**: sem login, sem leitura, sem gravação. O teste confirma que o Firebase não é chamado. | Baixa a planilha para `Downloads\astrea-import` (não arquiva) e grava o log de diagnóstico. |
+| **B** (`--completo`, **só com a sua autorização**) | `python diagnostico_astrea.py --completo` | O mesmo da Fase A. | **Login** com `robo.astrea@…` (atualiza o "último login"). **Lê** a agenda dos dias anteriores (`astreaDiario`) para calcular a diferença. **Grava** `astreaDiario/{hoje}` (substitui o documento do dia inteiro pela agenda real) e `astreaDelta/{hoje}`. É exatamente o que a tarefa das 7h faz quando funciona. | Arquiva a planilha, como no uso normal. |
+
+**O que me mandar:**
+- as linhas `[diagnóstico ...]` do arquivo gerado;
+- o **resultado** (código);
+- se houver erro, o trecho do erro.
+
+Antes de mandar, confira se não aparece nenhum dado de cliente. A planilha **não** é impressa, só a contagem de registros.
+
+**Depois do diagnóstico:**
+- Com o erro real em mãos, preparo a correção (na branch). Ela entra na publicação ou fica registrada como pendência.
+- A Fase B só roda se você autorizar. Ela tem o mesmo efeito de uma execução diária normal: atualiza a Agenda do portal.
+- **Nenhuma mudança na tarefa agendada** até combinarmos.

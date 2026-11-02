@@ -512,6 +512,58 @@ def atualizar_codigo():
         log(f"Atualização automática indisponível ({e}); seguindo com o código atual.")
 
 
+class _Duplicador:
+    """Escreve ao mesmo tempo na saída original e no arquivo de log."""
+    def __init__(self, original, arquivo):
+        self.original, self.arquivo = original, arquivo
+
+    def write(self, texto):
+        for destino in (self.original, self.arquivo):
+            try:
+                destino.write(texto); destino.flush()
+            except Exception:
+                pass
+
+    def flush(self):
+        for destino in (self.original, self.arquivo):
+            try:
+                destino.flush()
+            except Exception:
+                pass
+
+
+def configurar_log_em_arquivo():
+    """O robô grava o próprio log em logs/importar-AAAA-MM-DD.txt (ao lado deste arquivo).
+    A tarefa agendada passa '>> log-diario.txt 2>&1' como argumentos para o python.exe, mas sem um shell esse
+    redirecionamento não acontece e nenhum log era gravado. Assim o log existe com a tarefa do jeito que está.
+    Qualquer falha aqui não impede a importação."""
+    try:
+        pasta = Path(__file__).parent / "logs"
+        pasta.mkdir(exist_ok=True)
+        arquivo = open(pasta / f"importar-{date.today().isoformat()}.txt", "a", encoding="utf-8")
+        sys.stdout = _Duplicador(sys.stdout, arquivo)
+        sys.stderr = _Duplicador(sys.stderr, arquivo)
+        anterior = sys.excepthook
+
+        def registrar_erro(tipo, valor, tb):
+            import traceback
+            log("ERRO NÃO TRATADO:\n" + "".join(traceback.format_exception(tipo, valor, tb)))
+            anterior(tipo, valor, tb)
+        sys.excepthook = registrar_erro
+        log(f"===== início (python {sys.version.split()[0]}, pasta {Path(__file__).parent}) =====")
+        extras = sys.argv[1:]
+        if extras:
+            log(f"Aviso: argumentos ignorados {extras} (redirecionamento '>>' só funciona dentro de um shell; o log agora fica em logs/).")
+    except Exception as e:
+        print(f"Não foi possível criar o arquivo de log: {e}", flush=True)
+
+
 if __name__ == "__main__":
+    configurar_log_em_arquivo()
     atualizar_codigo()
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except SystemExit as e:
+        log(f"===== fim (código {e.code}) =====")
+        raise
+    log("===== fim (código 0) =====")
