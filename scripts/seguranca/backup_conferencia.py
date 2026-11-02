@@ -5,7 +5,7 @@ Não restaura, não publica, não revoga e não altera nada. Não imprime tokens
 
 Subcomandos
   volume       BUCKET_STORAGE              quantos documentos por coleção e arquivos/bytes do Storage (base do custo)
-  permissoes   BUCKET_STORAGE BUCKET_BACKUP permissões EFETIVAS da sua conta para exportar, restaurar e publicar regras
+  permissoes   BUCKET_STORAGE [BUCKET_BACKUP] permissões EFETIVAS da sua conta para exportar, restaurar e publicar regras
   bucket       BUCKET_BACKUP               o bucket de backup é privado? (prevenção de acesso público, acesso uniforme, IAM)
   exportacao   NOME_DA_OPERACAO            resultado DAQUELA exportação (estado, documentos, bytes, destino, arquivos gerados)
   anexos       BUCKET_STORAGE gs://BUCKET_BACKUP/PASTA [PREFIXO]   compara caminhos, quantidade, tamanho, checksums e metadados
@@ -103,7 +103,7 @@ def cmd_volume(bucket):
     print(f'  download opcional para o PC ≈ {humano(tam)} de tráfego de saída para a internet')
 
 
-def cmd_permissoes(bucket_st, bucket_bk):
+def cmd_permissoes(bucket_st, bucket_bk=None):
     proj = ['datastore.databases.export', 'datastore.databases.import', 'datastore.databases.get', 'datastore.entities.get',
             'datastore.entities.update', 'datastore.operations.get', 'firebaserules.releases.update', 'firebaserules.rulesets.create',
             'storage.buckets.create', 'resourcemanager.projects.getIamPolicy']
@@ -112,8 +112,10 @@ def cmd_permissoes(bucket_st, bucket_bk):
     print('PROJETO — permissões efetivas da sua conta (teste sem executar nada)')
     for p in proj:
         print(f"  {'✓' if p in tem else '✗'} {p}")
-    for b, nec in ((bucket_st, ['storage.objects.list', 'storage.objects.get', 'storage.objects.create']),
-                   (bucket_bk, ['storage.objects.list', 'storage.objects.get', 'storage.objects.create', 'storage.buckets.getIamPolicy'])):
+    buckets = [(bucket_st, ['storage.objects.list', 'storage.objects.get', 'storage.objects.create'])]
+    if bucket_bk:   # o bucket de backup só existe depois da etapa B4
+        buckets.append((bucket_bk, ['storage.objects.list', 'storage.objects.get', 'storage.objects.create', 'storage.buckets.getIamPolicy']))
+    for b, nec in buckets:
         q = '&'.join('permissions=' + p for p in nec)
         r = req('GET', f'{GCS}/b/{b}/iam/testPermissions?{q}')
         tem = set(r.get('permissions', []))
