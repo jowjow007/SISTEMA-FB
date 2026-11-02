@@ -13,6 +13,40 @@ npm run test:storage     # regras do Storage, com o emulador do Firestore junto 
 npm run test:worker      # Worker do Assistente IA, com rede simulada
 ```
 
+## Testes funcionais com login (`tests/funcional/`)
+
+O portal de verdade (`index.html` e as ferramentas) roda num navegador de teste (Playwright/Chromium) contra os emuladores de Auth, Firestore e Storage. São usados 9 personagens fictícios: admin, membro, colega, cliente, desligado, cadastro antigo sem abas, novo autocadastro, robô e quem vê todo o patrimônio.
+
+Passo a passo coberto:
+1. migração com as regras **antigas**;
+2. troca para as regras novas;
+3. envio dos dados privados;
+4. membro: holerites, patrimônio, Números, Agenda, Condomínios, Chat com anexo novo e antigo, tentativa de XSS e Assistente;
+5. cliente;
+6. desligado com a sessão aberta enquanto o admin o exclui;
+7. autocadastro e aprovação;
+8. o `importar.py` real do robô, com os endereços trocados para o emulador.
+
+As páginas são apontadas para um projeto `demo-`. O navegador resolve os domínios de produção para uma porta fechada, e o teste **reprova** se houver qualquer pedido a eles.
+
+```bash
+cd tests
+REGRAS_ANTIGAS=/caminho/regras-de-antes.rules npm run test:funcional   # requer Python 3 + playwright (pip install playwright && playwright install chromium)
+```
+
+## Comparar com as regras publicadas hoje
+
+Copie as regras do console para dois arquivos `.txt` e rode:
+
+```bash
+python tests/comparar-regras.py regras-firestore-atuais.txt regras-storage-atuais.txt
+```
+
+O script lista:
+- os caminhos que só existem nas regras atuais, que a proposta deixaria de permitir;
+- as permissões alteradas;
+- as coleções que o código usa e que ficariam sem regra.
+
 Para provar que os testes pegam as falhas, rode os mesmos casos contra uma versão antiga das regras. Eles **devem** reprovar:
 
 ```bash

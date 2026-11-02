@@ -1028,6 +1028,12 @@
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
+  // URL de foto/documento vinda da mensagem: só https:, data: de mídia, blob: (e localhost, para testes).
+  // Qualquer outra coisa (javascript:, aspas para fechar o atributo...) vira vazio. Revisão de segurança 01/11/2026.
+  function urlDeMidia(u){
+    u = String(u || '');
+    return /^(https:\/\/|data:(image\/|application\/|text\/plain)|blob:|http:\/\/(127\.0\.0\.1|localhost)[:\/])/i.test(u) ? escapeHtml(u) : '';
+  }
   // Escapa o texto e envolve URLs em links clicáveis
   var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
   function linkify(s){
@@ -1522,11 +1528,11 @@
         out += '<div class="msg-fwd-label">' + icoSvg('forward', 11) + ' Encaminhada de ' + escapeHtml(m.encaminhadaDeAutorNome || 'alguém') + '</div>';
       }
       if (m.tipo === 'foto'){
-        var fotoSrc = m.fotoUrl || m.fotoBase64 || '';
+        var fotoSrc = urlDeMidia(m.fotoUrl || m.fotoBase64 || '');
         if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '">';
       }
       if (m.tipo === 'documento'){
-        var docHref = m.documentoUrl || m.documentoBase64 || '#';
+        var docHref = urlDeMidia(m.documentoUrl || m.documentoBase64 || '') || '#';
         var docAttr = m.documentoUrl ? 'target="_blank" rel="noopener"' : ('download="' + escapeHtml(m.documentoNome || 'documento') + '"');
         out += '<a class="msg-doc" href="' + docHref + '" ' + docAttr + '>' +
           '<span class="icone">' + icoSvg('document', 22) + '</span><span class="info">' +

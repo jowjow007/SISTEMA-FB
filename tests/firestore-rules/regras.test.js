@@ -45,6 +45,8 @@ async function semear() {
     const d = ctx.firestore();
     for (const k of Object.keys(P)) if (P[k].doc) await d.doc('users/' + P[k].uid).set(Object.assign({ email: P[k].email, displayName: 'Pessoa ' + k }, P[k].doc));
     await d.doc('robos/u-robo').set({ descricao: 'robô de teste' });
+    await d.doc('users/u-gestor').set({ email: 'gestor@exemplo.test', displayName: 'Gestor', role: 'gestor', tabs: ['gestao'], acesso: 'ativo' });
+    await d.doc('users/u-alvo').set({ email: 'alvo@exemplo.test', displayName: 'Alvo', role: 'membro', tabs: [], acesso: 'pendente' });
     await d.doc('acessosRevogados/u-deslig').set({ nome: 'Pessoa desligada' });
     await d.doc('permissoesGestao/u-lancador').set({ lancarHolerites: true });
     await d.doc('permissoesGestao/u-deslig').set({ lancarHolerites: true, patrimonioCadastro: true });   // permissão esquecida
@@ -128,6 +130,10 @@ async function main() {
   await caso(G, 'autocadastro com campo de auditoria é negado', () => assertFails(novo.doc('users/u-novo').set(autocadastro({ acessoAprovadoPor: 'u-admin' }))));
   await caso(G, 'autocadastro na conta de outra pessoa é negado', () => assertFails(novo.doc('users/u-x').set(autocadastro())));
   await caso(G, 'autocadastro pendente válido é aceito', () => assertSucceeds(novo.doc('users/u-novo').set(autocadastro({ cpf: '000', deptoAtual: '', patrimonioVerTudo: false }))));
+  await caso(G, 'autocadastro grava o próprio perfil (foto) antes da aprovação', () => assertSucceeds(novo.doc('perfis/u-novo').set({ foto: 'data:', nascimento: '2000-01-01' })));
+  await caso(G, 'autocadastro grava o próprio espelho do organograma (só nome)', () => assertSucceeds(novo.doc('organograma/u-novo').set({ displayName: 'Novo', email: 'novo@exemplo.test', deptoAtual: '', dataIngresso: '', remuneracao: '' })));
+  await caso(G, 'pendente não altera o perfil depois de criado', () => assertFails(novo.doc('perfis/u-novo').update({ foto: 'outra' })));
+  await caso(G, 'pendente não cria perfil de outra pessoa', () => assertFails(novo.doc('perfis/u-alvo').set({ foto: 'x' })));
   await caso(G, '…e não dá acesso a nada', () => assertFails(novo.doc('organograma/u-membro').get()));
   await caso(G, '…nem depois de criado ele consegue se aprovar', () => assertFails(novo.doc('users/u-novo').update({ acesso: 'ativo' })));
   await caso(G, 'conta com e-mail do robô criada por terceiro não grava agenda', () => assertFails(db(P.roboEmail).doc('astreaDiario/2026-01-03').set({ itens: ['falso'] })));
@@ -213,6 +219,45 @@ async function main() {
   await caso(G, 'membro não lê histórico de petições de outro', () => assertFails(db(P.membro).doc('peticoes_historico/ph1').get()));
   await caso(G, 'membro não lê auditoria de segurança', () => assertFails(db(P.membro).collection('auditoriaSeguranca').get()));
   await caso(G, 'admin não apaga registro de auditoria', () => assertFails(db(P.admin).doc('auditoriaSeguranca/a1').delete()));
+
+  G = '9. Administração (migração, aprovação, revogação, robôs, dados privados) só por admin ativo — chamadas diretas pelo SDK';
+  const atores = { membro: P.membro, gestor: { uid: 'u-gestor', email: 'gestor@exemplo.test' }, cliente: P.cliente, pendente: P.pendente, 'admin pendente': P.adminPend, bloqueado: P.bloqueado };
+  // FieldValue do mesmo SDK que o rules-unit-testing usa (carregar outro SDK conflita)
+  const fbCompat = require('firebase/compat/app'); const FV = (fbCompat.default || fbCompat).firestore.FieldValue;   // mesmo módulo em cache que o rules-unit-testing já carregou
+  const TS = () => FV.serverTimestamp();
+  const tentativas = [
+    ['aprova outra pessoa (users.acesso)', (d) => d.doc('users/u-alvo').update({ acesso: 'ativo' })],
+    ['revoga outra pessoa (users.acesso=bloqueado)', (d) => d.doc('users/u-outro').update({ acesso: 'bloqueado', tabs: [] })],
+    ['dá patrimonioVerTudo a outra pessoa', (d) => d.doc('users/u-outro').update({ patrimonioVerTudo: true })],
+    ['libera abas para outra pessoa', (d) => d.doc('users/u-alvo').update({ tabs: ['gestao'] })],
+    ['apaga cadastro de outra pessoa', (d) => d.doc('users/u-alvo').delete()],
+    ['lista todos os cadastros', (d) => d.collection('users').get()],
+    ['cria marca de revogação', (d) => d.doc('acessosRevogados/u-alvo').set({ nome: 'x' })],
+    ['apaga marca de revogação de um desligado', (d) => d.doc('acessosRevogados/u-deslig').delete()],
+    ['lista marcas de revogação', (d) => d.collection('acessosRevogados').get()],
+    ['cadastra robô (UID alheia)', (d) => d.doc('robos/u-alvo').set({ descricao: 'x' })],
+    ['apaga o robô do escritório', (d) => d.doc('robos/u-robo').delete()],
+    ['grava registro de auditoria', (d) => d.collection('auditoriaSeguranca').add({ porUid: 'u-membro', em: TS(), acao: 'x' })],
+    ['grava dado privado (painel)', (d) => d.doc('dadosPrivados/numerosStats').set({ json: '{}' })],
+    ['grava arquivo privado', (d) => d.doc('arquivosPrivados/falso.pdf').set({ nome: 'falso.pdf', partes: 0 })],
+    ['dá a si permissão de Gestão', (d) => d.doc('permissoesGestao/' + d._uid).set({ lancarHolerites: true, patrimonioCadastro: true })],
+    ['marca pagamento de colaborador', (d) => d.doc('pagamentosColaboradores/2026-01').set({ pagos: { x: true } })],
+  ];
+  for (const [nomeAtor, ator] of Object.entries(atores)) {
+    for (const [acao, fn] of tentativas) {
+      await caso(G, nomeAtor + ' não ' + acao, () => { const d = db(ator); d._uid = ator.uid; return assertFails(fn(d)); });
+    }
+  }
+  // controles positivos: o admin ativo consegue cada operação
+  const A = db(P.admin); A._uid = P.admin.uid;
+  await caso(G, 'admin ativo aprova', () => assertSucceeds(A.doc('users/u-alvo').update({ acesso: 'ativo' })));
+  await caso(G, 'admin ativo revoga', () => assertSucceeds(A.doc('users/u-alvo').update({ acesso: 'bloqueado', tabs: [] })));
+  await caso(G, 'admin ativo grava marca de revogação', () => assertSucceeds(A.doc('acessosRevogados/u-alvo').set({ nome: 'x' })));
+  await caso(G, 'admin ativo apaga marca de revogação (recontratação)', () => assertSucceeds(A.doc('acessosRevogados/u-alvo').delete()));
+  await caso(G, 'admin ativo cadastra e remove robô', async () => { await assertSucceeds(A.doc('robos/u-robo-x').set({ descricao: 'x' })); await assertSucceeds(A.doc('robos/u-robo-x').delete()); });
+  await caso(G, 'admin ativo grava auditoria (com o próprio uid e hora do servidor)', () => assertSucceeds(A.collection('auditoriaSeguranca').add({ porUid: 'u-admin', em: TS(), acao: 'teste' })));
+  await caso(G, 'admin não grava auditoria em nome de outro', () => assertFails(A.collection('auditoriaSeguranca').add({ porUid: 'u-membro', em: TS(), acao: 'x' })));
+  await caso(G, 'admin ativo grava dado privado', () => assertSucceeds(A.doc('dadosPrivados/condominios').set({ json: '{}' })));
 
   await env.cleanup();
   let falhas = 0, grupoAtual = '';

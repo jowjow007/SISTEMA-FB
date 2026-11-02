@@ -2242,10 +2242,16 @@
       ? wallpapers.map(cardMaterialExtra).join('')
       : '<p class="materiais-empty" id="materiais-wallpapers-vazio">Nenhum papel de parede cadastrado ainda.</p>';
   }
-  db.collection('materiaisMarca').onSnapshot(function(snap){
-    materiaisExtras = [];
-    snap.forEach(function(doc){ materiaisExtras.push(Object.assign({ id: doc.id }, doc.data())); });
-    renderMateriaisExtras();
+  // só depois do login: lida antes, a leitura é negada e o listener morre sem tentar de novo
+  let pararMateriaisMarca = null;
+  auth.onAuthStateChanged(function(user){
+    if (pararMateriaisMarca) { pararMateriaisMarca(); pararMateriaisMarca = null; }
+    if (!user) return;
+    pararMateriaisMarca = db.collection('materiaisMarca').onSnapshot(function(snap){
+      materiaisExtras = [];
+      snap.forEach(function(doc){ materiaisExtras.push(Object.assign({ id: doc.id }, doc.data())); });
+      renderMateriaisExtras();
+    }, function(){ /* sem acesso (pendente/bloqueado): mantém só os materiais fixos */ });
   });
   window.__excluirMaterialMarca = function(id){
     if (!confirm('Excluir este material? Ele some do download para todo mundo.')) return;

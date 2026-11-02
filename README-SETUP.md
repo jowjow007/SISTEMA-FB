@@ -137,8 +137,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /perfis/{uid} {
-      allow read: if isAtivo() || (isAtivo() && request.auth.uid == uid);
-      allow write: if isAtivo() && (request.auth.uid == uid || isAdmin());
+      allow read: if isAtivo() || (isSignedIn() && request.auth.uid == uid);
+      // o autocadastro grava o próprio perfil (foto/nascimento) antes da aprovação; quem foi excluído não recria
+      allow create: if (isSignedIn() && request.auth.uid == uid && !acessoRevogado()) || isAdmin();
+      allow update, delete: if isAtivo() && (request.auth.uid == uid || isAdmin());
     }
     match /sugestoes/{sugestaoId} {
       allow read: if isAtivo();
