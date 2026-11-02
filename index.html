@@ -1389,7 +1389,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v179</span>
+      <span class="version-tag">v180</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2424,6 +2424,7 @@
   document.getElementById('register-photo-tirar').addEventListener('click', function(){ registerPhotoCam.click(); });
 
   // ---------- Cadastro (auto-atendimento, sem abas por padrão) ----------
+  let cadastroEmAndamento = false;   // ver o submit do cadastro e o onAuthStateChanged
   els.registerForm.addEventListener('submit', function(e){
     e.preventDefault();
     els.registerError.style.display = 'none';
@@ -2483,7 +2484,12 @@
     els.registerSubmit.disabled = true;
     els.registerSubmit.textContent = 'Criando...';
 
+    // Enquanto o cadastro grava, o onAuthStateChanged ignora a conta recém-criada: antes ele lia users/{uid}
+    // (ainda inexistente), fazia signOut e as gravações ficavam presas na fila do Firestore ("Criando..." eterno).
+    cadastroEmAndamento = true;
+    let contaCriada = null;
     auth.createUserWithEmailAndPassword(email, senha).then(function(cred){
+      contaCriada = cred.user;
       const uid = cred.user.uid;
       return Promise.all([
         db.collection('users').doc(uid).set({
@@ -2535,9 +2541,24 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         })
       ]);
+    }).then(function(){
+      // cadastro gravado: volta para o login com o aviso de aprovação pendente e encerra a sessão
+      return auth.signOut().catch(function(){}).then(function(){
+        cadastroEmAndamento = false;
+        els.registerForm.reset();
+        els.registerMode.style.display = 'none';
+        els.loginMode.style.display = 'block';
+        els.loginError.textContent = 'Seu cadastro foi recebido e aguarda a aprovação do administrador.';
+        els.loginError.style.display = 'block';
+      });
     }).catch(function(err){
-      els.registerError.textContent = traduzErro(err.code);
-      els.registerError.style.display = 'block';
+      // a conta foi criada mas o cadastro não foi gravado: apaga a conta para a pessoa poder tentar de novo
+      const desfazer = contaCriada ? contaCriada.delete().catch(function(){ return auth.signOut(); }) : Promise.resolve();
+      return desfazer.catch(function(){}).then(function(){
+        cadastroEmAndamento = false;
+        els.registerError.textContent = traduzErro(err.code);
+        els.registerError.style.display = 'block';
+      });
     }).finally(function(){
       els.registerSubmit.disabled = false;
       els.registerSubmit.textContent = 'Criar conta';
@@ -2547,6 +2568,7 @@
   // ---------- Auth state ----------
   function fimRestauracao(){ document.documentElement.classList.remove('restaurando'); }
   auth.onAuthStateChanged(function(user){
+    if (user && cadastroEmAndamento) return;   // o próprio formulário de cadastro conclui e encerra a sessão
     if (!user) {
       try { localStorage.removeItem('fb-sessao'); } catch(e){}
       fimRestauracao();

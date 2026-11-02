@@ -653,6 +653,9 @@ def main():
             G = '6. Autocadastro e aprovação explícita'
             b = p.chromium.launch(headless=True, args=ARGS_NAVEGADOR); cn = novo_contexto(b)
             pn2 = cn.new_page(); pn2.on('dialog', aceitar); pn2.goto(BASE + '/index.html')
+            # como em entrar(): espera a tela de login terminar de carregar (antes disso a página limpa/esconde o formulário)
+            esperar(pn2, "document.getElementById('login-screen') && getComputedStyle(document.getElementById('login-screen')).display !== 'none'", 20000)
+            pn2.wait_for_timeout(1500)
             pn2.click('#show-register')
             campos = {'#register-name': 'Novo', '#register-surname': 'Fictício', '#register-cpf': '000.000.000-00', '#register-rg': '0000',
                       '#register-rg-orgao': 'SSP', '#register-nacionalidade': 'brasileira', '#register-email': 'novo@exemplo.test',
@@ -663,6 +666,13 @@ def main():
             pn2.select_option('#register-rg-uf', index=1); pn2.select_option('#register-estado-civil', index=1)
             foto = os.path.join(pasta_priv, 'foto.jpg'); io.open(foto, 'wb').write(JPG_FALSO)
             pn2.set_input_files('#register-photo', foto); time.sleep(2)
+            # Em produção a leitura de users/{uid} feita pelo onAuthStateChanged pode chegar ANTES das gravações do
+            # cadastro (no emulador elas chegavam primeiro). Atrasar as gravações reproduz essa ordem: a versão antiga
+            # fazia signOut e o botão ficava em "Criando..." (ou o cadastro não era gravado).
+            pn2.evaluate("""() => { const P = firebase.firestore.DocumentReference.prototype, set = P.set;
+                P.set = function(...a){ const d = this;
+                  if (/^(users|perfis|organograma)\\//.test(d.path)) return new Promise(r => setTimeout(r, 2500)).then(() => set.apply(d, a));
+                  return set.apply(d, a); }; }""")
             pn2.click('#register-submit')
             ate(lambda: any(d.get('email') == 'novo@exemplo.test' for _, d in listar('users')), 25)
             ate(lambda: any(d.get('email') == 'novo@exemplo.test' for _, d in listar('perfis')) or False, 10)
@@ -671,6 +681,9 @@ def main():
             caso(G, 'autocadastro pela interface cria o cadastro como pendente', len(novos_users) == 1 and novos_users[0][1].get('acesso') == 'pendente', erro_tela[:150])
             caso(G, 'autocadastro grava perfil e organograma (não quebrou com as regras novas)', bool(novos_users) and ate(lambda: ler('perfis/' + novos_users[0][0]) is not None and ler('organograma/' + novos_users[0][0]) is not None, 15), erro_tela[:150])
             caso(G, 'pendente vê aviso de aguardando aprovação e não entra', esperar(pn2, "document.getElementById('login-error').textContent.includes('aguarda a aprovação')", 10000))
+            caso(G, 'cadastro conclui (botão volta a "Criar conta", tela de login, sessão encerrada)',
+                 esperar(pn2, "document.getElementById('register-submit').textContent === 'Criar conta' && document.getElementById('login-mode').style.display !== 'none' && !firebase.auth().currentUser", 15000),
+                 pn2.evaluate("document.getElementById('register-submit').textContent"))
             b.close()
             if novos_users:
                 ba, ca, pa, oka = sessao('admin@exemplo.test')
