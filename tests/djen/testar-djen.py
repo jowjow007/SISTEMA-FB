@@ -43,9 +43,10 @@ def preparar(branch='main'):
     git(pasta, 'checkout', '-q', '-B', branch)
     git(pasta, 'config', 'user.email', 'teste@exemplo.test'); git(pasta, 'config', 'user.name', 'teste')
     s = io.open(SCRIPT, encoding='utf-8-sig').read()
-    s = s.replace('$RepoDir        = "C:\\Users\\jowjo\\portal-fb"', '$RepoDir        = "' + pasta.replace('/', '\\') + '"')
+    # o script descobre o repositório pela própria pasta ($PSScriptRoot), então a cópia descartável já é o alvo
+    assert '$RepoDir        = (Resolve-Path (Join-Path $PSScriptRoot' in s, 'o script voltou a ter a pasta do repositório fixa'
     s = s.replace('https://comunicaapi.pje.jus.br', 'http://127.0.0.1:8777')
-    assert pasta.replace('/', '\\') in s and '127.0.0.1:8777' in s, 'não consegui apontar o script para a cópia e a API falsa'
+    assert '127.0.0.1:8777' in s, 'não consegui apontar o script para a API falsa'
     alvo = os.path.join(pasta, 'tools', 'numeros-escritorio', 'atualizar_publicacoes.ps1')
     io.open(alvo, 'w', encoding='utf-8-sig').write(s)
     git(pasta, 'update-index', '--assume-unchanged', 'tools/numeros-escritorio/atualizar_publicacoes.ps1')

@@ -39,7 +39,8 @@ trap {
 $NumeroOab      = "163443"
 $UfOab          = "MG"
 $DataInicio     = "2026-01-01"
-$RepoDir        = "C:\Users\jowjo\portal-fb"
+# o repositório é o da própria cópia do script (o agendamento aponta para uma cópia só da main, separada da pasta de desenvolvimento)
+$RepoDir        = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $IndexPath      = Join-Path $RepoDir "tools\numeros-escritorio\index.html"
 $ItensPorPagina = 1000
 
