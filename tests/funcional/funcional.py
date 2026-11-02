@@ -297,7 +297,20 @@ def dar_ciencia(pg):
 
 
 def sdk(pg, js):
-    """Executa uma chamada direta ao SDK do Firebase na página (sem a interface). Devolve 'ok' ou o código do erro."""
+    """Executa uma chamada direta ao SDK do Firebase na página (sem a interface). Devolve 'ok' ou o código do erro.
+    Se a página recarregar no meio (a conta dela caiu ou mudou: firebase-config.js recarrega), devolve
+    'erro:sem-sessao' quando ela voltou sem ninguém logado, ou 'erro:navegou' se voltou com alguma conta."""
+    try:
+        return _sdk(pg, js)
+    except Exception as e:
+        if 'Execution context was destroyed' not in str(e) and 'navigation' not in str(e):
+            raise
+        esperar(pg, "typeof firebase !== 'undefined' && firebase.apps.length > 0", 20000)
+        pg.wait_for_timeout(1500)
+        return 'erro:sem-sessao' if pg.evaluate("!firebase.auth().currentUser") else 'erro:navegou'
+
+
+def _sdk(pg, js):
     return pg.evaluate("""async (js) => { try { const r = await (new Function('return (async () => {' + js + '})()'))(); return 'ok' + (r === undefined ? '' : ':' + JSON.stringify(r)); }
                        catch (e) { return 'erro:' + (e.code || e.message); } }""", js)
 
@@ -613,6 +626,29 @@ def main():
             b.close()
         bloco('4. Cliente (síndico)', b4)
 
+        def b4b():
+            G = '4b. Uma conta por vez no navegador (abas do mesmo navegador)'
+            b = p.chromium.launch(headless=True, args=ARGS_NAVEGADOR); ctx = novo_contexto(b)
+            p1 = entrar(ctx, 'membro@exemplo.test')
+            caso(G, 'aba 1 entra como membro', esperar(p1, "document.getElementById('app-screen').style.display === 'flex'", 20000))
+            p1.evaluate("window.__marca = 1")   # some se a página recarregar
+            p2 = ctx.new_page(); p2.on('dialog', aceitar); p2.goto(BASE + '/tools/chat/index.html')
+            esperar(p2, "typeof firebase !== 'undefined' && firebase.apps.length > 0 && !!firebase.auth().currentUser", 20000)
+            p2.evaluate(f"() => {{ firebase.auth().signInWithEmailAndPassword('colega@exemplo.test', '{SENHA}').catch(() => {{}}); }}")
+            caso(G, 'outra aba entrou com outra conta: a aba 1 recarrega e passa a ser a conta nova',
+                 esperar(p1, "typeof window.__marca === 'undefined' && !!firebase.auth().currentUser && firebase.auth().currentUser.email === 'colega@exemplo.test'", 25000))
+            caso(G, '... e mostra a conta nova, sem nada da anterior (perfil carregado do zero)',
+                 esperar(p1, "document.getElementById('app-screen').style.display === 'flex' && (document.getElementById('user-info-box') || {}).textContent.includes('Colega Fictício') && !(document.getElementById('user-info-box') || {}).textContent.includes('Membro Fictício')", 20000),
+                 p1.evaluate("(document.getElementById('user-info-box') || {textContent: 'sem #user-info-box'}).textContent.slice(0, 60)"))
+            p1.evaluate("window.__marca = 2")
+            p2.wait_for_load_state()
+            esperar(p2, "typeof firebase !== 'undefined' && firebase.apps.length > 0 && !!firebase.auth().currentUser", 20000)
+            p2.evaluate("() => { firebase.auth().signOut().catch(() => {}); }")
+            caso(G, 'saiu em outra aba: a aba 1 recarrega e volta para a tela de login',
+                 esperar(p1, "typeof window.__marca === 'undefined' && !firebase.auth().currentUser && getComputedStyle(document.getElementById('login-screen')).display !== 'none'", 25000))
+            b.close()
+        bloco('4b. Uma conta por vez no navegador', b4b)
+
         # ===== 5. Desligado (sessão aberta enquanto o admin exclui)
         def b5():
             G = '5. Desligado com sessão aberta'
@@ -629,17 +665,17 @@ def main():
             caso(G, 'admin exclui pela interface: marca de revogação gravada', ler(f"acessosRevogados/{U['deslig']}") is not None)
             caso(G, 'admin exclui pela interface: fica em Pagamentos (colaboradoresDesligados)', ler(f"colaboradoresDesligados/{U['deslig']}") is not None)
             ba.close()
-            caso(G, 'com a sessão ainda aberta: não lê a conversa', sdk(mdc, "await firebase.firestore().doc('conversas/convA').get()").startswith('erro:permission-denied'))
-            caso(G, 'com a sessão ainda aberta: não lê mensagens', sdk(mdc, "await firebase.firestore().collection('conversas/convA/mensagens').get()").startswith('erro:permission-denied'))
-            caso(G, 'com a sessão ainda aberta: não lê organograma', sdk(mdc, "await firebase.firestore().collection('organograma').get()").startswith('erro:permission-denied'))
+            caso(G, 'com a sessão ainda aberta: não lê a conversa', sdk(mdc, "await firebase.firestore().doc('conversas/convA').get()").startswith(('erro:permission-denied', 'erro:sem-sessao')))
+            caso(G, 'com a sessão ainda aberta: não lê mensagens', sdk(mdc, "await firebase.firestore().collection('conversas/convA/mensagens').get()").startswith(('erro:permission-denied', 'erro:sem-sessao')))
+            caso(G, 'com a sessão ainda aberta: não lê organograma', sdk(mdc, "await firebase.firestore().collection('organograma').get()").startswith(('erro:permission-denied', 'erro:sem-sessao')))
             anexo_conv = (objetos_storage(f"chat/convA/{U['membro']}/") or ['chat/convA/x/x.pdf'])[0]
-            caso(G, 'Storage: não gera link de anexo da conversa', sdk(mdc, f"await firebase.storage().ref('{anexo_conv}').getDownloadURL()").startswith('erro:storage/'))
+            caso(G, 'Storage: não gera link de anexo da conversa', sdk(mdc, f"await firebase.storage().ref('{anexo_conv}').getDownloadURL()").startswith(('erro:storage/', 'erro:sem-sessao')))
             r_up = sdk(mdc, f"await firebase.storage().ref('chat/convA/{U['deslig']}/x.pdf').put(new Blob(['x'],{{type:'application/pdf'}}))")
-            caso(G, 'Storage: não envia arquivo', r_up.startswith('erro:storage/'), r_up)
-            caso(G, 'não recria o próprio cadastro (SDK direto)', sdk(mdc, f"""await firebase.firestore().doc('users/{U['deslig']}').set({{email:'deslig@exemplo.test', displayName:'X', role:'membro', tabs:[], acesso:'pendente'}})""").startswith('erro:permission-denied'))
+            caso(G, 'Storage: não envia arquivo', r_up.startswith(('erro:storage/', 'erro:sem-sessao')), r_up)
+            caso(G, 'não recria o próprio cadastro (SDK direto)', sdk(mdc, f"""await firebase.firestore().doc('users/{U['deslig']}').set({{email:'deslig@exemplo.test', displayName:'X', role:'membro', tabs:[], acesso:'pendente'}})""").startswith(('erro:permission-denied', 'erro:sem-sessao')))
             r1 = sdk(mdc, f"await firebase.firestore().doc('perfis/{U['deslig']}').set({{foto:'x'}})")
             r2 = sdk(mdc, f"await firebase.firestore().doc('organograma/{U['deslig']}').set({{displayName:'X',email:'x',deptoAtual:'',dataIngresso:'',remuneracao:''}})")
-            caso(G, 'não recria o próprio perfil nem o organograma', r1.startswith('erro:permission-denied') and r2.startswith('erro:permission-denied'), r1 + ' / ' + r2)
+            caso(G, 'não recria o próprio perfil nem o organograma', r1.startswith(('erro:permission-denied', 'erro:sem-sessao')) and r2.startswith(('erro:permission-denied', 'erro:sem-sessao')), r1 + ' / ' + r2)
             mdc.close()
             md = cd.new_page(); md.goto(BASE + '/index.html')
             caso(G, 'ao recarregar, volta para o login com aviso', esperar(md, "document.getElementById('login-error').textContent.includes('acesso configurado')", 20000))

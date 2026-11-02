@@ -1389,7 +1389,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v181</span>
+      <span class="version-tag">v182</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2544,6 +2544,7 @@
       ]);
     }).then(function(){
       // cadastro gravado: volta para o login com o aviso de aprovação pendente e encerra a sessão
+      window.__portalSaidaLocal = true;   // saída tratada aqui (não recarregar: a mensagem abaixo precisa ficar na tela)
       return auth.signOut().catch(function(){}).then(function(){
         cadastroEmAndamento = false;
         els.registerForm.reset();
@@ -2554,6 +2555,7 @@
       });
     }).catch(function(err){
       // a conta foi criada mas o cadastro não foi gravado: apaga a conta para a pessoa poder tentar de novo
+      if (contaCriada) window.__portalSaidaLocal = true;
       const desfazer = contaCriada ? contaCriada.delete().catch(function(){ return auth.signOut(); }) : Promise.resolve();
       return desfazer.catch(function(){}).then(function(){
         cadastroEmAndamento = false;
@@ -2584,6 +2586,7 @@
       if (!doc.exists) {
         els.loginError.textContent = 'Seu usuário ainda não tem acesso configurado no portal. Peça ao administrador.';
         els.loginError.style.display = 'block';
+        window.__portalSaidaLocal = true;
         auth.signOut();
         return;
       }
@@ -2597,6 +2600,7 @@
           : 'Seu acesso ao portal está bloqueado. Fale com o administrador.';
         els.loginError.style.display = 'block';
         currentProfile = null;
+        window.__portalSaidaLocal = true;
         auth.signOut();
         return;
       }
