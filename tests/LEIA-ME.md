@@ -34,6 +34,14 @@ cd tests
 REGRAS_ANTIGAS=/caminho/regras-de-antes.rules npm run test:funcional   # requer Python 3 + playwright (pip install playwright && playwright install chromium)
 ```
 
+## Migração dos anexos antigos do Chat e DJEN
+
+```bash
+cd tests
+firebase emulators:exec --only auth,firestore,storage --project demo-portal-func "python funcional/migracao_anexos.py"
+python djen/testar-djen.py      # script real do DJEN numa cópia descartável, com uma API do CNJ falsa
+```
+
 ## Comparar com as regras publicadas hoje
 
 Copie as regras do console para dois arquivos `.txt` e rode:

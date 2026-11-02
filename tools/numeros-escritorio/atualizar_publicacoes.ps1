@@ -22,6 +22,8 @@
       o script avisa e NAO grava nada nesse caso, para nunca corromper a pagina ao vivo
       silenciosamente.
 #>
+# -SemPublicar: atualiza e faz o commit local, mas NAO faz git push (para conferir o commit antes de publicar).
+param([switch]$SemPublicar)
 
 $ErrorActionPreference = "Stop"
 
@@ -267,8 +269,12 @@ try {
         Write-Host "Sem diferencas apos git add - nada a commitar."
     } else {
         git commit -m ("Atualiza numeros de publicacoes DJEN (automatico, " + $DataFim + ")") --author="jowjo <jowjow07@gmail.com>" -- "tools/numeros-escritorio/index.html" | Out-Null
-        git push
-        Write-Host "Commit e push realizados com sucesso."
+        if ($SemPublicar) {
+            Write-Host "Commit feito SEM publicar (-SemPublicar). Confira com: git show --stat HEAD"
+        } else {
+            git push
+            Write-Host "Commit e push realizados com sucesso."
+        }
     }
 } finally {
     Pop-Location
