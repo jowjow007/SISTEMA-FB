@@ -2246,6 +2246,16 @@ function carregarHistorico(){
       document.getElementById('historico-list').innerHTML='';
       return;
     }
+    // Contratos é área restrita: só quem o administrador liberou (com senha) usa; as regras também conferem
+    window.__db.collection('users').doc(user.uid).get().then(d=>{
+      const eu = d.exists ? d.data() : {};
+      if (eu.role === 'admin' || (eu.tabs || []).indexOf('contratos-msmo451y') !== -1) return;
+      const aviso = document.createElement('div');
+      aviso.id = 'aviso-area-restrita';
+      aviso.setAttribute('style', 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,10,10,.94);color:#f3ede9;font:16px/1.5 system-ui,sans-serif;text-align:center;');
+      aviso.textContent = '🔒 Contratos é uma área restrita. O acesso precisa ser liberado pelo administrador.';
+      document.body.appendChild(aviso);
+    }).catch(()=>{});
     document.getElementById('historico-msg').textContent = 'Carregando histórico…';
     carregarHistorico();
     // nome de quem gera, para a rubrica do rodapé e o "CRIADOR" do nome do arquivo

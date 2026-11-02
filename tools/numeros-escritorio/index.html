@@ -409,9 +409,9 @@
 <nav class="tabnav">
   <div class="tabnav-inner">
     <button class="tab-btn active" data-tab="geral">Visão Geral</button>
-    <button class="tab-btn" data-tab="clientes">Clientes</button>
-    <button class="tab-btn" data-tab="juizo">Juízo &amp; Ação</button>
-    <button class="tab-btn" data-tab="efetividade">Efetividade</button>
+    <button class="tab-btn" data-tab="clientes" style="display:none;">Clientes</button>
+    <button class="tab-btn" data-tab="juizo" style="display:none;">Juízo &amp; Ação</button>
+    <button class="tab-btn" data-tab="efetividade" style="display:none;">Efetividade</button>
     <button class="tab-btn" data-tab="qualidade">Qualidade de Cadastro</button>
     <button class="tab-btn" data-tab="agenda">Agenda — Astrea</button>
   </div>
@@ -1213,6 +1213,7 @@ function simpleBarList(container, items, opts) {
 }
 
 /* ---- Clientes ---- */
+if (STATS.topClientesDemais) {
 document.getElementById("cliTotalDistintos").textContent = fmt(STATS.totalClientesDemais + STATS.totalClientesCondo);
 document.getElementById("cliTotalTarefas").textContent = fmt(STATS.tarefas.realizadas);
 document.getElementById("cliPendentesAtrasadas").textContent = fmt(STATS.tarefas.pendentes) + " / " + fmt(STATS.tarefas.atrasadas);
@@ -1241,7 +1242,9 @@ function fillClienteTable(tbodyId, rows) {
 fillClienteTable("cliTableBodyDemais", STATS.topClientesDemais);
 fillClienteTable("cliTableBodyCondo", STATS.topClientesCondo);
 
+} // fim da seção anterior
 /* ---- Juízo & Ação & Andamentos ---- */
+if (STATS.topJuizos) {
 document.getElementById("jzTotalJuizos").textContent = fmt(STATS.totalJuizosDistintos);
 document.getElementById("jzTotalAcoes").textContent = fmt(STATS.totalAcoesDistintas);
 document.getElementById("jzMediaAndamentos").textContent = STATS.andamentos.media.toString().replace(".", ",");
@@ -1273,7 +1276,9 @@ STATS.andamentos.top10.forEach(p => {
   andTbody.appendChild(tr);
 });
 
+} // fim da seção anterior
 /* ---- Efetividade ---- */
+if (STATS.efetividade) {
 const EFF_LABELS = { Favoravel:"Favorável", Desfavoravel:"Desfavorável", Parcial:"Parcial", Acordo:"Acordo", Extinto:"Extinto sem mérito", SemDecisao:"Sem decisão até o momento", SinalAmbiguo:"Sinal ambíguo" };
 const EFF_COLORS = { Favoravel:"var(--good)", Desfavoravel:"var(--red-bright)", Parcial:"var(--s5)", Acordo:"var(--s3)", Extinto:"var(--muted-2)", SemDecisao:"var(--muted)", SinalAmbiguo:"var(--s4)" };
 
@@ -1306,7 +1311,9 @@ renderEfetividade("Autor", document.getElementById("effAutorStat"), document.get
 renderEfetividade("Reu", document.getElementById("effReuStat"), document.getElementById("effReuBars"));
 document.getElementById("effIndetTotal").textContent = fmt(STATS.efetividade.Indeterminado.total);
 
+} // fim da seção anterior
 /* ---- Qualidade de Cadastro ---- */
+if (STATS.qualidade) {
 document.getElementById("qTotalProblemas").textContent = fmt(STATS.qualidade.totalComProblemas);
 document.getElementById("qJuizoFaltando").textContent = fmt(STATS.qualidade.faltando.juizoProcesso);
 document.getElementById("qEtiquetaFaltando").textContent = fmt(STATS.qualidade.faltando.etiqueta);
@@ -1324,6 +1331,7 @@ STATS.qualidade.piores.forEach(p => {
   tr.innerHTML = `<td>${p.titulo || "—"}</td><td>${p.cliente || "—"}</td><td>${p.tipo}</td><td><b>${p.camposFaltando}</b></td>`;
   qTbody.appendChild(tr);
 });
+} // fim da seção Qualidade
 }
 window.renderStatsPrivados = renderStatsPrivados;
 </script>
@@ -1521,9 +1529,35 @@ window.renderStatsPrivados = renderStatsPrivados;
   const pare = auth.onAuthStateChanged(function(user){
     pare();
     if (!user) { aviso('Faça login no portal para ver estes dados.'); return; }
-    db.collection('dadosPrivados').doc('numerosStats').get().then(function(snap){
-      if (!snap.exists) { aviso('Os dados deste painel ainda não foram carregados no sistema (administrador: tools/admin-seguranca).'); return; }
-      window.renderStatsPrivados(JSON.parse(snap.data().json));
+    // Áreas restritas (Clientes, Juízo & Ação, Efetividade): documentos próprios, que as regras só entregam a quem o
+    // administrador liberou com senha. Os botões dessas sub-abas aparecem conforme o próprio cadastro da pessoa.
+    const NUMEROS = 'numeros-do-escritorio-mscj8kts';
+    const RESTRITAS = { clientes: 'numerosClientes', juizo: 'numerosJuizo', efetividade: 'numerosEfetividade' };
+    const ler = function(chave){ return db.collection('dadosPrivados').doc(chave).get().then(function(snap){ return snap.exists ? JSON.parse(snap.data().json) : null; }, function(){ return null; }); };
+    const cadastro = db.collection('users').doc(user.uid).get().then(function(d){ return d.exists ? d.data() : {}; }, function(){ return {}; });
+    Promise.all([ler('numerosStats'), ler('numerosClientes'), ler('numerosJuizo'), ler('numerosEfetividade'), cadastro]).then(function(r){
+      const eu = r[4], subs = (eu.subtabs || {})[NUMEROS] || [];
+      const pode = function(sub){ return eu.role === 'admin' || ((eu.tabs || []).indexOf(NUMEROS) !== -1 && subs.indexOf(sub) !== -1); };
+      const parametro = new URLSearchParams(location.search).get('_subtabs');
+      Object.keys(RESTRITAS).forEach(function(sub){
+        const b = document.querySelector('.tab-btn[data-tab="' + sub + '"]');
+        if (b && pode(sub) && (!parametro || parametro.split(',').indexOf(sub) !== -1)) b.style.display = '';
+        const painel = document.querySelector('.tab-panel[data-panel="' + sub + '"]');
+        if (painel && !pode(sub)) {
+          let a = painel.querySelector('.aviso-restrito');
+          if (!a) { a = document.createElement('div'); a.className = 'aviso-restrito';
+            a.style.cssText = 'padding:14px 16px;margin:0 0 16px;border:1px solid #c9a24a;border-radius:10px;color:var(--muted, #777);';
+            painel.insertBefore(a, painel.firstChild); }
+          a.textContent = '🔒 Área restrita: o acesso precisa ser liberado pelo administrador.';
+        }
+      });
+      const ativo = document.querySelector('.tab-btn.active');
+      if (ativo && ativo.style.display === 'none') {
+        const primeiro = Array.from(document.querySelectorAll('.tab-btn')).find(function(b){ return b.style.display !== 'none'; });
+        if (primeiro) primeiro.click();
+      }
+      if (!r[0]) { aviso('Os dados deste painel ainda não foram carregados no sistema (administrador: tools/admin-seguranca).'); return; }
+      window.renderStatsPrivados(Object.assign({}, r[0], r[1] || {}, r[2] || {}, r[3] || {}));
       document.querySelectorAll('.aviso-privado').forEach(function(a){ a.remove(); });
     }).catch(function(){ aviso('Seu acesso não permite ver estes dados.'); });
   });

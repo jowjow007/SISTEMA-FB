@@ -39,12 +39,31 @@ service cloud.firestore {
     function isRobo() {
       return isSignedIn() && exists(/databases/$(database)/documents/robos/$(request.auth.uid));
     }
+    // Liberar área restrita (ver temAbaRestrita, mais abaixo) exige que o admin tenha digitado a senha há pouco:
+    // o portal pede a senha (reautenticação) e o token passa a ter um auth_time recente. Tirar acesso não exige.
+    function ganhou(depois, antes, aba) {
+      return depois.get('tabs', []).hasAny([aba]) && !antes.get('tabs', []).hasAny([aba]);
+    }
+    function ganhouSub(depois, antes, aba, sub) {
+      return depois.get('subtabs', {}).get(aba, []).hasAny([sub]) && !antes.get('subtabs', {}).get(aba, []).hasAny([sub]);
+    }
+    function concedeAreaRestrita(depois, antes) {
+      return ganhou(depois, antes, 'contratos-msmo451y') || ganhou(depois, antes, 'remuneracao-variavel-mvrhiayb')
+          || ganhouSub(depois, antes, 'gestao-mt9hdjwf', 'colaboradores')
+          || ganhouSub(depois, antes, 'numeros-do-escritorio-mscj8kts', 'clientes')
+          || ganhouSub(depois, antes, 'numeros-do-escritorio-mscj8kts', 'juizo')
+          || ganhouSub(depois, antes, 'numeros-do-escritorio-mscj8kts', 'efetividade');
+    }
+    function senhaRecente() {
+      return request.auth.token.auth_time != null
+          && request.time < timestamp.value(request.auth.token.auth_time * 1000) + duration.value(10, 'm');
+    }
     match /users/{userId} {
       // a própria pessoa lê o próprio cadastro mesmo pendente/bloqueada (é o que mostra a tela de "aguardando")
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       // admin cria contas (Administração › Usuários). O autocadastro entra 'pendente', sem abas, como membro,
       // só com os campos do formulário — e não é aceito para quem foi excluído (acessosRevogados).
-      allow create: if isAdmin() || (
+      allow create: if (isAdmin() && (!concedeAreaRestrita(request.resource.data, {}) || senhaRecente())) || (
                       isSignedIn() && request.auth.uid == userId
                       && !acessoRevogado()
                       && request.resource.data.role == 'membro'
@@ -58,7 +77,7 @@ service cloud.firestore {
                     );
       // a própria pessoa (ativa) só altera dados pessoais/bancários; papel, acesso, abas, remuneração, cargo,
       // permissões e visão do patrimônio são do admin. A data de entrada só pode ser preenchida enquanto vazia.
-      allow update: if isAdmin() || (
+      allow update: if (isAdmin() && (!concedeAreaRestrita(request.resource.data, resource.data) || senhaRecente())) || (
                       isAtivo() && request.auth.uid == userId
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cpf', 'rg', 'oab', 'estadoCivil',
                            'nacionalidade', 'telefone', 'endereco', 'emailAlternativo', 'dataIngresso', 'mustChangePassword',
@@ -80,9 +99,24 @@ service cloud.firestore {
                     && request.resource.data.em == request.time;
       allow update, delete: if false;
     }
+    // Áreas restritas (02/11/2026): só o admin libera, com a própria senha, em Administração › Usuários › Editar abas.
+    // A aba precisa estar em tabs e, nas sub-abas, a sub-aba precisa estar listada em subtabs[aba] (sem lista = sem
+    // acesso, ao contrário das sub-abas comuns). O admin vê tudo. Os ids são os do catálogo de abas (coleção tabs):
+    // se uma dessas abas for recriada com outro id, atualize aqui e em AREAS_RESTRITAS (index.html).
+    function temAbaRestrita(aba) {
+      return isAdmin() || (isEquipe() && meuCadastro().get('tabs', []).hasAny([aba]));
+    }
+    function temSubabaRestrita(aba, sub) {
+      return isAdmin() || (isEquipe() && meuCadastro().get('tabs', []).hasAny([aba])
+                           && meuCadastro().get('subtabs', {}).get(aba, []).hasAny([sub]));
+    }
     // Dados que antes ficavam no HTML público (painel de Números, clientes de Condomínios e relatórios em PDF).
+    // Números › Clientes, Juízo & Ação e Efetividade ficam em documentos próprios (áreas restritas).
     match /dadosPrivados/{chave} {
-      allow read: if isEquipe();
+      allow read: if (chave == 'numerosClientes' && temSubabaRestrita('numeros-do-escritorio-mscj8kts', 'clientes'))
+                  || (chave == 'numerosJuizo' && temSubabaRestrita('numeros-do-escritorio-mscj8kts', 'juizo'))
+                  || (chave == 'numerosEfetividade' && temSubabaRestrita('numeros-do-escritorio-mscj8kts', 'efetividade'))
+                  || (!(chave in ['numerosClientes', 'numerosJuizo', 'numerosEfetividade']) && isEquipe());
       allow write: if isAdmin();
     }
     match /arquivosPrivados/{arquivoId} {
@@ -328,9 +362,10 @@ service cloud.firestore {
       allow read: if isDonoConferencia();
       allow write: if false;
     }
+    // Contratos é área restrita: só quem tem a aba (liberada pelo admin com senha) lê e gera.
     match /contratosGerados/{docId} {
-      allow read: if isEquipe();
-      allow create: if isEquipe()
+      allow read: if temAbaRestrita('contratos-msmo451y');
+      allow create: if temAbaRestrita('contratos-msmo451y')
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.tipo is string
                     && request.resource.data.nomeDisplay is string

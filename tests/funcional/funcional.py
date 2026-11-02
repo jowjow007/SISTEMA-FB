@@ -315,6 +315,15 @@ def _sdk(pg, js):
                        catch (e) { return 'erro:' + (e.code || e.message); } }""", js)
 
 
+# ids reais de produção das abas com áreas restritas (AREAS_RESTRITAS no index.html e firestore.rules)
+NUM, GEST, CONTR = 'numeros-do-escritorio-mscj8kts', 'gestao-mt9hdjwf', 'contratos-msmo451y'
+SUBABAS_TESTE = {
+    NUM: [{'id': i, 'label': r} for i, r in (('geral', 'Visão Geral'), ('clientes', 'Clientes'), ('juizo', 'Juízo & Ação'),
+                                            ('efetividade', 'Efetividade'), ('qualidade', 'Qualidade'), ('agenda', 'Agenda'))],
+    GEST: [{'id': i, 'label': r} for i, r in (('colaboradores', 'Colaboradores'), ('patrimonio', 'Patrimônio'), ('compras', 'Compras'))],
+}
+
+
 # ---------------------------------------------------------------- semeadura (antes da migração)
 def semear():
     requests.delete(f'{AUTH}/emulator/v1/projects/{PROJ}/accounts').raise_for_status()
@@ -322,7 +331,7 @@ def semear():
     U = {}
     for k in ('admin', 'membro', 'colega', 'cliente', 'deslig', 'legado', 'robo', 'vetudo'):
         U[k] = criar_conta(f'{k}@exemplo.test')
-    abas = ['agenda', 'chat', 'gestao', 'numeros', 'assistente', 'condominios']
+    abas = ['agenda', 'chat', GEST, NUM, 'assistente', 'condominios']
     # cadastros como estão hoje em produção: SEM o campo acesso (a migração cria)
     gravar(f"users/{U['admin']}", {'email': 'admin@exemplo.test', 'displayName': 'Admin Fictício', 'role': 'admin', 'tabs': abas})
     gravar(f"users/{U['membro']}", {'email': 'membro@exemplo.test', 'displayName': 'Membro Fictício', 'role': 'membro', 'tabs': abas, 'tipoColaborador': 'clt', 'pixChave': 'x'})
@@ -333,10 +342,11 @@ def semear():
     gravar(f"users/{U['legado']}", {'email': 'legado@exemplo.test', 'displayName': 'Sem Abas Fictício', 'role': 'membro', 'tabs': []})
     for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig'):
         gravar(f"organograma/{U[k]}", {'displayName': k.title() + ' Fictício', 'email': f'{k}@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
-    for i, (tid, rot, url) in enumerate([('numeros', 'Números', 'tools/numeros-escritorio/index.html'), ('chat', 'Chat', 'tools/chat/index.html'),
-                                         ('gestao', 'Gestão', 'tools/gestao/index.html'), ('assistente', 'Assistente', 'tools/assistente-ia/index.html'),
-                                         ('condominios', 'Condomínios', 'tools/condominios/index.html')]):
-        gravar(f'tabs/{tid}', {'label': rot, 'url': url, 'order': i})
+    for i, (tid, rot, url) in enumerate([(NUM, 'Números', 'tools/numeros-escritorio/index.html'), ('chat', 'Chat', 'tools/chat/index.html'),
+                                         (GEST, 'Gestão', 'tools/gestao/index.html'), ('assistente', 'Assistente', 'tools/assistente-ia/index.html'),
+                                         ('condominios', 'Condomínios', 'tools/condominios/index.html'), (CONTR, 'Contratos', 'tools/contratos/index.html')]):
+        extra = {'subtabs': SUBABAS_TESTE[tid]} if tid in SUBABAS_TESTE else {}
+        gravar(f'tabs/{tid}', dict({'label': rot, 'url': url, 'order': i}, **extra))
     hoje = time.strftime('%Y-%m-%d')
     gravar(f'astreaDiario/{hoje}', {'data': hoje, 'total': 1, 'colunas': ['Tipo', 'Título', 'Responsáveis', 'Data'],
                                     'registros': [{'Tipo': 'Prazo', 'Título': 'Tarefa fictícia de teste', 'Responsáveis': 'Membro Fictício', 'Data': hoje}]})
@@ -496,6 +506,37 @@ def main():
             pm.set_input_files('#f-dados', [os.path.join(pasta_priv, f) for f in ('numeros-stats.json', 'condominios.json', 'relatorio-ficticio.pdf')])
             pm.click('#b-dados'); esperar(pm, "document.getElementById('m-dados').textContent.includes('Todos') || document.getElementById('m-dados').textContent.includes('Erros')", 40000)
             caso(G, 'envio dos dados privados pela página admin', 'Todos os 3' in pm.inner_text('#m-dados'), pm.inner_text('#m-dados'))
+            geral = json.loads((ler('dadosPrivados/numerosStats') or {}).get('json', '{}'))
+            cli = json.loads((ler('dadosPrivados/numerosClientes') or {}).get('json', '{}'))
+            caso(G, 'Números: o envio separa Clientes, Juízo e Efetividade em documentos próprios (o geral fica sem eles)',
+                 'topClientesDemais' not in geral and 'efetividade' not in geral and 'topJuizos' not in geral and 'topClientesDemais' in cli
+                 and ler('dadosPrivados/numerosJuizo') is not None and ler('dadosPrivados/numerosEfetividade') is not None, str(sorted(geral))[:200])
+            # Administração › Usuários › Editar abas: áreas restritas fora do "Selecionar todas" e liberadas só com a senha
+            pi = ctx.new_page(); pi.on('dialog', aceitar); pi.goto(BASE + '/index.html')
+            esperar(pi, "document.getElementById('app-screen').style.display === 'flex' && document.querySelectorAll('#users-tbody tr').length >= 5", 30000)
+            pi.evaluate(f"window.__editUserTabs('{U['membro']}')")
+            esperar(pi, "document.getElementById('edit-tabs-backdrop').classList.contains('show') && document.querySelectorAll('.edit-restrita-cb').length > 0", 15000)
+            caso(G, 'Editar abas: áreas restritas num bloco próprio (Contratos, Números › Clientes/Juízo/Efetividade, Gestão › Colaboradores)',
+                 pi.evaluate("document.querySelectorAll('.edit-restrita-cb').length") == 5 and pi.evaluate("!document.querySelector('#edit-tabs-list .edit-tab-cb[value=\"" + CONTR + "\"]')"),
+                 str(pi.evaluate("document.querySelectorAll('.edit-restrita-cb').length")))
+            pi.evaluate("() => { const t = document.getElementById('edit-tabs-todas'); t.checked = false; t.onchange(); t.checked = true; t.onchange(); }")
+            caso(G, 'Editar abas: "Selecionar todas" não marca nenhuma área restrita',
+                 pi.evaluate("Array.from(document.querySelectorAll('.edit-restrita-cb')).every(c => !c.checked) && Array.from(document.querySelectorAll('#edit-tabs-list input')).every(c => c.checked)"))
+            pi.check(".edit-restrita-cb[data-sub='clientes']")
+            pi.click('#edit-tabs-salvar')
+            caso(G, 'liberar área restrita pede a senha', esperar(pi, "!!document.getElementById('ar-senha')", 10000))
+            pi.fill('#ar-senha', 'senha-errada-ficticia'); pi.click('#ar-liberar')
+            caso(G, 'senha errada: não libera', esperar(pi, "document.getElementById('ar-senha') && document.getElementById('ar-senha').parentNode.textContent.includes('Senha incorreta')", 15000)
+                 and 'clientes' not in ((ler(f"users/{U['membro']}") or {}).get('subtabs') or {}).get(NUM, []))
+            pi.fill('#ar-senha', SENHA); pi.click('#ar-liberar')
+            caso(G, 'senha certa: libera Números › Clientes para a pessoa',
+                 ate(lambda: 'clientes' in ((ler(f"users/{U['membro']}") or {}).get('subtabs') or {}).get(NUM, []), 15))
+            caso(G, 'a liberação fica registrada na auditoria', ate(lambda: any(d.get('tipo') == 'areasRestritas' and d.get('alvoUid') == U['membro'] for _, d in listar('auditoriaSeguranca')), 10))
+            caso(G, 'lista de usuários: quem tem área restrita aparece com destaque (🔒)',
+                 esperar(pi, f"Array.from(document.querySelectorAll('#users-tbody tr.row-restrita')).some(tr => tr.textContent.includes('membro@exemplo.test') && tr.querySelector('.chip-restrita'))", 15000))
+            caso(G, 'lista de usuários: quem via sub-abas restritas só por padrão aparece como "⚠ revisar"',
+                 pi.evaluate("Array.from(document.querySelectorAll('#users-tbody tr')).some(tr => tr.textContent.includes('colega@exemplo.test') && tr.querySelector('.chip-revisar'))"))
+            pi.close()
             caso(G, 'dados privados ficaram no Firestore', ler('dadosPrivados/condominios') is not None and ler('dadosPrivados/numerosStats') is not None and ler('arquivosPrivados/relatorio-ficticio.pdf') is not None)
             b.close()
         bloco('2. Regras novas publicadas, migração depois (página admin)', b2)
@@ -648,6 +689,35 @@ def main():
                  esperar(p1, "typeof window.__marca === 'undefined' && !firebase.auth().currentUser && getComputedStyle(document.getElementById('login-screen')).display !== 'none'", 25000))
             b.close()
         bloco('4b. Uma conta por vez no navegador', b4b)
+
+        def b4c():
+            G = '4c. Áreas restritas para quem não foi liberado (colega)'
+            b, cc, pc, ok = sessao('colega@exemplo.test')
+            pc.close()   # a sessão continua no navegador; menos páginas abertas = conexões livres para a próxima
+            pn = cc.new_page(); pn.on('dialog', aceitar); pn.goto(BASE + '/tools/numeros-escritorio/index.html')
+            esperar(pn, "document.querySelector('.aviso-restrito') !== null", 25000)
+            caso(G, 'Números: as sub-abas Clientes, Juízo e Efetividade ficam escondidas',
+                 pn.evaluate("['clientes','juizo','efetividade'].every(s => document.querySelector('.tab-btn[data-tab=\"' + s + '\"]').style.display === 'none')"))
+            caso(G, 'Números: abrir pelo endereço sem _subtabs não mostra os dados de clientes',
+                 not pn.evaluate("document.body.innerText.includes('Cliente Fictício Alfa')"))
+            caso(G, 'Números: leitura direta de numerosClientes é negada (SDK)', sdk(pn, "await firebase.firestore().doc('dadosPrivados/numerosClientes').get()").startswith('erro:permission-denied'))
+            caso(G, 'Números: o geral continua (Qualidade e Agenda)', sdk(pn, "await firebase.firestore().doc('dadosPrivados/numerosStats').get()") == 'ok')
+            # uma página por vez: no emulador (HTTP/1.1) o Chrome abre no máximo 6 conexões por servidor e as escutas do
+            # Firestore de uma página aberta deixam a seguinte sem conexão (ela cai no cache e parece "ok")
+            pn.close()
+            pc2 = cc.new_page(); pc2.on('dialog', aceitar); pc2.goto(BASE + '/tools/contratos/index.html')
+            estado_contr = lambda: pc2.evaluate("JSON.stringify({fb: typeof firebase, apps: (window.firebase && firebase.apps.length), user: (window.firebase && firebase.apps.length && firebase.auth().currentUser && firebase.auth().currentUser.email), msg: (document.getElementById('historico-msg') || {}).textContent})")
+            caso(G, 'Contratos: aparece o aviso de área restrita', esperar(pc2, "document.getElementById('aviso-area-restrita') !== null", 20000), estado_contr())
+            r_contr = sdk(pc2, "await firebase.firestore().collection('contratosGerados').get({source: 'server'})")
+            diag_contr = lambda: 'abas da colega no emulador: ' + str((ler(f"users/{U['colega']}") or {}).get('tabs')) +                 ' | projeto/host da página: ' + pc2.evaluate("firebase.app().options.projectId + ' / ' + ((firebase.firestore()._delegate || {})._settings || {}).host") +                 ' | ler o próprio cadastro: ' + sdk(pc2, "const d = await firebase.firestore().doc('users/' + firebase.auth().currentUser.uid).get({source: 'server'}); return d.exists ? (d.data().tabs || []) : 'inexistente'") +                 ' | listar contratos só no servidor: ' + sdk(pc2, "const q = await firebase.firestore().collection('contratosGerados').get({source: 'server'}); return q.size")
+            caso(G, 'Contratos: histórico negado no servidor (SDK)', r_contr.startswith('erro:permission-denied'), '' if r_contr.startswith('erro:permission-denied') else r_contr + ' | ' + diag_contr())
+            pc2.close()
+            pg = cc.new_page(); pg.on('dialog', aceitar); pg.goto(BASE + '/tools/gestao/index.html')
+            esperar(pg, "typeof firebase !== 'undefined' && firebase.apps.length > 0 && !!firebase.auth().currentUser", 20000); pg.wait_for_timeout(4000)
+            caso(G, 'Gestão: Colaboradores fica escondido para quem não foi liberado',
+                 pg.evaluate("(document.querySelector('[data-goto=\"colaboradores\"]') || {style:{display:'none'}}).style.display === 'none'"))
+            b.close()
+        bloco('4c. Áreas restritas para quem não foi liberado', b4c)
 
         # ===== 5. Desligado (sessão aberta enquanto o admin exclui)
         def b5():

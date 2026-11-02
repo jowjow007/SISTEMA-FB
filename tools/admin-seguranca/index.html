@@ -220,8 +220,23 @@
     const chave = { 'numeros-stats.json': 'numerosStats', 'condominios.json': 'condominios' }[file.name];
     if (!chave) return Promise.reject(new Error(file.name + ': nome não reconhecido'));
     return lerComo(file, 'texto').then(function(txt){
-      JSON.parse(txt);   // valida antes de gravar
-      return db.collection('dadosPrivados').doc(chave).set({ json: txt, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() });
+      const dados = JSON.parse(txt);   // valida antes de gravar
+      const gravar = function(doc, conteudo){ return db.collection('dadosPrivados').doc(doc).set({ json: conteudo, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }); };
+      if (chave !== 'numerosStats') return gravar(chave, txt);
+      // Números › Clientes, Juízo & Ação e Efetividade são áreas restritas: cada uma vai para um documento próprio,
+      // que as regras só entregam a quem o administrador liberou. O documento geral fica sem esses dados.
+      const SEPARAR = {
+        numerosClientes: ['totalClientesDistintos', 'totalClientesDemais', 'totalClientesCondo', 'topClientesDemais', 'topClientesCondo'],
+        numerosJuizo: ['topJuizos', 'totalJuizosDistintos', 'topAcoes', 'totalAcoesDistintas', 'andamentos'],
+        numerosEfetividade: ['efetividade']
+      };
+      const geral = Object.assign({}, dados), envios = [];
+      Object.keys(SEPARAR).forEach(function(doc){
+        const parte = {};
+        SEPARAR[doc].forEach(function(k){ if (k in dados) { parte[k] = dados[k]; delete geral[k]; } });
+        envios.push(gravar(doc, JSON.stringify(parte)));
+      });
+      return Promise.all(envios).then(function(){ return gravar('numerosStats', JSON.stringify(geral)); });
     });
   }
   function enviarArquivo(file){

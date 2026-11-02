@@ -514,7 +514,7 @@
       <p class="hub-sub">Selecione o módulo que deseja acessar</p>
       <div class="pend-aceite-box"></div>
       <div class="hub-grid">
-        <div class="hub-card" data-goto="colaboradores" role="button" tabindex="0">
+        <div class="hub-card" data-goto="colaboradores" role="button" tabindex="0" style="display:none;">
           <img class="hub-art" src="img/colaboradores.jpg" alt="">
           <div class="hub-card-title">Colaboradores</div>
           <div class="hub-card-desc">Organograma, equipe e estrutura do escritório</div>
@@ -904,6 +904,10 @@
   }
 
   let souAdmin = false;
+  // Gestão › Colaboradores é área restrita: só com liberação explícita do administrador (com senha) ou admin.
+  // Confere no próprio cadastro da pessoa (o parâmetro _subtabs do endereço não basta).
+  const GESTAO_ID = 'gestao-mt9hdjwf';
+  let podeColaboradores = false;
   let meuNome = '';
   let meuUid = null;
   let meuPatrimonioVerTudo = true;   // false só se um admin restringiu essa pessoa a ver só o próprio patrimônio
@@ -1014,6 +1018,10 @@
 
   // Mostra o card/sub-abas de Senhas só para quem tem acesso e ajusta a grade para 4 cards
   function aplicarPermissoesNaTela(){
+    const btnColab = nav.querySelector('[data-subtab-id="colaboradores"]');
+    if (btnColab) btnColab.style.display = podeColaboradores ? '' : 'none';
+    const cardColab = hubView.querySelector('[data-goto="colaboradores"]');
+    if (cardColab && ATIVAS.some(function(t){ return t.id === 'colaboradores'; })) cardColab.style.display = podeColaboradores ? '' : 'none';
     ATIVAS.forEach(function(t){
       if (t.type !== 'senhas') return;
       const btn = nav.querySelector('[data-subtab-id="' + t.id + '"]');
@@ -1044,7 +1052,7 @@
     const btn = document.createElement('button');
     btn.textContent = t.label;
     btn.dataset.subtabId = t.id;
-    if (t.type === 'senhas' || t.interna) btn.style.display = 'none';
+    if (t.type === 'senhas' || t.interna || t.id === 'colaboradores') btn.style.display = 'none';   // colaboradores: ver aplicarPermissoesNaTela
     btn.addEventListener('click', function(){ selectSubtab(t.id); });
     nav.appendChild(btn);
 
@@ -1060,6 +1068,7 @@
   });
 
   function selectSubtab(id){
+    if (id === 'colaboradores' && !podeColaboradores) return;   // área restrita
     Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
       b.classList.toggle('active', b.dataset.subtabId === id);
     });
@@ -3791,6 +3800,8 @@
     ouvirPendentesDeAceite();
     db.collection('users').doc(user.uid).get().then(function(doc){
       souAdmin = !!doc.exists && doc.data().role === 'admin';
+      const eu = doc.exists ? doc.data() : {};
+      podeColaboradores = souAdmin || ((eu.tabs || []).indexOf(GESTAO_ID) !== -1 && ((eu.subtabs || {})[GESTAO_ID] || []).indexOf('colaboradores') !== -1);
       meuNome = (doc.exists && doc.data().displayName) || user.email || 'Usuário';
       meuPatrimonioVerTudo = souAdmin || (doc.exists && doc.data().patrimonioVerTudo === true);
     }).catch(function(){

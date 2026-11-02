@@ -197,6 +197,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
+<script src="../../autorizacao-restrita.js"></script>
 <script>
 (function(){
   "use strict";
@@ -470,6 +471,13 @@
     const casa = mesesDeCasa(ingressos[uid]);
     if (liberado && uid !== eu.uid && !(pessoas[uid] && pessoas[uid].liberado) && (casa == null || casa < 12) &&
         !confirm((u.displayName || 'Esta pessoa') + (casa == null ? ' não tem data de ingresso no Organograma.' : ' tem menos de 1 ano de escritório.') + ' Liberar o acesso mesmo assim?')) return;
+    // Remuneração variável é área restrita: liberar "Pode ver" para outra pessoa pede a senha (e as regras exigem
+    // a senha recente para gravar a aba no cadastro dela). Tirar o acesso não pede.
+    const estavaLiberado = !!(pessoas[uid] && pessoas[uid].liberado);   // antes de salvar (o onSnapshot atualiza depois)
+    const passaAVer = liberado && uid !== eu.uid && !estavaLiberado;
+    (passaAVer ? autorizarAreaRestrita({ pessoa: u.displayName || u.email || 'esta pessoa', itens: ['Remuneração variável'] }) : Promise.resolve())
+      .then(salvarPessoa, function(){ /* cancelou: nada muda */ });
+    function salvarPessoa(){
     btn.disabled = true; st.textContent = 'Salvando…';
     // o cargo só define o cálculo; ver a aba depende só de "Pode ver", marcado à mão
     const p = (cargoId || liberado)
@@ -485,9 +493,12 @@
         tabs: liberado ? firebase.firestore.FieldValue.arrayUnion(tabRemuneracao.id) : firebase.firestore.FieldValue.arrayRemove(tabRemuneracao.id)
       });
     }).then(function(){
+      if (passaAVer) registrarAreaRestrita({ alvoUid: uid, liberadas: ['Remuneração variável'], retiradas: [] });
+      else if (!liberado && estavaLiberado && uid !== eu.uid) registrarAreaRestrita({ alvoUid: uid, liberadas: [], retiradas: ['Remuneração variável'] });
       btn.disabled = false;
       st.innerHTML = '<span class="ok">Salvo' + (liberado ? ' — pode ver' : ' — não vê a aba') + '</span>';
     }).catch(function(e){ btn.disabled = false; st.textContent = 'Erro: ' + e.message; });
+    }
   });
 
   // ---------- dono: tabela de cargos ----------

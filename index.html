@@ -441,6 +441,14 @@
     line-height:1;padding:3px 6px;border-radius:20px;flex:0 0 auto;
   }
   #tabstrip .tab-btn .pending-badge.show{display:inline-block;}
+  .restritas-box{margin:4px 0 14px;padding:10px 12px;border:1px solid rgba(201,162,74,.55);border-radius:10px;background:rgba(201,162,74,.07);}
+  .restritas-box:empty{display:none;}
+  .restritas-box h4{margin:0 0 4px;font-size:.86rem;color:#d8b25a;}
+  .restritas-box p{margin:0 0 8px;font-size:.74rem;color:var(--muted);}
+  .restritas-box .checkbox-row{margin:2px 0;}
+  .chip.chip-restrita{background:rgba(201,162,74,.16);border-color:rgba(201,162,74,.75);color:#e2c27a;font-weight:600;}
+  .chip.chip-revisar{background:rgba(230,150,40,.16);border-color:rgba(230,150,40,.7);color:#f0b45a;}
+  tr.row-restrita td:first-child{box-shadow:inset 3px 0 0 #c9a24a;}
   .chip.chip-pending{background:rgba(201,70,60,.18);border-color:rgba(201,70,60,.5);color:var(--danger-text);}
   table tr.row-pending{background:rgba(201,70,60,.07);}
   #topbar .user-info{font-size:.8rem;color:var(--muted);text-align:right;line-height:1.3;}
@@ -1389,7 +1397,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v182</span>
+      <span class="version-tag">v183</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1598,6 +1606,8 @@
     <p class="sub" id="edit-tabs-user-label"></p>
     <label class="checkbox-row select-all-row"><input type="checkbox" id="edit-tabs-todas"><span>Selecionar todas</span></label>
     <div class="list" id="edit-tabs-list"></div>
+    <div id="edit-tabs-restritas" class="restritas-box"></div>
+    <div class="msg-err" id="edit-tabs-err" style="display:none;"></div>
     <div class="modal-foot">
       <button class="btn secondary" id="edit-tabs-cancelar">Cancelar</button>
       <button class="btn" id="edit-tabs-salvar">Salvar</button>
@@ -1843,6 +1853,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="firebase-config.js"></script>
+<script src="autorizacao-restrita.js"></script>
 <script src="admin-config.js"></script>
 <script src="comunicados.js"></script>
 <script>
@@ -4012,10 +4023,48 @@
     } catch(e) { return false; }
   })();
   let subabaAtiva = {};   // tabId -> id da sub-aba escolhida pela barra lateral
+
+  // ---------- Áreas restritas ----------
+  // Nunca entram em "Selecionar todas", nunca vêm liberadas por padrão e só são liberadas com a senha do
+  // administrador (autorizacao-restrita.js). As regras do Firestore conferem as mesmas áreas (temAbaRestrita /
+  // temSubabaRestrita / concedeAreaRestrita). Os ids são os do catálogo de abas: se uma dessas abas for recriada
+  // com outro id, atualize aqui e em firestore.rules.
+  const AREAS_RESTRITAS = {
+    'contratos-msmo451y': { nome: 'Contratos' },
+    'remuneracao-variavel-mvrhiayb': { nome: 'Remuneração variável' },
+    'gestao-mt9hdjwf': { subabas: { colaboradores: 'Gestão › Colaboradores' } },
+    'numeros-do-escritorio-mscj8kts': { subabas: { clientes: 'Números › Clientes', juizo: 'Números › Juízo & Ação', efetividade: 'Números › Efetividade' } }
+  };
+  function abaRestrita(tabId){ return !!(AREAS_RESTRITAS[tabId] && AREAS_RESTRITAS[tabId].nome); }
+  function subabaRestrita(tabId, subId){ const a = AREAS_RESTRITAS[tabId]; return !!(a && a.subabas && a.subabas[subId]); }
+  // rótulos das áreas restritas liberadas explicitamente para a pessoa (a aba precisa estar marcada)
+  function areasRestritasDe(u){
+    const tabs = u.tabs || [], subs = u.subtabs || {}, out = [];
+    Object.keys(AREAS_RESTRITAS).forEach(function(id){
+      const a = AREAS_RESTRITAS[id];
+      if (tabs.indexOf(id) === -1) return;
+      if (a.nome) out.push(a.nome);
+      if (a.subabas) Object.keys(a.subabas).forEach(function(s){ if ((subs[id] || []).indexOf(s) !== -1) out.push(a.subabas[s]); });
+    });
+    return out;
+  }
+  // abas com sub-abas restritas e nenhuma escolha salva: até 02/11/2026 a pessoa via essas sub-abas por padrão
+  function restritasARevisar(u){
+    const tabs = u.tabs || [], subs = u.subtabs || {};
+    if (u.role === 'admin') return [];
+    return Object.keys(AREAS_RESTRITAS).filter(function(id){ return AREAS_RESTRITAS[id].subabas && tabs.indexOf(id) !== -1 && !subs[id]; })
+      .map(function(id){ const t = tabsCatalog.find(function(x){ return x.id === id; }); return t ? t.label : id; });
+  }
+  // Sub-abas comuns: sem escolha salva, a pessoa vê todas. Sub-abas RESTRITAS: só com liberação explícita
+  // (ou administrador), mesmo sem escolha salva — ver AREAS_RESTRITAS.
   function subabasPermitidas(t){
     if (!t.subtabs || !t.subtabs.length) return [];
     const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
-    return permitidas ? t.subtabs.filter(function(s){ return permitidas.indexOf(s.id) !== -1; }) : t.subtabs;
+    const ehAdmin = currentProfile.role === 'admin';
+    return t.subtabs.filter(function(s){
+      if (subabaRestrita(t.id, s.id)) return ehAdmin || (permitidas || []).indexOf(s.id) !== -1;
+      return !permitidas || permitidas.indexOf(s.id) !== -1;
+    });
   }
   // a ferramenta abre no mesmo site, então dá para acionar a sub-aba dela diretamente
   function acionarSubabaNaFerramenta(tabId, subId, tentativas){
@@ -4517,11 +4566,8 @@
   // Sem restrição salva = acesso a todas (comportamento de hoje, sem quebrar nada).
   function buildToolUrl(t){
     if (!t.subtabs || !t.subtabs.length) return t.url;
-    const permitidas = currentProfile.subtabs && currentProfile.subtabs[t.id];
-    if (!permitidas) return t.url;
-    // Filtra apenas as IDs que existem de facto nas subabas registadas
-    const idsValidos = t.subtabs.map(function(s){ return s.id; });
-    const permitidasValidas = permitidas.filter(function(id){ return idsValidos.indexOf(id) !== -1; });
+    // (as ferramentas conferem as sub-abas restritas no próprio cadastro; o parâmetro só organiza as comuns)
+    const permitidasValidas = subabasPermitidas(t).map(function(s){ return s.id; });
     // Se todas as subabas registadas estão permitidas, não restringe
     if (permitidasValidas.length >= t.subtabs.length) {
       const sep = t.url.indexOf('?') === -1 ? '?' : '&';
@@ -4568,7 +4614,8 @@
   function renderNewUserTabsChecklist(){
     const box = document.getElementById('nu-tabs-list');
     if (!box) return;
-    box.innerHTML = tabsCatalog.map(function(t){
+    // áreas restritas não aparecem aqui: são liberadas depois, em "Editar abas", com a senha
+    box.innerHTML = tabsCatalog.filter(function(t){ return !abaRestrita(t.id); }).map(function(t){
       return '<label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="nu-tab-cb"><span>' + escapeHtml(t.label) + '</span></label>';
     }).join('');
     sincronizarSelecionarTodas('nu-tabs-todas', '#nu-tabs-list');
@@ -4687,12 +4734,16 @@
       }).join('') || (pendente
         ? '<span class="chip chip-pending">⏳ Pendente — aguardando liberação</span>'
         : '<span style="color:var(--muted);">nenhuma</span>');
-      return '<tr class="' + (pendente ? 'row-pending' : '') + '">' +
+      const restritas = u.role === 'admin' ? ['todas (administrador)'] : areasRestritasDe(u);
+      const revisar = restritasARevisar(u);
+      const chipsRestritas = (restritas.length ? '<div style="margin-top:4px;"><span class="chip chip-restrita" title="Áreas restritas liberadas">🔒 ' + escapeHtml(restritas.join(' · ')) + '</span></div>' : '') +
+        (revisar.length ? '<div style="margin-top:4px;"><span class="chip chip-revisar" title="Até 02/11/2026 essas sub-abas restritas apareciam por padrão. Libere em Editar abas se a pessoa deve continuar vendo.">⚠ revisar: ' + escapeHtml(revisar.join(', ')) + ' (era liberado por padrão)</span></div>' : '');
+      return '<tr class="' + (pendente ? 'row-pending' : '') + (restritas.length ? ' row-restrita' : '') + '">' +
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
         '<td>' + roleLabel(u.role) + '</td>' +
         '<td style="white-space:nowrap;" title="Abas liberadas para a pessoa, do total de abas do portal">' + qtdAbas(u) + '</td>' +
-        '<td>' + situacao + chips + '</td>' +
+        '<td>' + situacao + chips + chipsRestritas + '</td>' +
         '<td class="actions-cell">' +
           (u.acesso !== 'ativo' ? '<button class="btn small" onclick="window.__aprovarUser(\'' + u.uid + '\')">Aprovar acesso</button>' : '') +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
@@ -4733,13 +4784,13 @@
       } else {
         // Cada aba (+ suas sub-abas, se houver) fica num único item do grid —
         // senão o CSS grid intercala abas vizinhas no meio da lista de sub-abas.
-        els.editTabsList.innerHTML = tabsCatalog.map(function(t){
+        els.editTabsList.innerHTML = tabsCatalog.filter(function(t){ return !abaRestrita(t.id); }).map(function(t){
           const marcado = cur.indexOf(t.id) !== -1 ? ' checked' : '';
           let html = '<div class="tab-cell"><label class="checkbox-row" title="' + escapeHtml(t.label) + '"><input type="checkbox" value="' + t.id + '" class="edit-tab-cb"' + marcado + '><span>' + escapeHtml(t.label) + '</span></label>';
           if (t.subtabs && t.subtabs.length) {
             // Sem restrição salva ainda = acesso a todas (não bloqueia quem já usava a ferramenta).
             const selecionadas = curSubtabs[t.id] || t.subtabs.map(function(s){ return s.id; });
-            html += '<div class="subtab-list">' + t.subtabs.map(function(s){
+            html += '<div class="subtab-list">' + t.subtabs.filter(function(s){ return !subabaRestrita(t.id, s.id); }).map(function(s){
               const subMarcado = selecionadas.indexOf(s.id) !== -1 ? ' checked' : '';
               return '<label class="checkbox-row" title="' + escapeHtml(s.label) + '">' +
                 '<input type="checkbox" value="' + s.id + '" class="edit-subtab-cb" data-parent-tab="' + t.id + '"' + subMarcado + '><span>' + escapeHtml(s.label) + '</span></label>';
@@ -4748,6 +4799,27 @@
           return html + '</div>';
         }).join('');
       }
+      // Áreas restritas: fora da lista (o "Selecionar todas" não as alcança) e só liberadas com a senha
+      editTabsAntes = { tabs: cur.slice(), subtabs: JSON.parse(JSON.stringify(curSubtabs)), nome: dados.displayName || dados.email || '' };
+      const restritas = [];
+      tabsCatalog.forEach(function(t){
+        const a = AREAS_RESTRITAS[t.id];
+        if (!a) return;
+        if (a.nome) restritas.push({ tab: t.id, sub: '', rotulo: a.nome, marcado: cur.indexOf(t.id) !== -1 });
+        if (a.subabas) Object.keys(a.subabas).forEach(function(sub){
+          if (!(t.subtabs || []).some(function(s){ return s.id === sub; })) return;
+          restritas.push({ tab: t.id, sub: sub, rotulo: a.subabas[sub] + ' (exige a aba ' + t.label + ' marcada acima)',
+                           marcado: cur.indexOf(t.id) !== -1 && (curSubtabs[t.id] || []).indexOf(sub) !== -1 });
+        });
+      });
+      document.getElementById('edit-tabs-restritas').innerHTML = restritas.length
+        ? '<h4>🔒 Áreas restritas</h4><p>Não entram em "Selecionar todas". Para liberar, o portal pede a sua senha.</p>' +
+          restritas.map(function(r){
+            return '<label class="checkbox-row"><input type="checkbox" class="edit-restrita-cb" data-tab="' + r.tab + '" data-sub="' + r.sub + '"' +
+              (r.marcado ? ' checked' : '') + '><span>' + escapeHtml(r.rotulo) + '</span></label>';
+          }).join('')
+        : '';
+      document.getElementById('edit-tabs-err').style.display = 'none';
       sincronizarSelecionarTodas('edit-tabs-todas', '#edit-tabs-list');
       els.editTabsBackdrop.classList.add('show');
     });
@@ -4994,15 +5066,47 @@
   els.editTabsBackdrop.addEventListener('click', function(e){
     if (e.target === els.editTabsBackdrop) fecharModalEditTabs();
   });
+  let editTabsAntes = null;   // abas/sub-abas ao abrir o modal (para saber o que a pessoa ganha ou perde)
   els.editTabsSalvar.addEventListener('click', function(){
     if (!editTabsTargetUid) return;
-    const novaLista = Array.prototype.slice.call(document.querySelectorAll('.edit-tab-cb:checked')).map(function(c){ return c.value; });
+    const alvo = editTabsTargetUid;
+    const erroEl = document.getElementById('edit-tabs-err');
+    erroEl.style.display = 'none';
+    const marcadas = function(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+    const novaLista = marcadas('.edit-tab-cb:checked').map(function(c){ return c.value; });
     const novasSubtabs = {};
     tabsCatalog.forEach(function(t){
       if (!t.subtabs || !t.subtabs.length) return;
-      novasSubtabs[t.id] = Array.prototype.slice.call(document.querySelectorAll('.edit-subtab-cb[data-parent-tab="' + t.id + '"]:checked')).map(function(c){ return c.value; });
+      novasSubtabs[t.id] = marcadas('.edit-subtab-cb[data-parent-tab="' + t.id + '"]:checked').map(function(c){ return c.value; });
     });
-    db.collection('users').doc(editTabsTargetUid).update({ tabs: novaLista, subtabs: novasSubtabs }).then(fecharModalEditTabs);
+    const semAba = [];
+    marcadas('.edit-restrita-cb:checked').forEach(function(c){
+      const tab = c.dataset.tab, sub = c.dataset.sub;
+      if (!sub) { novaLista.push(tab); return; }
+      if (novaLista.indexOf(tab) === -1) { const t = tabsCatalog.find(function(x){ return x.id === tab; }); semAba.push(t ? t.label : tab); return; }
+      (novasSubtabs[tab] = novasSubtabs[tab] || []).push(sub);
+    });
+    if (semAba.length) {
+      erroEl.textContent = 'Para liberar uma sub-aba restrita, marque também a aba ' + semAba.join(', ') + '.';
+      erroEl.style.display = 'block';
+      return;
+    }
+    const antes = areasRestritasDe(editTabsAntes || {}), depois = areasRestritasDe({ tabs: novaLista, subtabs: novasSubtabs });
+    const ganha = depois.filter(function(r){ return antes.indexOf(r) === -1; });
+    const perde = antes.filter(function(r){ return depois.indexOf(r) === -1; });
+    const autorizar = ganha.length
+      ? autorizarAreaRestrita({ pessoa: (editTabsAntes || {}).nome, itens: ganha })
+      : Promise.resolve();
+    autorizar.then(function(){
+      return db.collection('users').doc(alvo).update({ tabs: novaLista, subtabs: novasSubtabs });
+    }).then(function(){
+      if (ganha.length || perde.length) registrarAreaRestrita({ alvoUid: alvo, liberadas: ganha, retiradas: perde });
+      fecharModalEditTabs();
+    }).catch(function(err){
+      if (err && err.message === 'cancelado') return;
+      erroEl.textContent = 'Não foi possível salvar: ' + (err && (err.code || err.message));
+      erroEl.style.display = 'block';
+    });
   });
 
   // Aprovação explícita: é o campo acesso == 'ativo' (e não as abas) que libera os dados nas regras do Firestore.

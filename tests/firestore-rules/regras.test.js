@@ -263,6 +263,45 @@ async function main() {
   await caso(G, 'admin não grava auditoria em nome de outro', () => assertFails(A.collection('auditoriaSeguranca').add({ porUid: 'u-membro', em: TS(), acao: 'x' })));
   await caso(G, 'admin ativo grava dado privado', () => assertSucceeds(A.doc('dadosPrivados/condominios').set({ json: '{}' })));
 
+  G = '10. Áreas restritas (Números › Clientes/Juízo/Efetividade, Contratos, Remuneração, Gestão › Colaboradores)';
+  const NUM = 'numeros-do-escritorio-mscj8kts', CONTR = 'contratos-msmo451y', REM = 'remuneracao-variavel-mvrhiayb', GEST = 'gestao-mt9hdjwf';
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc('users/u-numcomum').set({ email: 'numcomum@exemplo.test', role: 'membro', acesso: 'ativo', tabs: [NUM] });   // sem escolha de sub-abas
+    await d.doc('users/u-numcli').set({ email: 'numcli@exemplo.test', role: 'membro', acesso: 'ativo', tabs: [NUM, CONTR], subtabs: { [NUM]: ['geral', 'clientes'] } });
+    await d.doc('users/u-semaba').set({ email: 'semaba@exemplo.test', role: 'membro', acesso: 'ativo', tabs: ['agenda'], subtabs: { [NUM]: ['clientes'] } });   // sub-aba sem a aba
+    await d.doc('users/u-alvo2').set({ email: 'alvo2@exemplo.test', role: 'membro', acesso: 'ativo', tabs: ['agenda'] });
+    for (const k of ['numerosClientes', 'numerosJuizo', 'numerosEfetividade']) await d.doc('dadosPrivados/' + k).set({ json: '{}' });
+    await d.doc('contratosGerados/c-1').set({ criadoPorUid: 'u-numcli', tipo: 'x', nomeDisplay: 'x', dados: {} });
+  });
+  const pessoa = (uid, email, authTime) => env.authenticatedContext(uid, Object.assign({ email }, authTime ? { auth_time: authTime } : {})).firestore();
+  const agora = Math.floor(Date.now() / 1000);
+  const comum = pessoa('u-numcomum', 'numcomum@exemplo.test'), liberado = pessoa('u-numcli', 'numcli@exemplo.test'), semAba = pessoa('u-semaba', 'semaba@exemplo.test');
+  await caso(G, 'membro com a aba Números lê o geral', () => assertSucceeds(comum.doc('dadosPrivados/numerosStats').get()));
+  for (const k of ['numerosClientes', 'numerosJuizo', 'numerosEfetividade'])
+    await caso(G, `membro com a aba Números, sem liberação, NÃO lê ${k} (sem escolha salva não libera área restrita)`, () => assertFails(comum.doc('dadosPrivados/' + k).get()));
+  await caso(G, 'membro liberado em Clientes lê numerosClientes', () => assertSucceeds(liberado.doc('dadosPrivados/numerosClientes').get()));
+  await caso(G, '... e não lê numerosJuizo (não liberado)', () => assertFails(liberado.doc('dadosPrivados/numerosJuizo').get()));
+  await caso(G, 'sub-aba restrita sem a aba Números não libera', () => assertFails(semAba.doc('dadosPrivados/numerosClientes').get()));
+  await caso(G, 'cliente não lê numerosClientes', () => assertFails(db(P.cliente).doc('dadosPrivados/numerosClientes').get()));
+  await caso(G, 'admin lê numerosEfetividade', () => assertSucceeds(db(P.admin).doc('dadosPrivados/numerosEfetividade').get()));
+  await caso(G, 'membro sem a aba Contratos NÃO lê contratos gerados', () => assertFails(comum.doc('contratosGerados/c-1').get()));
+  await caso(G, 'membro sem a aba Contratos NÃO gera contrato', () => assertFails(comum.collection('contratosGerados').add({ criadoPorUid: 'u-numcomum', tipo: 'x', nomeDisplay: 'x', dados: {} })));
+  await caso(G, 'membro com a aba Contratos lê e gera', async () => {
+    await assertSucceeds(liberado.doc('contratosGerados/c-1').get());
+    await assertSucceeds(liberado.collection('contratosGerados').add({ criadoPorUid: 'u-numcli', tipo: 'x', nomeDisplay: 'x', dados: {} }));
+  });
+  const adminVelho = pessoa(P.admin.uid, P.admin.email, agora - 3600), adminRecente = pessoa(P.admin.uid, P.admin.email, agora - 30);
+  await caso(G, 'admin SEM senha recente não libera Contratos', () => assertFails(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', CONTR] })));
+  await caso(G, 'admin SEM senha recente não libera Remuneração variável', () => assertFails(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', REM] })));
+  await caso(G, 'admin SEM senha recente não libera Números › Clientes', () => assertFails(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', NUM], subtabs: { [NUM]: ['clientes'] } })));
+  await caso(G, 'admin SEM senha recente não libera Gestão › Colaboradores', () => assertFails(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', GEST], subtabs: { [GEST]: ['colaboradores'] } })));
+  await caso(G, 'admin SEM senha recente não cria conta já com área restrita', () => assertFails(adminVelho.doc('users/u-novo-restrito').set({ email: 'n@exemplo.test', role: 'membro', acesso: 'ativo', tabs: [CONTR] })));
+  await caso(G, 'admin SEM senha recente libera abas comuns (Números sem sub-abas restritas)', () => assertSucceeds(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', NUM], subtabs: { [NUM]: ['geral', 'qualidade'] } })));
+  await caso(G, 'admin COM senha recente libera Números › Clientes e Contratos', () => assertSucceeds(adminRecente.doc('users/u-alvo2').update({ tabs: ['agenda', NUM, CONTR], subtabs: { [NUM]: ['geral', 'clientes'] } })));
+  await caso(G, 'admin SEM senha recente pode RETIRAR área restrita', () => assertSucceeds(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', NUM], subtabs: { [NUM]: ['geral'] } })));
+  await caso(G, 'membro não se dá área restrita', () => assertFails(liberado.doc('users/u-numcli').update({ subtabs: { [NUM]: ['geral', 'clientes', 'juizo'] } })));
+
   await env.cleanup();
   let falhas = 0, grupoAtual = '';
   for (const [st, grupo, nome] of resultados) {
