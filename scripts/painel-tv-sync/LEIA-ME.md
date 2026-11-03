@@ -2,12 +2,26 @@
 
 Pega o mesmo snapshot que a sub-aba **Agenda — Astrea** de Números do Escritório
 usa (coleção `astreaDiario` no Firestore, alimentada pelo robô do Astrea) e
-regrava `agenda.csv` no repositório do painel de TV (`C:\Users\jowjo\painel-tv`),
-com commit + push automático.
+publica `agenda.csv` para o painel de TV ler, com commit + push automático.
 
 Substitui o passo manual antigo descrito em
 `painel-tv/ROTINA-ATUALIZACAO-AGENDA.md` (exportar .xlsx do Astrea e importar
 por cima da planilha do Google Sheets).
+
+## Por que uma branch separada (`agenda-live`), e não o `agenda.csv` normal do repositório
+
+O repositório `PAINEL-FB` é **público** (o GitHub Pages do plano free exige
+isso). Dados reais de clientes/processos não devem se acumular para sempre no
+histórico de commits público — por isso o `.gitignore` do painel de TV
+explicitamente bloqueia `*.csv`.
+
+A solução: uma branch isolada, `agenda-live`, que **nunca tem mais de 1
+commit** — cada sincronização reescreve esse commit (`git commit --amend`) e
+faz `push --force` só nela, nunca em `main`. O painel de TV lê o arquivo direto
+de `raw.githubusercontent.com` nessa branch (não depende de qual branch o
+GitHub Pages publica). O dado de *hoje* continua visível para quem tiver o
+link — igual já era com a planilha do Google Sheets publicada na web — mas não
+fica acumulado como histórico pesquisável.
 
 ---
 
@@ -37,6 +51,16 @@ robô do Astrea (aquele só devia gravar, não ler para fora).
 
 Edite `credenciais.env` e preencha `FIREBASE_ROBO_EMAIL` / `FIREBASE_ROBO_SENHA`
 com a conta criada no passo 2.
+
+### 4. Criar a branch/worktree isolada `agenda-live` (uma vez)
+
+```powershell
+cd C:\Users\jowjo\portal-fb\scripts\painel-tv-sync
+powershell -ExecutionPolicy Bypass -File "setup-agenda-live-branch.ps1"
+```
+
+Isso cria a pasta `C:\Users\jowjo\painel-tv-agenda-live` (um segundo checkout,
+separado do seu `C:\Users\jowjo\painel-tv` normal) já na branch `agenda-live`.
 
 ---
 
