@@ -340,6 +340,8 @@ def semear():
     gravar(f"users/{U['cliente']}", {'email': 'cliente@exemplo.test', 'displayName': 'Síndico Fictício', 'role': 'cliente', 'tabs': ['condominios']})
     gravar(f"users/{U['deslig']}", {'email': 'deslig@exemplo.test', 'displayName': 'Desligado Fictício', 'role': 'membro', 'tabs': abas, 'pixChave': 'x'})
     gravar(f"users/{U['legado']}", {'email': 'legado@exemplo.test', 'displayName': 'Sem Abas Fictício', 'role': 'membro', 'tabs': []})
+    # a colega pode LANÇAR holerites, mas não tem Gestão › Colaboradores (área restrita): usa o cartão próprio de holerites
+    gravar(f"permissoesGestao/{U['colega']}", {'lancarHolerites': True})
     for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig'):
         gravar(f"organograma/{U[k]}", {'displayName': k.title() + ' Fictício', 'email': f'{k}@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
     for i, (tid, rot, url) in enumerate([(NUM, 'Números', 'tools/numeros-escritorio/index.html'), ('chat', 'Chat', 'tools/chat/index.html'),
@@ -716,6 +718,11 @@ def main():
             esperar(pg, "typeof firebase !== 'undefined' && firebase.apps.length > 0 && !!firebase.auth().currentUser", 20000); pg.wait_for_timeout(4000)
             caso(G, 'Gestão: Colaboradores fica escondido para quem não foi liberado',
                  pg.evaluate("(document.querySelector('[data-goto=\"colaboradores\"]') || {style:{display:'none'}}).style.display === 'none'"))
+            caso(G, 'Gestão: quem pode lançar holerites vê o cartão próprio "Holerites e guias"',
+                 esperar(pg, "document.getElementById('hub-card-holerites') && document.getElementById('hub-card-holerites').style.display !== 'none'", 15000))
+            pg.click('#hub-card-holerites')
+            caso(G, 'Gestão: o cartão abre o envio de holerites (sem passar por Colaboradores)',
+                 esperar(pg, "!!document.getElementById('hl-colab') && !document.querySelector('[data-voltar-colab]')", 15000))
             b.close()
         bloco('4c. Áreas restritas para quem não foi liberado', b4c)
 

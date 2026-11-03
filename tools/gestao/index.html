@@ -532,6 +532,14 @@
           <div class="hub-card-desc">Solicitações, aprovações e histórico de aquisições</div>
           <span class="hub-card-btn">Acessar →</span>
         </div>
+        <!-- só aparece para quem pode lançar holerites (admin ou permissão "Quem lança"): envia sem passar por
+             Colaboradores, que é área restrita -->
+        <div class="hub-card" data-goto="holerites" role="button" tabindex="0" id="hub-card-holerites" style="display:none;">
+          <img class="hub-art" src="img/colaboradores.jpg" alt="">
+          <div class="hub-card-title">Holerites e guias</div>
+          <div class="hub-card-desc">Enviar holerites e guias de FGTS, INSS e tributos</div>
+          <span class="hub-card-btn">Acessar →</span>
+        </div>
         <!-- só aparece para quem o admin liberou (Senhas diversas e/ou restritas) -->
         <div class="hub-card" data-goto="senhas" role="button" tabindex="0" id="hub-card-senhas" style="display:none;">
           <img class="hub-art" src="img/senhas.jpg" alt="">
@@ -985,7 +993,7 @@
     const permitidas = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     // as internas (Pagamentos / Holerites) dependem de quem pode ver "Colaboradores"
     const comColab = permitidas.indexOf('colaboradores') !== -1;
-    const filtradas = SUBTABS.filter(function(t){ return t.type === 'senhas' || permitidas.indexOf(t.id) !== -1 || (t.interna && comColab); });
+    const filtradas = SUBTABS.filter(function(t){ return t.type === 'senhas' || t.id === 'holerites' || permitidas.indexOf(t.id) !== -1 || (t.interna && comColab); });
     return filtradas.some(function(t){ return t.type !== 'senhas' && !t.interna; }) ? filtradas : SUBTABS;
   }
 
@@ -998,7 +1006,7 @@
 
   /* hub navigation */
   Array.prototype.forEach.call(hubView.querySelectorAll('[data-goto]'), function(card){
-    if (card.dataset.goto === 'senhas') return;   // controlado por aplicarPermissoesNaTela()
+    if (card.dataset.goto === 'senhas' || card.dataset.goto === 'holerites') return;   // controlados por aplicarPermissoesNaTela()
     if (!ATIVAS.some(function(t){ return t.id === card.dataset.goto; })) card.style.display = 'none';
   });
   function openFromHub(e){
@@ -1020,6 +1028,8 @@
   function aplicarPermissoesNaTela(){
     const btnColab = nav.querySelector('[data-subtab-id="colaboradores"]');
     if (btnColab) btnColab.style.display = podeColaboradores ? '' : 'none';
+    const cardHol = document.getElementById('hub-card-holerites');
+    if (cardHol) cardHol.style.display = temAcesso('lancarHolerites') && ATIVAS.some(function(t){ return t.id === 'holerites'; }) ? '' : 'none';
     const cardColab = hubView.querySelector('[data-goto="colaboradores"]');
     if (cardColab && ATIVAS.some(function(t){ return t.id === 'colaboradores'; })) cardColab.style.display = podeColaboradores ? '' : 'none';
     ATIVAS.forEach(function(t){
@@ -1138,7 +1148,7 @@
       b.addEventListener('click', function(){ selectSubtab(b.dataset.abre); });
     });
   }
-  function voltarColabHtml(){ return '<button type="button" class="btn small" data-voltar-colab>← Colaboradores</button>'; }
+  function voltarColabHtml(){ return podeColaboradores ? '<button type="button" class="btn small" data-voltar-colab>← Colaboradores</button>' : ''; }
   document.addEventListener('click', function(e){
     if (e.target.closest('[data-voltar-colab]')) selectSubtab('colaboradores');
   });
