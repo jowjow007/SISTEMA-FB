@@ -53,6 +53,12 @@ $Settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
     -MultipleInstances IgnoreNew
 
+# -- Principal: roda sem precisar de sessao interativa aberta (LogonType S4U) ------
+# Sem isso, o Agendador usa "Interativo apenas" por padrao e a tarefa so fica
+# "Enfileirada" sem executar de fato quando chamada fora de uma sessao especifica -
+# ja aconteceu aqui. S4U nao precisa guardar senha, so funciona com o usuario atual.
+$Principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -LogonType S4U -RunLevel Highest
+
 # -- Registra (ou atualiza se ja existir) --------------------------
 $Existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($Existing) {
@@ -65,8 +71,8 @@ Register-ScheduledTask `
     -Action $Action `
     -Trigger @($Trigger1, $Trigger2) `
     -Settings $Settings `
-    -Description "Sincroniza a Agenda Astrea do Portal (astreaDiario) para o agenda.csv do painel de TV" `
-    -RunLevel Highest | Out-Null
+    -Principal $Principal `
+    -Description "Sincroniza a Agenda Astrea do Portal (astreaDiario) para o agenda.csv do painel de TV" | Out-Null
 
 Write-Host ""
 Write-Host "OK: Tarefa '$TaskName' criada com sucesso!"
