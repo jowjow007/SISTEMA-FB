@@ -329,7 +329,7 @@ def semear():
     requests.delete(f'{AUTH}/emulator/v1/projects/{PROJ}/accounts').raise_for_status()
     requests.delete(f'{FS}/emulator/v1/projects/{PROJ}/databases/(default)/documents').raise_for_status()
     U = {}
-    for k in ('admin', 'membro', 'colega', 'cliente', 'deslig', 'legado', 'robo', 'vetudo'):
+    for k in ('admin', 'membro', 'colega', 'cliente', 'deslig', 'legado', 'robo', 'vetudo', 'teste'):
         U[k] = criar_conta(f'{k}@exemplo.test')
     abas = ['agenda', 'chat', GEST, NUM, 'assistente', 'condominios']
     # cadastros como estão hoje em produção: SEM o campo acesso (a migração cria)
@@ -340,6 +340,7 @@ def semear():
     gravar(f"users/{U['cliente']}", {'email': 'cliente@exemplo.test', 'displayName': 'Síndico Fictício', 'role': 'cliente', 'tabs': ['condominios']})
     gravar(f"users/{U['deslig']}", {'email': 'deslig@exemplo.test', 'displayName': 'Desligado Fictício', 'role': 'membro', 'tabs': abas, 'pixChave': 'x'})
     gravar(f"users/{U['legado']}", {'email': 'legado@exemplo.test', 'displayName': 'Sem Abas Fictício', 'role': 'membro', 'tabs': []})
+    gravar(f"users/{U['teste']}", {'email': 'teste@exemplo.test', 'displayName': 'Conta de Teste Fictícia', 'role': 'membro', 'tabs': ['agenda'], 'pixChave': 'x'})
     # a colega pode LANÇAR holerites, mas não tem Gestão › Colaboradores (área restrita): usa o cartão próprio de holerites
     gravar(f"permissoesGestao/{U['colega']}", {'lancarHolerites': True})
     for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig'):
@@ -539,6 +540,26 @@ def main():
                  esperar(pi, f"Array.from(document.querySelectorAll('#users-tbody tr.row-restrita')).some(tr => tr.textContent.includes('membro@exemplo.test') && tr.querySelector('.chip-restrita'))", 15000))
             caso(G, 'lista de usuários: quem via sub-abas restritas só por padrão aparece como "⚠ revisar"',
                  pi.evaluate("Array.from(document.querySelectorAll('#users-tbody tr')).some(tr => tr.textContent.includes('colega@exemplo.test') && tr.querySelector('.chip-revisar'))"))
+            # conta de teste: marcar e espelhar as permissões de outra pessoa
+            pi.evaluate(f"window.__marcarContaTeste('{U['teste']}', true)")
+            caso(G, 'conta de teste: marcar pela lista de usuários', ate(lambda: (ler(f"users/{U['teste']}") or {}).get('contaTeste') is True, 15))
+            esperar(pi, f"Array.from(document.querySelectorAll('#users-tbody tr')).some(tr => tr.textContent.includes('teste@exemplo.test') && tr.querySelector('.chip-teste'))", 15000)
+            pi.evaluate(f"window.__espelharPermissoes('{U['teste']}')")
+            esperar(pi, "!!document.getElementById('espelho-origem')", 10000)
+            pi.select_option('#espelho-origem', U['colega']); pi.click('#espelho-ok')
+            colega = ler(f"users/{U['colega']}") or {}
+            caso(G, 'conta de teste: espelha abas e permissões da Gestão da pessoa escolhida',
+                 ate(lambda: (ler(f"users/{U['teste']}") or {}).get('tabs') == colega.get('tabs') and (ler(f"permissoesGestao/{U['teste']}") or {}).get('lancarHolerites') is True, 15),
+                 str((ler(f"users/{U['teste']}") or {}).get('tabs')))
+            caso(G, 'conta de teste: não copia o tipo de colaborador nem dados pessoais', 'tipoColaborador' not in (ler(f"users/{U['teste']}") or {}) and (ler(f"users/{U['teste']}") or {}).get('email') == 'teste@exemplo.test')
+            esperar(pi, f"Array.from(document.querySelectorAll('#users-tbody tr')).some(tr => tr.textContent.includes('teste@exemplo.test') && tr.textContent.includes('espelho de'))", 15000)
+            pi.evaluate(f"window.__espelharPermissoes('{U['teste']}')")
+            esperar(pi, "!!document.getElementById('espelho-origem')", 10000)
+            pi.select_option('#espelho-origem', U['membro']); pi.click('#espelho-ok')
+            caso(G, 'conta de teste: espelhar quem tem área restrita pede a senha', esperar(pi, "!!document.getElementById('ar-senha')", 10000))
+            pi.fill('#ar-senha', SENHA); pi.click('#ar-liberar')
+            caso(G, 'conta de teste: com a senha, recebe também a área restrita da pessoa',
+                 ate(lambda: 'clientes' in ((ler(f"users/{U['teste']}") or {}).get('subtabs') or {}).get(NUM, []), 15))
             pi.close()
             caso(G, 'dados privados ficaram no Firestore', ler('dadosPrivados/condominios') is not None and ler('dadosPrivados/numerosStats') is not None and ler('arquivosPrivados/relatorio-ficticio.pdf') is not None)
             b.close()
@@ -729,6 +750,9 @@ def main():
 
         def b4d():
             G = '4d. Lembrete mensal de holerites (quem lança)'
+            # só a aba Gestão neste bloco: no emulador (HTTP/1.1) o portal com 5 ferramentas abertas esgota as 6
+            # conexões do Chrome e a Gestão não lê a permissão a tempo (em produção, HTTP/2, isso não acontece)
+            cad_colega = ler(f"users/{U['colega']}"); gravar(f"users/{U['colega']}", dict(cad_colega, tabs=[GEST]))
             b, cc, pc, ok = sessao('colega@exemplo.test')
             pc.close()
             cc.add_init_script("window.__hojeTesteHolerites = '2026-11-28'")   # dia 27 em diante: cobra novembro
@@ -758,6 +782,7 @@ def main():
             esperar(ph, "document.getElementById('app-screen').style.display === 'flex'", 20000); ph.wait_for_timeout(8000)
             caso(G, 'mês completo (todos os CLT com holerite): não aparece', not ph.evaluate("document.getElementById('holrem-backdrop').classList.contains('show')"))
             b.close()
+            gravar(f"users/{U['colega']}", cad_colega)   # devolve as abas da colega
         bloco('4d. Lembrete mensal de holerites', b4d)
 
         # ===== 5. Desligado (sessão aberta enquanto o admin exclui)

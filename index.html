@@ -447,6 +447,7 @@
   .restritas-box p{margin:0 0 8px;font-size:.74rem;color:var(--muted);}
   .restritas-box .checkbox-row{margin:2px 0;}
   .chip.chip-restrita{background:rgba(201,162,74,.16);border-color:rgba(201,162,74,.75);color:#e2c27a;font-weight:600;}
+  .chip.chip-teste{background:rgba(80,160,230,.16);border-color:rgba(80,160,230,.7);color:#8cc4f0;font-weight:600;}
   .chip.chip-revisar{background:rgba(230,150,40,.16);border-color:rgba(230,150,40,.7);color:#f0b45a;}
   tr.row-restrita td:first-child{box-shadow:inset 3px 0 0 #c9a24a;}
   .chip.chip-pending{background:rgba(201,70,60,.18);border-color:rgba(201,70,60,.5);color:var(--danger-text);}
@@ -1397,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v185</span>
+      <span class="version-tag">v186</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -4823,17 +4824,22 @@
       const revisar = restritasARevisar(u);
       const chipsRestritas = (restritas.length ? '<div style="margin-top:4px;"><span class="chip chip-restrita" title="Áreas restritas liberadas">🔒 ' + escapeHtml(restritas.join(' · ')) + '</span></div>' : '') +
         (revisar.length ? '<div style="margin-top:4px;"><span class="chip chip-revisar" title="Até 02/11/2026 essas sub-abas restritas apareciam por padrão. Libere em Editar abas se a pessoa deve continuar vendo.">⚠ revisar: ' + escapeHtml(revisar.join(', ')) + ' (era liberado por padrão)</span></div>' : '');
+      const chipTeste = u.contaTeste ? '<div style="margin-top:4px;"><span class="chip chip-teste" title="Conta de teste: recebe as permissões de outra pessoa em &quot;Espelhar de…&quot;. Não aparece em Pagamentos.">🧪 conta de teste' + (u.espelhoDeNome ? ' — espelho de ' + escapeHtml(u.espelhoDeNome) : '') + '</span></div>' : '';
       return '<tr class="' + (pendente ? 'row-pending' : '') + (restritas.length ? ' row-restrita' : '') + '">' +
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
         '<td>' + roleLabel(u.role) + '</td>' +
         '<td style="white-space:nowrap;" title="Abas liberadas para a pessoa, do total de abas do portal">' + qtdAbas(u) + '</td>' +
-        '<td>' + situacao + chips + chipsRestritas + '</td>' +
+        '<td>' + situacao + chips + chipsRestritas + chipTeste + '</td>' +
         '<td class="actions-cell">' +
           (u.acesso !== 'ativo' ? '<button class="btn small" onclick="window.__aprovarUser(\'' + u.uid + '\')">Aprovar acesso</button>' : '') +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserSistemas(\'' + u.uid + '\')">Sistemas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserDados(\'' + u.uid + '\')">Dados</button>' +
+          (u.contaTeste
+            ? '<button class="btn small" onclick="window.__espelharPermissoes(\'' + u.uid + '\')">🧪 Espelhar de…</button>' +
+              '<button class="btn secondary small" onclick="window.__marcarContaTeste(\'' + u.uid + '\', false)">Deixar de ser teste</button>'
+            : (u.role !== 'admin' && u.uid !== currentProfile.uid ? '<button class="btn secondary small" onclick="window.__marcarContaTeste(\'' + u.uid + '\', true)">🧪 Usar como teste</button>' : '')) +
           '<button class="btn danger small" onclick="window.__revokeUser(\'' + u.uid + '\')">Revogar</button>' +
           '<button class="btn danger small" onclick="window.__deleteUser(this,\'' + u.uid + '\',\'' + escapeHtml(u.displayName || u.email || '') + '\')">Excluir</button>' +
         '</td>' +
@@ -4852,6 +4858,75 @@
       badge.classList.remove('show');
     }
   }
+
+  // ---------- Conta de teste: recebe as permissões de outra pessoa para o admin ver o portal "como ela" ----------
+  // Marcar exige confirmação; só contas marcadas podem ser espelhadas (e o espelho troca TODAS as permissões dela).
+  // O que vem da pessoa: papel (exceto administrador), abas, sub-abas, permissões da Gestão, visão do patrimônio e
+  // sistemas. Os DADOS da pessoa (holerites, patrimônio, tarefas, conversas) não vêm: a conta de teste vê os seus.
+  window.__marcarContaTeste = function(uid, marcar){
+    const u = (ultimosUsuarios || []).find(function(x){ return x.uid === uid; }) || {};
+    const nome = (u.displayName || '') + ' <' + (u.email || '') + '>';
+    if (marcar && !confirm('Usar ' + nome + ' como CONTA DE TESTE?\n\nEla passa a ter o botão "Espelhar de…", que troca todas as permissões dela pelas de outra pessoa, e deixa de aparecer em Pagamentos.\nUse só numa conta criada para testes.')) return;
+    if (!marcar && !confirm('Deixar ' + nome + ' de ser conta de teste? As permissões atuais continuam como estão.')) return;
+    db.collection('users').doc(uid).update(marcar ? { contaTeste: true } : { contaTeste: firebase.firestore.FieldValue.delete(), espelhoDeUid: firebase.firestore.FieldValue.delete(), espelhoDeNome: firebase.firestore.FieldValue.delete() })
+      .catch(function(err){ alert('Não foi possível salvar: ' + err.message); });
+  };
+  window.__espelharPermissoes = function(testeUid){
+    const teste = (ultimosUsuarios || []).find(function(x){ return x.uid === testeUid; });
+    if (!teste || !teste.contaTeste) return;
+    const opcoes = (ultimosUsuarios || []).filter(function(u){ return !u.contaTeste && u.uid !== testeUid && u.role !== 'admin'; })
+      .sort(function(a, b){ return (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''); });
+    const fundo = document.createElement('div');
+    fundo.id = 'espelho-backdrop';
+    fundo.setAttribute('style', 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;');
+    fundo.innerHTML = '<div style="background:var(--panel);color:var(--paper);border:1px solid var(--line-strong);border-radius:12px;max-width:460px;width:100%;box-sizing:border-box;padding:20px 22px;">' +
+      '<h3 style="margin:0 0 6px;">🧪 Espelhar permissões</h3>' +
+      '<p class="sub" style="margin:0 0 12px;">A conta de teste <b>' + escapeHtml(teste.displayName || teste.email || '') + '</b> passa a ter exatamente as permissões da pessoa escolhida (papel, abas, sub-abas, permissões da Gestão, patrimônio e sistemas). Os dados pessoais dela não são copiados.</p>' +
+      '<select id="espelho-origem" style="width:100%;padding:9px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">' +
+        '<option value="">— escolha a pessoa —</option>' +
+        opcoes.map(function(u){ return '<option value="' + u.uid + '">' + escapeHtml((u.displayName || '(sem nome)') + ' — ' + (u.email || '') + ' — ' + roleLabel(u.role)) + '</option>'; }).join('') +
+      '</select>' +
+      '<p class="msg-err" id="espelho-err" style="display:none;margin:10px 0 0;"></p>' +
+      '<div class="modal-foot" style="margin-top:14px;"><button class="btn secondary" id="espelho-cancelar">Cancelar</button><button class="btn" id="espelho-ok">Espelhar</button></div></div>';
+    document.body.appendChild(fundo);
+    const fechar = function(){ if (fundo.parentNode) fundo.parentNode.removeChild(fundo); };
+    document.getElementById('espelho-cancelar').onclick = fechar;
+    document.getElementById('espelho-ok').onclick = function(){
+      const origemUid = document.getElementById('espelho-origem').value;
+      const erro = document.getElementById('espelho-err');
+      const mostrarErro = function(t){ erro.textContent = t; erro.style.display = 'block'; };
+      if (!origemUid) { mostrarErro('Escolha a pessoa.'); return; }
+      const btn = this; btn.disabled = true;
+      Promise.all([db.collection('users').doc(origemUid).get(), db.collection('permissoesGestao').doc(origemUid).get()]).then(function(r){
+        const o = r[0].data() || {};
+        if (o.role === 'admin') throw new Error('Não se espelha um administrador.');
+        const novo = { role: o.role || 'membro', tabs: o.tabs || [], subtabs: o.subtabs || {}, acesso: 'ativo',
+                       patrimonioVerTudo: o.patrimonioVerTudo === true, sistemasExternos: o.sistemasExternos || [],
+                       espelhoDeUid: origemUid, espelhoDeNome: o.displayName || o.email || '' };
+        const antes = areasRestritasDe(teste), depois = areasRestritasDe(novo);
+        const ganha = depois.filter(function(x){ return antes.indexOf(x) === -1; });
+        const perde = antes.filter(function(x){ return depois.indexOf(x) === -1; });
+        const autorizar = ganha.length ? autorizarAreaRestrita({ pessoa: (teste.displayName || teste.email || '') + ' (conta de teste)', itens: ganha }) : Promise.resolve();
+        return autorizar.then(function(){
+          return db.collection('users').doc(testeUid).update(novo);
+        }).then(function(){
+          const perms = r[1].exists ? r[1].data() : null;
+          return Promise.all([
+            perms ? db.collection('permissoesGestao').doc(testeUid).set(perms) : db.collection('permissoesGestao').doc(testeUid).delete(),
+            db.collection('perfis').doc(testeUid).set({ sistemasExternos: novo.sistemasExternos }, { merge: true })
+          ]);
+        }).then(function(){
+          if (ganha.length || perde.length) registrarAreaRestrita({ alvoUid: testeUid, liberadas: ganha, retiradas: perde, espelhoDe: origemUid });
+          fechar();
+          alert('Pronto: a conta de teste agora tem as permissões de ' + novo.espelhoDeNome + '.\n\nPara ver o portal como essa pessoa, abra uma JANELA ANÔNIMA (Ctrl+Shift+N) e entre com ' + (teste.email || 'a conta de teste') + '.\n(Numa aba comum, o login trocaria a sua conta neste navegador.)');
+        });
+      }).catch(function(err){
+        btn.disabled = false;
+        if (err && err.message === 'cancelado') return;
+        mostrarErro('Não foi possível espelhar: ' + (err && (err.code || err.message)));
+      });
+    };
+  };
 
   // ---------- Modal: editar abas do usuário (checkboxes) ----------
   let editTabsTargetUid = null;
