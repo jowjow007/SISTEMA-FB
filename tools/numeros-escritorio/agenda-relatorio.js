@@ -162,9 +162,9 @@ var TEMPLATE =
   '<p class="note">'+ic('info')+'<span>A data exibida é a <b>data cadastrada na agenda do Astrea</b>, não um prazo processual confirmado. "Vencida" significa apenas que essa data é anterior à data-base e a atividade continua na exportação de itens em aberto. O atraso é contado a partir da data da agenda e <b>não equivale a tempo sem movimentação</b>.</span></p>'+
 '</section>'+
 '<section class="card" aria-labelledby="agr-h-etq">'+
-  '<div class="sec-head"><div class="sec-ic">'+ic('flag')+'</div><div><h2 id="agr-h-etq">Prazos pelas etiquetas</h2><p>Como a equipe sinaliza o prazo no Astrea: só <b>PRAZO FATAL</b> = vence no dia; <b>PRAZO FATAL + PRAZO INTERNO</b> = vence no próximo dia útil; só <b>PRAZO INTERNO</b> = faltam 2 dias ou mais. Clique numa atividade para ver os detalhes.</p></div></div>'+
+  '<div class="sec-head"><div class="sec-ic">'+ic('flag')+'</div><div><h2 id="agr-h-etq">Prazos pelas etiquetas</h2><p>Como a equipe sinaliza o prazo no Astrea: só <b>PRAZO FATAL</b> = vence na data da agenda; <b>PRAZO FATAL + PRAZO INTERNO</b> = vence no próximo dia útil; só <b>PRAZO INTERNO</b> = faltam 2 dias ou mais. Cada atividade mostra a <b>data real da agenda</b> (HOJE, amanhã ou em quantos dias) e <b>⚠ etiqueta × data</b> quando a etiqueta não combina com a data. Clique numa atividade para ver os detalhes.</p></div></div>'+
   '<div class="etq-cols" id="agr-etqCols"></div>'+
-  '<p class="note">'+ic('info')+'<span>As colunas seguem as etiquetas da seleção atual (os filtros acima valem aqui). A data mostrada é a da agenda no Astrea; "agenda vencida" indica que essa data já passou e a etiqueta pode estar desatualizada.</span></p>'+
+  '<p class="note">'+ic('info')+'<span>As colunas seguem as etiquetas da seleção atual (os filtros acima valem aqui). A data mostrada é a da agenda no Astrea; "agenda vencida" indica que essa data já passou e a etiqueta pode estar desatualizada. O "próximo dia útil" pula sábado e domingo, mas não considera feriados.</span></p>'+
 '</section>'+
 '<section class="card" aria-labelledby="agr-h-prazos">'+
   '<div class="sec-head"><div class="sec-ic">'+ic('flag')+'</div><div><h2 id="agr-h-prazos">Prazos fatais</h2><p>Atividades identificadas pelos campos existentes na exportação.</p></div></div>'+
@@ -736,10 +736,28 @@ function montar(root, payload, opts){
   /* Prazos pelas etiquetas (regra do escritório):
      só PRAZO FATAL = vence no dia · PRAZO FATAL + PRAZO INTERNO = vence no próximo dia útil · só PRAZO INTERNO = faltam 2+ dias. */
   var ETQ_COLS = [
-    {id:'fatal', titulo:'Vence hoje', regra:'só PRAZO FATAL', cls:'b-red', tom:'red'},
-    {id:'d1', titulo:'Vence no próximo dia útil', regra:'PRAZO FATAL + PRAZO INTERNO', cls:'b-amber', tom:'amber'},
-    {id:'interno', titulo:'Faltam 2 dias ou mais', regra:'só PRAZO INTERNO', cls:'b-green', tom:'green'}
+    {id:'fatal', titulo:'Prazo fatal (vence na data da agenda)', regra:'só PRAZO FATAL', cls:'b-red', tom:'red'},
+    {id:'d1', titulo:'Prazo D-1 (vence no próximo dia útil)', regra:'PRAZO FATAL + PRAZO INTERNO', cls:'b-amber', tom:'amber'},
+    {id:'interno', titulo:'Prazo interno (faltam 2 dias ou mais)', regra:'só PRAZO INTERNO', cls:'b-green', tom:'green'}
   ];
+  // próximo dia útil depois de d (pula sábado e domingo; feriados não estão na conta)
+  function proxDiaUtil(d){ var x=d+1; while([0,6].indexOf(new Date(x*DAY).getUTCDay())!==-1) x++; return x; }
+  // a etiqueta combina com a data da agenda? (datas já passadas ficam com o aviso "agenda vencida")
+  function etqDivergente(r, cat){
+    if (r.ag==null || r.ag<S.base) return false;
+    if (cat==='fatal') return r.ag!==S.base;
+    if (cat==='d1') return r.ag!==proxDiaUtil(S.base);
+    if (cat==='interno') return r.ag<=proxDiaUtil(S.base);
+    return false;
+  }
+  function quandoTxt(r){
+    if (r.ag==null) return 'sem data';
+    var d=r.ag-S.base;
+    if (d===0) return '<b>HOJE</b> ('+dayToBR(r.ag)+')';
+    if (d===1) return 'amanhã ('+dayToBR(r.ag)+')';
+    if (d>1) return dayToBR(r.ag)+' · em '+d+' dias';
+    return dayToBR(r.ag);
+  }
   var etqTodos = {};
   function renderPrazosEtiqueta(){
     var el=$('etqCols'), grupos={fatal:[],d1:[],interno:[]};
@@ -753,11 +771,13 @@ function montar(root, payload, opts){
       var porResp=Object.keys(resp).sort(function(a,b){ return resp[b]-resp[a]; });
       var lim=etqTodos[c.id]?rows.length:8, vis=rows.slice(0,lim);
       return '<div class="etq-col t-'+c.tom+'"><div class="etq-head"><span class="badge '+c.cls+'">'+c.regra+'</span>'
-        +'<div class="etq-tit"><b>'+nf.format(rows.length)+'</b><span>'+c.titulo+'</span></div></div>'
+        +'<div class="etq-tit"><b>'+nf.format(rows.length)+'</b><span>'+c.titulo+'</span></div>'
+        +'<div class="etq-resp"><span>na data de hoje <b>'+rows.filter(function(r){ return r.ag===S.base; }).length+'</b></span>'
+        +'<span>etiqueta × data <b>'+rows.filter(function(r){ return etqDivergente(r, c.id); }).length+'</b></span></div></div>'
         +(porResp.length?'<div class="etq-resp">'+porResp.map(function(n){ return '<span>'+esc(n)+' <b>'+resp[n]+'</b></span>'; }).join('')+'</div>':'')
         +(vis.length?'<ul class="pz-act-list">'+vis.map(function(r,i){
-            var venc=r.ag!=null && r.ag<S.base;
-            return '<li><button type="button" data-c="'+c.id+'" data-i="'+i+'"><span class="pz-act-d'+(venc?' hoje':'')+'">'+(r.ag!=null?dayToBR(r.ag):'sem data')+(r.hora?' · '+esc(r.hora):'')+(venc?'<span class="badge b-red">agenda vencida</span>':'')+'</span>'
+            var venc=r.ag!=null && r.ag<S.base, div=etqDivergente(r, c.id);
+            return '<li><button type="button" data-c="'+c.id+'" data-i="'+i+'"><span class="pz-act-d'+(venc||r.ag===S.base?' hoje':'')+'">'+quandoTxt(r)+(r.hora?' · '+esc(r.hora):'')+(venc?'<span class="badge b-red">agenda vencida</span>':'')+(div?'<span class="badge b-amber" title="A etiqueta indica outra data: confira a etiqueta no Astrea">⚠ etiqueta × data</span>':'')+'</span>'
               +'<span class="pz-act-t">'+esc(r.titulo)+'</span><span class="pz-act-r">'+esc(r.resp)+(r.caso&&r.caso!==r.titulo?' · '+esc(r.caso):'')+(r.proc?' · '+esc(r.proc):'')+'</span></button></li>';
           }).join('')+'</ul>':'<p class="pz-desc">Nenhuma atividade nesta situação.</p>')
         +(rows.length>8?'<button type="button" class="pz-mais" data-mais="'+c.id+'">'+(etqTodos[c.id]?'Mostrar menos':'Mostrar todas ('+nf.format(rows.length)+')')+'</button>':'')
