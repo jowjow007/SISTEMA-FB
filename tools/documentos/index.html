@@ -632,8 +632,19 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <div class="field"><label>Poderes conferidos</label><textarea id="cp-poderes" style="min-height:74px">prestar esclarecimentos, conciliar, transigir, fazer acordos, firmar e aceitar compromissos, estabelecer condições, aceitar composições amigáveis e praticar os atos necessários à representação na audiência</textarea></div>
       </div>
 
+      <!-- ===================== PETIÇÃO DE CIÊNCIA ===================== -->
+      <div class="card" data-tipo-only="peticao_ciencia">
+        <h2>Processo</h2>
+        <p class="desc">Petição simples de ciência do pronunciamento judicial, assinada pelo Dr. Jonathan Fonseca. Autor e réu servem só para o nome do arquivo (POP nº 008).</p>
+        <div class="field"><label>Número do processo</label><input id="pc-processo" placeholder="0000000-00.0000.8.13.0702"></div>
+        <div class="grid2">
+          <div class="field"><label>Autor</label><input id="pc-autor"></div>
+          <div class="field"><label>Réu</label><input id="pc-reu"></div>
+        </div>
+      </div>
+
       <!-- ===================== LOCAL E DATA (comum) ===================== -->
-      <div class="card" data-tipo-only="procuracao substabelecimento hipossuficiencia termo_repasse recibo carta_preposicao">
+      <div class="card" data-tipo-only="procuracao substabelecimento hipossuficiencia termo_repasse recibo carta_preposicao peticao_ciencia">
         <h2>Local e data</h2>
         <div class="grid2">
           <div class="field"><label>Cidade/UF</label><input id="doc-cidade-uf" value="Uberlândia/MG"></div>
@@ -1271,6 +1282,7 @@ function coletarDados(){
       acao: val('cp-acao'), processo: val('cp-processo'), movidaPor: val('cp-movida-por'), juizo: val('cp-juizo'),
       poderes: document.getElementById('cp-poderes').value.trim()
     },
+    peticaoCiencia:{ processo: val('pc-processo'), autor: val('pc-autor'), reu: val('pc-reu') },
     recibo:{
       prep: val('rc-prep'), prepRecebedor: val('rc-prep-recebedor'), pagador: rcPagador, recebedor: rcRecebedor,
       valor: val('rc-valor'), valorExtenso: document.getElementById('rc-valor-extenso').value,
@@ -1303,6 +1315,12 @@ function validar(d){
     if(!c.prepNome.trim()) return 'Preencha o nome do preposto.';
     return null;
   }
+  if(d.tipo==='peticao_ciencia'){
+    const c=d.peticaoCiencia;
+    if(!c.processo) return 'Preencha o número do processo.';
+    if(!c.autor || !c.reu) return 'Preencha o autor e o réu (usados no nome do arquivo).';
+    return null;
+  }
   return 'Modelo ainda não disponível.';
 }
 /* Nome do arquivo no padrão do POP nº 008/2023 (o mesmo do Formatar Petições):
@@ -1325,6 +1343,7 @@ function nomeArquivo(d){
     return partes2.join(' - ').replace(/[\\\/:*?"<>|]/g,'-');
   }
   if(d.tipo==='carta_preposicao'){ partes=[d.cartaPreposicao.razao, d.cartaPreposicao.movidaPor]; doc='CARTA DE PREPOSIÇÃO'; }
+  if(d.tipo==='peticao_ciencia'){ partes=[d.peticaoCiencia.autor, d.peticaoCiencia.reu]; doc='PETIÇÃO DE CIÊNCIA'; }
   if(d.tipo==='recibo'){
     partes=[nomePessoaDoc(d.recibo.pagador), nomePessoaDoc(d.recibo.recebedor)]; doc='RECIBO';
     if(d.recibo.valor) valor='R$ '+d.recibo.valor;
@@ -1515,7 +1534,19 @@ function buildCartaPreposicao(d){
   ];
 }
 
+function buildPeticaoCiencia(d){
+  const c=d.peticaoCiencia;
+  return [
+    C(`<div class="blk" style="text-align:left;margin-top:2mm;"><strong>AO DOUTO JUÍZO</strong></div>`),
+    C(`<div class="blk" style="text-align:left;margin-top:8mm;"><strong>Processo nº ${esc(c.processo)}</strong></div>`),
+    C(`<div class="blk" style="text-indent:10mm;margin-top:8mm;">A parte, já qualificada nos autos, vem, respeitosamente, perante este Juízo, manifestar ciência do pronunciamento judicial retro.</div>`),
+    C(`<div class="blk center" style="margin-top:10mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
+    C(`<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG 163.443</div></div>`)
+  ];
+}
+
 function buildDocumento(d){
+  if(d.tipo==='peticao_ciencia') return buildPeticaoCiencia(d);
   if(d.tipo==='carta_preposicao') return buildCartaPreposicao(d);
   if(d.tipo==='procuracao') return buildProcuracao(d);
   if(d.tipo==='substabelecimento') return buildSubstabelecimento(d);
@@ -1656,6 +1687,7 @@ const TIPOS=[
   {id:'termo_repasse', label:'Termo de Repasse', ready:true},
   {id:'recibo', label:'Recibo', ready:true},
   {id:'carta_preposicao', label:'Carta de Preposição', ready:true},
+  {id:'peticao_ciencia', label:'Petição de Ciência', ready:true},
   {id:'cobrancas', label:'Relatório de Cobranças', ready:true}
 ];
 let currentTipo='procuracao';
@@ -1676,11 +1708,12 @@ function setTipo(id){
     const tipos = el.dataset.tipoOnly.split(' ');
     el.classList.toggle('tipo-hidden', !tipos.includes(id));
   });
-  // botão Docs só aparece para Termo de Repasse (tem gerador docx)
+  // botão Docs (gerador docx no modelo timbrado) para o Termo de Repasse e a Petição de Ciência
+  const comDocs = id==='termo_repasse' || id==='peticao_ciencia';
   const btnDocs=document.getElementById('btn-docs');
   const descDocs=document.getElementById('desc-exportar-docs');
-  if(btnDocs){ btnDocs.style.display=id==='termo_repasse'?'':'none'; }
-  if(descDocs){ descDocs.style.display=id==='termo_repasse'?'':'none'; }
+  if(btnDocs){ btnDocs.style.display=comDocs?'':'none'; }
+  if(descDocs){ descDocs.style.display=comDocs?'':'none'; }
   document.body.classList.toggle('modo-cobrancas', id==='cobrancas');
   const frameCob=document.getElementById('frame-cobrancas');
   if(id==='cobrancas' && !frameCob.getAttribute('src')) frameCob.setAttribute('src','../cobrancas/index.html?embed=1');
@@ -2121,6 +2154,9 @@ function resumoDocumento(d){
     nome = d.termoRepasse.clienteNome;
     const valor = d.termoRepasse.modo==='parcelada' ? d.termoRepasse.valorParcelado : d.termoRepasse.valor;
     meta = valor ? 'R$ '+valor : '';
+  } else if(d.tipo==='peticao_ciencia'){
+    nome = [d.peticaoCiencia.autor, d.peticaoCiencia.reu].filter(Boolean).join(' x ');
+    meta = d.peticaoCiencia.processo ? 'processo '+d.peticaoCiencia.processo : '';
   } else if(d.tipo==='carta_preposicao'){
     nome = d.cartaPreposicao.razao;
     meta = d.cartaPreposicao.processo ? 'processo '+d.cartaPreposicao.processo : '';
@@ -2137,7 +2173,7 @@ function resumoDocumento(d){
 // deste app (DOCUMENTOS_TIPOS) não têm nenhuma sobreposição com os tipos do
 // Contratos (contrato_pf, proposta_pf_pj etc.), então dá pra guardar tudo junto
 // e filtrar por tipo na leitura (ver carregarHistorico) sem misturar as listas.
-const DOCUMENTOS_TIPOS = ['procuracao','substabelecimento','hipossuficiencia','termo_repasse','recibo','carta_preposicao'];
+const DOCUMENTOS_TIPOS = ['procuracao','substabelecimento','hipossuficiencia','termo_repasse','recibo','carta_preposicao','peticao_ciencia'];
 function salvarHistorico(d){
   if(!currentUser || !window.__db) return;
   const { nome, meta } = resumoDocumento(d);
@@ -2268,6 +2304,12 @@ function preencherFormulario(d){
       acao:'cp-acao', processo:'cp-processo', movidaPor:'cp-movida-por', juizo:'cp-juizo', poderes:'cp-poderes'};
     Object.keys(campos).forEach(function(k){ if(c[k]!=null) document.getElementById(campos[k]).value = c[k]; });
   }
+  if(d.tipo==='peticao_ciencia'){
+    const c = d.peticaoCiencia||{};
+    document.getElementById('pc-processo').value = c.processo||'';
+    document.getElementById('pc-autor').value = c.autor||'';
+    document.getElementById('pc-reu').value = c.reu||'';
+  }
 
   if(d.tipo==='recibo'){
     const r = d.recibo||{};
@@ -2319,10 +2361,13 @@ function renderHistorico(docs){
 }
 function carregarHistorico(){
   if(!window.__db) return;
-  // a coleção é compartilhada com o Contratos: busca mais e filtra só os tipos deste app
-  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(300)
+  // a coleção é compartilhada com o Contratos (área restrita): a consulta pede SÓ os tipos deste app, que é o que
+  // as regras deixam a equipe ler; a ordem é feita aqui (ordenar no servidor exigiria um índice composto)
+  window.__db.collection('contratosGerados').where('tipo','in',DOCUMENTOS_TIPOS)
     .onSnapshot(snap=>{
-      historicoTodos = snap.docs.map(doc=>doc.data()).filter(item=>DOCUMENTOS_TIPOS.includes(item.tipo));
+      historicoTodos = snap.docs.map(doc=>doc.data())
+        .sort((a,b)=>((b.criadoEm&&b.criadoEm.toMillis?b.criadoEm.toMillis():0)-(a.criadoEm&&a.criadoEm.toMillis?a.criadoEm.toMillis():0)))
+        .slice(0,300);
       renderHistoricoDoTipo();
     }, err=>{
       document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;

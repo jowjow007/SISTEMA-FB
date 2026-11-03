@@ -307,6 +307,22 @@ async function main() {
   await caso(G, 'quem lança NÃO baixa o arquivo do holerite de outra pessoa', () => assertFails(db(P.lancador).doc('holeritesDocs/h-membro/partes/0').get()));
   await caso(G, 'membro sem a permissão NÃO lista os holerites', () => assertFails(db(P.outro).collection('holeritesDocs').where('competencia', '==', '2026-10').get()));
 
+  G = '12. Histórico do Criador de Documentos (mesma coleção dos Contratos, tipos próprios)';
+  const DOCS_TIPOS = ['procuracao', 'substabelecimento', 'hipossuficiencia', 'termo_repasse', 'recibo', 'carta_preposicao', 'peticao_ciencia'];
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc('contratosGerados/doc-proc').set({ criadoPorUid: 'u-outro', tipo: 'procuracao', nomeDisplay: 'x', dados: {} });
+    await d.doc('contratosGerados/doc-contrato').set({ criadoPorUid: 'u-outro', tipo: 'contrato_pf', nomeDisplay: 'x', dados: {} });
+  });
+  await caso(G, 'membro sem a aba Contratos grava no histórico do Criador (petição de ciência)', () => assertSucceeds(comum.collection('contratosGerados').add({ criadoPorUid: 'u-numcomum', tipo: 'peticao_ciencia', nomeDisplay: 'x', dados: {} })));
+  await caso(G, 'membro sem a aba Contratos lista o histórico do Criador (consulta só com os tipos do Criador)', () => assertSucceeds(comum.collection('contratosGerados').where('tipo', 'in', DOCS_TIPOS).get()));
+  await caso(G, 'membro sem a aba Contratos lê um documento do Criador', () => assertSucceeds(comum.doc('contratosGerados/doc-proc').get()));
+  await caso(G, 'membro sem a aba Contratos NÃO lê contrato', () => assertFails(comum.doc('contratosGerados/doc-contrato').get()));
+  await caso(G, 'membro sem a aba Contratos NÃO lista tudo (consulta sem filtro de tipo)', () => assertFails(comum.collection('contratosGerados').get()));
+  await caso(G, 'membro sem a aba Contratos NÃO grava contrato', () => assertFails(comum.collection('contratosGerados').add({ criadoPorUid: 'u-numcomum', tipo: 'contrato_pf', nomeDisplay: 'x', dados: {} })));
+  await caso(G, 'cliente NÃO usa o histórico do Criador', () => assertFails(db(P.cliente).collection('contratosGerados').where('tipo', 'in', DOCS_TIPOS).get()));
+  await caso(G, 'quem tem a aba Contratos lista tudo', () => assertSucceeds(liberado.collection('contratosGerados').get()));
+
   await env.cleanup();
   let falhas = 0, grupoAtual = '';
   for (const [st, grupo, nome] of resultados) {

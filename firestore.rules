@@ -362,10 +362,15 @@ service cloud.firestore {
       allow read: if isDonoConferencia();
       allow write: if false;
     }
-    // Contratos é área restrita: só quem tem a aba (liberada pelo admin com senha) lê e gera.
+    // Contratos é área restrita: só quem tem a aba (liberada pelo admin com senha) lê e gera contratos.
+    // A mesma coleção guarda o histórico do Criador de Documentos (procuração, recibo...), com tipos próprios:
+    // esses a equipe toda usa (a consulta do Criador filtra por esses tipos).
+    function tipoDoCriadorDeDocumentos(t) {
+      return t in ['procuracao', 'substabelecimento', 'hipossuficiencia', 'termo_repasse', 'recibo', 'carta_preposicao', 'peticao_ciencia'];
+    }
     match /contratosGerados/{docId} {
-      allow read: if temAbaRestrita('contratos-msmo451y');
-      allow create: if temAbaRestrita('contratos-msmo451y')
+      allow read: if temAbaRestrita('contratos-msmo451y') || (isEquipe() && tipoDoCriadorDeDocumentos(resource.data.tipo));
+      allow create: if (temAbaRestrita('contratos-msmo451y') || (isEquipe() && tipoDoCriadorDeDocumentos(request.resource.data.tipo)))
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.tipo is string
                     && request.resource.data.nomeDisplay is string
