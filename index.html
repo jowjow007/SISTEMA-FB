@@ -1398,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v186</span>
+      <span class="version-tag">v187</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3420,14 +3420,23 @@
   });
 
   // ---------- Lembrete de lançamento dos holerites (quem tem a permissão "Quem lança holerites") ----------
-  // A partir do dia 27 de cada mês, uma vez por dia (por navegador), até TODOS os CLT terem o holerite daquele
-  // mês. Do dia 1 ao 26, cobra o mês anterior, se ainda faltar alguém. Só para quem tem a permissão explícita
+  // Cada mês passa a ser cobrado no dia 27 e continua sendo cobrado todo dia (uma vez por dia, por navegador),
+  // mesmo depois de virar o mês, até TODOS os CLT terem o holerite daquele mês. O primeiro mês cobrado é
+  // HOLERITE_PRIMEIRA_COMPETENCIA (quando o lembrete passou a existir). Só para quem tem a permissão explícita
   // (Gestão › Holerites e guias › ⚙ Quem lança): o administrador sem a marcação não recebe.
   const HOLERITE_DIA_LEMBRETE = 27;
   const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  function competenciaCobrada(hoje){
-    const d = new Date(hoje.getFullYear(), hoje.getMonth() - (hoje.getDate() >= HOLERITE_DIA_LEMBRETE ? 0 : 1), 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const HOLERITE_PRIMEIRA_COMPETENCIA = '2026-11';
+  // meses já "vencidos" (o dia 27 deles já chegou), do mais antigo ao mais novo, a partir da primeira competência
+  function competenciasCobradas(hoje){
+    const ultimo = new Date(hoje.getFullYear(), hoje.getMonth() - (hoje.getDate() >= HOLERITE_DIA_LEMBRETE ? 0 : 1), 1);
+    const out = [];
+    for (let d = new Date(ultimo); out.length < 24; d.setMonth(d.getMonth() - 1)) {
+      const c = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      if (c < HOLERITE_PRIMEIRA_COMPETENCIA) break;
+      out.unshift(c);
+    }
+    return out;
   }
   function nomeCompetencia(c){ const p = c.split('-'); return MESES_PT[Number(p[1]) - 1] + '/' + p[0]; }
   let holremCompetencia = null;
@@ -3438,19 +3447,24 @@
     try { if (localStorage.getItem(chaveDia)) return; } catch(e) {}
     db.collection('permissoesGestao').doc(currentProfile.uid).get().then(function(p){
       if (!p.exists || p.data().lancarHolerites !== true) return null;
-      const comp = competenciaCobrada(hoje);
+      const comps = competenciasCobradas(hoje);
+      if (!comps.length) return null;
       return Promise.all([
         db.collection('organograma').get(),
-        db.collection('holeritesDocs').where('competencia', '==', comp).get().catch(function(){ return null; })
+        db.collection('holeritesDocs').where('competencia', 'in', comps.slice(-10)).get().catch(function(){ return null; })
       ]).then(function(r){
         const clts = r[0].docs.filter(function(d){ return d.data().tipoColaborador === 'clt'; })
           .map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() || '(sem nome)' }; });
         if (!clts.length) return null;
-        if (!r[1]) return { comp: comp, clts: clts, faltam: null };   // sem como conferir o que já foi enviado
-        const enviados = {};
-        r[1].docs.forEach(function(d){ if (d.data().tipo === 'holerite') enviados[d.data().uid] = true; });
-        const faltam = clts.filter(function(c){ return !enviados[c.uid]; });
-        return faltam.length ? { comp: comp, clts: clts, faltam: faltam } : null;
+        if (!r[1]) return { comp: comps[comps.length - 1], clts: clts, faltam: null };   // sem como conferir o que já foi enviado
+        const enviados = {};   // competência -> { uid: true }
+        r[1].docs.forEach(function(d){ const x = d.data(); if (x.tipo === 'holerite') (enviados[x.competencia] = enviados[x.competencia] || {})[x.uid] = true; });
+        // o mês mais antigo que ainda falta alguém
+        for (const comp of comps.slice(-10)) {
+          const faltam = clts.filter(function(c){ return !(enviados[comp] || {})[c.uid]; });
+          if (faltam.length) return { comp: comp, clts: clts, faltam: faltam };
+        }
+        return null;
       });
     }).then(function(pend){
       if (!pend) return;

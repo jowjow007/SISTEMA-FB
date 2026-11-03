@@ -777,7 +777,22 @@ def main():
             b.close()
             b, cc, pc, ok = sessao('colega@exemplo.test')
             pc.close()
-            cc.add_init_script("window.__hojeTesteHolerites = '2026-11-02'")   # antes do dia 27: cobra outubro, que já está completo
+            cc.add_init_script("window.__hojeTesteHolerites = '2026-12-02'")   # mês virou e novembro continua incompleto
+            ph = cc.new_page(); ph.on('dialog', aceitar); ph.goto(BASE + '/index.html')
+            caso(G, 'mês virou sem lançar: continua cobrando novembro todo dia',
+                 esperar(ph, "document.getElementById('holrem-backdrop').classList.contains('show') && document.getElementById('holrem-titulo').textContent.includes('novembro/2026')", 30000))
+            b.close()
+            b, cc, pc, ok = sessao('colega@exemplo.test')
+            pc.close()
+            cc.add_init_script("window.__hojeTesteHolerites = '2026-11-20'")   # antes do primeiro dia 27 do lembrete (outubro não é cobrado)
+            ph = cc.new_page(); ph.on('dialog', aceitar); ph.goto(BASE + '/index.html')
+            esperar(ph, "document.getElementById('app-screen').style.display === 'flex'", 20000); ph.wait_for_timeout(8000)
+            caso(G, 'antes de 27/11 não aparece (meses anteriores ao lembrete não são cobrados)', not ph.evaluate("document.getElementById('holrem-backdrop').classList.contains('show')"))
+            b.close()
+            b, cc, pc, ok = sessao('colega@exemplo.test')
+            pc.close()
+            gravar(f"holeritesDocs/hol-membro-nov", {'uid': U['membro'], 'tipo': 'holerite', 'competencia': '2026-11', 'partes': 1, 'enviadoPorUid': U['admin']})
+            cc.add_init_script("window.__hojeTesteHolerites = '2026-12-03'")   # novembro lançado (dezembro só começa em 27/12)
             ph = cc.new_page(); ph.on('dialog', aceitar); ph.goto(BASE + '/index.html')
             esperar(ph, "document.getElementById('app-screen').style.display === 'flex'", 20000); ph.wait_for_timeout(8000)
             caso(G, 'mês completo (todos os CLT com holerite): não aparece', not ph.evaluate("document.getElementById('holrem-backdrop').classList.contains('show')"))
