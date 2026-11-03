@@ -106,6 +106,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .btn:disabled{opacity:.5;cursor:default;}
   .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
   .btn.secondary:hover{background:var(--panel-2);}
+  .btn.green{background:#2e6b50;}
+  .btn.green:hover{background:#357a5d;}
   .btn.ghost{background:transparent;color:var(--err);border:1px solid rgba(255,180,174,.3);padding:6px 12px;font-size:.72rem;}
   .btn.ghost:hover{background:rgba(255,180,174,.08);}
   .btn.small{padding:7px 12px;font-size:.74rem;}
@@ -657,11 +659,11 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <div class="card" id="card-exportar">
         <h2>Exportar</h2>
         <p class="desc" id="desc-exportar-docs" style="display:none;">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn" id="btn-gerar" type="button">Gerar PDF</button>
+        <div id="botoes-exportar" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" id="btn-gerar" type="button"><span class="rotulo">Gerar PDF</span></button>
           <button class="btn green" id="btn-docs" type="button" style="display:none;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="currentColor" stroke-width="2" points="14 2 14 8 20 8"/></svg>
-            Abrir no Docs
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline fill="none" stroke="#fff" stroke-width="2" points="14 2 14 8 20 8"/></svg>
+            <span class="rotulo">Abrir no Docs</span>
           </button>
         </div>
         <p class="hint" id="gerar-status" style="margin-top:10px;"></p>
@@ -1717,6 +1719,15 @@ function setTipo(id){
   const descDocs=document.getElementById('desc-exportar-docs');
   if(btnDocs){ btnDocs.style.display=comDocs?'':'none'; }
   if(descDocs){ descDocs.style.display=comDocs?'':'none'; }
+  // na Petição de Ciência os botões seguem o Formatador de Petições: Docs primeiro (verde) e o PDF em cinza
+  const comoFormatador = id==='peticao_ciencia';
+  const btnGerar=document.getElementById('btn-gerar');
+  if(btnGerar && btnDocs){
+    btnGerar.classList.toggle('secondary', comoFormatador);
+    btnGerar.querySelector('.rotulo').textContent = comoFormatador ? 'Imprimir / PDF' : 'Gerar PDF';
+    btnDocs.querySelector('.rotulo').textContent = comoFormatador ? 'Criar no Google Docs' : 'Abrir no Docs';
+    if(comoFormatador) btnGerar.before(btnDocs); else btnDocs.before(btnGerar);
+  }
   document.body.classList.toggle('modo-cobrancas', id==='cobrancas');
   const frameCob=document.getElementById('frame-cobrancas');
   if(id==='cobrancas' && !frameCob.getAttribute('src')) frameCob.setAttribute('src','../cobrancas/index.html?embed=1');
