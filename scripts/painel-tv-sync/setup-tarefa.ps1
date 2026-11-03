@@ -48,10 +48,17 @@ $Trigger1 = New-ScheduledTaskTrigger -Daily -At "08:00AM"
 $Trigger2 = New-ScheduledTaskTrigger -Daily -At "04:00PM"
 
 # -- Configuracoes --------------------------------------------------
+# AllowStartIfOnBatteries / DontStopIfGoingOnBatteries: por padrao o Agendador de
+# Tarefas NAO inicia a acao se o computador estiver na bateria (nem em disparo manual
+# via Start-ScheduledTask) - isso fazia a tarefa "rodar" (LastTaskResult 0) sem nunca
+# executar o python de fato. Essa sincronizacao e rapida e so precisa de rede, entao
+# nao faz sentido depender de energia ligada na tomada.
 $Settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
-    -MultipleInstances IgnoreNew
+    -MultipleInstances IgnoreNew `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries
 
 # -- Principal: roda sem precisar de sessao interativa aberta (LogonType S4U) ------
 # Sem isso, o Agendador usa "Interativo apenas" por padrao e a tarefa so fica
