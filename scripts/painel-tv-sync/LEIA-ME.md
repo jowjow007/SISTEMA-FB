@@ -89,7 +89,7 @@ Para rodar agora sem esperar o horário:
 Start-ScheduledTask -TaskName "PainelTV_SincronizarAgendaAstrea"
 ```
 
-Log: `log-diario.txt` nesta pasta.
+Log: `logs/sincronizar-AAAA-MM-DD.txt` nesta pasta (um arquivo por dia).
 
 ## Desinstalar
 

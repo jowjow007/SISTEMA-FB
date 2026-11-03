@@ -17,15 +17,16 @@ if (-not $PythonExe) { try { $PythonExe = (Get-Command python3.12 -ErrorAction S
 if (-not $PythonExe) { try { $PythonExe = (Get-Command python -ErrorAction Stop).Source } catch {} }
 if (-not $PythonExe) { $PythonExe = "$env:LOCALAPPDATA\Python\pythoncore-3.12-64\python.exe" }
 $ScriptPath = "$ScriptDir\sincronizar_agenda.py"
-$LogPath    = "$ScriptDir\log-diario.txt"
+$LogDir     = "$ScriptDir\logs"
 $TaskName   = "PainelTV_SincronizarAgendaAstrea"
 
 Write-Host "Usando Python: $PythonExe"
 
-# -- Acao: roda o script e grava log ------------------------------
+# -- Acao: roda o script (o proprio script grava o log em logs\, o Agendador de
+#    Tarefas chama o python.exe sem shell, entao ">>"/"2>&1" aqui nao funcionariam) ---
 $Action = New-ScheduledTaskAction `
     -Execute $PythonExe `
-    -Argument "`"$ScriptPath`" >> `"$LogPath`" 2>&1" `
+    -Argument "`"$ScriptPath`"" `
     -WorkingDirectory $ScriptDir
 
 # -- Gatilhos: todo dia as 08:00 e as 16:00 -----------------------
@@ -58,5 +59,5 @@ Write-Host "OK: Tarefa '$TaskName' criada com sucesso!"
 Write-Host "   Vai rodar todo dia as 08:00 e as 16:00."
 Write-Host ""
 Write-Host "Para testar agora: Start-ScheduledTask -TaskName '$TaskName'"
-Write-Host "Para ver o log:    notepad '$LogPath'"
+Write-Host "Para ver o log:    notepad '$LogDir\sincronizar-$(Get-Date -Format yyyy-MM-dd).txt'"
 Write-Host "Para remover:      Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
