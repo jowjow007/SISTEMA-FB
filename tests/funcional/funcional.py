@@ -343,7 +343,7 @@ def semear():
     gravar(f"users/{U['teste']}", {'email': 'teste@exemplo.test', 'displayName': 'Conta de Teste Fictícia', 'role': 'membro', 'tabs': ['agenda'], 'pixChave': 'x'})
     # a colega pode LANÇAR holerites, mas não tem Gestão › Colaboradores (área restrita): usa o cartão próprio de holerites
     gravar(f"permissoesGestao/{U['colega']}", {'lancarHolerites': True})
-    for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig'):
+    for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig', 'teste'):
         gravar(f"organograma/{U[k]}", dict({'displayName': k.title() + ' Fictício', 'email': f'{k}@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''},
                                            **({'tipoColaborador': 'clt'} if k == 'membro' else {})))   # o membro é o único CLT
     for i, (tid, rot, url) in enumerate([(NUM, 'Números', 'tools/numeros-escritorio/index.html'), ('chat', 'Chat', 'tools/chat/index.html'),
@@ -543,6 +543,7 @@ def main():
             # conta de teste: marcar e espelhar as permissões de outra pessoa
             pi.evaluate(f"window.__marcarContaTeste('{U['teste']}', true)")
             caso(G, 'conta de teste: marcar pela lista de usuários', ate(lambda: (ler(f"users/{U['teste']}") or {}).get('contaTeste') is True, 15))
+            caso(G, 'conta de teste: ao ser marcada, sai do organograma (não conta como pessoa)', ate(lambda: ler(f"organograma/{U['teste']}") is None, 15))
             esperar(pi, f"Array.from(document.querySelectorAll('#users-tbody tr')).some(tr => tr.textContent.includes('teste@exemplo.test') && tr.querySelector('.chip-teste'))", 15000)
             pi.evaluate(f"window.__espelharPermissoes('{U['teste']}')")
             esperar(pi, "!!document.getElementById('espelho-origem')", 10000)
@@ -560,6 +561,11 @@ def main():
             pi.fill('#ar-senha', SENHA); pi.click('#ar-liberar')
             caso(G, 'conta de teste: com a senha, recebe também a área restrita da pessoa',
                  ate(lambda: 'clientes' in ((ler(f"users/{U['teste']}") or {}).get('subtabs') or {}).get(NUM, []), 15))
+            # conta marcada antes desta versão: continua no organograma até o admin abrir a tela, que a tira sozinha
+            gravar(f"organograma/{U['teste']}", {'displayName': 'Conta de Teste Fictícia', 'email': 'teste@exemplo.test', 'deptoAtual': 'Jurídico', 'dataIngresso': ''})
+            pi.goto(BASE + '/tools/organograma/index.html')
+            caso(G, 'organograma: a conta de teste antiga é tirada ao abrir a tela e não entra na contagem',
+                 ate(lambda: ler(f"organograma/{U['teste']}") is None, 20) and esperar(pi, "!!document.querySelector('.org-tree') && !document.body.innerText.includes('Conta de Teste Fictícia')", 15000))
             pi.close()
             caso(G, 'dados privados ficaram no Firestore', ler('dadosPrivados/condominios') is not None and ler('dadosPrivados/numerosStats') is not None and ler('arquivosPrivados/relatorio-ficticio.pdf') is not None)
             b.close()

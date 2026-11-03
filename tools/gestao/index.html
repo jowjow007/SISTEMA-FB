@@ -2205,7 +2205,7 @@
     }
     return db.collection('users').get().then(function(snap){
       usuariosElegiveis = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return u.role !== 'cliente' && (u.role === 'admin' || (u.tabs || []).length > 0); })
+        .filter(function(u){ return u.role !== 'cliente' && !u.contaTeste && (u.role === 'admin' || (u.tabs || []).length > 0); })
         .map(function(u){ return { uid: u.uid, nome: String(u.displayName || u.email || '').trim(), tipo: u.tipoColaborador || '', depto: u.deptoAtual || '' }; })
         .filter(function(u){ return u.nome; })
         .sort(function(a, b){ return a.nome.localeCompare(b.nome); });

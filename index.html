@@ -1398,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v191</span>
+      <span class="version-tag">v192</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3126,7 +3126,7 @@
       const quem = {};
       deram.forEach(function(x){ quem[x.uid] = true; });
       const pend = r[1].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return !quem[u.uid]; })
+        .filter(function(u){ return !quem[u.uid] && !u.contaTeste; })
         .sort(function(a, b){ return String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'); });
       box.innerHTML = '<div class="com-head"><div class="com-ic">' + MEGAFONE_SVG + '</div><div>' +
         '<p class="com-rot">Ciências · ' + taDataBR(c.data) + '</p><h3>' + escapeHtml(c.titulo) + '</h3>' +
@@ -4838,7 +4838,7 @@
       const revisar = restritasARevisar(u);
       const chipsRestritas = (restritas.length ? '<div style="margin-top:4px;"><span class="chip chip-restrita" title="Áreas restritas liberadas">🔒 ' + escapeHtml(restritas.join(' · ')) + '</span></div>' : '') +
         (revisar.length ? '<div style="margin-top:4px;"><span class="chip chip-revisar" title="Até 02/11/2026 essas sub-abas restritas apareciam por padrão. Libere em Editar abas se a pessoa deve continuar vendo.">⚠ revisar: ' + escapeHtml(revisar.join(', ')) + ' (era liberado por padrão)</span></div>' : '');
-      const chipTeste = u.contaTeste ? '<div style="margin-top:4px;"><span class="chip chip-teste" title="Conta de teste: recebe as permissões de outra pessoa em &quot;Espelhar de…&quot;. Não aparece em Pagamentos.">🧪 conta de teste' + (u.espelhoDeNome ? ' — espelho de ' + escapeHtml(u.espelhoDeNome) : '') + '</span></div>' : '';
+      const chipTeste = u.contaTeste ? '<div style="margin-top:4px;"><span class="chip chip-teste" title="Conta de teste: recebe as permissões de outra pessoa em &quot;Espelhar de…&quot;. Não aparece em Pagamentos, no organograma nem nas contagens de pessoas.">🧪 conta de teste' + (u.espelhoDeNome ? ' — espelho de ' + escapeHtml(u.espelhoDeNome) : '') + '</span></div>' : '';
       return '<tr class="' + (pendente ? 'row-pending' : '') + (restritas.length ? ' row-restrita' : '') + '">' +
         '<td>' + escapeHtml(u.displayName || '-') + '</td>' +
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
@@ -4880,9 +4880,11 @@
   window.__marcarContaTeste = function(uid, marcar){
     const u = (ultimosUsuarios || []).find(function(x){ return x.uid === uid; }) || {};
     const nome = (u.displayName || '') + ' <' + (u.email || '') + '>';
-    if (marcar && !confirm('Usar ' + nome + ' como CONTA DE TESTE?\n\nEla passa a ter o botão "Espelhar de…", que troca todas as permissões dela pelas de outra pessoa, e deixa de aparecer em Pagamentos.\nUse só numa conta criada para testes.')) return;
+    if (marcar && !confirm('Usar ' + nome + ' como CONTA DE TESTE?\n\nEla passa a ter o botão "Espelhar de…", que troca todas as permissões dela pelas de outra pessoa, e deixa de aparecer em Pagamentos, no organograma e nas contagens de pessoas.\nUse só numa conta criada para testes.')) return;
     if (!marcar && !confirm('Deixar ' + nome + ' de ser conta de teste? As permissões atuais continuam como estão.')) return;
     db.collection('users').doc(uid).update(marcar ? { contaTeste: true } : { contaTeste: firebase.firestore.FieldValue.delete(), espelhoDeUid: firebase.firestore.FieldValue.delete(), espelhoDeNome: firebase.firestore.FieldValue.delete() })
+      // conta de teste não é colaborador: sai do organograma (que alimenta as contagens de pessoas)
+      .then(function(){ if (marcar) return db.collection('organograma').doc(uid).delete(); })
       .catch(function(err){ alert('Não foi possível salvar: ' + err.message); });
   };
   window.__espelharPermissoes = function(testeUid){

@@ -1087,8 +1087,19 @@
     batch.commit().catch(function(err){ console.warn('Não foi possível limpar valores do organograma:', err.message); limpezaFeita = false; });
   }
 
+  // conta de teste (marcada em Administração › Usuários) não é colaborador: fica fora do organograma e das contagens
+  function ehContaTeste(uid){ return !!(usersMap[uid] && usersMap[uid].contaTeste); }
+  const removendoTeste = {};
+  function removerContasTeste(){
+    if (!souAdmin || !usersCarregado) return;
+    Object.keys(organogramaMap).filter(function(uid){ return ehContaTeste(uid) && !removendoTeste[uid]; }).forEach(function(uid){
+      removendoTeste[uid] = true;
+      db.collection('organograma').doc(uid).delete().catch(function(err){ console.warn('Não foi possível tirar a conta de teste do organograma:', err.message); delete removendoTeste[uid]; });
+    });
+  }
+
   function render(){
-    const uids = Object.keys(organogramaMap);
+    const uids = Object.keys(organogramaMap).filter(function(uid){ return !ehContaTeste(uid); });
 
     if (uids.length === 0) {
       if (conexoesObserver) conexoesObserver.disconnect();
@@ -1177,7 +1188,7 @@
 
   function atualizarSyncHint(){
     if (!souAdmin || !usersCarregado) { els.syncHint.style.display = 'none'; return; }
-    const pendentes = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid]; });
+    const pendentes = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid] && !ehContaTeste(uid); });
     if (pendentes.length === 0) { els.syncHint.style.display = 'none'; return; }
     els.syncHint.style.display = 'block';
     els.syncHint.textContent = pendentes.length + (pendentes.length === 1
@@ -1254,7 +1265,7 @@
   window.__orgEditar = abrirModalEdicao;
 
   function abrirModalAdicionar(){
-    const disponiveis = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid]; });
+    const disponiveis = Object.keys(usersMap).filter(function(uid){ return !organogramaMap[uid] && !ehContaTeste(uid); });
     if (disponiveis.length === 0) {
       alert('Todos os colaboradores cadastrados já estão no organograma.');
       return;
@@ -1590,7 +1601,7 @@
   // ---------- Sincronizar com cadastros ----------
   els.btnSync.addEventListener('click', function(){
     if (!usersCarregado) return;
-    const uidsUsers = Object.keys(usersMap);
+    const uidsUsers = Object.keys(usersMap).filter(function(uid){ return !ehContaTeste(uid); });
     if (uidsUsers.length === 0) { alert('Nenhum colaborador cadastrado ainda.'); return; }
     if (!confirm('Isso vai atualizar o organograma com os dados de departamento, data de ingresso e remuneração já cadastrados para todos os ' + uidsUsers.length + ' colaboradores. Continuar?')) return;
 
@@ -1654,6 +1665,7 @@
           usersMap = {};
           snap.docs.forEach(function(d){ usersMap[d.id] = d.data(); });
           usersCarregado = true;
+          removerContasTeste();
           render();
         });
       }
@@ -1661,7 +1673,7 @@
       db.collection('organograma').onSnapshot(function(snap){
         organogramaMap = {};
         snap.docs.forEach(function(d){ organogramaMap[d.id] = d.data(); });
-        if (souAdmin) limparValoresDoEspelho(snap.docs);
+        if (souAdmin) { limparValoresDoEspelho(snap.docs); removerContasTeste(); }
         render();
       });
 

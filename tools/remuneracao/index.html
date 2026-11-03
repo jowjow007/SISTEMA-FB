@@ -685,7 +685,8 @@
       if ($('painel-pessoas').classList.contains('ativo')) renderPessoas();
     }).catch(function(){});
     db.collection('users').get().then(function(snap){
-      usuarios = snap.docs.map(function(d){ const u = d.data(); return { uid: d.id, displayName: u.displayName || '', email: u.email || '' }; });
+      usuarios = snap.docs.filter(function(d){ return !d.data().contaTeste; })   // conta de teste não é pessoa do escritório
+        .map(function(d){ const u = d.data(); return { uid: d.id, displayName: u.displayName || '', email: u.email || '' }; });
       if ($('painel-pessoas').classList.contains('ativo')) renderPessoas();
     }).catch(function(){});
     db.collection('remuneracaoPessoas').onSnapshot(function(snap){

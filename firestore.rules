@@ -391,7 +391,9 @@ service cloud.firestore {
     // Remuneração e custos NÃO podem mais ser gravados aqui (ficam só em users, legível pelo admin).
     match /organograma/{uid} {
       allow read: if isAtivo();
-      allow write: if isAdmin()
+      // apagar não tem request.resource: fica numa regra própria (botão "Remover" e a conta de teste)
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
                    && !('remuneracao' in request.resource.data && request.resource.data.remuneracao != '')
                    && !('custos' in request.resource.data && request.resource.data.custos != null);
       allow create: if isSignedIn() && request.auth.uid == uid && !acessoRevogado()

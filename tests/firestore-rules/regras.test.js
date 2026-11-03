@@ -98,6 +98,12 @@ async function main() {
   await caso(G, 'com abas mas sem aprovação não lê organograma', () => assertFails(db(P.comAbasSemAprovacao).doc('organograma/u-membro').get()));
   await caso(G, 'com abas mas sem aprovação não lê contadores', () => assertFails(db(P.comAbasSemAprovacao).doc('contadores/c1').get()));
   await caso(G, 'bloqueado não lê organograma', () => assertFails(db(P.bloqueado).doc('organograma/u-membro').get()));
+  // tirar alguém do organograma (botão "Remover" e a conta de teste, que não é colaborador)
+  await caso(G, 'membro não apaga ninguém do organograma', () => assertFails(db(P.membro).doc('organograma/u-membro').delete()));
+  await caso(G, 'admin tira uma pessoa do organograma', async () => {
+    await env.withSecurityRulesDisabled(async (c) => { await c.firestore().doc('organograma/u-sai').set({ displayName: 'Conta de teste', deptoAtual: '' }); });
+    await assertSucceeds(db(P.admin).doc('organograma/u-sai').delete());
+  });
   await caso(G, 'admin pendente não age como admin', () => assertFails(db(P.adminPend).doc('pagamentosColaboradores/2026-01').get()));
   await caso(G, 'mustChangePassword não é tratado como prova: aprovado continua aprovado', () => assertSucceeds(db(P.troca).doc('contadores/c1').get()));
   await caso(G, 'cliente não lê contadores (só equipe)', () => assertFails(db(P.cliente).doc('contadores/c1').get()));
