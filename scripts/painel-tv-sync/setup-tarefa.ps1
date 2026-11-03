@@ -10,12 +10,26 @@ $ErrorActionPreference = "Stop"
 
 # -- Caminhos ----------------------------------------------------
 $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-# Tenta py -3.12, depois python3.12, depois python
-$PythonExe = $null
-try { $PythonExe = (& py -3.12 -c "import sys; print(sys.executable)" 2>$null) } catch {}
-if (-not $PythonExe) { try { $PythonExe = (Get-Command python3.12 -ErrorAction Stop).Source } catch {} }
-if (-not $PythonExe) { try { $PythonExe = (Get-Command python -ErrorAction Stop).Source } catch {} }
-if (-not $PythonExe) { $PythonExe = "$env:LOCALAPPDATA\Python\pythoncore-3.12-64\python.exe" }
+
+# Encontra uma instalacao REAL do Python, nunca o "alias" do WindowsApps
+# (C:\...\WindowsApps\python.exe): esse alias funciona quando digitado num terminal
+# interativo, mas falha silenciosamente (sai com codigo 0, sem executar nada) quando
+# chamado pelo Agendador de Tarefas sem sessao interativa - ja aconteceu aqui.
+function Find-PythonReal {
+    $candidato = "$env:LOCALAPPDATA\Python\bin\python.exe"
+    if (Test-Path $candidato) { return $candidato }
+    try {
+        $viaPy = & py -3 -c "import sys; print(sys.executable)" 2>$null
+        if ($viaPy -and $viaPy -notlike "*WindowsApps*") { return $viaPy }
+    } catch {}
+    $outros = Get-Command python -All -ErrorAction SilentlyContinue | Where-Object { $_.Source -notlike "*WindowsApps*" }
+    if ($outros) { return $outros[0].Source }
+    return $null
+}
+$PythonExe = Find-PythonReal
+if (-not $PythonExe) {
+    throw "Nao encontrei uma instalacao real do Python (fora do WindowsApps). Instale o Python ou edite PythonExe manualmente neste script."
+}
 $ScriptPath = "$ScriptDir\sincronizar_agenda.py"
 $LogDir     = "$ScriptDir\logs"
 $TaskName   = "PainelTV_SincronizarAgendaAstrea"
