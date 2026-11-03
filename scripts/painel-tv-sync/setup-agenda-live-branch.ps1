@@ -30,25 +30,33 @@ if (Test-Path $AgendaLiveDir) {
 
 Push-Location $PainelTvDir
 try {
-    # Verifica se a branch ja existe no remoto
+    # Verifica se a branch ja existe no remoto (git ls-remote sem match devolve $null,
+    # nao "" - por isso o teste e feito com [bool], nunca comparando com "" diretamente)
     git fetch origin --quiet
-    $existeRemoto = (git ls-remote --heads origin $Branch) -ne ""
+    $remoteRef = git ls-remote --heads origin $Branch
+    $existeRemoto = [bool]$remoteRef
 
     if ($existeRemoto) {
         Write-Host "Branch '$Branch' ja existe no remoto - criando worktree a partir dela..."
         git worktree add $AgendaLiveDir $Branch
+        if ($LASTEXITCODE -ne 0) { throw "git worktree add falhou (codigo $LASTEXITCODE)." }
     } else {
         Write-Host "Branch '$Branch' nao existe ainda - criando worktree orfao (sem historico compartilhado)..."
         git worktree add --detach $AgendaLiveDir
+        if ($LASTEXITCODE -ne 0) { throw "git worktree add --detach falhou (codigo $LASTEXITCODE)." }
         Push-Location $AgendaLiveDir
         try {
             git checkout --orphan $Branch
+            if ($LASTEXITCODE -ne 0) { throw "git checkout --orphan falhou (codigo $LASTEXITCODE)." }
             git rm -rf --quiet . 2>$null
             $header = "Data,Hora,Tipo,Responsavel,Titulo,Titulo do processo/caso/atendimento,Numero do processo,Juizo,Observacao da atividade,Etiquetas,Envolvidos,Status,Prioridade,Data de criacao,Data de conclusao"
             [System.IO.File]::WriteAllText("$AgendaLiveDir\agenda.csv", $header, [System.Text.UTF8Encoding]::new($false))
             git add agenda.csv
+            if ($LASTEXITCODE -ne 0) { throw "git add falhou (codigo $LASTEXITCODE)." }
             git commit -m "Agenda atual (inicial)" $AuthorArg | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "git commit falhou (codigo $LASTEXITCODE)." }
             git push -u origin $Branch
+            if ($LASTEXITCODE -ne 0) { throw "git push falhou (codigo $LASTEXITCODE)." }
         } finally {
             Pop-Location
         }
