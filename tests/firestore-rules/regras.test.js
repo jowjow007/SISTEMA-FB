@@ -302,6 +302,11 @@ async function main() {
   await caso(G, 'admin SEM senha recente pode RETIRAR área restrita', () => assertSucceeds(adminVelho.doc('users/u-alvo2').update({ tabs: ['agenda', NUM], subtabs: { [NUM]: ['geral'] } })));
   await caso(G, 'membro não se dá área restrita', () => assertFails(liberado.doc('users/u-numcli').update({ subtabs: { [NUM]: ['geral', 'clientes', 'juizo'] } })));
 
+  G = '11. Lembrete de holerites: quem lança vê só a lista, não o arquivo';
+  await caso(G, 'quem lança lista os holerites de uma competência (para saber quem falta)', () => assertSucceeds(db(P.lancador).collection('holeritesDocs').where('competencia', '==', '2026-10').get()));
+  await caso(G, 'quem lança NÃO baixa o arquivo do holerite de outra pessoa', () => assertFails(db(P.lancador).doc('holeritesDocs/h-membro/partes/0').get()));
+  await caso(G, 'membro sem a permissão NÃO lista os holerites', () => assertFails(db(P.outro).collection('holeritesDocs').where('competencia', '==', '2026-10').get()));
+
   await env.cleanup();
   let falhas = 0, grupoAtual = '';
   for (const [st, grupo, nome] of resultados) {

@@ -1397,7 +1397,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v184</span>
+      <span class="version-tag">v185</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1805,6 +1805,17 @@
     <div class="modal-foot">
       <button type="button" class="btn secondary" id="banco-depois">Lembrar depois</button>
       <button type="button" class="btn" id="banco-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="holrem-backdrop">
+  <div class="modal-box">
+    <h3 id="holrem-titulo">📄 Lançar holerites</h3>
+    <p class="sub" id="holrem-texto"></p>
+    <div class="list" id="holrem-lista"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn secondary" id="holrem-depois">Lembrar amanhã</button>
+      <button type="button" class="btn" id="holrem-lancar">Lançar agora</button>
     </div>
   </div>
 </div>
@@ -2644,6 +2655,7 @@
     // Depois dos comunicados pendentes, vêm os cards de aniversário/tempo de escritório.
     setTimeout(iniciarComunicados, 0);
     setTimeout(verificarDadosBancarios, 0);   // pop-up da chave PIX (espera os comunicados fecharem)
+    setTimeout(verificarLembreteHolerites, 0);   // pop-up de lançamento dos holerites (dia 27, uma vez por dia)
     renderUserInfo();
     renderSistemasStatus();
     subscribeTabsCatalog();
@@ -3404,6 +3416,79 @@
       document.getElementById('banco-backdrop').classList.remove('show');
     }).catch(function(e){ err.textContent = 'Não foi possível salvar: ' + e.message; err.style.display = 'block'; })
       .finally(function(){ btn.disabled = false; });
+  });
+
+  // ---------- Lembrete de lançamento dos holerites (quem tem a permissão "Quem lança holerites") ----------
+  // A partir do dia 27 de cada mês, uma vez por dia (por navegador), até TODOS os CLT terem o holerite daquele
+  // mês. Do dia 1 ao 26, cobra o mês anterior, se ainda faltar alguém. Só para quem tem a permissão explícita
+  // (Gestão › Holerites e guias › ⚙ Quem lança): o administrador sem a marcação não recebe.
+  const HOLERITE_DIA_LEMBRETE = 27;
+  const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function competenciaCobrada(hoje){
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - (hoje.getDate() >= HOLERITE_DIA_LEMBRETE ? 0 : 1), 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function nomeCompetencia(c){ const p = c.split('-'); return MESES_PT[Number(p[1]) - 1] + '/' + p[0]; }
+  let holremCompetencia = null;
+  function verificarLembreteHolerites(){
+    if (!currentProfile || currentProfile.role === 'cliente') return;
+    const hoje = window.__hojeTesteHolerites ? new Date(window.__hojeTesteHolerites + 'T12:00:00') : new Date();
+    const chaveDia = 'fb-holrem-' + currentProfile.uid + '-' + hoje.toISOString().slice(0, 10);
+    try { if (localStorage.getItem(chaveDia)) return; } catch(e) {}
+    db.collection('permissoesGestao').doc(currentProfile.uid).get().then(function(p){
+      if (!p.exists || p.data().lancarHolerites !== true) return null;
+      const comp = competenciaCobrada(hoje);
+      return Promise.all([
+        db.collection('organograma').get(),
+        db.collection('holeritesDocs').where('competencia', '==', comp).get().catch(function(){ return null; })
+      ]).then(function(r){
+        const clts = r[0].docs.filter(function(d){ return d.data().tipoColaborador === 'clt'; })
+          .map(function(d){ return { uid: d.id, nome: (d.data().displayName || '').trim() || '(sem nome)' }; });
+        if (!clts.length) return null;
+        if (!r[1]) return { comp: comp, clts: clts, faltam: null };   // sem como conferir o que já foi enviado
+        const enviados = {};
+        r[1].docs.forEach(function(d){ if (d.data().tipo === 'holerite') enviados[d.data().uid] = true; });
+        const faltam = clts.filter(function(c){ return !enviados[c.uid]; });
+        return faltam.length ? { comp: comp, clts: clts, faltam: faltam } : null;
+      });
+    }).then(function(pend){
+      if (!pend) return;
+      holremCompetencia = pend.comp;
+      document.getElementById('holrem-titulo').textContent = '📄 Holerites de ' + nomeCompetencia(pend.comp);
+      document.getElementById('holrem-texto').textContent = pend.faltam
+        ? 'Enviados: ' + (pend.clts.length - pend.faltam.length) + ' de ' + pend.clts.length + ' colaboradores CLT. Este lembrete aparece uma vez por dia até todos terem o holerite do mês.'
+        : 'Lance o holerite de cada colaborador CLT deste mês. (Não foi possível conferir o que já foi enviado.)';
+      document.getElementById('holrem-lista').innerHTML = pend.faltam
+        ? '<p class="empty-hint" style="text-align:left;">Faltam: ' + pend.faltam.map(function(c){ return escapeHtml(c.nome); }).join(', ') + '</p>' : '';
+      let tentativas = 0;
+      const mostrar = function(){
+        const ocupado = ['com-backdrop', 'banco-backdrop'].some(function(id){ const el = document.getElementById(id); return el && el.classList.contains('show'); });
+        if (ocupado && tentativas++ < 600) { setTimeout(mostrar, 1500); return; }
+        try { localStorage.setItem(chaveDia, '1'); } catch(e) {}
+        document.getElementById('holrem-backdrop').classList.add('show');
+      };
+      setTimeout(mostrar, 3000);
+    }).catch(function(e){ console.warn('lembrete de holerites:', e && e.message); });
+  }
+  document.getElementById('holrem-depois').addEventListener('click', function(){ document.getElementById('holrem-backdrop').classList.remove('show'); });
+  document.getElementById('holrem-lancar').addEventListener('click', function(){
+    document.getElementById('holrem-backdrop').classList.remove('show');
+    const gestao = tabsCatalog.find(function(t){ return /tools\/gestao/.test(String(t.url || '')) && (currentProfile.tabs || []).indexOf(t.id) !== -1; });
+    if (!gestao) { alert('Para lançar, você precisa da aba Gestão. Peça ao administrador.'); return; }
+    selectTab(gestao.id);
+    // espera a Gestão conferir a permissão (o cartão "Holerites e guias" só aparece depois disso), abre o envio
+    // e já deixa a competência cobrada no formulário
+    let n = 0, clicado = false;
+    const abrir = function(){
+      let doc = null;
+      try { doc = iframes[gestao.id] && iframes[gestao.id].contentDocument; } catch(e) {}
+      const campo = doc && doc.getElementById('hl-comp');
+      if (campo) { campo.value = holremCompetencia; return; }
+      const cartao = doc && doc.getElementById('hub-card-holerites');
+      if (cartao && cartao.style.display !== 'none' && !clicado) { clicado = true; cartao.click(); }
+      if (n++ < 120) setTimeout(abrir, 250);
+    };
+    abrir();
   });
 
   // ---------- Meus holerites (CLT): lista e download dos holerites lançados na Gestão ----------

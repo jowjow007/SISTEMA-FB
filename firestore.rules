@@ -478,7 +478,9 @@ service cloud.firestore {
       return isAdmin() || temPermGestao('lancarHolerites');
     }
     match /holeritesDocs/{docId} {
-      allow read: if isAdmin() || (isAtivo() && resource.data.uid == request.auth.uid);
+      // quem lança vê só a LISTA (colaborador, tipo, competência), para o lembrete mensal saber quem falta;
+      // o arquivo (partes) continua só com o admin e com o próprio colaborador
+      allow read: if isAdmin() || (isAtivo() && resource.data.uid == request.auth.uid) || podeLancarHolerites();
       allow create: if podeLancarHolerites()
                     && request.resource.data.enviadoPorUid == request.auth.uid
                     && request.resource.data.tipo in ['holerite', 'fgts', 'inss', 'tributo']

@@ -343,7 +343,8 @@ def semear():
     # a colega pode LANÇAR holerites, mas não tem Gestão › Colaboradores (área restrita): usa o cartão próprio de holerites
     gravar(f"permissoesGestao/{U['colega']}", {'lancarHolerites': True})
     for k in ('admin', 'membro', 'colega', 'vetudo', 'deslig'):
-        gravar(f"organograma/{U[k]}", {'displayName': k.title() + ' Fictício', 'email': f'{k}@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
+        gravar(f"organograma/{U[k]}", dict({'displayName': k.title() + ' Fictício', 'email': f'{k}@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''},
+                                           **({'tipoColaborador': 'clt'} if k == 'membro' else {})))   # o membro é o único CLT
     for i, (tid, rot, url) in enumerate([(NUM, 'Números', 'tools/numeros-escritorio/index.html'), ('chat', 'Chat', 'tools/chat/index.html'),
                                          (GEST, 'Gestão', 'tools/gestao/index.html'), ('assistente', 'Assistente', 'tools/assistente-ia/index.html'),
                                          ('condominios', 'Condomínios', 'tools/condominios/index.html'), (CONTR, 'Contratos', 'tools/contratos/index.html')]):
@@ -725,6 +726,39 @@ def main():
                  esperar(pg, "!!document.getElementById('hl-colab') && !document.querySelector('[data-voltar-colab]')", 15000))
             b.close()
         bloco('4c. Áreas restritas para quem não foi liberado', b4c)
+
+        def b4d():
+            G = '4d. Lembrete mensal de holerites (quem lança)'
+            b, cc, pc, ok = sessao('colega@exemplo.test')
+            pc.close()
+            cc.add_init_script("window.__hojeTesteHolerites = '2026-11-28'")   # dia 27 em diante: cobra novembro
+            ph = cc.new_page(); ph.on('dialog', aceitar); ph.goto(BASE + '/index.html')
+            caso(G, 'no dia 27 em diante, aparece o pop-up do mês para quem lança',
+                 esperar(ph, "document.getElementById('holrem-backdrop').classList.contains('show')", 30000))
+            caso(G, 'mostra quantos CLT já têm o holerite e quem falta',
+                 'novembro/2026' in ph.inner_text('#holrem-titulo') and '0 de 1' in ph.inner_text('#holrem-texto') and 'Membro Fictício' in ph.inner_text('#holrem-lista'),
+                 ph.inner_text('#holrem-texto')[:120])
+            ph.click('#holrem-lancar')
+            caso(G, '"Lançar agora" abre o envio de holerites já com a competência do mês',
+                 esperar(ph, "(function(){ try { return Array.from(document.querySelectorAll('iframe')).some(f => f.contentDocument && f.contentDocument.getElementById('hl-comp') && f.contentDocument.getElementById('hl-comp').value === '2026-11'); } catch(e) { return false; } })()", 30000),
+                 ph.evaluate("""() => 'aba ativa: ' + (document.querySelector('.tab-btn.active') || {textContent: '-'}).textContent.trim().slice(0, 30) + ' | ' + Array.from(document.querySelectorAll('iframe')).map(f => {
+                     try { const d = f.contentDocument; return (f.getAttribute('src') || '').split('?')[0].split('/').slice(-2).join('/') + ' ativo=' + f.classList.contains('active')
+                       + ' cartão=' + ((d.getElementById('hub-card-holerites') || {style: {display: 'inexistente'}}).style.display || 'visível')
+                       + ' hl-comp=' + ((d.getElementById('hl-comp') || {}).value) + ' hl-scroll=' + ((d.getElementById('hl-scroll') || {}).textContent || '').slice(0, 70); }
+                     catch (e) { return 'erro ' + e.message; } }).join(' || ')"""))
+            ph.reload()
+            esperar(ph, "document.getElementById('app-screen').style.display === 'flex'", 20000); ph.wait_for_timeout(6000)
+            caso(G, 'no mesmo dia, não aparece de novo', not ph.evaluate("document.getElementById('holrem-backdrop').classList.contains('show')"))
+            ph.close()
+            b.close()
+            b, cc, pc, ok = sessao('colega@exemplo.test')
+            pc.close()
+            cc.add_init_script("window.__hojeTesteHolerites = '2026-11-02'")   # antes do dia 27: cobra outubro, que já está completo
+            ph = cc.new_page(); ph.on('dialog', aceitar); ph.goto(BASE + '/index.html')
+            esperar(ph, "document.getElementById('app-screen').style.display === 'flex'", 20000); ph.wait_for_timeout(8000)
+            caso(G, 'mês completo (todos os CLT com holerite): não aparece', not ph.evaluate("document.getElementById('holrem-backdrop').classList.contains('show')"))
+            b.close()
+        bloco('4d. Lembrete mensal de holerites', b4d)
 
         # ===== 5. Desligado (sessão aberta enquanto o admin exclui)
         def b5():
