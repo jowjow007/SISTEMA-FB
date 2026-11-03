@@ -184,6 +184,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
   .doc-h1{text-align:center;font-weight:700;font-size:11.5pt;text-transform:uppercase;margin:1mm 0 6mm;letter-spacing:.02em;}
   .doc-h1.underline{text-decoration:underline;}
+  /* título da peça em quadro, como no Formatador de Petições */
+  .titulo-box{border:1.5pt solid #1a1a1a;text-align:center;font-weight:700;font-size:11.5pt;text-transform:uppercase;padding:2.5mm 4mm;letter-spacing:.03em;}
   .doc-label{font-weight:700;margin:3mm 0 1.4mm;}
   .doc-indent{margin-left:14mm;}
 
@@ -1539,6 +1541,7 @@ function buildPeticaoCiencia(d){
   return [
     C(`<div class="blk" style="text-align:left;margin-top:2mm;"><strong>AO DOUTO JUÍZO</strong></div>`),
     C(`<div class="blk" style="text-align:left;margin-top:8mm;"><strong>Processo nº ${esc(c.processo)}</strong></div>`),
+    C(`<div class="titulo-box" style="margin-top:6mm;">Ciência</div>`),
     C(`<div class="blk" style="text-indent:10mm;margin-top:8mm;">A parte, já qualificada nos autos, vem, respeitosamente, perante este Juízo, manifestar ciência do pronunciamento judicial retro.</div>`),
     C(`<div class="blk center" style="margin-top:10mm;">${esc(d.cidadeUf)}, ${esc(d.dataExtenso)}.</div>`),
     C(`<div class="sig-line" style="margin:calc(14mm*var(--fit,1)) auto 0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG 163.443</div></div>`)
@@ -1924,6 +1927,8 @@ function wParaD(runs,o){
   o=o||{}; var ppr='';
   if(o.keepNext) ppr+='<w:keepNext/>';
   if(o.borderTop) ppr+='<w:pBdr><w:top w:val="single" w:sz="8" w:space="4" w:color="1A1A1A"/></w:pBdr>';
+  if(o.box) ppr+='<w:pBdr>'+['top','left','bottom','right'].map(function(s){
+    return '<w:'+s+' w:val="single" w:sz="12" w:space="4" w:color="1A1A1A"/>'; }).join('')+'</w:pBdr>';
   ppr+='<w:spacing w:before="'+Math.round(o.before||0)+'" w:after="'+Math.round(o.after==null?150:o.after)+'" w:line="'+(o.line||300)+'" w:lineRule="auto"/>';
   if(o.ind) ppr+='<w:ind '+o.ind+'/>';
   ppr+='<w:jc w:val="'+(o.jc||'both')+'"/>';
@@ -2008,6 +2013,8 @@ function docxBodyDocumento(blocks, TW){
     if(cls.includes('doc-h1')){
       var u=cls.includes('underline');
       x+=wParaD(wRunD((el.textContent||'').replace(/\s+/g,' ').trim().toUpperCase(),{b:true,sz:DOCX_SZ.titulo,u:u}),{jc:'center',before:60,after:6*MM_TW,line:276,keepNext:true});
+    } else if(cls.includes('titulo-box')){
+      x+=wParaD(wRunD((el.textContent||'').replace(/\s+/g,' ').trim().toUpperCase(),{b:true,sz:DOCX_SZ.titulo}),{jc:'center',box:true,before:antes,after:0,line:300,keepNext:true});
     } else if(cls.includes('box-table')){
       if(antes) x+=wParaD('',{after:0,line:Math.max(Math.round(antes),120)});
       x+=boxTableToWordXml(el, TW);
