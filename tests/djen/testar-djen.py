@@ -116,6 +116,26 @@ def main():
     caso('4. -SemPublicar faz o commit local', git(pasta, 'rev-parse', 'HEAD').stdout.strip() != antes, (p.stdout + p.stderr)[-200:])
     caso('4. -SemPublicar não envia nada ao remoto', subprocess.run(['git', '-C', remoto, 'rev-parse', 'main'], capture_output=True, text=True).stdout.strip() == remoto_antes)
     shutil.rmtree(pasta, ignore_errors=True); shutil.rmtree(remoto, ignore_errors=True)
+    # 5. o portal foi publicado de outra cópia depois da última execução (03/11/2026: o push foi recusado):
+    #    o script traz a main antes de ler a página, publica por cima e não desfaz o que veio do remoto
+    pasta, alvo = preparar('main')
+    remoto = tempfile.mkdtemp(prefix='djen-remoto-')
+    subprocess.run(['git', 'clone', '-q', '--bare', pasta, remoto], check=True)
+    git(pasta, 'remote', 'add', 'origin', remoto); git(pasta, 'fetch', '-q', 'origin'); git(pasta, 'branch', '-q', '-u', 'origin/main')
+    outra = tempfile.mkdtemp(prefix='djen-outra-')
+    subprocess.run(['git', 'clone', '-q', remoto, outra], check=True)
+    with open(os.path.join(outra, PAGINA), 'a', encoding='utf-8') as f: f.write('\n<!-- marca-publicada-de-outra-copia -->\n')
+    r1 = git(outra, '-c', 'user.name=Teste', '-c', 'user.email=teste@exemplo.test', 'commit', '-q', '-am', 'publicação feita de outra cópia')
+    r2 = git(outra, 'push', '-q', 'origin', 'main')
+    caso('5. (preparo) outra cópia publicou no remoto', r1.returncode == 0 and r2.returncode == 0, (r1.stderr + r2.stderr)[-200:])
+    p = rodar(alvo)
+    topo = subprocess.run(['git', '-C', remoto, 'log', '-1', '--format=%s', 'main'], capture_output=True, text=True).stdout.strip()
+    pagina_remota = subprocess.run(['git', '-C', remoto, 'show', 'main:' + PAGINA], capture_output=True, text=True, encoding='utf-8').stdout
+    caso('5. com a main adiantada no GitHub, o script publica (sem push recusado)', topo.startswith('Atualiza numeros de publicacoes DJEN'), topo + ' | ' + (p.stdout + p.stderr)[-200:])
+    anterior = subprocess.run(['git', '-C', remoto, 'show', 'main~1:' + PAGINA], capture_output=True, text=True, encoding='utf-8').stdout
+    caso('5. ... e mantém o que tinha sido publicado da outra cópia', 'marca-publicada-de-outra-copia' in pagina_remota,
+         'no commit anterior: ' + str('marca-publicada-de-outra-copia' in anterior) + ' | fim da página: ' + pagina_remota[-160:].replace(chr(10), ' '))
+    shutil.rmtree(pasta, ignore_errors=True); shutil.rmtree(remoto, ignore_errors=True); shutil.rmtree(outra, ignore_errors=True)
     srv.shutdown()
 
     falhas = 0

@@ -47,6 +47,24 @@ $ItensPorPagina = 1000
 $hoje = Get-Date
 $DataFim = $hoje.ToString("yyyy-MM-dd")
 
+# O portal também é publicado de outra cópia: sem trazer a main do GitHub antes, o push daqui é recusado
+# (aconteceu em 03/11/2026). Tem de ser antes de ler o index.html, para não regravar uma versão antiga dele.
+Push-Location $RepoDir
+$ramo = (git rev-parse --abbrev-ref HEAD).Trim()
+# remoto configurado para o ramo (a cópia descartável do teste não tem); "git config" não escreve em stderr
+$temRemoto = -not [string]::IsNullOrWhiteSpace((git config --get "branch.$ramo.remote") -join '')
+if ($ramo -eq 'main' -and $temRemoto) {
+    git pull --rebase --quiet
+    if ($LASTEXITCODE -ne 0) {
+        git rebase --abort | Out-Null
+        Pop-Location
+        Write-Warning 'Nao foi possivel trazer a main do GitHub (git pull --rebase). Nada foi gravado nem publicado.'
+        Stop-Transcript | Out-Null
+        exit 1
+    }
+}
+Pop-Location
+
 Write-Host "=== Atualizacao Publicacoes DJEN - OAB $NumeroOab/$UfOab - $DataInicio a $DataFim ==="
 
 # ---------- 1) Busca paginada na API Comunica PJe/CNJ ----------
@@ -274,6 +292,16 @@ try {
             Write-Host "Commit feito SEM publicar (-SemPublicar). Confira com: git show --stat HEAD"
         } else {
             git push
+            if ($LASTEXITCODE -ne 0) {
+                # alguém publicou durante a execução: traz de novo e tenta mais uma vez
+                git pull --rebase --quiet
+                if ($LASTEXITCODE -eq 0) { git push }
+            }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Commit feito, mas o push FALHOU. Publicar depois com: git pull --rebase; git push"
+                Stop-Transcript | Out-Null
+                exit 1
+            }
             Write-Host "Commit e push realizados com sucesso."
         }
     }
