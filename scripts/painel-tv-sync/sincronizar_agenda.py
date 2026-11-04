@@ -49,6 +49,7 @@ _PORTAL_FB_DIR = Path(__file__).resolve().parents[2]
 AGENDA_LIVE_DIR    = Path(os.getenv("AGENDA_LIVE_DIR") or (_PORTAL_FB_DIR.parent / "painel-tv-agenda-live"))
 AGENDA_LIVE_BRANCH = "agenda-live"
 AGENDA_CSV_PATH    = AGENDA_LIVE_DIR / "agenda.csv"
+AGENDA_META_PATH   = AGENDA_LIVE_DIR / "atualizado-em.txt"
 # ──────────────────────────────────────────────────────────────
 
 
@@ -154,18 +155,23 @@ def publicar_no_painel_tv(csv_texto: str):
         sys.exit(1)
 
     anterior = AGENDA_CSV_PATH.read_text(encoding="utf-8") if AGENDA_CSV_PATH.exists() else None
-    if anterior == csv_texto:
-        log("Nenhuma mudança na agenda desde a última sincronização — pulando commit.")
-        return
+    agenda_mudou = anterior != csv_texto
+    if agenda_mudou:
+        AGENDA_CSV_PATH.write_text(csv_texto, encoding="utf-8", newline="")
+    else:
+        log("Nenhuma mudança no conteúdo da agenda — mas atualizando o horário de 'última verificação' mesmo assim.")
 
-    AGENDA_CSV_PATH.write_text(csv_texto, encoding="utf-8", newline="")
+    # Grava sempre (mesmo sem mudança na agenda em si), para quem olha o painel saber que os
+    # dados foram confirmados agora, não travados num erro silencioso de dias atrás.
+    agora_br = datetime.now().strftime("%d/%m/%Y %H:%M")
+    AGENDA_META_PATH.write_text(agora_br, encoding="utf-8", newline="")
 
-    r = git("add", "agenda.csv", cwd=AGENDA_LIVE_DIR)
+    r = git("add", "agenda.csv", "atualizado-em.txt", cwd=AGENDA_LIVE_DIR)
     if r.returncode != 0:
         log(f"ERRO git add: {r.stderr}")
         sys.exit(1)
 
-    status = git("status", "--porcelain", "agenda.csv", cwd=AGENDA_LIVE_DIR).stdout
+    status = git("status", "--porcelain", "agenda.csv", "atualizado-em.txt", cwd=AGENDA_LIVE_DIR).stdout
     if not status.strip():
         log("Sem diferenças após git add — nada a commitar.")
         return
