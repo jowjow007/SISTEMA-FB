@@ -25,7 +25,24 @@ fica acumulado como histórico pesquisável.
 
 ---
 
-## Instalação (fazer UMA vez)
+Funciona em qualquer computador que já tenha (ou vá ter) um clone de
+`portal-fb` — não depende de ser o notebook do jowjo nem o computador do
+escritório especificamente. Os caminhos são detectados automaticamente a
+partir de onde este script está.
+
+## Instalação (fazer UMA vez por computador)
+
+### 0. Clonar o painel de TV, se ainda não existir nesta máquina
+
+O robô do Astrea já roda em `portal-fb` neste computador — falta só clonar o
+`painel-tv` do GitHub ao lado dele (mesma pasta "pai"):
+
+```powershell
+cd ..\..\..
+git clone https://github.com/jowjow007/PAINEL-FB.git painel-tv
+```
+
+(Se já existir, pule este passo.)
 
 ### 1. Python e dependências
 
@@ -33,11 +50,13 @@ fica acumulado como histórico pesquisável.
 pip install -r requirements.txt
 ```
 
-### 2. Criar o robô de leitura no Firebase
+### 2. Criar o robô de leitura no Firebase (só na primeira vez, em qualquer computador)
 
 As regras do Firestore só deixam ler `astreaDiario` com uma conta da equipe ou
 um robô cadastrado — por segurança, não reaproveite seu login pessoal nem o do
-robô do Astrea (aquele só devia gravar, não ler para fora).
+robô do Astrea (aquele só devia gravar, não ler para fora). **Se esse robô já
+foi criado em outro computador, não crie de novo — reaproveite as mesmas
+credenciais** (mesmo usuário Firebase funciona de qualquer máquina).
 
 1. Acesse [console.firebase.google.com](https://console.firebase.google.com) →
    projeto **sistema-fb-4cce5** → **Authentication** → **Add user**.
@@ -50,24 +69,27 @@ robô do Astrea (aquele só devia gravar, não ler para fora).
 ### 3. Credenciais
 
 Edite `credenciais.env` e preencha `FIREBASE_ROBO_EMAIL` / `FIREBASE_ROBO_SENHA`
-com a conta criada no passo 2.
+com a conta do passo 2 (copie de outro computador se já existir, em vez de
+redigitar a senha).
 
-### 4. Criar a branch/worktree isolada `agenda-live` (uma vez)
+### 4. Criar a branch/worktree isolada `agenda-live` (uma vez por computador)
 
 ```powershell
-cd C:\Users\jowjo\portal-fb\scripts\painel-tv-sync
+cd <pasta deste script>
 powershell -ExecutionPolicy Bypass -File "setup-agenda-live-branch.ps1"
 ```
 
-Isso cria a pasta `C:\Users\jowjo\painel-tv-agenda-live` (um segundo checkout,
-separado do seu `C:\Users\jowjo\painel-tv` normal) já na branch `agenda-live`.
+Isso cria a pasta `painel-tv-agenda-live` ao lado do clone normal do painel de
+TV (um segundo checkout, separado) já na branch `agenda-live`. Como a branch
+já existe no GitHub (criada da primeira vez), aqui ele só faz um checkout nela
+— não recria do zero.
 
 ---
 
 ## Teste manual
 
 ```powershell
-cd C:\Users\jowjo\portal-fb\scripts\painel-tv-sync
+cd <pasta deste script>
 python sincronizar_agenda.py
 ```
 

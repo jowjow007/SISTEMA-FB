@@ -1,23 +1,35 @@
 # setup-agenda-live-branch.ps1
 # Cria, UMA vez, a branch "agenda-live" isolada (sem historico compartilhado com main)
-# no repositorio do painel de TV, e um worktree local separado para ela em
-# C:\Users\jowjo\painel-tv-agenda-live. E' nesse worktree que sincronizar_agenda.py
-# escreve o agenda.csv e faz commit --amend + push --force a cada execucao.
+# no repositorio do painel de TV, e um worktree local separado para ela, por padrao em
+# "painel-tv-agenda-live" ao lado do clone do painel de TV. E' nesse worktree que
+# sincronizar_agenda.py escreve o agenda.csv e faz commit --amend + push --force a
+# cada execucao.
 #
 # Por que uma branch/worktree separados: o repositorio PAINEL-FB e publico (exigencia
 # do GitHub Pages no plano free) e nao deve acumular, para sempre, nomes de clientes e
 # numeros de processo no historico. Isolar numa branch so com 1 commit (sempre
 # reescrito) evita isso sem precisar mexer na branch main nem no checkout principal.
 #
+# Funciona em qualquer computador/usuario (nao depende de "C:\Users\jowjo"): por
+# padrao procura o clone do painel de TV em "painel-tv" ao lado da pasta "portal-fb"
+# (ex: C:\Users\FB\painel-tv no computador do escritorio). Para usar outro caminho,
+# passe -PainelTvDir e/ou -AgendaLiveDir.
+#
 # Execute UMA vez:
-#   powershell -ExecutionPolicy Bypass -File "C:\Users\jowjo\portal-fb\scripts\painel-tv-sync\setup-agenda-live-branch.ps1"
+#   powershell -ExecutionPolicy Bypass -File "setup-agenda-live-branch.ps1"
+
+param(
+    [string]$PainelTvDir   = (Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) "painel-tv"),
+    [string]$AgendaLiveDir = (Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) "painel-tv-agenda-live")
+)
 
 $ErrorActionPreference = "Stop"
 
-$PainelTvDir    = "C:\Users\jowjo\painel-tv"
-$AgendaLiveDir  = "C:\Users\jowjo\painel-tv-agenda-live"
-$Branch         = "agenda-live"
-$AuthorArg      = '--author=jowjo <jowjow07@gmail.com>'
+$Branch    = "agenda-live"
+$AuthorArg = '--author=jowjo <jowjow07@gmail.com>'
+
+Write-Host "Clone do painel de TV: $PainelTvDir"
+Write-Host "Worktree agenda-live:  $AgendaLiveDir"
 
 if (-not (Test-Path $PainelTvDir)) {
     throw "Nao encontrei o clone do painel de TV em $PainelTvDir."

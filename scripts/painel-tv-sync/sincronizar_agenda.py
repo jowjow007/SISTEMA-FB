@@ -41,7 +41,12 @@ FIREBASE_API_KEY = "AIzaSyAWClOREaOXYupgzN3t2eJCddm8FcQTjfE"
 FIREBASE_PROJECT = "sistema-fb-4cce5"
 ROBO_EMAIL       = os.getenv("FIREBASE_ROBO_EMAIL", "")
 ROBO_SENHA       = os.getenv("FIREBASE_ROBO_SENHA", "")
-AGENDA_LIVE_DIR    = Path(os.getenv("AGENDA_LIVE_DIR", r"C:\Users\jowjo\painel-tv-agenda-live"))
+# Padrão: "painel-tv-agenda-live" ao lado da pasta "portal-fb" (ex: C:\Users\FB\painel-tv-agenda-live
+# no computador do escritório, C:\Users\jowjo\painel-tv-agenda-live no notebook) — funciona em
+# qualquer máquina/usuário sem precisar editar nada. Sobrescreva via AGENDA_LIVE_DIR no credenciais.env
+# se o worktree estiver em outro lugar.
+_PORTAL_FB_DIR = Path(__file__).resolve().parents[2]
+AGENDA_LIVE_DIR    = Path(os.getenv("AGENDA_LIVE_DIR") or (_PORTAL_FB_DIR.parent / "painel-tv-agenda-live"))
 AGENDA_LIVE_BRANCH = "agenda-live"
 AGENDA_CSV_PATH    = AGENDA_LIVE_DIR / "agenda.csv"
 # ──────────────────────────────────────────────────────────────
