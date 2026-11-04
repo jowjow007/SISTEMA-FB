@@ -1,7 +1,9 @@
 """
 Astrea → Portal Fonseca & Braga
 Importa tarefas, prazos, audiências e eventos em aberto do Astrea
-e grava em Firestore (astreaDiario/{YYYY-MM-DD}).
+e grava em Firestore (astreaDiario/{YYYY-MM-DD}). Ao final, dispara também
+scripts/painel-tv-sync (se estiver configurado nesta máquina) para o painel de
+TV não precisar esperar o próximo horário fixo de sincronização.
 
 Pré-requisitos:
   pip install -r requirements.txt
@@ -494,7 +496,26 @@ async def main():
     colunas = list(registros[0].keys()) if registros else []
     enviar_firestore(registros, colunas)
     arquivar(caminho)
+    disparar_sincronizacao_painel_tv()
     log("Importação concluída.")
+
+
+def disparar_sincronizacao_painel_tv():
+    """Dispara scripts/painel-tv-sync logo após gravar a agenda no Firestore, para o
+    painel de TV não precisar esperar o próximo horário fixo (08h/16h) — cobre tanto a
+    importação diária das 07h quanto o 'Executar robô agora' (disparado via watcher.py).
+    Best-effort: se o painel-tv-sync não estiver configurado nesta máquina (credenciais.env
+    ausente, worktree não criado), só avisa e não falha a importação do Astrea por isso."""
+    script = Path(__file__).resolve().parents[1] / "painel-tv-sync" / "sincronizar_agenda.py"
+    if not script.exists():
+        return
+    log("Disparando sincronizacao do painel de TV (scripts/painel-tv-sync)...")
+    try:
+        resultado = subprocess.run([sys.executable, str(script)], cwd=str(script.parent), timeout=120)
+        if resultado.returncode != 0:
+            log(f"AVISO: sincronizacao do painel de TV terminou com codigo {resultado.returncode} (nao impede a importacao do Astrea).")
+    except Exception as e:
+        log(f"AVISO: nao foi possivel disparar a sincronizacao do painel de TV: {e}")
 
 
 def atualizar_codigo():
