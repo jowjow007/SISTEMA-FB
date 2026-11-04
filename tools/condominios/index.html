@@ -579,6 +579,9 @@ function bindDynamic(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function(el){
     el.addEventListener('click', function(){ go(el.getAttribute('data-go')); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-link]'), function(el){
+    el.addEventListener('click', function(){ location.href = el.getAttribute('data-link'); });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-open-condo]'), function(el){
     el.addEventListener('click', function(){ openCondo(parseInt(el.getAttribute('data-open-condo'),10)); });
   });
@@ -682,13 +685,15 @@ function viewInicio(){
     {img:'gerar',        w:54.3, mt:-12.7, t:'Gerar Notificação', d:'Compor e aprovar notificações extrajudiciais', go:'gerar-notificacao'},
     {img:'nomenclatura', w:39.4, mt:-18.4, t:'Nomenclatura de Documentos', d:'POP Nº 008 — gerador automático', go:'nomenclatura'},
     {img:'fluxos.svg',   w:60,   mt:-21,  t:'Fluxos', d:'Fluxogramas de notificações e por responsáveis', go:'fluxos'},
-    {img:'relatorios',   w:48.3, mt:-18.4, t:'Relatórios Condominiais', d:'Acompanhamento jurídico por condomínio', go:'relatorios-condominiais'}
+    {img:'relatorios',   w:48.3, mt:-18.4, t:'Relatórios Condominiais', d:'Acompanhamento jurídico por condomínio', go:'relatorios-condominiais'},
+    // ferramenta própria (também é a aba do síndico e dos conselheiros): abre em outra página
+    {img:'julgamento.svg', w:60, mt:-21, t:'Sessões de Julgamento', d:'Recursos de multa para o conselho analisar', link:'../sessoes-julgamento/index.html'}
   ];
   return CD_DECO + '<div class="cd-hub">'
     + '<h1 class="cd-title">Condomínios</h1>'
     + '<p class="cd-sub">Selecione o módulo que deseja acessar</p>'
     + '<div class="cd-grid">' + cards.map(function(c){
-        return '<div class="cd-card" data-go="'+c.go+'" role="button" tabindex="0">'
+        return '<div class="cd-card" '+(c.link ? 'data-link="'+c.link+'"' : 'data-go="'+c.go+'"')+' role="button" tabindex="0">'
           + '<div class="cd-art"><img src="img/'+(c.img.indexOf('.') < 0 ? c.img+'.jpg' : c.img)+'" alt="" style="--w:'+c.w+'%;--mt:'+c.mt+'%"></div>'
           + '<h3>'+c.t+'</h3><p>'+c.d+'</p><span class="cd-btn">Acessar →</span></div>';
       }).join('') + '</div></div>';
@@ -1807,7 +1812,10 @@ var aprovState = {
 
 function refreshAprovacao(){
   if (!fbReady || !currentUser || !db) return;
-  db.collection('condoAprovadores').get().then(function(snap){
+  // quem não é da equipe (síndico aprovador) só pode consultar o próprio vínculo
+  var consulta = (currentProfile && ['admin','gestor','membro'].indexOf(currentProfile.role) >= 0)
+    ? db.collection('condoAprovadores') : db.collection('condoAprovadores').where('aprovadorUid', '==', currentUser.uid);
+  consulta.get().then(function(snap){
     aprovState.condoAprov = snap.docs.map(function(d){ return Object.assign({slug:d.id}, d.data()); });
     aprovState.condoAprovLoaded = true;
     return carregarFilaAprovacao();

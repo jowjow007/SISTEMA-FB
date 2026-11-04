@@ -131,15 +131,17 @@ service cloud.firestore {
       allow read: if isSignedIn();   // catálogo de abas (rótulos/URLs), necessário para montar o menu
       allow write: if isAdmin();
     }
+    // Isolamento entre clientes (04/11/2026): cliente (síndico/conselheiro) não lê dados internos da equipe
+    // (perfis, organograma, sugestões, notificações de outros condomínios...). Só o próprio perfil.
     match /perfis/{uid} {
-      allow read: if isAtivo() || (isSignedIn() && request.auth.uid == uid);
+      allow read: if isEquipe() || (isSignedIn() && request.auth.uid == uid);
       // o autocadastro grava o próprio perfil (foto/nascimento) antes da aprovação; quem foi excluído não recria
       allow create: if (isSignedIn() && request.auth.uid == uid && !acessoRevogado()) || isAdmin();
       allow update, delete: if isAtivo() && (request.auth.uid == uid || isAdmin());
     }
     match /sugestoes/{sugestaoId} {
-      allow read: if isAtivo();
-      allow create: if isAtivo()
+      allow read: if isEquipe();
+      allow create: if isEquipe()
                     && request.resource.data.autorUid == request.auth.uid
                     && request.resource.data.status == 'aberta'
                     && request.resource.data.texto is string
@@ -338,7 +340,7 @@ service cloud.firestore {
     }
     // Resumo da última rodada do robô (data/hora mostrada a todos na aba; contagens e erro só aparecem para admin).
     match /emailsConferenciaMeta/{docId} {
-      allow read: if isAtivo();
+      allow read: if isEquipe();
       allow write: if false;
     }
     // Textos dos e-mails e das respostas (nunca apagados) e lista do que o robô descartou: só o dono lê.
@@ -390,7 +392,7 @@ service cloud.firestore {
     // Espelho do diretório de colegas: só nome, e-mail, departamento, ingresso e cargo.
     // Remuneração e custos NÃO podem mais ser gravados aqui (ficam só em users, legível pelo admin).
     match /organograma/{uid} {
-      allow read: if isAtivo();
+      allow read: if isEquipe();
       // apagar não tem request.resource: fica numa regra própria (botão "Remover" e a conta de teste)
       allow delete: if isAdmin();
       allow create, update: if isAdmin()
@@ -410,20 +412,21 @@ service cloud.firestore {
         get(/databases/$(database)/documents/condoAprovadores/$(slug)).data.aprovadorUid == request.auth.uid;
     }
     match /condoAprovadores/{slug} {
-      allow read: if isAtivo();
+      allow read: if isEquipe() || (isAtivo() && resource.data.aprovadorUid == request.auth.uid);
       allow write: if isAdmin();
     }
     match /unidadeResets/{docId} {
-      allow read: if isAtivo();
+      allow read: if isEquipe();
       allow write: if isAdmin();
     }
     match /condoUnidades/{slug} {
-      allow read: if isAtivo();
+      allow read: if isEquipe();
       allow write: if isAdmin();
     }
     match /notificacoesGeradas/{docId} {
-      allow read: if isAtivo();
-      allow create: if isAtivo()
+      // o síndico aprovador lê só as do próprio condomínio (a consulta filtra por condominioSlug)
+      allow read: if isEquipe() || isAprovadorDoCondo(resource.data.condominioSlug);
+      allow create: if isEquipe()
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.status == 'pendente'
                     && request.resource.data.tentativa == 1
@@ -503,7 +506,7 @@ service cloud.firestore {
       }
     }
     match /materiaisMarca/{docId} {
-      allow read: if isAtivo();
+      allow read: if isEquipe();
       allow create: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -587,6 +590,60 @@ service cloud.firestore {
       allow read: if isEquipe();
       allow create, update: if isAtivo() && request.resource.data.uid == request.auth.uid
                             && docId.matches(request.auth.uid + '_.*');
+    }
+
+    // ---------- Sessões de Julgamento (recursos contra multas condominiais) ----------
+    // O escritório monta cada recurso (resumo + provas) e libera ao conselho do condomínio. Síndico e conselheiros
+    // são contas "cliente" vinculadas pelo admin em conselhoMembros/{uid}.condominios = { slug: 'sindico'|'conselheiro' }
+    // e só enxergam o que foi liberado do PRÓPRIO condomínio. A decisão e a ementa são lançadas pelo escritório.
+    function papelNoConselho(slug) {
+      return exists(/databases/$(database)/documents/conselhoMembros/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/conselhoMembros/$(request.auth.uid)).data.get('condominios', {}).get(slug, '')
+        : '';
+    }
+    function doConselho(slug) {
+      return isAtivo() && meuCadastro().role == 'cliente' && papelNoConselho(slug) in ['sindico', 'conselheiro'];
+    }
+    match /conselhoMembros/{uid} {
+      allow read: if isEquipe() || (isAtivo() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+    match /sessoesJulgamento/{sessaoId} {
+      allow read: if isEquipe() || (resource.data.liberada == true && doConselho(resource.data.condominioSlug));
+      allow create, update: if isEquipe() && request.resource.data.condominioSlug is string
+                            && request.resource.data.condominioSlug.size() > 0;
+      allow delete: if isEquipe();
+    }
+    match /recursosJulgamento/{recursoId} {
+      allow read: if isEquipe() || (resource.data.liberado == true && doConselho(resource.data.condominioSlug));
+      allow create, update: if isEquipe() && request.resource.data.condominioSlug is string
+                            && request.resource.data.condominioSlug.size() > 0
+                            && request.resource.data.sessaoId is string;
+      allow delete: if isEquipe();
+    }
+    // anotações particulares do conselheiro: só ele lê (nem o escritório)
+    match /anotacoesJulgamento/{docId} {
+      allow read, delete: if isAtivo() && resource.data.uid == request.auth.uid;
+      allow create, update: if isAtivo() && request.resource.data.uid == request.auth.uid
+                            && docId == request.auth.uid + '_' + request.resource.data.recursoId;
+    }
+    // "analisei" de cada conselheiro (o escritório acompanha quem já leu antes da sessão)
+    match /leiturasJulgamento/{docId} {
+      allow read: if isEquipe() || (isAtivo() && resource.data.uid == request.auth.uid);
+      allow create, update: if request.resource.data.uid == request.auth.uid
+                            && docId == request.auth.uid + '_' + request.resource.data.recursoId
+                            && doConselho(request.resource.data.condominioSlug)
+                            && get(/databases/$(database)/documents/recursosJulgamento/$(request.resource.data.recursoId)).data.condominioSlug
+                               == request.resource.data.condominioSlug;
+      allow delete: if false;
+    }
+    // trilha de auditoria: quem abriu cada prova (só cria; ninguém altera nem apaga)
+    match /acessosProvasJulgamento/{docId} {
+      allow read: if isEquipe();
+      allow create: if request.resource.data.uid == request.auth.uid
+                    && request.resource.data.em == request.time
+                    && (isEquipe() || doConselho(request.resource.data.condominioSlug));
+      allow update, delete: if false;
     }
   }
 }

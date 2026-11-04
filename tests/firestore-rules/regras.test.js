@@ -329,6 +329,94 @@ async function main() {
   await caso(G, 'cliente NÃO usa o histórico do Criador', () => assertFails(db(P.cliente).collection('contratosGerados').where('tipo', 'in', DOCS_TIPOS).get()));
   await caso(G, 'quem tem a aba Contratos lista tudo', () => assertSucceeds(liberado.collection('contratosGerados').get()));
 
+  G = '13. Isolamento entre clientes (síndico/conselheiro não lê dados internos da equipe)';
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc('sugestoes/sg1').set({ autorUid: 'u-membro', status: 'aberta', texto: 'x' });
+    await d.doc('condoUnidades/cond-a').set({ unidades: 10 });
+    await d.doc('unidadeResets/r1').set({ condominioSlug: 'cond-a' });
+    await d.doc('materiaisMarca/m1').set({ nome: 'x' });
+    await d.doc('emailsConferenciaMeta/ultima').set({ em: 1 });
+    await d.doc('condoAprovadores/cond-a').set({ aprovadorUid: 'u-cliente' });
+    await d.doc('condoAprovadores/cond-b').set({ aprovadorUid: 'u-membro' });
+    await d.doc('notificacoesGeradas/n-a').set({ condominioSlug: 'cond-a', status: 'pendente', texto: 'x', criadoPorUid: 'u-membro' });
+    await d.doc('notificacoesGeradas/n-b').set({ condominioSlug: 'cond-b', status: 'pendente', texto: 'x', criadoPorUid: 'u-membro' });
+    await d.doc('perfis/u-cliente').set({ foto: '' });
+  });
+  const cli = db(P.cliente);
+  for (const [nome, caminho] of [['perfil de colega', 'perfis/u-membro'], ['organograma', 'organograma/u-membro'], ['sugestões', 'sugestoes/sg1'],
+                                 ['unidades do condomínio', 'condoUnidades/cond-a'], ['zeragem de unidades', 'unidadeResets/r1'], ['materiais da marca', 'materiaisMarca/m1'],
+                                 ['conferência de e-mails', 'emailsConferenciaMeta/ultima'], ['notificação de outro condomínio', 'notificacoesGeradas/n-b'],
+                                 ['aprovador de outro condomínio', 'condoAprovadores/cond-b']])
+    await caso(G, 'cliente NÃO lê ' + nome, () => assertFails(cli.doc(caminho).get()));
+  await caso(G, 'cliente NÃO lista todas as notificações', () => assertFails(cli.collection('notificacoesGeradas').get()));
+  await caso(G, 'cliente lê o próprio perfil', () => assertSucceeds(cli.doc('perfis/u-cliente').get()));
+  await caso(G, 'síndico aprovador lê o próprio vínculo de aprovador', () => assertSucceeds(cli.collection('condoAprovadores').where('aprovadorUid', '==', 'u-cliente').get()));
+  await caso(G, 'síndico aprovador lê as notificações do PRÓPRIO condomínio', () => assertSucceeds(cli.collection('notificacoesGeradas').where('condominioSlug', 'in', ['cond-a']).get()));
+  await caso(G, 'síndico aprovador aprova notificação do próprio condomínio', () => assertSucceeds(cli.doc('notificacoesGeradas/n-a').update({ status: 'aprovada', decididoPorUid: 'u-cliente' })));
+  await caso(G, 'cliente NÃO cria notificação', () => assertFails(cli.collection('notificacoesGeradas').add({ criadoPorUid: 'u-cliente', status: 'pendente', tentativa: 1, condominio: 'A', condominioSlug: 'cond-a', texto: 'x' })));
+  await caso(G, 'membro continua lendo organograma, perfis e sugestões', async () => {
+    await assertSucceeds(db(P.membro).doc('organograma/u-membro').get());
+    await assertSucceeds(db(P.membro).doc('perfis/u-membro').get());
+    await assertSucceeds(db(P.membro).collection('sugestoes').get());
+  });
+
+  G = '14. Sessões de Julgamento (conselho do condomínio)';
+  const CONS = { uid: 'u-cons', email: 'cons@exemplo.test' }, OUTRO_CONS = { uid: 'u-cons2', email: 'cons2@exemplo.test' }, SEM_VINC = { uid: 'u-cons3', email: 'cons3@exemplo.test' };
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    for (const p of [CONS, OUTRO_CONS, SEM_VINC]) await d.doc('users/' + p.uid).set({ email: p.email, displayName: p.uid, role: 'cliente', tabs: ['sessoes'], acesso: 'ativo' });
+    await d.doc('users/u-cons-pend').set({ email: 'pend@exemplo.test', role: 'cliente', tabs: ['sessoes'], acesso: 'pendente' });
+    await d.doc('conselhoMembros/u-cons').set({ condominios: { 'cond-a': 'conselheiro' } });
+    await d.doc('conselhoMembros/u-cons2').set({ condominios: { 'cond-b': 'sindico' } });
+    await d.doc('conselhoMembros/u-cons-pend').set({ condominios: { 'cond-a': 'conselheiro' } });
+    await d.doc('sessoesJulgamento/s-a').set({ condominioSlug: 'cond-a', liberada: true, titulo: 'x' });
+    await d.doc('sessoesJulgamento/s-a2').set({ condominioSlug: 'cond-a', liberada: false, titulo: 'rascunho' });
+    await d.doc('recursosJulgamento/r-a').set({ condominioSlug: 'cond-a', sessaoId: 's-a', liberado: true, ocorrencia: '1' });
+    await d.doc('recursosJulgamento/r-a2').set({ condominioSlug: 'cond-a', sessaoId: 's-a2', liberado: false, ocorrencia: '2' });
+    await d.doc('recursosJulgamento/r-b').set({ condominioSlug: 'cond-b', sessaoId: 's-b', liberado: true, ocorrencia: '3' });
+  });
+  const cons = db(CONS);
+  await caso(G, 'conselheiro lista as sessões liberadas do próprio condomínio', () => assertSucceeds(cons.collection('sessoesJulgamento').where('condominioSlug', '==', 'cond-a').where('liberada', '==', true).get()));
+  await caso(G, 'conselheiro lista os recursos liberados do próprio condomínio', () => assertSucceeds(cons.collection('recursosJulgamento').where('condominioSlug', '==', 'cond-a').where('liberado', '==', true).get()));
+  await caso(G, 'conselheiro NÃO lê sessão em rascunho', () => assertFails(cons.doc('sessoesJulgamento/s-a2').get()));
+  await caso(G, 'conselheiro NÃO lê recurso ainda não liberado', () => assertFails(cons.doc('recursosJulgamento/r-a2').get()));
+  await caso(G, 'conselheiro NÃO lê recurso de OUTRO condomínio', () => assertFails(cons.doc('recursosJulgamento/r-b').get()));
+  await caso(G, 'conselheiro NÃO lista sem filtrar pelo condomínio', () => assertFails(cons.collection('recursosJulgamento').where('liberado', '==', true).get()));
+  await caso(G, 'conselheiro NÃO altera recurso (nem lança decisão)', () => assertFails(cons.doc('recursosJulgamento/r-a').update({ decisao: { resultado: 'cancelada' } })));
+  await caso(G, 'conselheiro NÃO se vincula a outro condomínio', () => assertFails(cons.doc('conselhoMembros/u-cons').set({ condominios: { 'cond-a': 'conselheiro', 'cond-b': 'sindico' } })));
+  await caso(G, 'conselheiro lê o próprio vínculo', () => assertSucceeds(cons.doc('conselhoMembros/u-cons').get()));
+  await caso(G, 'conselheiro NÃO lê o vínculo de outra pessoa', () => assertFails(cons.doc('conselhoMembros/u-cons2').get()));
+  await caso(G, 'cliente sem vínculo NÃO lê sessão liberada', () => assertFails(db(SEM_VINC).doc('sessoesJulgamento/s-a').get()));
+  await caso(G, 'cadastro pendente com vínculo NÃO lê nada', () => assertFails(db({ uid: 'u-cons-pend', email: 'pend@exemplo.test' }).doc('sessoesJulgamento/s-a').get()));
+  await caso(G, 'conselheiro marca "analisei" num recurso do próprio condomínio', () => assertSucceeds(cons.doc('leiturasJulgamento/u-cons_r-a').set({ uid: 'u-cons', nome: 'x', recursoId: 'r-a', sessaoId: 's-a', condominioSlug: 'cond-a' })));
+  await caso(G, 'conselheiro NÃO marca "analisei" fingindo que o recurso é do condomínio dele', () => assertFails(cons.doc('leiturasJulgamento/u-cons_r-b').set({ uid: 'u-cons', nome: 'x', recursoId: 'r-b', sessaoId: 's-b', condominioSlug: 'cond-a' })));
+  await caso(G, 'conselheiro grava anotação particular', () => assertSucceeds(cons.doc('anotacoesJulgamento/u-cons_r-a').set({ uid: 'u-cons', recursoId: 'r-a', texto: 'nota' })));
+  await caso(G, 'outra pessoa NÃO lê a anotação particular (nem a equipe)', async () => {
+    await assertFails(db(OUTRO_CONS).doc('anotacoesJulgamento/u-cons_r-a').get());
+    await assertFails(db(P.membro).doc('anotacoesJulgamento/u-cons_r-a').get());
+  });
+  await caso(G, 'conselheiro registra a abertura de uma prova (auditoria)', () => assertSucceeds(cons.collection('acessosProvasJulgamento').add({ uid: 'u-cons', recursoId: 'r-a', condominioSlug: 'cond-a', arquivo: 'x', em: TS() })));
+  await caso(G, 'conselheiro NÃO forja a hora nem o autor da auditoria', async () => {
+    await assertFails(cons.collection('acessosProvasJulgamento').add({ uid: 'u-cons', recursoId: 'r-a', condominioSlug: 'cond-a', arquivo: 'x', em: new Date(2020, 0, 1) }));
+    await assertFails(cons.collection('acessosProvasJulgamento').add({ uid: 'u-cons2', recursoId: 'r-a', condominioSlug: 'cond-a', arquivo: 'x', em: TS() }));
+  });
+  await caso(G, 'conselheiro NÃO lê a auditoria', () => assertFails(cons.collection('acessosProvasJulgamento').get()));
+  await caso(G, 'equipe cria sessão e recurso e lança a decisão', async () => {
+    const m = db(P.membro);
+    await assertSucceeds(m.doc('sessoesJulgamento/s-nova').set({ condominioSlug: 'cond-a', liberada: false, titulo: 'x' }));
+    await assertSucceeds(m.doc('recursosJulgamento/r-novo').set({ condominioSlug: 'cond-a', sessaoId: 's-nova', liberado: false, ocorrencia: '9' }));
+    await assertSucceeds(m.doc('recursosJulgamento/r-novo').update({ decisao: { resultado: 'mantida' } }));
+  });
+  await caso(G, 'equipe lê a auditoria e quem já analisou', async () => {
+    await assertSucceeds(db(P.membro).collection('acessosProvasJulgamento').get());
+    await assertSucceeds(db(P.membro).collection('leiturasJulgamento').get());
+  });
+  await caso(G, 'só o admin vincula conselheiros', async () => {
+    await assertFails(db(P.membro).doc('conselhoMembros/u-cons3').set({ condominios: { 'cond-a': 'conselheiro' } }));
+    await assertSucceeds(db(P.admin).doc('conselhoMembros/u-cons3').set({ condominios: { 'cond-a': 'conselheiro' } }));
+  });
+
   await env.cleanup();
   let falhas = 0, grupoAtual = '';
   for (const [st, grupo, nome] of resultados) {

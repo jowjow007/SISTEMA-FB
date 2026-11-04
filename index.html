@@ -1398,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v192</span>
+      <span class="version-tag">v193</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2663,7 +2663,7 @@
     subscribeMobileHomeBadges();
     carregarFotoAvatarMobile();
     if (currentProfile.role === 'admin') { initAdminPanel(); subscribeComprasPendentes(); subscribeSemDepartamento(); }
-    subscribeSugestoesPendentes();
+    if (currentProfile.role !== 'cliente') subscribeSugestoesPendentes();   // cliente não lê dados internos da equipe
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
     subscribeEmailsPendentes();
@@ -3189,7 +3189,7 @@
   }
   let celIniciado = false;
   function iniciarCelebracoes(){
-    if (celIniciado) return;
+    if (celIniciado || (currentProfile && currentProfile.role === 'cliente')) return;   // aniversários e anos de casa são da equipe
     celIniciado = true;
     Promise.all([db.collection('perfis').get(), db.collection('organograma').get()]).then(function(r){
       const perfis = {}, org = {};

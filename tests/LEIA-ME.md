@@ -34,6 +34,16 @@ cd tests
 REGRAS_ANTIGAS=/caminho/regras-de-antes.rules npm run test:funcional   # requer Python 3 + playwright (pip install playwright && playwright install chromium)
 ```
 
+## Sessões de Julgamento (`tests/funcional/julgamentos.py`)
+
+Escritório monta sessão e recurso e envia provas; conselheira do condomínio lê, abre as provas (auditoria), anota e marca "analisei"; síndico de outro condomínio não vê nada (nem pelo SDK nem pelo Storage); decisão e ementa; prazo das provas vencido; aprovação de um cadastro como conselheiro; importação de pacote.
+
+```bash
+cd tests
+firebase emulators:exec --only auth,firestore,storage --project demo-portal-func "python funcional/julgamentos.py"
+# FOTOS=<pasta> guarda as telas com os dados fictícios
+```
+
 ## Migração dos anexos antigos do Chat e DJEN
 
 ```bash

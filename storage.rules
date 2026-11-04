@@ -1,9 +1,11 @@
 rules_version = '2';
 // Regras do Firebase Storage (revisão de segurança 01/11/2026). Publicar em: Console do Firebase › Storage › Regras
 // (substitui as regras atuais — confira antes se não há outra pasta em uso no bucket).
-// O único uso de Storage no portal é o anexo do Chat:
+// Usos de Storage no portal:
 //   chat/{conversaId}/{uid}/{arquivo}  — formato novo: só quem participa daquela conversa lê ou envia;
-//   chat/{uid}/{arquivo}               — formato antigo (antes de 01/11/2026): só o próprio autor lê pelo SDK.
+//   chat/{uid}/{arquivo}               — formato antigo (antes de 01/11/2026): só o próprio autor lê pelo SDK;
+//   julgamentos/{condominio}/{recursoId}/{arquivo} — provas das Sessões de Julgamento (04/11/2026): a equipe envia;
+//     síndico e conselheiros do condomínio leem enquanto o recurso está liberado e o prazo das provas não venceu.
 // ATENÇÃO: links de download já emitidos (getDownloadURL, gravados nas mensagens) carregam um token e
 // funcionam sem passar por estas regras. Ver SEGURANCA-PUBLICACAO.md, "Links de download já emitidos".
 service firebase.storage {
@@ -15,6 +17,25 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('acesso', '') == 'ativo'
         && (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
             || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('tabs', []).size() > 0);
+    }
+    function cadastro() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function equipe() {
+      return ativo() && cadastro().get('role', '') in ['admin', 'gestor', 'membro'];
+    }
+    function recurso(recursoId) {
+      return firestore.get(/databases/(default)/documents/recursosJulgamento/$(recursoId)).data;
+    }
+    // mesmo critério do doConselho() do Firestore, mais: recurso deste condomínio, liberado e com as provas no prazo
+    function conselhoLe(slug, recursoId) {
+      return ativo() && cadastro().get('role', '') == 'cliente'
+        && firestore.exists(/databases/(default)/documents/conselhoMembros/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/conselhoMembros/$(request.auth.uid)).data.get('condominios', {}).get(slug, '') in ['sindico', 'conselheiro']
+        && firestore.exists(/databases/(default)/documents/recursosJulgamento/$(recursoId))
+        && recurso(recursoId).condominioSlug == slug
+        && recurso(recursoId).get('liberado', false) == true
+        && (recurso(recursoId).get('provasExpiramEm', null) == null || request.time < recurso(recursoId).provasExpiramEm);
     }
     function participa(conversaId) {
       return firestore.exists(/databases/(default)/documents/conversas/$(conversaId))
@@ -32,6 +53,17 @@ service firebase.storage {
       // resource == null: só arquivo novo (o envio para um caminho que já existe não pode trocar o anexo)
       allow create: if resource == null && ativo() && request.auth.uid == uid && participa(conversaId) && arquivoPermitido();
       allow update, delete: if false;
+    }
+
+    // vídeos de câmera chegam a dezenas de MB: até 500 MB; só vídeo, áudio, imagem (sem SVG) e PDF
+    match /julgamentos/{slug}/{recursoId}/{arquivo} {
+      allow read: if equipe() || conselhoLe(slug, recursoId);
+      allow create: if resource == null && equipe()
+                    && request.resource.size <= 500 * 1024 * 1024
+                    && request.resource.contentType != null
+                    && request.resource.contentType.matches('(video/.*|audio/.*|image/(jpeg|png|gif|webp|heic|heif)|application/pdf)');
+      allow update: if false;
+      allow delete: if equipe();
     }
 
     match /chat/{uid}/{arquivo} {
