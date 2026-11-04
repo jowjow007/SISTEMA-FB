@@ -138,7 +138,10 @@ def registros_para_csv(registros: list[dict], colunas: list[str]) -> str:
     return buf.getvalue()
 
 
-def git(*args, cwd: Path, timeout=60):
+def git(*args, cwd: Path, timeout=180):
+    # timeout folgado: a 1ª vez que uma máquina faz push para este repo pode abrir o
+    # navegador para autenticar no GitHub (visto na prática levar ~2-3 min) - depois disso
+    # a credencial fica salva e as próximas chamadas são quase instantâneas.
     import subprocess
     return subprocess.run(["git", "-C", str(cwd)] + list(args), capture_output=True, text=True, timeout=timeout)
 

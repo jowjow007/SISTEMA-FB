@@ -511,7 +511,7 @@ def disparar_sincronizacao_painel_tv():
         return
     log("Disparando sincronizacao do painel de TV (scripts/painel-tv-sync)...")
     try:
-        resultado = subprocess.run([sys.executable, str(script)], cwd=str(script.parent), timeout=120)
+        resultado = subprocess.run([sys.executable, str(script)], cwd=str(script.parent), timeout=240)
         if resultado.returncode != 0:
             log(f"AVISO: sincronizacao do painel de TV terminou com codigo {resultado.returncode} (nao impede a importacao do Astrea).")
     except Exception as e:
