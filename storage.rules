@@ -29,7 +29,7 @@ service firebase.storage {
     }
     // mesmo critério do doConselho() do Firestore, mais: recurso deste condomínio, liberado e com as provas no prazo
     function conselhoLe(slug, recursoId) {
-      return ativo() && cadastro().get('role', '') == 'cliente'
+      return ativo() && cadastro().get('role', '') in ['cliente', 'conselheiro', 'sindico']
         && firestore.exists(/databases/(default)/documents/conselhoMembros/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/conselhoMembros/$(request.auth.uid)).data.get('condominios', {}).get(slug, '') in ['sindico', 'conselheiro']
         && firestore.exists(/databases/(default)/documents/recursosJulgamento/$(recursoId))

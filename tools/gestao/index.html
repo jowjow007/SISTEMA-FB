@@ -1196,7 +1196,7 @@
     document.getElementById('pg-mes').addEventListener('change', function(e){ pgMes = e.target.value || hojeISO().slice(0, 7); ouvirPagos(); renderPagamentos(); });
     db.collection('users').onSnapshot(function(snap){
       pgUsuarios = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return u.role !== 'cliente' && u.tipoColaborador !== 'clt' && !u.contaTeste; });   // conta de teste não se paga
+        .filter(function(u){ return ['cliente', 'conselheiro', 'sindico'].indexOf(u.role) < 0 && u.tipoColaborador !== 'clt' && !u.contaTeste; });   // conta de teste não se paga
       renderPagamentos();
     }, function(err){ document.getElementById('pg-tbody').innerHTML = '<p class="pg-vazio">Erro: ' + escapeHtml(err.message) + '</p>'; });
     db.collection('colaboradoresDesligados').onSnapshot(function(snap){
@@ -2205,7 +2205,7 @@
     }
     return db.collection('users').get().then(function(snap){
       usuariosElegiveis = snap.docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return u.role !== 'cliente' && !u.contaTeste && (u.role === 'admin' || (u.tabs || []).length > 0); })
+        .filter(function(u){ return ['cliente', 'conselheiro', 'sindico'].indexOf(u.role) < 0 && !u.contaTeste && (u.role === 'admin' || (u.tabs || []).length > 0); })
         .map(function(u){ return { uid: u.uid, nome: String(u.displayName || u.email || '').trim(), tipo: u.tipoColaborador || '', depto: u.deptoAtual || '' }; })
         .filter(function(u){ return u.nome; })
         .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
@@ -2838,7 +2838,7 @@
       const perms = {};
       r[1].docs.forEach(function(d){ perms[d.id] = d.data(); });
       const usuarios = r[0].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return u.role !== 'admin' && u.role !== 'cliente'; })
+        .filter(function(u){ return u.role !== 'admin' && ['cliente', 'conselheiro', 'sindico'].indexOf(u.role) < 0; })
         .sort(function(a, b){ return (a.displayName || '').localeCompare(b.displayName || ''); });
       lista.innerHTML = usuarios.length ? usuarios.map(function(u){
         const marcado = perms[u.uid] && perms[u.uid][campo] === true;

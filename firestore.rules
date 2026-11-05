@@ -19,7 +19,7 @@ service cloud.firestore {
     // autocadastro (sem abas) que tenha se marcado como "ativo" antes da publicação continua sem acesso.
     function isAtivo() {
       return temCadastro() && meuCadastro().get('acesso', '') == 'ativo'
-        && meuCadastro().get('role', '') in ['admin', 'gestor', 'membro', 'cliente']
+        && meuCadastro().get('role', '') in ['admin', 'gestor', 'membro', 'cliente', 'conselheiro', 'sindico']
         && (meuCadastro().get('role', '') == 'admin' || meuCadastro().get('tabs', []).size() > 0);
     }
     function isEquipe() {
@@ -27,6 +27,10 @@ service cloud.firestore {
     }
     function isAdmin() {
       return isAtivo() && meuCadastro().role == 'admin';
+    }
+    // Tipos de usuário de fora do escritório (05/11/2026): cliente, conselheiro e síndico têm o mesmo acesso restrito
+    function isContaCliente() {
+      return isAtivo() && meuCadastro().role in ['cliente', 'conselheiro', 'sindico'];
     }
     function isGestor() {
       return isAtivo() && meuCadastro().role == 'gestor';
@@ -594,7 +598,7 @@ service cloud.firestore {
 
     // ---------- Sessões de Julgamento (recursos contra multas condominiais) ----------
     // O escritório monta cada recurso (resumo + provas) e libera ao conselho do condomínio. Síndico e conselheiros
-    // são contas "cliente" vinculadas pelo admin em conselhoMembros/{uid}.condominios = { slug: 'sindico'|'conselheiro' }
+    // são contas de cliente (tipo cliente, conselheiro ou síndico) vinculadas pelo admin em conselhoMembros/{uid}.condominios = { slug: 'sindico'|'conselheiro' }
     // e só enxergam o que foi liberado do PRÓPRIO condomínio. A decisão e a ementa são lançadas pelo escritório.
     function papelNoConselho(slug) {
       return exists(/databases/$(database)/documents/conselhoMembros/$(request.auth.uid))
@@ -602,7 +606,7 @@ service cloud.firestore {
         : '';
     }
     function doConselho(slug) {
-      return isAtivo() && meuCadastro().role == 'cliente' && papelNoConselho(slug) in ['sindico', 'conselheiro'];
+      return isContaCliente() && papelNoConselho(slug) in ['sindico', 'conselheiro'];
     }
     match /conselhoMembros/{uid} {
       allow read: if isEquipe() || (isAtivo() && request.auth.uid == uid);

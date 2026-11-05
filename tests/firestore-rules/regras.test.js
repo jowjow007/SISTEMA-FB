@@ -417,6 +417,44 @@ async function main() {
     await assertSucceeds(db(P.admin).doc('conselhoMembros/u-cons3').set({ condominios: { 'cond-a': 'conselheiro' } }));
   });
 
+  G = '15. Tipos de usuário Conselheiro e Síndico (acesso de cliente)';
+  const T_CONS = { uid: 'u-tcons', email: 'tcons@exemplo.test' }, T_SIND = { uid: 'u-tsind', email: 'tsind@exemplo.test' };
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc('users/u-tcons').set({ email: T_CONS.email, displayName: 'x', role: 'conselheiro', tabs: ['sessoes'], acesso: 'ativo' });
+    await d.doc('users/u-tsind').set({ email: T_SIND.email, displayName: 'x', role: 'sindico', tabs: ['sessoes'], acesso: 'ativo' });
+    await d.doc('users/u-ttipo').set({ email: 'ttipo@exemplo.test', displayName: 'x', role: 'membro', tabs: ['agenda'], acesso: 'ativo' });
+    await d.doc('conselhoMembros/u-tcons').set({ condominios: { 'cond-a': 'conselheiro' } });
+    await d.doc('conselhoMembros/u-tsind').set({ condominios: { 'cond-a': 'sindico' } });
+  });
+  for (const [rot, p] of [['conselheiro', T_CONS], ['síndico', T_SIND]]) {
+    const c = db(p);
+    await caso(G, 'tipo ' + rot + ' lê o próprio cadastro e a sessão liberada do condomínio dele', async () => {
+      await assertSucceeds(c.doc('users/' + p.uid).get());
+      await assertSucceeds(c.doc('sessoesJulgamento/s-a').get());
+      await assertSucceeds(c.doc('recursosJulgamento/r-a').get());
+    });
+    await caso(G, 'tipo ' + rot + ' NÃO lê recurso de outro condomínio nem rascunho', async () => {
+      await assertFails(c.doc('recursosJulgamento/r-b').get());
+      await assertFails(c.doc('sessoesJulgamento/s-a2').get());
+    });
+    await caso(G, 'tipo ' + rot + ' NÃO lê dados internos da equipe', async () => {
+      await assertFails(c.doc('perfis/u-membro').get());
+      await assertFails(c.doc('organograma/u-membro').get());
+      await assertFails(c.collection('sugestoes').get());
+      await assertFails(c.doc('astreaDiario/2026-01-01').get());
+    });
+    await caso(G, 'tipo ' + rot + ' NÃO muda o próprio tipo', () => assertFails(c.doc('users/' + p.uid).update({ role: 'membro' })));
+  }
+  await caso(G, 'admin define qualquer um dos 6 tipos', async () => {
+    for (const t of ['membro', 'cliente', 'gestor', 'admin', 'conselheiro', 'sindico']) await assertSucceeds(db(P.admin).doc('users/u-ttipo').update({ role: t }));
+  });
+  await caso(G, 'membro NÃO muda o próprio tipo para administrador', () => assertFails(db(P.membro).doc('users/u-membro').update({ role: 'admin' })));
+  await caso(G, 'tipo desconhecido não tem acesso (nem com abas)', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await ctx.firestore().doc('users/u-ttipo').set({ email: 'ttipo@exemplo.test', role: 'visitante', tabs: ['agenda'], acesso: 'ativo' }); });
+    await assertFails(db({ uid: 'u-ttipo', email: 'ttipo@exemplo.test' }).doc('astreaDiario/2026-01-01').get());
+  });
+
   await env.cleanup();
   let falhas = 0, grupoAtual = '';
   for (const [st, grupo, nome] of resultados) {

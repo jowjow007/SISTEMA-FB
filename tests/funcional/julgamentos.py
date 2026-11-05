@@ -34,8 +34,8 @@ def semear():
         U[k] = F.criar_conta(f'{k}@exemplo.test')
     F.gravar(f"users/{U['admin']}", {'email': 'admin@exemplo.test', 'displayName': 'Admin Fictício', 'role': 'admin', 'tabs': ['condominios'], 'acesso': 'ativo'})
     F.gravar(f"users/{U['membro']}", {'email': 'membro@exemplo.test', 'displayName': 'Membro Fictício', 'role': 'membro', 'tabs': ['condominios', 'sessoes-julgamento-x'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'cliente', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'cliente', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
     # autocadastro de um conselheiro novo: entra como membro pendente, sem abas, e cria o próprio bloco no organograma
     F.gravar(f"users/{U['novo']}", {'email': 'novo@exemplo.test', 'displayName': 'Conselheiro Novo Fictício', 'role': 'membro', 'tabs': [], 'acesso': 'pendente'})
     F.gravar(f"organograma/{U['novo']}", {'displayName': 'Conselheiro Novo Fictício', 'email': 'novo@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
@@ -257,9 +257,9 @@ def main():
         pa.select_option(f".cs-condo[data-uid='{U['novo']}']", 'condominio-ficticio-alfa')
         pa.select_option(f".cs-papel[data-uid='{U['novo']}']", 'sindico')
         pa.click(f'[data-aprovar-conselho="{U["novo"]}"]')
-        F.caso(G, 'admin aprova o cadastro como síndico: vira cliente ativo só com a aba das sessões',
+        F.caso(G, 'admin aprova o cadastro como síndico: vira tipo Síndico, ativo, só com a aba das sessões',
                F.ate(lambda: (F.ler(f"users/{U['novo']}") or {}).get('acesso') == 'ativo', 10)
-               and (F.ler(f"users/{U['novo']}") or {}).get('role') == 'cliente' and (F.ler(f"users/{U['novo']}") or {}).get('tabs') == ['sessoes-julgamento-x'],
+               and (F.ler(f"users/{U['novo']}") or {}).get('role') == 'sindico' and (F.ler(f"users/{U['novo']}") or {}).get('tabs') == ['sessoes-julgamento-x'],
                str(F.ler(f"users/{U['novo']}")))
         F.caso(G, 'o vínculo com o condomínio é gravado e o bloco do organograma sai',
                ((F.ler(f"conselhoMembros/{U['novo']}") or {}).get('condominios') or {}).get('condominio-ficticio-alfa') == 'sindico'

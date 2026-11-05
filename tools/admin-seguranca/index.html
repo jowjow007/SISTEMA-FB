@@ -27,6 +27,7 @@
   .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--red)}
   .msg{margin:10px 0 0;font-size:.88rem}
   input[type=text]{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text);min-width:0;width:100%}
+  select.sel-tipo{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)}
   .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
   .linha > *{flex:1 1 200px}
   .linha > button{flex:0 0 auto}
@@ -70,6 +71,14 @@
       <div class="linha"><input type="file" id="f-dados" multiple accept=".json,.pdf,.png"><button id="b-dados">Enviar</button></div>
       <div class="msg" id="m-dados"></div>
     </section>
+
+    <section>
+      <h2><span class="passo">5</span>Tipos de usuário</h2>
+      <p class="sub">O tipo de usuário decide o acesso: <b>Membro</b>, <b>Gestor</b> e <b>Administrador</b> são da equipe; <b>Cliente</b>, <b>Conselheiro</b> e <b>Síndico</b> são de fora do escritório e só veem as próprias abas (nada dos dados internos). A coluna "Tipo novo" já vem com a padronização de 05/11/2026: todos como Membro e só o dono como Administrador. Confira, ajuste se precisar e clique em <b>Gravar tipos</b>. Você continua Administrador.</p>
+      <div class="wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Tipo hoje</th><th>Tipo novo</th></tr></thead><tbody id="t-tipos"></tbody></table></div>
+      <div class="linha"><button id="b-tipos">Gravar tipos</button><button class="sec" id="b-csv2">Baixar registro (CSV)</button></div>
+      <div class="msg" id="m-tipos"></div>
+    </section>
   </div>
 </main>
 
@@ -111,7 +120,7 @@
       usuarios = r[0].docs.map((d) => Object.assign({ uid: d.id }, d.data()))
         .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
       permissoes = {}; r[1].docs.forEach((d) => { permissoes[d.id] = d.data(); });
-      renderAcesso(); renderPat(); renderRobos(r[2]);
+      renderAcesso(); renderPat(); renderRobos(r[2]); renderTipos();
     });
   }
 
@@ -164,7 +173,7 @@
 
   // ---------- 2) patrimônio ----------
   function renderPat(){
-    $('t-pat').innerHTML = usuarios.filter((u) => u.role !== 'admin' && u.role !== 'cliente').map(function(u){
+    $('t-pat').innerHTML = usuarios.filter((u) => u.role !== 'admin' && ['cliente', 'conselheiro', 'sindico'].indexOf(u.role) < 0).map(function(u){
       const v = u.patrimonioVerTudo;
       const hoje = v === true ? '<span class="tag warn">true hoje (conferir quem gravou)</span>'
         : v === false ? '<span class="tag">só o próprio</span>'
@@ -190,6 +199,50 @@
     batch.commit().then(function(){ return auditar('patrimonioVerTudo', itensPat); }).then(function(){ msg('m-pat', n + ' cadastro(s) atualizado(s).', 'ok'); return carregar(); })
       .catch(function(e){ msg('m-pat', 'Falhou: ' + e.message, 'err'); });
   });
+
+  // ---------- 5) tipos de usuário ----------
+  const TIPOS = { membro: 'Membro', cliente: 'Cliente', gestor: 'Gestor', admin: 'Administrador', conselheiro: 'Conselheiro', sindico: 'Síndico' };
+  const DONO = 'jonathan@fonsecaebraga.com.br';   // padronização de 05/11/2026: só o dono fica Administrador
+  function tipoSugerido(u){
+    if (u.uid === eu.uid || String(u.email || '').toLowerCase() === DONO) return 'admin';
+    return 'membro';
+  }
+  function renderTipos(){
+    $('t-tipos').innerHTML = usuarios.map(function(u){
+      const novo = tipoSugerido(u);
+      const travado = u.uid === eu.uid ? ' disabled title="Você precisa continuar Administrador"' : '';
+      const mudou = (u.role || '') !== novo;
+      return '<tr><td>' + esc(u.displayName || '-') + '</td><td>' + esc(u.email || '-') + '</td>'
+        + '<td>' + (TIPOS[u.role] ? esc(TIPOS[u.role]) : '<span class="tag warn">' + esc(u.role || 'sem tipo') + '</span>') + '</td>'
+        + '<td><select class="sel-tipo" data-uid="' + esc(u.uid) + '"' + travado + '>' + Object.keys(TIPOS).map(function(k){
+            return '<option value="' + k + '"' + (k === novo ? ' selected' : '') + '>' + TIPOS[k] + '</option>'; }).join('') + '</select>'
+        + (mudou ? ' <span class="tag warn">muda</span>' : '') + '</td></tr>';
+    }).join('');
+  }
+  $('b-tipos').addEventListener('click', function(){
+    const mudar = [];
+    document.querySelectorAll('.sel-tipo').forEach(function(sel){
+      const u = usuarios.find((x) => x.uid === sel.dataset.uid);
+      const novo = u.uid === eu.uid ? 'admin' : sel.value;
+      if ((u.role || '') !== novo) mudar.push({ u: u, novo: novo });
+    });
+    if (!mudar.length) { msg('m-tipos', 'Nada a alterar: todos já estão com o tipo escolhido.', 'ok'); return; }
+    const resumo = {}; mudar.forEach((m) => { resumo[TIPOS[m.novo]] = (resumo[TIPOS[m.novo]] || 0) + 1; });
+    if (!confirm('Alterar o tipo de ' + mudar.length + ' pessoa(s)?\n\n' + Object.keys(resumo).map((k) => k + ': ' + resumo[k]).join('\n')
+      + '\n\nQuem deixar de ser Administrador ou Gestor perde esses poderes na hora.')) return;
+    const batch = db.batch();
+    mudar.forEach(function(m){
+      batch.update(db.collection('users').doc(m.u.uid), { role: m.novo, tipoDefinidoPor: eu.uid, tipoDefinidoEm: FV.serverTimestamp() });
+      registro.push([new Date().toISOString(), 'tipoUsuario', m.u.uid, m.u.email || '', m.u.role || '(sem)', m.novo, eu.email || eu.uid]);
+    });
+    $('b-tipos').disabled = true;
+    const itens = mudar.map((m) => ({ uid: m.u.uid, antes: m.u.role || '(sem)', depois: m.novo }));
+    batch.commit().then(function(){ return auditar('tipoUsuario', itens); })
+      .then(function(){ msg('m-tipos', mudar.length + ' cadastro(s) atualizado(s). Baixe o registro em CSV para guardar.', 'ok'); return carregar(); })
+      .catch(function(e){ msg('m-tipos', 'Falhou: ' + e.message, 'err'); })
+      .finally(function(){ $('b-tipos').disabled = false; });
+  });
+  $('b-csv2').addEventListener('click', function(){ $('b-csv').click(); });
 
   // ---------- 3) robôs ----------
   function renderRobos(snap){

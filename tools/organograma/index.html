@@ -536,9 +536,13 @@
       <label>Tipo de usuário</label>
       <select id="edit-papel">
         <option value="membro">Membro</option>
+        <option value="cliente">Cliente</option>
+        <option value="gestor">Gestor</option>
         <option value="admin">Administrador</option>
+        <option value="conselheiro">Conselheiro</option>
+        <option value="sindico">Síndico</option>
       </select>
-      <p class="field-hint" id="edit-papel-hint">Você não pode alterar o próprio cargo por aqui.</p>
+      <p class="field-hint" id="edit-papel-hint">Você não pode alterar o próprio tipo de usuário por aqui.</p>
     </div>
     <div class="field">
       <label>Cargo</label>
@@ -1521,9 +1525,12 @@
 
     const novoPapel = els.editPapel.value;
     if (novoPapel !== editandoPapelOriginal) {
+      const ROTULOS = { membro: 'Membro', cliente: 'Cliente', gestor: 'Gestor', admin: 'Administrador', conselheiro: 'Conselheiro', sindico: 'Síndico' };
       const msg = novoPapel === 'admin'
         ? 'Tornar esta pessoa administradora? Ela passará a ter acesso total ao painel de Administração.'
-        : 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.';
+        : editandoPapelOriginal === 'admin'
+          ? 'Retirar o acesso de administrador desta pessoa? Ela perde acesso ao painel de Administração.'
+          : 'Alterar o tipo de usuário desta pessoa para "' + (ROTULOS[novoPapel] || novoPapel) + '"?';
       if (!confirm(msg)) return;
     }
 

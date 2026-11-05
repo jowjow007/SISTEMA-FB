@@ -153,6 +153,9 @@
   var auth = firebase.auth(), db = firebase.firestore(), storage = firebase.storage();
   var FV = firebase.firestore.FieldValue, TS = firebase.firestore.Timestamp;
   var DIAS_PROVAS = 90;
+  // tipos de usuário de fora do escritório (mesmo acesso restrito; regras: isContaCliente)
+  var TIPOS = { membro:'Membro', cliente:'Cliente', gestor:'Gestor', admin:'Administrador', conselheiro:'Conselheiro', sindico:'Síndico' };
+  function contaCliente(role){ return role === 'cliente' || role === 'conselheiro' || role === 'sindico'; }
   // leitura das provas pela API do Storage com o login da pessoa (passa pelas regras; nenhum link público é entregue)
   var STORAGE_HOST = firebase.__emuladores ? 'http://127.0.0.1:9199' : 'https://firebasestorage.googleapis.com';
 
@@ -842,14 +845,14 @@
       + 'Ele passa a ver só esta aba e só as sessões liberadas do condomínio dele.</div>';
     if (!pessoas) return h + '<div class="muted">Carregando cadastros…</div>';
     var opcoesCondo = condos.map(function(c){ return '<option value="' + esc(c.slug) + '">' + esc(c.nome) + '</option>'; }).join('');
-    var lista = pessoas.filter(function(u){ return u.role === 'cliente' || u.acesso !== 'ativo'; })
+    var lista = pessoas.filter(function(u){ return contaCliente(u.role) || u.acesso !== 'ativo'; })
       .sort(function(a, b){ return (a.acesso === 'ativo') - (b.acesso === 'ativo') || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'); });
     if (!tabSessoes) h += '<div class="aviso">⚠ A aba "Sessões de Julgamento" ainda não foi cadastrada em Administração › Abas (endereço <b>tools/sessoes-julgamento/</b>). Cadastre-a antes de aprovar.</div>';
     h += '<table class="t"><tr><th>Pessoa</th><th>Situação</th><th>Vínculo</th><th>Condomínio</th><th>Papel</th><th></th></tr>' + lista.map(function(u){
       var v = (membros[u.uid] || {}).condominios || {};
       var vinc = Object.keys(v).map(function(k){ return esc(nomeCondo(k)) + ' (' + (v[k] === 'sindico' ? 'síndico' : 'conselheiro') + ')'; }).join('<br>') || '<span class="muted">—</span>';
       return '<tr><td><b>' + esc(u.displayName || '') + '</b><br><span class="muted small">' + esc(u.email || '') + '</span></td>'
-        + '<td class="small">' + (u.acesso === 'ativo' ? '<span class="ok">ativo</span>' : '<span class="err">' + esc(u.acesso || 'pendente') + '</span>') + (u.role && u.role !== 'cliente' ? '<br><span class="muted">' + esc(u.role) + '</span>' : '') + '</td>'
+        + '<td class="small">' + (u.acesso === 'ativo' ? '<span class="ok">ativo</span>' : '<span class="err">' + esc(u.acesso || 'pendente') + '</span>') + (u.role ? '<br><span class="muted">' + esc(TIPOS[u.role] || u.role) + '</span>' : '') + '</td>'
         + '<td class="small">' + vinc + '</td>'
         + '<td><select class="cs-condo" data-uid="' + esc(u.uid) + '">' + opcoesCondo + '</select></td>'
         + '<td><select class="cs-papel" data-uid="' + esc(u.uid) + '"><option value="conselheiro">Conselheiro</option><option value="sindico">Síndico</option></select></td>'
@@ -875,14 +878,14 @@
     var slug = document.querySelector('.cs-condo[data-uid="' + CSS.escape(uid) + '"]').value;
     var papel = document.querySelector('.cs-papel[data-uid="' + CSS.escape(uid) + '"]').value;
     if (!tabSessoes) { alert('Cadastre antes a aba "Sessões de Julgamento" em Administração › Abas (endereço tools/sessoes-julgamento/).'); return; }
-    if (u.role && u.role !== 'cliente' && u.acesso === 'ativo') { alert(u.displayName + ' é da equipe (' + u.role + '). Conselheiros precisam ser contas de cliente.'); return; }
+    if (u.role && !contaCliente(u.role) && u.acesso === 'ativo') { alert(u.displayName + ' é da equipe (' + (TIPOS[u.role] || u.role) + '). Conselheiros e síndicos precisam ser contas de fora do escritório (tipo Conselheiro, Síndico ou Cliente).'); return; }
     if (!confirm((u.acesso === 'ativo' ? 'Vincular ' : 'Aprovar ') + (u.displayName || u.email) + ' como ' + (papel === 'sindico' ? 'SÍNDICO' : 'CONSELHEIRO') + ' do ' + nomeCondo(slug) + '?\n\nEla(e) verá só a aba "Sessões de Julgamento" e só as sessões liberadas desse condomínio.')) return;
     var atual = membros[uid] || {};
     var vinc = Object.assign({}, atual.condominios || {}); vinc[slug] = papel;
     var nomes = Object.assign({}, atual.nomesCondominios || {}); nomes[slug] = nomeCondo(slug);
     var b = db.batch();
     b.set(db.collection('conselhoMembros').doc(uid), { nome:u.displayName || '', email:u.email || '', condominios:vinc, nomesCondominios:nomes, atualizadoPor:me.uid, atualizadoEm:FV.serverTimestamp() });
-    var upd = { role:'cliente', tabs:FV.arrayUnion(tabSessoes) };
+    var upd = { role:papel === 'sindico' ? 'sindico' : 'conselheiro', tabs:FV.arrayUnion(tabSessoes) };   // tipo de usuário = papel no conselho
     if (u.acesso !== 'ativo') Object.assign(upd, { acesso:'ativo', acessoAprovadoPor:me.uid, acessoAprovadoEm:FV.serverTimestamp() });
     b.update(db.collection('users').doc(uid), upd);
     b.delete(db.collection('organograma').doc(uid));   // o autocadastro cria o bloco no organograma; conselheiro não é da equipe
