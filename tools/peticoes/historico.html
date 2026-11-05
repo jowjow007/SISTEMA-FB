@@ -51,13 +51,17 @@ try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentEl
   .del:hover{color:var(--err);}
   .msg{font-size:.82rem;color:var(--muted);padding:10px 4px;}
   .count{font-size:.74rem;color:var(--muted);margin:0 0 8px;}
+  .tipos{display:inline-flex;gap:4px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:9px;padding:3px;margin-top:10px;}
+  .tipos a{padding:6px 12px;border-radius:6px;font-size:.76rem;font-weight:600;color:var(--muted);text-decoration:none;}
+  .tipos a.ativo{background:var(--red);color:#fff;}
   @media(max-width:600px){ .row{flex-wrap:wrap;} .acoes{width:100%;justify-content:flex-start;padding-left:26px;} }
 </style>
 </head>
 <body>
 <header>
-  <h1>Minhas petições</h1>
-  <p>Tudo o que você gerou no Formatador de Petições.</p>
+  <h1 id="h-titulo">Minhas petições</h1>
+  <p id="h-sub">Tudo o que você gerou no Formatador de Petições.</p>
+  <nav class="tipos"><a href="historico.html" id="t-pet">Petições</a><a href="historico.html?tipo=parecer" id="t-par">Pareceres</a></nav>
 </header>
 <main>
   <div class="card">
@@ -74,6 +78,17 @@ try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentEl
 var app = firebase.initializeApp(firebaseConfig);
 var auth = firebase.auth(app), db = firebase.firestore(app);
 var itens = [], filtro = '';
+// históricos separados: ?tipo=parecer lista só os pareceres (título "PARECER ..."); sem o parâmetro, as petições
+var PARECER = new URLSearchParams(location.search).get('tipo') === 'parecer';
+var PAL = PARECER ? {varios:'parecer(es)', nenhum:'Nenhum parecer encontrado.', vazio:'Você ainda não gerou pareceres.'}
+                  : {varios:'petição(ões)', nenhum:'Nenhuma petição encontrada.', vazio:'Você ainda não gerou petições.'};
+document.getElementById(PARECER ? 't-par' : 't-pet').className = 'ativo';
+if(PARECER){
+  document.title = 'Meus pareceres — Fonseca e Braga';
+  document.getElementById('h-titulo').textContent = 'Meus pareceres';
+  document.getElementById('h-sub').textContent = 'Tudo o que você gerou na aba "Formatar parecer".';
+}
+function ehParecer(d){ return /^PARECER\b/.test(String(d.titulo||'').trim().toUpperCase()); }
 
 function nomePeticao(d){ return d.nomeArquivo || d.titulo || 'Petição'; }
 
@@ -81,6 +96,7 @@ auth.onAuthStateChanged(function(user){
   if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
   db.collection('peticoes_historico').where('criadoPor','==',user.uid).onSnapshot(function(snap){
     itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
+      .filter(function(it){ return ehParecer(it.data) === PARECER; })
       .sort(function(a,b){ return ((b.data.criadoEm||{}).seconds||9e12) - ((a.data.criadoEm||{}).seconds||9e12); });
     desenhar();
   }, function(e){
@@ -100,11 +116,11 @@ function desenhar(){
   var lista = document.getElementById('lista');
   var vis = visiveis();
   document.getElementById('count').textContent = itens.length
-    ? (vis.length === itens.length ? itens.length+' petição(ões)' : vis.length+' de '+itens.length+' petição(ões)') : '';
+    ? (vis.length === itens.length ? itens.length+' '+PAL.varios : vis.length+' de '+itens.length+' '+PAL.varios) : '';
   lista.innerHTML = '';
   document.getElementById('all').checked = false;
   atualizar();
-  if(!vis.length){ lista.innerHTML = '<p class="msg">'+(itens.length ? 'Nenhuma petição encontrada.' : 'Você ainda não gerou petições.')+'</p>'; return; }
+  if(!vis.length){ lista.innerHTML = '<p class="msg">'+(itens.length ? PAL.nenhum : PAL.vazio)+'</p>'; return; }
   vis.forEach(function(it){
     var d = it.data;
     var row = document.createElement('div'); row.className = 'row';
@@ -144,7 +160,8 @@ function excluir(sel){
   if(!sel.length) return;
   var lista = sel.slice(0,8).map(function(it){ return '• '+nomePeticao(it.data); }).join('\n');
   if(sel.length > 8) lista += '\n… e mais '+(sel.length-8);
-  var msg = (sel.length === 1 ? 'Excluir esta petição do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?')
+  var msg = (sel.length === 1 ? (PARECER ? 'Excluir este parecer do histórico?' : 'Excluir esta petição do histórico?')
+      : (PARECER ? 'Excluir estes '+sel.length+' pareceres do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?'))
     + '\n\n'+lista+'\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
   if(!confirm(msg)) return;
   var lotes = [];

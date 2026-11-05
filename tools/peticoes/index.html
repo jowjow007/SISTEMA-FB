@@ -271,8 +271,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- histórico -->
     <div class="card" id="card-hist">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-        <h2 style="margin:0 0 12px;">Minhas últimas petições</h2>
-        <a href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todas →</a>
+        <h2 style="margin:0 0 12px;"><span class="so-peticao">Minhas últimas petições</span><span class="so-parecer">Meus últimos pareceres</span></h2>
+        <a id="hist-todas" href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todas →</a>
       </div>
       <p class="desc" id="hist-msg">Faça login no Portal para ver o histórico.</p>
       <div id="hist-tools" style="display:none;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -544,6 +544,7 @@ function definirModo(parecer){
   document.getElementById('import-txt').placeholder = parecer ? 'Cole aqui (Ctrl+V) o texto completo do parecer...' : 'Cole aqui (Ctrl+V) o texto completo da petição...';
   document.getElementById('partes-rotulo').placeholder = parecer ? 'Interessado: NOME\nAssunto: ...' : 'Embargante: NOME\nEmbargado: NOME';
   document.getElementById('subtitulo').placeholder = parecer ? 'MINUTA PARA REVISÃO...' : 'COM PEDIDO DE EFEITO SUSPENSIVO...';
+  desenharHistorico();
   render();
 }
 // texto importado ou rascunho aberto de outro tipo: muda para a aba certa
@@ -648,7 +649,9 @@ function excluirPeticoes(itens){
   if(!itens.length) return Promise.resolve(false);
   var lista = itens.slice(0, 8).map(function(it){ return '• ' + nomePeticao(it.data); }).join('\n');
   if(itens.length > 8) lista += '\n… e mais ' + (itens.length - 8);
-  var msg = (itens.length === 1 ? 'Excluir esta petição do histórico?' : 'Excluir estas ' + itens.length + ' petições do histórico?')
+  var parecer = itens.every(function(it){ return ehParecer(it.data); });
+  var msg = (itens.length === 1 ? (parecer ? 'Excluir este parecer do histórico?' : 'Excluir esta petição do histórico?')
+      : (parecer ? 'Excluir estes ' + itens.length + ' pareceres do histórico?' : 'Excluir estas ' + itens.length + ' petições do histórico?'))
     + '\n\n' + lista + '\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
   if(!confirm(msg)) return Promise.resolve(false);
   var lotes = [];
@@ -666,46 +669,54 @@ function carregarHistorico(){
   // filtra pelo usuário e ordena no navegador (evita exigir índice composto no Firestore)
   db.collection('peticoes_historico').where('criadoPor', '==', currentUser.uid)
     .onSnapshot(function(snap){
-      histItens = snap.docs.map(function(d){ return {id: d.id, data: d.data()}; })
-        .sort(function(a, b){ return ((b.data.criadoEm||{}).seconds||9e12) - ((a.data.criadoEm||{}).seconds||9e12); })
-        .slice(0, 3);
-      var list = document.getElementById('hist-list');
-      var tools = document.getElementById('hist-tools');
-      list.innerHTML = '';
-      document.getElementById('hist-all').checked = false;
-      document.getElementById('hist-del').disabled = true;
-      if(!histItens.length){
-        tools.style.display = 'none';
-        list.innerHTML = '<p style="font-size:.76rem;color:var(--muted);">Nenhuma petição gerada ainda.</p>';
-        return;
-      }
-      tools.style.display = 'flex';
-      histItens.forEach(function(it){
-        var data = it.data;
-        var row = document.createElement('div'); row.className = 'hist-row';
-        var chk = document.createElement('input'); chk.type = 'checkbox'; chk.className = 'hist-chk'; chk.dataset.id = it.id;
-        chk.addEventListener('change', atualizarSelecaoHist);
-        var btn = document.createElement('button'); btn.className = 'hist-main';
-        var nome = document.createElement('div'); nome.className = 'hist-nome';
-        nome.textContent = nomePeticao(data); nome.title = nome.textContent;
-        var meta = document.createElement('div'); meta.className = 'hist-meta';
-        var dt = data.criadoEm ? new Date(data.criadoEm.seconds*1000) : new Date();
-        meta.textContent = dt.toLocaleDateString('pt-BR') + ' · ' + (data.processo||'');
-        btn.append(nome, meta);
-        btn.addEventListener('click', function(){ carregarRascunho(data); });
-        var link = document.createElement('a');
-        link.href = data.docsUrl || '#'; link.target = '_blank'; link.rel = 'noopener';
-        link.style.cssText = 'font-size:.7rem;color:var(--ok);white-space:nowrap;display:'+(data.docsUrl?'':'none');
-        link.textContent = 'Abrir Docs';
-        var del = document.createElement('button');
-        del.className = 'btn-rem'; del.textContent = '🗑'; del.title = 'Excluir do histórico';
-        del.addEventListener('click', function(){ excluirPeticoes([it]); });
-        row.append(chk, btn, link, del);
-        list.appendChild(row);
-      });
+      histTodos = snap.docs.map(function(d){ return {id: d.id, data: d.data()}; })
+        .sort(function(a, b){ return ((b.data.criadoEm||{}).seconds||9e12) - ((a.data.criadoEm||{}).seconds||9e12); });
+      desenharHistorico();
     }, function(e){
       document.getElementById('hist-list').innerHTML = '<p style="font-size:.76rem;color:var(--err);">Erro ao carregar histórico: '+esc(e.message)+'</p>';
     });
+}
+// históricos separados: a aba "Formatar parecer" mostra só os pareceres; a de petição, o resto
+var histTodos = null;
+function desenharHistorico(){
+  if(!histTodos) return;
+  var parecer = document.body.classList.contains('modo-parecer');
+  document.getElementById('hist-todas').href = parecer ? 'historico.html?tipo=parecer' : 'historico.html';
+  histItens = histTodos.filter(function(it){ return ehParecer(it.data) === parecer; }).slice(0, 3);
+  var list = document.getElementById('hist-list');
+  var tools = document.getElementById('hist-tools');
+  list.innerHTML = '';
+  document.getElementById('hist-all').checked = false;
+  document.getElementById('hist-del').disabled = true;
+  if(!histItens.length){
+    tools.style.display = 'none';
+    list.innerHTML = '<p style="font-size:.76rem;color:var(--muted);">'+(parecer ? 'Nenhum parecer gerado ainda.' : 'Nenhuma petição gerada ainda.')+'</p>';
+    return;
+  }
+  tools.style.display = 'flex';
+  histItens.forEach(function(it){
+    var data = it.data;
+    var row = document.createElement('div'); row.className = 'hist-row';
+    var chk = document.createElement('input'); chk.type = 'checkbox'; chk.className = 'hist-chk'; chk.dataset.id = it.id;
+    chk.addEventListener('change', atualizarSelecaoHist);
+    var btn = document.createElement('button'); btn.className = 'hist-main';
+    var nome = document.createElement('div'); nome.className = 'hist-nome';
+    nome.textContent = nomePeticao(data); nome.title = nome.textContent;
+    var meta = document.createElement('div'); meta.className = 'hist-meta';
+    var dt = data.criadoEm ? new Date(data.criadoEm.seconds*1000) : new Date();
+    meta.textContent = dt.toLocaleDateString('pt-BR') + ' · ' + (data.processo||'');
+    btn.append(nome, meta);
+    btn.addEventListener('click', function(){ carregarRascunho(data); });
+    var link = document.createElement('a');
+    link.href = data.docsUrl || '#'; link.target = '_blank'; link.rel = 'noopener';
+    link.style.cssText = 'font-size:.7rem;color:var(--ok);white-space:nowrap;display:'+(data.docsUrl?'':'none');
+    link.textContent = 'Abrir Docs';
+    var del = document.createElement('button');
+    del.className = 'btn-rem'; del.textContent = '🗑'; del.title = 'Excluir do histórico';
+    del.addEventListener('click', function(){ excluirPeticoes([it]); });
+    row.append(chk, btn, link, del);
+    list.appendChild(row);
+  });
 }
 function atualizarSelecaoHist(){
   var chks = Array.from(document.querySelectorAll('.hist-chk'));
