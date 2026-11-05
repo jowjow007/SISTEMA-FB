@@ -1398,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v193</span>
+      <span class="version-tag">v194</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2158,6 +2158,8 @@
   ];
 
   function renderSistemasStatus(){
+    // sistemas externos (Astrea, Drive...) são da equipe: o cliente (síndico/conselheiro) não vê o escudo
+    els.sistemasStatusBtn.style.display = (currentProfile && currentProfile.role === 'cliente') ? 'none' : '';
     const liberados = (currentProfile && currentProfile.sistemasExternos) || [];
     const qtdOn = SISTEMAS_EXTERNOS.filter(function(s){ return liberados.indexOf(s.id) !== -1; }).length;
     const estado = qtdOn === SISTEMAS_EXTERNOS.length ? 'todos' : (qtdOn === 0 ? 'nenhum' : 'alguns');
@@ -2931,6 +2933,7 @@
   const MEGAFONE_SVG = '<svg viewBox="0 0 24 24"><path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l6.5 4V5.5l-6.5 4H4a1 1 0 0 0-1 1z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>';
   let comCiencias = {};   // comunicadoId -> dados da ciência desta pessoa
   function comLista(){
+    if (currentProfile && currentProfile.role === 'cliente') return [];   // comunicados são da equipe; síndico/conselheiro/cliente não recebem
     const hoje = hojeISO();
     return (window.COMUNICADOS_FB || []).filter(function(c){ return c.data <= hoje; })
       .sort(function(a, b){ return b.data.localeCompare(a.data); });
@@ -2961,6 +2964,7 @@
   }
   function comFmtSeg(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
   function iniciarComunicados(){
+    if (currentProfile && currentProfile.role === 'cliente') { document.getElementById('comunicados-btn').style.display = 'none'; return; }
     document.getElementById('comunicados-btn').onclick = comAbrirHistorico;
     db.collection('comunicadosCiencia').where('uid', '==', currentProfile.uid).get().then(function(snap){
       snap.forEach(function(d){ comCiencias[d.data().comunicadoId] = d.data(); });
@@ -3126,7 +3130,7 @@
       const quem = {};
       deram.forEach(function(x){ quem[x.uid] = true; });
       const pend = r[1].docs.map(function(d){ return Object.assign({ uid: d.id }, d.data()); })
-        .filter(function(u){ return !quem[u.uid] && !u.contaTeste; })
+        .filter(function(u){ return !quem[u.uid] && !u.contaTeste && u.role !== 'cliente'; })
         .sort(function(a, b){ return String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'); });
       box.innerHTML = '<div class="com-head"><div class="com-ic">' + MEGAFONE_SVG + '</div><div>' +
         '<p class="com-rot">Ciências · ' + taDataBR(c.data) + '</p><h3>' + escapeHtml(c.titulo) + '</h3>' +
@@ -4092,7 +4096,7 @@
       closeUserMenu();
       abrirDownloadLogo();
     });
-    els.userMenuDropdown.appendChild(logoBtn);
+    if (currentProfile.role !== 'cliente') els.userMenuDropdown.appendChild(logoBtn);   // material interno da equipe
 
     const divLogo = document.createElement('div');
     divLogo.className = 'user-menu-divider';

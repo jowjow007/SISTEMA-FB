@@ -66,10 +66,19 @@ def main():
             ctx = F.novo_contexto(b)
             pg = F.entrar(ctx, email)
             ok = F.esperar(pg, "document.getElementById('app-screen').style.display === 'flex'", 25000)
+            if ok:
+                pg.wait_for_timeout(4000)   # comunicados e pop-ups abrem logo depois do login
+                telas_login[email] = pg.evaluate("""(() => {
+                  const vis = id => { const e = document.getElementById(id); return !!e && getComputedStyle(e).display !== 'none'; };
+                  return { janelas: [...document.querySelectorAll('.modal-backdrop.show')].map(e => e.id), megafone: vis('comunicados-btn'),
+                           escudo: vis('sistemas-status-btn'), logos: document.getElementById('user-menu-dropdown').textContent.includes('Logomarcas') };
+                })()""")
             pg.close()
             t = ctx.new_page()
             t.goto(URL)
             return b, t, ok
+
+        telas_login = {}
 
         def respostas(pg, fila):
             def h(d):
@@ -124,6 +133,11 @@ def main():
         # ---------- 2. conselheira do condomínio
         b2, pc, ok = sessao('cons@exemplo.test')
         F.caso(G, 'conselheira entra e vê a sessão liberada do condomínio dela', ok and F.esperar(pc, "document.body.innerText.includes('Sessão de julgamento — novembro de 2026')", 20000), F.telas())
+        t = telas_login.get('cons@exemplo.test', {})
+        F.caso(G, 'conselheira entra sem pop-up da equipe (comunicados, PIX) e sem megafone, escudo e logomarcas',
+               t and not t['janelas'] and not t['megafone'] and not t['escudo'] and not t['logos'], str(t))
+        t = telas_login.get('membro@exemplo.test', {})
+        F.caso(G, '... e a equipe continua com o comunicado, o megafone e o escudo', t and 'com-backdrop' in t['janelas'] and t['megafone'] and t['escudo'], str(t))
         F.caso(G, 'conselheira não vê botões do escritório', pc.evaluate("!document.getElementById('nova-sessao') && !document.querySelector('[data-ir=\"conselheiros\"]')"))
         pc.click(f'[data-sessao="{sid}"]')
         F.esperar(pc, f"!!document.querySelector('[data-recurso=\"{rec_id}\"]')", 10000)
