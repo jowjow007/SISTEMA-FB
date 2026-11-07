@@ -427,6 +427,14 @@ try{
 }catch(e){ fbReady = false; }
 
 function isAdminUser(){ return !!(currentProfile && currentProfile.role === 'admin'); }
+// Conta de fora do escritório (cliente, conselheiro, síndico): no hub vê só o que é dela
+// (Sessões de Julgamento e, se for aprovador(a) de algum condomínio, as notificações para aprovar).
+function ehContaCliente(){ return !!(currentProfile && ['cliente', 'conselheiro', 'sindico'].indexOf(currentProfile.role) >= 0); }
+var souAprovador = false;
+function secaoPermitida(section){
+  if (!ehContaCliente()) return true;
+  return section === 'inicio' || (section === 'gerar-notificacao' && souAprovador);
+}
 
 function onAuthResolved(){
   if (state.section !== 'gerar-notificacao') return;
@@ -442,7 +450,16 @@ if (fbReady){
       currentProfile = doc.exists ? Object.assign({uid:user.uid, email:user.email}, doc.data())
                                    : {uid:user.uid, email:user.email, displayName:user.email};
       authChecked = true;
+      if (ehContaCliente()) {
+        // não carrega os dados internos (as regras negariam); só descobre se a pessoa aprova notificações de algum condomínio
+        dadosCondoStatus = 'sem-acesso';
+        db.collection('condoAprovadores').where('aprovadorUid', '==', user.uid).limit(1).get()
+          .then(function(s){ souAprovador = !s.empty; }).catch(function(){ souAprovador = false; })
+          .then(function(){ if (!secaoPermitida(state.section)) state.section = 'inicio'; render(); onAuthResolved(); });
+        return;
+      }
       carregarDadosPrivadosCondo();
+      if (state.section === 'inicio') render();
       onAuthResolved();
     }).catch(function(){
       currentProfile = {uid:user.uid, email:user.email, displayName:user.email};
@@ -524,6 +541,8 @@ function formatDateTime(ts){
 var state = { section:'inicio', condoIdx:null, condoSubtab:'geral', gerarView:'compor', condoView:'grid' };
 
 function go(section){
+  if (section === 'aprovar-notificacoes') { state.section = 'gerar-notificacao'; state.condoIdx = null; setGerarView('aprovacao'); return; }
+  if (!secaoPermitida(section)) section = 'inicio';
   state.section = section; state.condoIdx = null; state.gerarView = 'compor'; state.condoView = 'grid';
   render(); window.scrollTo(0,0);
   if (section === 'gerar-notificacao') loadMinhasNotificacoes();
@@ -534,6 +553,7 @@ function closeCondo(){ state.condoIdx = null; render(); window.scrollTo(0,0); }
 function setCondoSubtab(t){ state.condoSubtab = t; render(); }
 function setCondoView(v){ state.condoView = v; state.condoIdx = null; render(); window.scrollTo(0,0); carregarUnidades(); }
 function setGerarView(v){
+  if (ehContaCliente()) v = 'aprovacao';   // síndico aprovador não compõe notificações
   state.gerarView = v;
   render(); window.scrollTo(0,0);
   if (v === 'aprovacao') refreshAprovacao();
@@ -545,7 +565,7 @@ function renderNav(){
   var nav = document.getElementById('tabs-nav');
   // "← Início" volta para os cards (como em Gestão e Treinamentos); o Início não aparece como aba
   nav.innerHTML = '<button type="button" class="voltar-inicio" data-s="inicio">← Início</button>'
-    + SECTIONS.filter(function(s){ return s.id !== 'inicio'; }).map(function(s){
+    + SECTIONS.filter(function(s){ return s.id !== 'inicio' && !ehContaCliente(); }).map(function(s){
       var active = s.id === state.section ? ' active' : '';
       return '<button type="button" class="'+active+'" data-s="'+s.id+'">'+s.label+'</button>';
     }).join('');
@@ -689,6 +709,12 @@ function viewInicio(){
     // ferramenta própria (também é a aba do síndico e dos conselheiros): abre em outra página
     {img:'julgamento.svg', w:60, mt:-21, t:'Sessões de Julgamento', d:'Recursos de multa para o conselho analisar', link:'../sessoes-julgamento/index.html'}
   ];
+  if (fbReady && !authChecked) return CD_DECO + '<div class="cd-hub"><h1 class="cd-title">Condomínios</h1><p class="cd-sub">Carregando…</p></div>';
+  if (ehContaCliente()) {
+    // síndico, conselheiro e demais clientes: só os módulos deles (nada de POPs, onboarding ou lista de clientes)
+    cards = [{img:'julgamento.svg', w:60, mt:-21, t:'Sessões de Julgamento', d:'Recursos de multa para análise do conselho', link:'../sessoes-julgamento/index.html'}];
+    if (souAprovador) cards.push({img:'gerar', w:54.3, mt:-12.7, t:'Notificações para aprovar', d:'Notificações do seu condomínio aguardando aprovação', go:'aprovar-notificacoes'});
+  }
   return CD_DECO + '<div class="cd-hub">'
     + '<h1 class="cd-title">Condomínios</h1>'
     + '<p class="cd-sub">Selecione o módulo que deseja acessar</p>'

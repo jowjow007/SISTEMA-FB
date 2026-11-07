@@ -689,6 +689,10 @@ def main():
             pcc = cc.new_page(); pcc.goto(BASE + '/tools/condominios/index.html')
             esperar(pcc, "typeof dadosCondoStatus !== 'undefined' && dadosCondoStatus !== 'carregando'", 25000)
             caso(G, 'Condomínios: lista de clientes/relatórios fica restrita à equipe', pcc.evaluate("dadosCondoStatus") == 'sem-acesso' and pcc.evaluate("CONDOMINIOS.length") == 0 and pcc.evaluate("PROCEDIMENTOS.modelos.length + PROCEDIMENTOS.regrasEspeciais.length") == 0, pcc.evaluate("dadosCondoStatus"))
+            caso(G, 'Condomínios: o hub do cliente não mostra os módulos da equipe (POPs, onboarding, clientes)',
+                 esperar(pcc, "document.querySelectorAll('.cd-card').length >= 1", 15000)
+                 and pcc.evaluate("[...document.querySelectorAll('.cd-card h3')].every(h => ['Sessões de Julgamento', 'Notificações para aprovar'].includes(h.textContent))"),
+                 pcc.evaluate("[...document.querySelectorAll('.cd-card h3')].map(h => h.textContent).join(', ')"))
             caso(G, 'não lê painel de Números (SDK direto)', sdk(pcc, "await firebase.firestore().doc('dadosPrivados/numerosStats').get()").startswith('erro:permission-denied'))
             caso(G, 'não lê agenda Astrea (SDK direto)', sdk(pcc, f"await firebase.firestore().doc('astreaDiario/{time.strftime('%Y-%m-%d')}').get()").startswith('erro:permission-denied'))
             caso(G, 'não se aprova nem muda de papel (SDK direto)', sdk(pcc, f"await firebase.firestore().doc('users/{U['cliente']}').update({{role:'admin'}})").startswith('erro:permission-denied'))

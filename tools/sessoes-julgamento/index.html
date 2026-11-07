@@ -123,6 +123,7 @@
 <body>
 <header>
   <div class="topo">
+    <a id="voltar-condo" class="btn ghost peq" href="../condominios/index.html" style="display:none;">← Condomínios</a>
     <h1>⚖️ Sessões de Julgamento</h1>
     <span id="quem" class="muted small"></span>
   </div>
@@ -153,6 +154,8 @@
   var auth = firebase.auth(), db = firebase.firestore(), storage = firebase.storage();
   var FV = firebase.firestore.FieldValue, TS = firebase.firestore.Timestamp;
   var DIAS_PROVAS = 90;
+  // aberta pelo cartão do hub de Condomínios (equipe, síndico e conselheiros): botão de volta ao hub
+  try { if (/\/tools\/condominios\//.test(document.referrer || '')) document.getElementById('voltar-condo').style.display = ''; } catch (e) {}
   // tipos de usuário de fora do escritório (mesmo acesso restrito; regras: isContaCliente)
   var TIPOS = { membro:'Membro', cliente:'Cliente', gestor:'Gestor', admin:'Administrador', conselheiro:'Conselheiro', sindico:'Síndico' };
   function contaCliente(role){ return role === 'cliente' || role === 'conselheiro' || role === 'sindico'; }
@@ -836,18 +839,18 @@
   }
 
   // ---------------------------------------------------------------- conselheiros (admin)
-  var pessoas = null, membros = {}, tabSessoes = null;
+  var pessoas = null, membros = {}, tabCondo = null;   // síndico e conselheiros entram pela aba Condomínios
   function telaConselheiros(){
     var h = '<button type="button" class="voltar" data-ir="lista">← Voltar para as sessões</button>'
       + '<h2>👥 Síndicos e conselheiros</h2>'
       + '<div class="aviso">Passo a passo: 1) o síndico ou conselheiro faz o <b>cadastro</b> na tela de login do portal; '
       + '2) aqui, escolha o <b>condomínio</b> e o <b>papel</b> dele e clique em <b>Aprovar</b>. '
-      + 'Ele passa a ver só esta aba e só as sessões liberadas do condomínio dele.</div>';
+      + 'Ele recebe a aba <b>Condomínios</b>, onde vê só o cartão das Sessões de Julgamento (e só as sessões liberadas do condomínio dele).</div>';
     if (!pessoas) return h + '<div class="muted">Carregando cadastros…</div>';
     var opcoesCondo = condos.map(function(c){ return '<option value="' + esc(c.slug) + '">' + esc(c.nome) + '</option>'; }).join('');
     var lista = pessoas.filter(function(u){ return contaCliente(u.role) || u.acesso !== 'ativo'; })
       .sort(function(a, b){ return (a.acesso === 'ativo') - (b.acesso === 'ativo') || String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'); });
-    if (!tabSessoes) h += '<div class="aviso">⚠ A aba "Sessões de Julgamento" ainda não foi cadastrada em Administração › Abas (endereço <b>tools/sessoes-julgamento/</b>). Cadastre-a antes de aprovar.</div>';
+    if (!tabCondo) h += '<div class="aviso">⚠ Não encontrei a aba "Condomínios" em Administração › Abas (endereço <b>tools/condominios/</b>). Ela é a porta de entrada do síndico e dos conselheiros.</div>';
     h += '<table class="t"><tr><th>Pessoa</th><th>Situação</th><th>Vínculo</th><th>Condomínio</th><th>Papel</th><th></th></tr>' + lista.map(function(u){
       var v = (membros[u.uid] || {}).condominios || {};
       var vinc = Object.keys(v).map(function(k){ return esc(nomeCondo(k)) + ' (' + (v[k] === 'sindico' ? 'síndico' : 'conselheiro') + ')'; }).join('<br>') || '<span class="muted">—</span>';
@@ -867,8 +870,8 @@
     Promise.all([db.collection('users').get(), db.collection('conselhoMembros').get(), db.collection('tabs').get()]).then(function(r){
       pessoas = r[0].docs.map(function(d){ return Object.assign({ uid:d.id }, d.data()); });
       membros = {}; r[1].forEach(function(d){ membros[d.id] = d.data(); });
-      var t = r[2].docs.find(function(d){ return /sessoes-julgamento/.test(String(d.data().url || '')); });
-      tabSessoes = t ? t.id : null;
+      var t = r[2].docs.find(function(d){ return /(^|\/)tools\/condominios(\/|$)/.test(String(d.data().url || '')); });
+      tabCondo = t ? t.id : null;
       mostrar(true);
     }).catch(function(e){ avisoErro('Não foi possível carregar os cadastros: ' + e.message); });
   }
@@ -877,15 +880,15 @@
     var u = pessoas.find(function(x){ return x.uid === uid; });
     var slug = document.querySelector('.cs-condo[data-uid="' + CSS.escape(uid) + '"]').value;
     var papel = document.querySelector('.cs-papel[data-uid="' + CSS.escape(uid) + '"]').value;
-    if (!tabSessoes) { alert('Cadastre antes a aba "Sessões de Julgamento" em Administração › Abas (endereço tools/sessoes-julgamento/).'); return; }
+    if (!tabCondo) { alert('Não encontrei a aba "Condomínios" em Administração › Abas (endereço tools/condominios/).'); return; }
     if (u.role && !contaCliente(u.role) && u.acesso === 'ativo') { alert(u.displayName + ' é da equipe (' + (TIPOS[u.role] || u.role) + '). Conselheiros e síndicos precisam ser contas de fora do escritório (tipo Conselheiro, Síndico ou Cliente).'); return; }
-    if (!confirm((u.acesso === 'ativo' ? 'Vincular ' : 'Aprovar ') + (u.displayName || u.email) + ' como ' + (papel === 'sindico' ? 'SÍNDICO' : 'CONSELHEIRO') + ' do ' + nomeCondo(slug) + '?\n\nEla(e) verá só a aba "Sessões de Julgamento" e só as sessões liberadas desse condomínio.')) return;
+    if (!confirm((u.acesso === 'ativo' ? 'Vincular ' : 'Aprovar ') + (u.displayName || u.email) + ' como ' + (papel === 'sindico' ? 'SÍNDICO' : 'CONSELHEIRO') + ' do ' + nomeCondo(slug) + '?\n\nEla(e) recebe a aba Condomínios, com acesso só às Sessões de Julgamento liberadas desse condomínio.')) return;
     var atual = membros[uid] || {};
     var vinc = Object.assign({}, atual.condominios || {}); vinc[slug] = papel;
     var nomes = Object.assign({}, atual.nomesCondominios || {}); nomes[slug] = nomeCondo(slug);
     var b = db.batch();
     b.set(db.collection('conselhoMembros').doc(uid), { nome:u.displayName || '', email:u.email || '', condominios:vinc, nomesCondominios:nomes, atualizadoPor:me.uid, atualizadoEm:FV.serverTimestamp() });
-    var upd = { role:papel === 'sindico' ? 'sindico' : 'conselheiro', tabs:FV.arrayUnion(tabSessoes) };   // tipo de usuário = papel no conselho
+    var upd = { role:papel === 'sindico' ? 'sindico' : 'conselheiro', tabs:FV.arrayUnion(tabCondo) };   // tipo de usuário = papel no conselho
     if (u.acesso !== 'ativo') Object.assign(upd, { acesso:'ativo', acessoAprovadoPor:me.uid, acessoAprovadoEm:FV.serverTimestamp() });
     b.update(db.collection('users').doc(uid), upd);
     b.delete(db.collection('organograma').doc(uid));   // o autocadastro cria o bloco no organograma; conselheiro não é da equipe

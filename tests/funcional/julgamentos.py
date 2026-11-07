@@ -34,8 +34,8 @@ def semear():
         U[k] = F.criar_conta(f'{k}@exemplo.test')
     F.gravar(f"users/{U['admin']}", {'email': 'admin@exemplo.test', 'displayName': 'Admin Fictício', 'role': 'admin', 'tabs': ['condominios'], 'acesso': 'ativo'})
     F.gravar(f"users/{U['membro']}", {'email': 'membro@exemplo.test', 'displayName': 'Membro Fictício', 'role': 'membro', 'tabs': ['condominios', 'sessoes-julgamento-x'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['sessoes-julgamento-x'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['condominios'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['condominios'], 'acesso': 'ativo'})
     # autocadastro de um conselheiro novo: entra como membro pendente, sem abas, e cria o próprio bloco no organograma
     F.gravar(f"users/{U['novo']}", {'email': 'novo@exemplo.test', 'displayName': 'Conselheiro Novo Fictício', 'role': 'membro', 'tabs': [], 'acesso': 'pendente'})
     F.gravar(f"organograma/{U['novo']}", {'displayName': 'Conselheiro Novo Fictício', 'email': 'novo@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
@@ -139,6 +139,17 @@ def main():
         t = telas_login.get('membro@exemplo.test', {})
         F.caso(G, '... e a equipe continua com o comunicado, o megafone e o escudo', t and 'com-backdrop' in t['janelas'] and t['megafone'] and t['escudo'], str(t))
         F.caso(G, 'conselheira não vê botões do escritório', pc.evaluate("!document.getElementById('nova-sessao') && !document.querySelector('[data-ir=\"conselheiros\"]')"))
+        # entrada pela aba Condomínios: só o cartão das Sessões, e o botão de volta ao hub
+        hub = pc.context.new_page()
+        hub.goto(F.BASE + '/tools/condominios/index.html')
+        F.caso(G, 'no hub de Condomínios a conselheira vê só o cartão das Sessões (sem POPs, onboarding ou clientes)',
+               F.esperar(hub, "document.querySelectorAll('.cd-card').length === 1 && document.querySelector('.cd-card').innerText.includes('Sessões de Julgamento')", 15000)
+               and hub.evaluate("document.querySelectorAll('#tabs-nav button').length") == 1,
+               hub.evaluate("[...document.querySelectorAll('.cd-card h3')].map(e => e.textContent).join(', ') + ' | nav: ' + document.querySelectorAll('#tabs-nav button').length"))
+        hub.click('.cd-card')
+        F.caso(G, '... o cartão abre as sessões, com o botão "← Condomínios"',
+               F.esperar(hub, "location.pathname.includes('sessoes-julgamento') && getComputedStyle(document.getElementById('voltar-condo')).display !== 'none' && document.body.innerText.includes('novembro de 2026')", 15000))
+        hub.close()
         pc.click(f'[data-sessao="{sid}"]')
         F.esperar(pc, f"!!document.querySelector('[data-recurso=\"{rec_id}\"]')", 10000)
         pc.click(f'[data-recurso="{rec_id}"]')
@@ -257,9 +268,9 @@ def main():
         pa.select_option(f".cs-condo[data-uid='{U['novo']}']", 'condominio-ficticio-alfa')
         pa.select_option(f".cs-papel[data-uid='{U['novo']}']", 'sindico')
         pa.click(f'[data-aprovar-conselho="{U["novo"]}"]')
-        F.caso(G, 'admin aprova o cadastro como síndico: vira tipo Síndico, ativo, só com a aba das sessões',
+        F.caso(G, 'admin aprova o cadastro como síndico: vira tipo Síndico, ativo, só com a aba Condomínios',
                F.ate(lambda: (F.ler(f"users/{U['novo']}") or {}).get('acesso') == 'ativo', 10)
-               and (F.ler(f"users/{U['novo']}") or {}).get('role') == 'sindico' and (F.ler(f"users/{U['novo']}") or {}).get('tabs') == ['sessoes-julgamento-x'],
+               and (F.ler(f"users/{U['novo']}") or {}).get('role') == 'sindico' and (F.ler(f"users/{U['novo']}") or {}).get('tabs') == ['condominios'],
                str(F.ler(f"users/{U['novo']}")))
         F.caso(G, 'o vínculo com o condomínio é gravado e o bloco do organograma sai',
                ((F.ler(f"conselhoMembros/{U['novo']}") or {}).get('condominios') or {}).get('condominio-ficticio-alfa') == 'sindico'
