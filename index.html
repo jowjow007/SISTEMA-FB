@@ -880,8 +880,19 @@
   .form-grid .full{grid-column:1/-1;}
   .msg-ok{color:var(--ok);font-size:.8rem;margin-top:8px;display:none;}
   .msg-err{color:var(--danger-text);font-size:.8rem;margin-top:8px;display:none;}
-  .actions-cell{white-space:nowrap;}
+  .actions-cell{white-space:nowrap;vertical-align:top;}
   .actions-cell button{margin-right:6px;}
+  /* lista de usuários compacta (08/11/2026): até 6 abas à vista + "+N"; ações extras no menu "Mais" */
+  .abas-cell{min-width:260px;}
+  .abas-cell .chip-extra{display:none;}
+  .abas-cell.abas-todas .chip-extra{display:inline-block;}
+  .chip.chip-mais{cursor:pointer;font-weight:700;color:var(--paper);}
+  .acoes-mais{display:inline-block;position:relative;}
+  .acoes-mais > summary{list-style:none;display:inline-block;cursor:pointer;}
+  .acoes-mais > summary::-webkit-details-marker{display:none;}
+  .acoes-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:6px;
+    min-width:190px;padding:8px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45);}
+  .acoes-menu .btn{width:100%;margin:0;text-align:left;}
   .drag-handle{cursor:grab;color:var(--muted);font-size:1rem;user-select:none;width:20px;text-align:center;}
   .drag-handle:active{cursor:grabbing;}
   #tabs-tbody tr.dragging{opacity:.35;}
@@ -1398,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v200</span>
+      <span class="version-tag">v201</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1537,7 +1548,7 @@
           <div class="card">
             <h3>Usuários cadastrados</h3>
             <table id="users-table">
-              <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Qtd. abas</th><th>Abas</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Qtd. abas</th><th>Abas</th><th>Ações</th></tr></thead>
               <tbody id="users-tbody"></tbody>
             </table>
           </div>
@@ -4854,10 +4865,12 @@
       const situacao = u.acesso === 'bloqueado' ? '<span class="chip chip-pending">⛔ Bloqueado</span> '
         : (u.acesso === 'pendente' ? '<span class="chip chip-pending">⏳ Aguardando aprovação</span> '
         : (!u.acesso ? '<span class="chip" title="Rode a migração de acesso (tools/admin-seguranca)">sem status</span> ' : ''));
-      const chips = (u.tabs || []).map(function(id){
+      // até 6 abas à vista; o resto abre no "+N" (a linha não fica gigante)
+      const VISIVEIS = 6, abasU = u.tabs || [];
+      const chips = (abasU.map(function(id, i){
         const t = tabsCatalog.find(function(x){return x.id===id;});
-        return '<span class="chip">' + escapeHtml(t ? t.label : id) + '</span>';
-      }).join('') || (pendente
+        return '<span class="chip' + (i >= VISIVEIS ? ' chip-extra' : '') + '">' + escapeHtml(t ? t.label : id) + '</span>';
+      }).join('') + (abasU.length > VISIVEIS ? '<button type="button" class="chip chip-mais" onclick="this.parentNode.classList.toggle(\'abas-todas\')" title="Mostrar/ocultar todas as abas">+' + (abasU.length - VISIVEIS) + '</button>' : '')) || (pendente
         ? '<span class="chip chip-pending">⏳ Pendente — aguardando liberação</span>'
         : '<span style="color:var(--muted);">nenhuma</span>');
       const restritas = u.role === 'admin' ? ['todas (administrador)'] : areasRestritasDe(u);
@@ -4870,10 +4883,12 @@
         '<td>' + escapeHtml(u.email || '-') + '</td>' +
         '<td>' + roleLabel(u.role) + '</td>' +
         '<td style="white-space:nowrap;" title="Abas liberadas para a pessoa, do total de abas do portal">' + qtdAbas(u) + '</td>' +
-        '<td>' + situacao + chips + chipsRestritas + chipTeste + '</td>' +
+        '<td class="abas-cell">' + situacao + chips + chipsRestritas + chipTeste + '</td>' +
         '<td class="actions-cell">' +
           (u.acesso !== 'ativo' ? '<button class="btn small" onclick="window.__aprovarUser(\'' + u.uid + '\')">Aprovar acesso</button>' : '') +
           '<button class="btn secondary small" onclick="window.__editUserTabs(\'' + u.uid + '\')">Editar abas</button>' +
+          // demais ações num menu "Mais", para a linha do usuário não ficar extensa
+          '<details class="acoes-mais"><summary class="btn secondary small">Mais ▾</summary><div class="acoes-menu">' +
           '<button class="btn secondary small" onclick="window.__editUserSistemas(\'' + u.uid + '\')">Sistemas</button>' +
           '<button class="btn secondary small" onclick="window.__editUserDados(\'' + u.uid + '\')">Dados</button>' +
           (u.contaTeste
@@ -4882,6 +4897,7 @@
             : (u.role !== 'admin' && u.uid !== currentProfile.uid ? '<button class="btn secondary small" onclick="window.__marcarContaTeste(\'' + u.uid + '\', true)">🧪 Usar como teste</button>' : '')) +
           '<button class="btn danger small" onclick="window.__revokeUser(\'' + u.uid + '\')">Revogar</button>' +
           '<button class="btn danger small" onclick="window.__deleteUser(this,\'' + u.uid + '\',\'' + escapeHtml(u.displayName || u.email || '') + '\')">Excluir</button>' +
+          '</div></details>' +
         '</td>' +
       '</tr>';
     }).join('');
