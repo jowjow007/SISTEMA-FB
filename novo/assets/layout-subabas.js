@@ -120,7 +120,7 @@
     if (!window.firebase || !firebase.auth) return;
     firebase.auth().onAuthStateChanged(function (u) {
       if (!u) return;
-      firebase.firestore().collection('tabs').get().then(function (s) { s.forEach(function (d) { urlDaAba[d.id] = String(d.data().url || ''); }); desenhar(); }).catch(function () {});
+      firebase.firestore().collection('tabs').get().then(function (s) { s.forEach(function (d) { var u = String(d.data().url || ''); urlDaAba[d.id] = window.__vgUrlLocal ? window.__vgUrlLocal(u) : u; }); desenhar(); }).catch(function () {});
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
