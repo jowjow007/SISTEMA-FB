@@ -1398,7 +1398,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v199</span>
+      <span class="version-tag">v200</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3660,9 +3660,25 @@
   }
 
   // ---------- Tabs catalog (live) ----------
+  // Condomínios › Sessões de Julgamento é área restrita (só com liberação explícita em Editar abas). O id da aba
+  // Condomínios é gerado quando ela é criada: aqui ele é achado pelo endereço e, quando o admin entra, gravado em
+  // configPortal/abas, que é onde as regras do Firestore e do Storage o leem (podeSessoes).
+  let condoAbaGravada = null;
+  function registrarAbaCondominios(){
+    const t = tabsCatalog.find(function(x){ return /(^|\/)tools\/condominios(\/|$)/.test(String(x.url || '')); });
+    if (!t) return;
+    AREAS_RESTRITAS[t.id] = Object.assign({}, AREAS_RESTRITAS[t.id], { subabas: { 'sessoes-julgamento': 'Condomínios › Sessões de Julgamento' } });
+    if (currentProfile.role !== 'admin' || condoAbaGravada === t.id) return;
+    condoAbaGravada = t.id;
+    const ref = db.collection('configPortal').doc('abas');
+    ref.get().then(function(d){
+      if (!d.exists || d.data().condominios !== t.id) return ref.set({ condominios: t.id }, { merge: true });
+    }).catch(function(e){ condoAbaGravada = null; console.warn('configPortal/abas:', e.message); });
+  }
   function subscribeTabsCatalog(){
     db.collection('tabs').orderBy('order').onSnapshot(function(snap){
       tabsCatalog = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      registrarAbaCondominios();
       renderTabstrip();
       if (currentProfile.role === 'admin') {
         corrigirNomesDeAbas();

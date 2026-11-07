@@ -24,6 +24,14 @@ service firebase.storage {
     function equipe() {
       return ativo() && cadastro().get('role', '') in ['admin', 'gestor', 'membro'];
     }
+    // Sessões de Julgamento na equipe: área restrita (mesmo critério do podeSessoes() do Firestore)
+    function podeSessoes() {
+      return ativo() && (cadastro().get('role', '') == 'admin'
+        || (cadastro().get('role', '') in ['gestor', 'membro']
+            && firestore.exists(/databases/(default)/documents/configPortal/abas)
+            && cadastro().get('tabs', []).hasAny([firestore.get(/databases/(default)/documents/configPortal/abas).data.get('condominios', '')])
+            && cadastro().get('subtabs', {}).get(firestore.get(/databases/(default)/documents/configPortal/abas).data.get('condominios', ''), []).hasAny(['sessoes-julgamento'])));
+    }
     function recurso(recursoId) {
       return firestore.get(/databases/(default)/documents/recursosJulgamento/$(recursoId)).data;
     }
@@ -57,13 +65,13 @@ service firebase.storage {
 
     // vídeos de câmera chegam a dezenas de MB: até 500 MB; só vídeo, áudio, imagem (sem SVG) e PDF
     match /julgamentos/{slug}/{recursoId}/{arquivo} {
-      allow read: if equipe() || conselhoLe(slug, recursoId);
-      allow create: if resource == null && equipe()
+      allow read: if podeSessoes() || conselhoLe(slug, recursoId);
+      allow create: if resource == null && podeSessoes()
                     && request.resource.size <= 500 * 1024 * 1024
                     && request.resource.contentType != null
                     && request.resource.contentType.matches('(video/.*|audio/.*|image/(jpeg|png|gif|webp|heic|heif)|application/pdf)');
       allow update: if false;
-      allow delete: if equipe();
+      allow delete: if podeSessoes();
     }
 
     match /chat/{uid}/{arquivo} {

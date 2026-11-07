@@ -230,7 +230,16 @@
       equipe = ['admin', 'gestor', 'membro'].indexOf(me.role) >= 0;
       admin = me.role === 'admin';
       document.getElementById('quem').textContent = me.nome + (equipe ? ' · escritório' : '');
-      return equipe ? carregarEquipe() : carregarConselho();
+      if (!equipe) return carregarConselho();
+      if (admin) return carregarEquipe();
+      // na equipe, as Sessões são área restrita: sub-aba "sessoes-julgamento" da aba Condomínios (Editar abas)
+      return db.collection('configPortal').doc('abas').get().then(function(c){
+        var tid = c.exists ? c.data().condominios : '';
+        var ok = !!tid && (u.tabs || []).indexOf(tid) >= 0 && ((u.subtabs || {})[tid] || []).indexOf('sessoes-julgamento') >= 0;
+        if (ok) return carregarEquipe();
+        document.getElementById('gate').innerHTML = 'O acesso às <b>Sessões de Julgamento</b> ainda não foi liberado para você.<br>'
+          + '<span class="muted small">Peça ao administrador: Administração › Usuários › Editar abas › Condomínios › marcar "Sessões de Julgamento".</span>';
+      });
     }).catch(function(e){
       document.getElementById('gate').textContent = 'Não foi possível carregar: ' + e.message;
     });

@@ -375,7 +375,14 @@ async function main() {
     await d.doc('recursosJulgamento/r-a').set({ condominioSlug: 'cond-a', sessaoId: 's-a', liberado: true, ocorrencia: '1' });
     await d.doc('recursosJulgamento/r-a2').set({ condominioSlug: 'cond-a', sessaoId: 's-a2', liberado: false, ocorrencia: '2' });
     await d.doc('recursosJulgamento/r-b').set({ condominioSlug: 'cond-b', sessaoId: 's-b', liberado: true, ocorrencia: '3' });
+    // equipe: Sessões são área restrita (sub-aba "sessoes-julgamento" da aba Condomínios, id em configPortal/abas)
+    await d.doc('configPortal/abas').set({ condominios: 'condo-tab' });
+    await d.doc('users/u-sess').set({ email: 'sess@exemplo.test', displayName: 'x', role: 'membro', tabs: ['agenda', 'condo-tab'], subtabs: { 'condo-tab': ['sessoes-julgamento', 'pops'] }, acesso: 'ativo' });
+    await d.doc('users/u-semsess').set({ email: 'semsess@exemplo.test', displayName: 'x', role: 'membro', tabs: ['agenda', 'condo-tab'], subtabs: { 'condo-tab': ['pops'] }, acesso: 'ativo' });
+    await d.doc('users/u-semsub').set({ email: 'semsub@exemplo.test', displayName: 'x', role: 'membro', tabs: ['agenda', 'condo-tab'], acesso: 'ativo' });
+    await d.doc('users/u-subsemaba').set({ email: 'subsemaba@exemplo.test', displayName: 'x', role: 'membro', tabs: ['agenda'], subtabs: { 'condo-tab': ['sessoes-julgamento'] }, acesso: 'ativo' });
   });
+  const SESS = { uid: 'u-sess', email: 'sess@exemplo.test' };
   const cons = db(CONS);
   await caso(G, 'conselheiro lista as sessões liberadas do próprio condomínio', () => assertSucceeds(cons.collection('sessoesJulgamento').where('condominioSlug', '==', 'cond-a').where('liberada', '==', true).get()));
   await caso(G, 'conselheiro lista os recursos liberados do próprio condomínio', () => assertSucceeds(cons.collection('recursosJulgamento').where('condominioSlug', '==', 'cond-a').where('liberado', '==', true).get()));
@@ -402,15 +409,43 @@ async function main() {
     await assertFails(cons.collection('acessosProvasJulgamento').add({ uid: 'u-cons2', recursoId: 'r-a', condominioSlug: 'cond-a', arquivo: 'x', em: TS() }));
   });
   await caso(G, 'conselheiro NÃO lê a auditoria', () => assertFails(cons.collection('acessosProvasJulgamento').get()));
-  await caso(G, 'equipe cria sessão e recurso e lança a decisão', async () => {
-    const m = db(P.membro);
+  await caso(G, 'equipe (com a liberação) cria sessão e recurso e lança a decisão', async () => {
+    const m = db(SESS);
     await assertSucceeds(m.doc('sessoesJulgamento/s-nova').set({ condominioSlug: 'cond-a', liberada: false, titulo: 'x' }));
     await assertSucceeds(m.doc('recursosJulgamento/r-novo').set({ condominioSlug: 'cond-a', sessaoId: 's-nova', liberado: false, ocorrencia: '9' }));
     await assertSucceeds(m.doc('recursosJulgamento/r-novo').update({ decisao: { resultado: 'mantida' } }));
   });
-  await caso(G, 'equipe lê a auditoria e quem já analisou', async () => {
-    await assertSucceeds(db(P.membro).collection('acessosProvasJulgamento').get());
-    await assertSucceeds(db(P.membro).collection('leiturasJulgamento').get());
+  await caso(G, 'equipe (com a liberação) lê a auditoria e quem já analisou', async () => {
+    await assertSucceeds(db(SESS).collection('acessosProvasJulgamento').get());
+    await assertSucceeds(db(SESS).collection('leiturasJulgamento').get());
+  });
+  for (const [rot, p] of [['membro com Condomínios mas sem a sub-aba Sessões', { uid: 'u-semsess', email: 'semsess@exemplo.test' }],
+                          ['membro com Condomínios sem escolha de sub-abas salva', { uid: 'u-semsub', email: 'semsub@exemplo.test' }],
+                          ['membro com a sub-aba mas sem a aba Condomínios', { uid: 'u-subsemaba', email: 'subsemaba@exemplo.test' }],
+                          ['membro sem a aba Condomínios', P.membro], ['gestor sem a liberação', { uid: 'u-gestor', email: 'gestor@exemplo.test' }]]) {
+    await caso(G, rot + ': NÃO lê nem grava sessões, recursos, auditoria e leituras', async () => {
+      const c = db(p);
+      await assertFails(c.doc('sessoesJulgamento/s-a').get());
+      await assertFails(c.collection('recursosJulgamento').get());
+      await assertFails(c.doc('recursosJulgamento/r-a').update({ decisao: { resultado: 'cancelada' } }));
+      await assertFails(c.doc('sessoesJulgamento/s-x').set({ condominioSlug: 'cond-a', liberada: false, titulo: 'x' }));
+      await assertFails(c.collection('acessosProvasJulgamento').get());
+      await assertFails(c.collection('leiturasJulgamento').get());
+      await assertFails(c.collection('conselhoMembros').get());
+    });
+  }
+  await caso(G, 'admin usa as Sessões sem precisar da sub-aba', () => assertSucceeds(db(P.admin).collection('recursosJulgamento').get()));
+  await caso(G, 'só o admin grava configPortal (o id da aba Condomínios)', async () => {
+    await assertFails(db(SESS).doc('configPortal/abas').set({ condominios: 'outra' }));
+    await assertSucceeds(db(SESS).doc('configPortal/abas').get());
+    await assertSucceeds(db(P.admin).doc('configPortal/abas').set({ condominios: 'condo-tab' }));
+  });
+  await caso(G, 'membro NÃO se dá a sub-aba Sessões', () => assertFails(db({ uid: 'u-semsess', email: 'semsess@exemplo.test' }).doc('users/u-semsess').update({ subtabs: { 'condo-tab': ['pops', 'sessoes-julgamento'] } })));
+  await caso(G, 'sem configPortal/abas, só o admin usa as Sessões', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await ctx.firestore().doc('configPortal/abas').delete(); });
+    await assertFails(db(SESS).doc('sessoesJulgamento/s-a').get());
+    await assertSucceeds(db(P.admin).doc('sessoesJulgamento/s-a').get());
+    await env.withSecurityRulesDisabled(async (ctx) => { await ctx.firestore().doc('configPortal/abas').set({ condominios: 'condo-tab' }); });
   });
   await caso(G, 'só o admin vincula conselheiros', async () => {
     await assertFails(db(P.membro).doc('conselhoMembros/u-cons3').set({ condominios: { 'cond-a': 'conselheiro' } }));

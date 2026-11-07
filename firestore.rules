@@ -608,22 +608,37 @@ service cloud.firestore {
     function doConselho(slug) {
       return isContaCliente() && papelNoConselho(slug) in ['sindico', 'conselheiro'];
     }
+    // Na equipe, as Sessões são ÁREA RESTRITA (07/11/2026): só o admin e quem tem a sub-aba "sessoes-julgamento"
+    // da aba Condomínios liberada em Editar abas. O id da aba Condomínios fica em configPortal/abas
+    // (gravado pelo portal quando o admin entra), porque o id é gerado quando a aba é criada.
+    function abaCondominios() {
+      return get(/databases/$(database)/documents/configPortal/abas).data.get('condominios', '');
+    }
+    function podeSessoes() {
+      return isAdmin() || (isEquipe() && exists(/databases/$(database)/documents/configPortal/abas)
+                           && meuCadastro().get('tabs', []).hasAny([abaCondominios()])
+                           && meuCadastro().get('subtabs', {}).get(abaCondominios(), []).hasAny(['sessoes-julgamento']));
+    }
+    match /configPortal/{docId} {
+      allow read: if isAtivo();
+      allow write: if isAdmin();
+    }
     match /conselhoMembros/{uid} {
-      allow read: if isEquipe() || (isAtivo() && request.auth.uid == uid);
+      allow read: if podeSessoes() || (isAtivo() && request.auth.uid == uid);
       allow write: if isAdmin();
     }
     match /sessoesJulgamento/{sessaoId} {
-      allow read: if isEquipe() || (resource.data.liberada == true && doConselho(resource.data.condominioSlug));
-      allow create, update: if isEquipe() && request.resource.data.condominioSlug is string
+      allow read: if podeSessoes() || (resource.data.liberada == true && doConselho(resource.data.condominioSlug));
+      allow create, update: if podeSessoes() && request.resource.data.condominioSlug is string
                             && request.resource.data.condominioSlug.size() > 0;
-      allow delete: if isEquipe();
+      allow delete: if podeSessoes();
     }
     match /recursosJulgamento/{recursoId} {
-      allow read: if isEquipe() || (resource.data.liberado == true && doConselho(resource.data.condominioSlug));
-      allow create, update: if isEquipe() && request.resource.data.condominioSlug is string
+      allow read: if podeSessoes() || (resource.data.liberado == true && doConselho(resource.data.condominioSlug));
+      allow create, update: if podeSessoes() && request.resource.data.condominioSlug is string
                             && request.resource.data.condominioSlug.size() > 0
                             && request.resource.data.sessaoId is string;
-      allow delete: if isEquipe();
+      allow delete: if podeSessoes();
     }
     // anotações particulares do conselheiro: só ele lê (nem o escritório)
     match /anotacoesJulgamento/{docId} {
@@ -633,7 +648,7 @@ service cloud.firestore {
     }
     // "analisei" de cada conselheiro (o escritório acompanha quem já leu antes da sessão)
     match /leiturasJulgamento/{docId} {
-      allow read: if isEquipe() || (isAtivo() && resource.data.uid == request.auth.uid);
+      allow read: if podeSessoes() || (isAtivo() && resource.data.uid == request.auth.uid);
       allow create, update: if request.resource.data.uid == request.auth.uid
                             && docId == request.auth.uid + '_' + request.resource.data.recursoId
                             && doConselho(request.resource.data.condominioSlug)
@@ -643,10 +658,10 @@ service cloud.firestore {
     }
     // trilha de auditoria: quem abriu cada prova (só cria; ninguém altera nem apaga)
     match /acessosProvasJulgamento/{docId} {
-      allow read: if isEquipe();
+      allow read: if podeSessoes();
       allow create: if request.resource.data.uid == request.auth.uid
                     && request.resource.data.em == request.time
-                    && (isEquipe() || doConselho(request.resource.data.condominioSlug));
+                    && (podeSessoes() || doConselho(request.resource.data.condominioSlug));
       allow update, delete: if false;
     }
   }

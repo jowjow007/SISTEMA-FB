@@ -30,10 +30,13 @@ def semear():
     requests.delete(f'{F.AUTH}/emulator/v1/projects/{F.PROJ}/accounts').raise_for_status()
     requests.delete(f'{F.FS}/emulator/v1/projects/{F.PROJ}/databases/(default)/documents').raise_for_status()
     U = {}
-    for k in ('admin', 'membro', 'cons', 'cons2', 'novo'):
+    for k in ('admin', 'membro', 'cons', 'cons2', 'novo', 'semlib'):
         U[k] = F.criar_conta(f'{k}@exemplo.test')
     F.gravar(f"users/{U['admin']}", {'email': 'admin@exemplo.test', 'displayName': 'Admin Fictício', 'role': 'admin', 'tabs': ['condominios'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['membro']}", {'email': 'membro@exemplo.test', 'displayName': 'Membro Fictício', 'role': 'membro', 'tabs': ['condominios', 'sessoes-julgamento-x'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['membro']}", {'email': 'membro@exemplo.test', 'displayName': 'Membro Fictício', 'role': 'membro', 'tabs': ['condominios', 'sessoes-julgamento-x'], 'subtabs': {'condominios': ['sessoes-julgamento', 'pops']}, 'acesso': 'ativo'})
+    # membro com Condomínios mas SEM a sub-aba restrita das Sessões
+    F.gravar(f"users/{U['semlib']}", {'email': 'semlib@exemplo.test', 'displayName': 'Membro Sem Liberação', 'role': 'membro', 'tabs': ['condominios'], 'acesso': 'ativo'})
+    F.gravar('configPortal/abas', {'condominios': 'condominios'})
     F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['condominios'], 'acesso': 'ativo'})
     F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['condominios'], 'acesso': 'ativo'})
     # autocadastro de um conselheiro novo: entra como membro pendente, sem abas, e cria o próprio bloco no organograma
@@ -42,7 +45,8 @@ def semear():
     F.gravar(f"conselhoMembros/{U['cons']}", {'condominios': {'condominio-ficticio-alfa': 'conselheiro'}, 'nomesCondominios': {'condominio-ficticio-alfa': 'Condomínio Fictício Alfa'}})
     F.gravar(f"conselhoMembros/{U['cons2']}", {'condominios': {'condominio-ficticio-beta': 'sindico'}, 'nomesCondominios': {'condominio-ficticio-beta': 'Condomínio Fictício Beta'}})
     F.gravar('tabs/sessoes-julgamento-x', {'label': 'Sessões de Julgamento', 'url': 'tools/sessoes-julgamento/', 'order': 50})
-    F.gravar('tabs/condominios', {'label': 'Condomínios', 'url': 'tools/condominios/', 'order': 10})
+    F.gravar('tabs/condominios', {'label': 'Condomínios', 'url': 'tools/condominios/', 'order': 10,
+                                  'subtabs': [{'id': 'pops', 'label': 'Ver POPs'}, {'id': 'comece', 'label': 'Comece por Aqui'}, {'id': 'sessoes-julgamento', 'label': 'Sessões de Julgamento'}]})
     F.gravar('dadosPrivados/condominios', {'json': json.dumps({'condominios': [{'nome': 'Condomínio Fictício Alfa'}, {'nome': 'Condomínio Fictício Beta'}], 'relatorios': {}, 'procedimentos': {}})})
     return U
 
@@ -129,6 +133,24 @@ def main():
         F.caso(G, 'liberar a sessão libera também os recursos dela', F.ate(lambda: (F.ler(f'recursosJulgamento/{rec_id}') or {}).get('liberado') is True, 10))
         sid = F.ler(f'recursosJulgamento/{rec_id}')['sessaoId']
         F.esperar(pm, "document.body.innerText.includes('Recolher do conselho')", 8000); foto(pm, '1-escritorio-sessao')
+
+        # ---------- 1b. membro sem a liberação da sub-aba Sessões
+        b9, ps, ok9 = sessao('semlib@exemplo.test')
+        F.caso(G, 'membro sem a liberação vê o aviso de acesso não liberado (e nenhuma sessão)',
+               ok9 and F.esperar(ps, "document.getElementById('gate').innerText.includes('ainda não foi liberado')", 15000)
+               and ps.evaluate("document.getElementById('app').style.display === 'none'"), F.telas())
+        F.caso(G, '... e o SDK nega a leitura das sessões e dos recursos',
+               F.sdk(ps, "await firebase.firestore().collection('recursosJulgamento').get()").startswith('erro:permission-denied'))
+        hs = ps.context.new_page(); hs.goto(F.BASE + '/tools/condominios/index.html?_subtabs=pops,comece')
+        F.caso(G, '... no hub de Condomínios não aparece o cartão das Sessões, e as sub-abas não liberadas somem',
+               F.esperar(hs, "document.querySelectorAll('.cd-card').length === 2", 15000)
+               and not hs.evaluate("[...document.querySelectorAll('.cd-card h3')].some(h => h.textContent.includes('Sessões'))"),
+               hs.evaluate("[...document.querySelectorAll('.cd-card h3')].map(h => h.textContent).join(', ')"))
+        hs.close(); b9.close()
+        hm = pm.context.new_page(); hm.goto(F.BASE + '/tools/condominios/index.html?_subtabs=pops,sessoes-julgamento')
+        F.caso(G, 'membro com a liberação vê o cartão das Sessões no hub',
+               F.esperar(hm, "[...document.querySelectorAll('.cd-card h3')].some(h => h.textContent.includes('Sessões'))", 15000))
+        hm.close()
 
         # ---------- 2. conselheira do condomínio
         b2, pc, ok = sessao('cons@exemplo.test')

@@ -431,8 +431,31 @@ function isAdminUser(){ return !!(currentProfile && currentProfile.role === 'adm
 // (Sessões de Julgamento e, se for aprovador(a) de algum condomínio, as notificações para aprovar).
 function ehContaCliente(){ return !!(currentProfile && ['cliente', 'conselheiro', 'sindico'].indexOf(currentProfile.role) >= 0); }
 var souAprovador = false;
+// Sub-abas (07/11/2026): cada cartão do hub é uma sub-aba da aba Condomínios. O portal manda as permitidas em
+// ?_subtabs=a,b quando o admin restringiu (Editar abas); sem o parâmetro, a pessoa vê todas as comuns.
+// "sessoes-julgamento" é área restrita: só o admin ou quem tem a liberação explícita (as regras conferem de novo).
+var SUBABAS_PERMITIDAS = (function(){
+  try {
+    var v = new URLSearchParams(location.search).get('_subtabs');
+    return v ? v.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : null;
+  } catch (e) { return null; }
+})();
+var podeSessoesEquipe = false;   // calculado quando o cadastro chega (admin, ou sub-aba liberada)
+function subabaLiberada(id){
+  if (id === 'sessoes-julgamento') return podeSessoesEquipe;
+  return !SUBABAS_PERMITIDAS || SUBABAS_PERMITIDAS.indexOf(id) >= 0;
+}
+function calcularPodeSessoes(){
+  if (!currentProfile) return Promise.resolve(false);
+  if (currentProfile.role === 'admin') return Promise.resolve(true);
+  return db.collection('configPortal').doc('abas').get().then(function(d){
+    var tid = d.exists ? d.data().condominios : '';
+    var subs = (currentProfile.subtabs || {})[tid] || [];
+    return !!tid && (currentProfile.tabs || []).indexOf(tid) >= 0 && subs.indexOf('sessoes-julgamento') >= 0;
+  }).catch(function(){ return false; });
+}
 function secaoPermitida(section){
-  if (!ehContaCliente()) return true;
+  if (!ehContaCliente()) return section === 'inicio' || subabaLiberada(section);
   return section === 'inicio' || (section === 'gerar-notificacao' && souAprovador);
 }
 
@@ -459,6 +482,8 @@ if (fbReady){
         return;
       }
       carregarDadosPrivadosCondo();
+      calcularPodeSessoes().then(function(pode){ podeSessoesEquipe = pode; if (state.section === 'inicio') render(); });
+      if (!secaoPermitida(state.section)) state.section = 'inicio';
       if (state.section === 'inicio') render();
       onAuthResolved();
     }).catch(function(){
@@ -565,7 +590,7 @@ function renderNav(){
   var nav = document.getElementById('tabs-nav');
   // "← Início" volta para os cards (como em Gestão e Treinamentos); o Início não aparece como aba
   nav.innerHTML = '<button type="button" class="voltar-inicio" data-s="inicio">← Início</button>'
-    + SECTIONS.filter(function(s){ return s.id !== 'inicio' && !ehContaCliente(); }).map(function(s){
+    + SECTIONS.filter(function(s){ return s.id !== 'inicio' && !ehContaCliente() && subabaLiberada(s.id); }).map(function(s){
       var active = s.id === state.section ? ' active' : '';
       return '<button type="button" class="'+active+'" data-s="'+s.id+'">'+s.label+'</button>';
     }).join('');
@@ -710,6 +735,7 @@ function viewInicio(){
     {img:'julgamento.svg', w:60, mt:-21, t:'Sessões de Julgamento', d:'Recursos de multa para o conselho analisar', link:'../sessoes-julgamento/index.html'}
   ];
   if (fbReady && !authChecked) return CD_DECO + '<div class="cd-hub"><h1 class="cd-title">Condomínios</h1><p class="cd-sub">Carregando…</p></div>';
+  if (!ehContaCliente()) cards = cards.filter(function(c){ return subabaLiberada(c.go || 'sessoes-julgamento'); });
   if (ehContaCliente()) {
     // síndico, conselheiro e demais clientes: só os módulos deles (nada de POPs, onboarding ou lista de clientes)
     cards = [{img:'julgamento.svg', w:60, mt:-21, t:'Sessões de Julgamento', d:'Recursos de multa para análise do conselho', link:'../sessoes-julgamento/index.html'}];
@@ -719,7 +745,7 @@ function viewInicio(){
     + '<h1 class="cd-title">Condomínios</h1>'
     + '<p class="cd-sub">Selecione o módulo que deseja acessar</p>'
     + '<div class="cd-grid">' + cards.map(function(c){
-        return '<div class="cd-card" '+(c.link ? 'data-link="'+c.link+'"' : 'data-go="'+c.go+'"')+' role="button" tabindex="0">'
+        return '<div class="cd-card" data-sub="'+(c.go || 'sessoes-julgamento')+'" '+(c.link ? 'data-link="'+c.link+'"' : 'data-go="'+c.go+'"')+' role="button" tabindex="0">'
           + '<div class="cd-art"><img src="img/'+(c.img.indexOf('.') < 0 ? c.img+'.jpg' : c.img)+'" alt="" style="--w:'+c.w+'%;--mt:'+c.mt+'%"></div>'
           + '<h3>'+c.t+'</h3><p>'+c.d+'</p><span class="cd-btn">Acessar →</span></div>';
       }).join('') + '</div></div>';
