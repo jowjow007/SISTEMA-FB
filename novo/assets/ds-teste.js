@@ -59,6 +59,7 @@
   window.addEventListener('message', function (e) { if (e.data && e.data.type === 'fb-portal-theme') aplicarTema(e.data.theme); });
   // Condomínios e Segurança usam --paper como fundo de bloco
   if (/tools\/(condominios|admin-seguranca)\//.test(location.pathname)) document.documentElement.setAttribute('data-ds-fam', 'b');
+  if (/tools\/(matriz-demandas|academia-teste)\//.test(location.pathname)) document.documentElement.setAttribute('data-ds-fam', 'm');
   function iniciar() {
     trocar(document);
     new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) trocar(n.parentNode || n); }); }); })
