@@ -237,7 +237,7 @@
     var temAba = function (re) { return Array.prototype.some.call(document.querySelectorAll('#tabstrip-list .tab-btn span'), function (s) { return re.test(norm(s.textContent)); }); };
     var h = '';
     // 1) gráfico da agenda
-    h += '<section class="vg-bloco vg-graf"><div class="vg-topo-bloco"><div><div class="vg-rot">Agenda · próximos dias</div>'
+    h += '<section class="vg-bloco vg-graf" data-ds-tom="ambar"><div class="vg-topo-bloco"><div><div class="vg-rot">Agenda · próximos dias</div>'
       + '<div class="vg-sub">' + (a.semAcesso ? 'sem acesso à agenda do Astrea' : a.vazio ? 'nenhuma importação do Astrea ainda' : !a.itens ? 'carregando…' : 'importada do Astrea ' + (a.hoje ? 'hoje' : 'em ' + esc(a.id.split('-').reverse().join('/'))) + (a.em ? ' · ' + esc(hora(a.em)) : '')) + '</div></div>'
       + '<div style="text-align:right"><div class="vg-rot">Prazos fatais</div><div class="vg-num" style="font-size:1.2rem">' + (r ? r.fatalDia.reduce(function (t, v) { return t + v; }, 0) : '–') + '</div></div></div>'
       + '<div class="vg-topo-bloco" style="margin-top:14px;"><div class="vg-chips">' + [7, 15, 30].map(function (n) { return '<button type="button" class="vg-chip' + (D.janela === n ? ' on' : '') + '" data-vg-janela="' + n + '">' + n + ' DIAS</button>'; }).join('') + '</div>'
@@ -245,7 +245,7 @@
       + (r ? grafico(r) + '<div class="vg-legenda"><span><i></i>Atividades</span><span><i class="tr"></i>Prazos fatais</span></div>' : '<div class="vg-vazio" style="height:220px;">' + (a.semAcesso || a.vazio ? 'Sem dados da agenda.' : 'Carregando…') + '</div>')
       + '</section>';
     // 2) resumo (como o bloco "Desempenho" do modelo)
-    h += '<section class="vg-bloco vg-resumo"><div class="vg-rot">Agenda · resumo' + (D.filtro === 'minhas' ? ' · minhas' : '') + '</div>'
+    h += '<section class="vg-bloco vg-resumo" data-ds-tom="ambar"><div class="vg-rot">Agenda · resumo' + (D.filtro === 'minhas' ? ' · minhas' : '') + '</div>'
       + '<div class="vg-num grande">' + (r ? r.venc : '–') + '</div><div class="vg-sub">atividades com a data da agenda vencida</div>'
       + '<div class="vg-linhas"><div><span>Para hoje</span><b>' + (r ? r.hoje : '–') + '</b></div><div><span>Próximos 7 dias</span><b>' + (r ? r.sete : '–') + '</b></div><div><span>Prazos fatais em 7 dias</span><b>' + (r ? r.fatal7 : '–') + '</b></div></div>'
       + '<div class="vg-caixa"><div><span>Pessoa</span><b>' + esc(D.eu.nome) + '</b></div><div><span>Base</span><b>' + (a.id ? esc(a.id.split('-').reverse().join('/')) : '–') + '</b></div></div>'
@@ -264,13 +264,13 @@
           + '<td style="text-align:right">' + (l.abrir ? '<button type="button" class="ver" data-vg-abrir="' + esc(l.abrir) + '" title="Abrir">→</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></section>';
     // 4) três blocos de baixo
-    h += '<section class="vg-bloco vg-c4"><div class="vg-rot">E-mails para responder</div>'
+    h += '<section class="vg-bloco vg-c4" data-ds-tom="ceu"><div class="vg-rot">E-mails para responder</div>'
       + (e.semAcesso ? '<div class="vg-vazio">A conferência de e-mails não está liberada para você.</div>'
         : '<div class="vg-num grande">' + nf(e.pend) + '</div><div class="vg-sub">de ' + nf(e.total) + ' e-mails ' + (D.eu.role === 'admin' ? 'nos últimos 30 dias' : 'encaminhados a você') + '</div>'
           + '<div class="vg-anel">' + anel(e.total ? e.resp / e.total : 0) + '</div><div class="vg-sub" style="text-align:center">respondidos</div>')
       + '</section>';
     var ev = (D.comunicados || []).slice(0, 4);
-    h += '<section class="vg-bloco vg-c4"><h3 class="vg-h">Avisos recentes</h3>'
+    h += '<section class="vg-bloco vg-c4" data-ds-tom="rosa"><h3 class="vg-h">Avisos recentes</h3>'
       + (ev.length ? '<ul class="vg-eventos">' + ev.map(function (c) { return '<li>' + esc(c.titulo) + '<small>' + esc(c.data.split('-').reverse().join('/')) + '</small></li>'; }).join('') + '</ul>'
         : '<div class="vg-vazio">Nada ainda. Comunicados do escritório aparecem aqui.</div>')
       + '</section>';
@@ -281,7 +281,7 @@
       [!D.comunicadosPend, 'Comunicados com ciência', D.comunicadosPend ? D.comunicadosPend + ' aguardando a sua ciência.' : 'Nenhuma ciência pendente.'],
       [!D.tarefas, 'Tarefas recebidas em dia', D.tarefas ? D.tarefas + ' tarefa(s) para fazer ou corrigir.' : 'Nenhuma tarefa pendente.']
     ];
-    h += '<section class="vg-bloco vg-c4"><h3 class="vg-h">Saúde do escritório</h3><ul class="vg-saude">'
+    h += '<section class="vg-bloco vg-c4" data-ds-tom="verde"><h3 class="vg-h">Saúde do escritório</h3><ul class="vg-saude">'
       + itens.map(function (i) { return '<li><span class="cx' + (i[0] ? ' ok' : '') + '">' + (i[0] ? IC.ok : '') + '</span><div>' + esc(i[1]) + '<small>' + esc(i[2]) + '</small></div></li>'; }).join('')
       + '</ul></section>';
     p.innerHTML = h;
