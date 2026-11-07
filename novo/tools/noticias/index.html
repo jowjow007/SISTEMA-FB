@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notícias Jurídicas e Condominiais — Fonseca e Braga</title>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;min-height:100%;transition:background-color .2s,color .2s;-webkit-overflow-scrolling:touch}
+header{position:sticky;top:0;z-index:5;padding:16px 20px 14px}
+header h1{margin:0 0 2px}
+header .sub{margin:0 0 12px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chip{padding:6px 14px;cursor:pointer;user-select:none;transition:background .15s,color .15s,border-color .15s}
+.toolbar .status{margin-left:auto;text-align:right;white-space:nowrap}
+.toolbar .refresh-btn{padding:6px 12px;cursor:pointer}
+main{max-width:1360px;margin:0 auto;padding:18px 20px 60px}
+#empty,#error{text-align:center;padding:60px 20px;display:none}
+.news-list{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;align-items:stretch}
+@media(max-width:900px){.news-list{grid-template-columns:1fr}}
+.news-card{display:flex;gap:14px;padding:10px;transition:background .15s,border-color .15s}
+.news-card .thumb{width:128px;height:92px;flex:0 0 auto;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.news-card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.news-card .thumb .ph{opacity:.5}
+.news-card .body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.top-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge{display:inline-block;padding:2px 9px;flex:0 0 auto}
+.news-card h2{margin:0}
+.news-card .lede{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-card .source-row{display:flex;align-items:center;gap:6px;margin-top:2px}
+.news-card .source-row svg{flex:0 0 auto;opacity:.7}
+.skeleton{padding:10px;display:flex;gap:14px}
+.skeleton .thumb{width:128px;height:92px;flex:0 0 auto;animation:pulse 1.4s ease-in-out infinite}
+.skeleton .lines{flex:1;display:flex;flex-direction:column;justify-content:center;gap:9px}
+.skeleton .line{height:11px;animation:pulse 1.4s ease-in-out infinite}
+.skeleton .line.w60{width:60%}
+.skeleton .line.w90{width:90%}
+.skeleton .line.w40{width:40%}
+@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@media(max-width:560px){.news-card{flex-direction:column}
+.news-card .thumb{width:100%;height:170px}
+.toolbar .status{width:100%;margin-left:0;text-align:left;order:5}}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<header>
+  <h1>Notícias Jurídicas e Condominiais</h1>
+  <p class="sub">Curadoria automática de fontes jurídicas e do mercado condominial — clique numa notícia para abrir a matéria original.</p>
+  <div class="toolbar">
+    <button class="chip active" data-filter="todas">Todas</button>
+    <button class="chip" data-filter="juridico">Direito Geral</button>
+    <button class="chip" data-filter="condominial">Direito Condominial</button>
+    <span class="status" id="status">carregando…</span>
+    <button class="refresh-btn" id="refreshBtn">Atualizar</button>
+  </div>
+</header>
+
+<main>
+  <div class="news-list" id="list"></div>
+  <div id="empty">Nenhuma notícia encontrada no momento.</div>
+  <div id="error">Não foi possível carregar as notícias agora. Tentando novamente em instantes…</div>
+</main>
+
+<script>
+/* ======================================================================
+   CONFIGURAÇÃO
+   ====================================================================== */
+const CONFIG = {
+  feeds: [
+    { url:"https://www.conjur.com.br/rss.xml", category:"juridico", label:"Consultor Jurídico" },
+    { url:"https://res.stj.jus.br/hrestp-c-portalp/RSS.xml", category:"juridico", label:"STJ Notícias" },
+    { url:"https://www.jota.info/feed", category:"juridico", label:"JOTA" },
+    { url:"https://condo.news/category/direito-condominial/feed/", category:"condominial", label:"Condo.news" },
+    { url:"https://jornaldosindico.com.br/feed/", category:"condominial", label:"Jornal do Síndico" },
+  ],
+  itemsPerFeed: 10,   // máximo de itens buscados por fonte
+  totalItems: 40,     // máximo de itens exibidos na lista, somando todas as fontes
+  refreshOnTheHour: true, // true = atualiza sempre em HH:00 (12:00, 13:00...); false = usa refreshMinutes
+  refreshMinutes: 60,      // usado apenas se refreshOnTheHour = false
+};
+/* ====================================================================== */
+
+const CATEGORY_LABEL = { juridico:"Direito Geral", condominial:"Direito Condominial" };
+let allItems = [];
+let currentFilter = "todas";
+
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))
+  ]);
+}
+
+function stripHtml(html){
+  return (html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8217;/g, "’")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractImageFromHtml(html){
+  const m = (html || "").match(/<img[^>]+src=["']([^"']+)["']/i);
+  return m ? m[1] : "";
+}
+
+function formatDate(pubDate){
+  const d = new Date(pubDate);
+  if(isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
+}
+
+function imgFallback(imgEl){
+  const thumb = imgEl.parentElement;
+  if(thumb) thumb.innerHTML = PLACEHOLDER_ICON;
+}
+
+const EXTERNAL_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+const PLACEHOLDER_ICON = `<svg class="ph" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>`;
+
+function cardHtml(item, index){
+  const badgeClass = item.category === "condominial" ? "condominial" : "juridico";
+  const media = item.image
+    ? `<img src="${item.image}" alt="" loading="lazy" onerror="imgFallback(this)">`
+    : PLACEHOLDER_ICON;
+  const lede = item.lede ? `<p class="lede">${item.lede}</p>` : "";
+  const dateStr = formatDate(item.pubDate);
+  return `
+    <a class="news-card" data-category="${item.category}" href="${item.link}" target="_blank" rel="noopener noreferrer">
+      <div class="thumb" id="thumb-${index}">${media}</div>
+      <div class="body">
+        <div class="top-row">
+          <span class="badge ${badgeClass}">${CATEGORY_LABEL[item.category]}</span>
+          ${dateStr ? `<span class="date">${dateStr}</span>` : ""}
+        </div>
+        <h2>${item.title}</h2>
+        ${lede}
+        <div class="source-row">${EXTERNAL_ICON} ${item.source}</div>
+      </div>
+    </a>`;
+}
+
+function skeletonHtml(n){
+  let out = "";
+  for(let i=0;i<n;i++){
+    out += `<div class="skeleton"><div class="thumb"></div><div class="lines">
+      <div class="line w40"></div><div class="line w90"></div><div class="line w60"></div>
+    </div></div>`;
+  }
+  return out;
+}
+
+function render(){
+  const list = document.getElementById("list");
+  const empty = document.getElementById("empty");
+  const error = document.getElementById("error");
+  const filtered = currentFilter === "todas" ? allItems : allItems.filter(i => i.category === currentFilter);
+  if(!filtered.length){
+    list.innerHTML = "";
+    empty.style.display = allItems.length ? "block" : "none";
+    return;
+  }
+  empty.style.display = "none";
+  error.style.display = "none";
+  list.innerHTML = filtered.map(cardHtml).join("");
+}
+
+function setFilter(f){
+  currentFilter = f;
+  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.filter === f));
+  render();
+}
+
+const NEWS_CACHE_KEY = "noticiasfb_meta_cache_v1";
+const NEWS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function loadImgCache(){
+  try{
+    const raw = localStorage.getItem(NEWS_CACHE_KEY);
+    if(!raw) return {};
+    const obj = JSON.parse(raw);
+    const now = Date.now();
+    const fresh = {};
+    for(const k in obj){ if(obj[k] && (now - obj[k].ts) < NEWS_CACHE_TTL_MS) fresh[k] = obj[k]; }
+    return fresh;
+  } catch(e){ return {}; }
+}
+function saveImgCache(cache){
+  try{ localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify(cache)); } catch(e){ /* indisponível */ }
+}
+
+async function fetchArticleImage(url){
+  const res = await withTimeout(fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`), 7000);
+  if(!res.ok) throw new Error("microlink http error");
+  const data = await res.json();
+  if(data.status !== "success") throw new Error("microlink status error");
+  return (data.data.image && data.data.image.url) || "";
+}
+
+async function enrichImages(){
+  const cache = loadImgCache();
+  let changed = false;
+  await Promise.all(allItems.map(async (item, index) => {
+    if(item.image || !item.link) return;
+    let cached = cache[item.link];
+    if(!cached){
+      try{
+        const image = await fetchArticleImage(item.link);
+        cached = { image, ts: Date.now() };
+        cache[item.link] = cached;
+        changed = true;
+      } catch(e){ return; }
+    }
+    if(cached.image){
+      item.image = cached.image;
+      const thumb = document.getElementById(`thumb-${allItems.indexOf(item)}`);
+      if(thumb && !thumb.querySelector("img")){
+        const img = document.createElement("img");
+        img.src = cached.image;
+        img.alt = "";
+        img.loading = "lazy";
+        img.onerror = () => { thumb.innerHTML = PLACEHOLDER_ICON; };
+        thumb.innerHTML = "";
+        thumb.appendChild(img);
+      }
+    }
+  }));
+  if(changed) saveImgCache(cache);
+}
+
+function xmlText(el, tag){
+  const node = el.getElementsByTagName(tag)[0];
+  return node ? node.textContent.trim() : "";
+}
+
+function parseRss2JsonItems(data, feedConfig){
+  return (data.items || []).slice(0, CONFIG.itemsPerFeed).map(it => {
+    const rawDesc = it.description || it.content || "";
+    const lede = stripHtml(rawDesc);
+    const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== (it.title || "").toLowerCase();
+    return {
+      title: stripHtml(it.title || ""),
+      category: feedConfig.category,
+      source: feedConfig.label,
+      link: it.link || "",
+      image: it.thumbnail || (it.enclosure && it.enclosure.link) || extractImageFromHtml(rawDesc) || "",
+      lede: ledeUsable ? lede.slice(0, 160) : "",
+      pubDate: it.pubDate || "",
+    };
+  });
+}
+
+function parseXmlItems(xmlStr, feedConfig){
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(xmlStr, "text/xml");
+  const items = Array.from(xml.getElementsByTagName("item")).slice(0, CONFIG.itemsPerFeed);
+  return items.map(it => {
+    const rawDesc = xmlText(it, "description") || xmlText(it, "content:encoded");
+    const lede = stripHtml(rawDesc);
+    const title = stripHtml(xmlText(it, "title"));
+    const ledeUsable = lede && lede.length > 12 && lede.toLowerCase() !== title.toLowerCase();
+    const linkEl = it.getElementsByTagName("link")[0];
+    const link = linkEl ? (linkEl.textContent.trim() || linkEl.getAttribute("href") || "") : "";
+    const encEl = it.getElementsByTagName("enclosure")[0];
+    const encUrl = encEl ? (encEl.getAttribute("url") || "") : "";
+    return {
+      title, category: feedConfig.category, source: feedConfig.label, link,
+      image: encUrl || extractImageFromHtml(rawDesc) || "",
+      lede: ledeUsable ? lede.slice(0, 160) : "",
+      pubDate: xmlText(it, "pubDate"),
+    };
+  });
+}
+
+async function tryProxy(feedUrl, timeoutMs){
+  // Dispara 3 proxies ao mesmo tempo e usa o primeiro que responder com XML válido
+  function rss2json(){
+    return fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.json() : Promise.reject("rss2json status"))
+      .then(d => {
+        if(d.status !== "ok" || !d.items || !d.items.length) throw new Error("rss2json vazio");
+        return {fmt:"json", data:d};
+      });
+  }
+  function allOrigins(){
+    return fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.json() : Promise.reject("allorigins status"))
+      .then(d => {
+        if(!d.contents || d.contents.length < 100) throw new Error("allorigins vazio");
+        return {fmt:"xml", xml:d.contents};
+      });
+  }
+  function corsproxy(){
+    return fetch(`https://corsproxy.io/?${encodeURIComponent(feedUrl)}`)
+      .then(r => r.ok ? r.text() : Promise.reject("corsproxy status"))
+      .then(t => {
+        if(!t || t.length < 100) throw new Error("corsproxy vazio");
+        return {fmt:"xml", xml:t};
+      });
+  }
+  const timer = new Promise((_, rej) => setTimeout(() => rej("timeout"), timeoutMs));
+  return Promise.any([rss2json(), allOrigins(), corsproxy(), timer.catch(e => Promise.reject(e))]);
+}
+
+async function fetchFeed(feedConfig){
+  try{
+    const result = await tryProxy(feedConfig.url, 12000);
+    if(result.fmt === "json") return parseRss2JsonItems(result.data, feedConfig);
+    if(result.fmt === "xml"){
+      const items = parseXmlItems(result.xml, feedConfig);
+      if(items.length) return items;
+    }
+  }catch(e){}
+  return [];
+}
+
+async function loadNews(){
+  const status = document.getElementById("status");
+  const error = document.getElementById("error");
+  const list = document.getElementById("list");
+  document.getElementById("empty").style.display = "none";
+  if(!allItems.length){
+    list.innerHTML = skeletonHtml(6);
+  }
+  status.textContent = "carregando…";
+  try{
+    const perFeed = await Promise.all(CONFIG.feeds.map(fetchFeed));
+    const merged = perFeed.flat().sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+    if(!merged.length) throw new Error("todas as fontes falharam");
+    allItems = merged.slice(0, CONFIG.totalItems);
+    error.style.display = "none";
+    render();
+    enrichImages();
+    status.textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+  } catch(e){
+    if(!allItems.length){
+      list.innerHTML = "";
+      error.style.display = "block";
+    }
+    status.textContent = "falha na atualização";
+  }
+}
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => setFilter(chip.dataset.filter));
+});
+document.getElementById("refreshBtn").addEventListener("click", () => loadNews());
+
+function scheduleNextRefresh(){
+  let delayMs;
+  if(CONFIG.refreshOnTheHour){
+    const now = new Date();
+    const next = new Date(now);
+    next.setMinutes(0, 0, 0);
+    next.setHours(now.getHours() + 1);
+    delayMs = next.getTime() - now.getTime();
+  } else {
+    delayMs = CONFIG.refreshMinutes * 60 * 1000;
+  }
+  setTimeout(() => {
+    loadNews();
+    scheduleNextRefresh();
+  }, delayMs);
+}
+
+loadNews();
+scheduleNextRefresh();
+</script>
+</body>
+</html>

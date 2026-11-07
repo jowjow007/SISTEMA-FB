@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aniversariantes — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;min-height:100%;transition:background-color .2s,color .2s}
+header{position:sticky;top:0;z-index:5;padding:18px 20px 15px;text-align:center}
+header h1{margin:0 0 8px}
+.mes-nav{display:flex;align-items:center;justify-content:center;gap:14px}
+.mes-nav button{width:28px;height:28px;cursor:pointer}
+header .sub{margin:0;min-width:160px}
+.voltar-hoje{display:none;margin:10px auto 0;padding:5px 14px;cursor:pointer}
+main{max-width:960px;margin:0 auto;padding:26px 20px 60px}
+#gate{padding:80px 20px;text-align:center}
+#empty{padding:80px 20px;text-align:center}
+#empty .big{margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+.card{position:relative;overflow:hidden;padding:26px 18px 22px;text-align:center}
+.card .logo-watermark{
+    position:absolute;top:50%;left:50%;width:220%;transform:translate(-50%,-50%) rotate(-8deg);
+    opacity:.06;pointer-events:none;filter:grayscale(1) brightness(3);
+  }
+.card .confetti{position:absolute;opacity:.85;pointer-events:none}
+.card .corner-deco{position:absolute;pointer-events:none;z-index:1}
+.card .bandeirinhas{position:relative;z-index:2;display:flex;justify-content:center;gap:3px;height:16px;margin:-6px 0 12px}
+.card .bandeirinhas::before{position:absolute;top:1px;left:8%;right:8%;height:1px}
+.card .bandeira{width:0;height:0;margin-top:2px}
+.card .avatar-wrap{position:relative;z-index:2;margin:0 auto 14px;width:96px;height:96px}
+.card .avatar{width:96px;height:96px;display:flex;align-items:center;justify-content:center}
+.card .party-icon{position:absolute;bottom:-4px;right:-4px}
+.card .party-hat{position:absolute;top:-22px;right:2px;transform:rotate(28deg);z-index:3;width:0;height:0}
+.card .party-hat::before{position:absolute;top:-34px;left:-6px;width:11px;height:11px}
+.card .party-hat::after{position:absolute;bottom:-1px;left:-16px;width:32px;height:4px}
+.card .nome{position:relative;z-index:4;display:inline-block;padding:0 4px;margin:0 0 4px}
+.card .data{position:relative;z-index:4;display:inline-block;padding:0 4px;margin:0 0 10px}
+.card .mensagem{position:relative;z-index:4}
+.card.hoje .data{display:inline-block;padding:2px 10px}
+footer{max-width:960px;margin:0 auto;padding:0 20px 40px;text-align:center}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<header>
+  <h1 id="titulo">🎉 Aniversariantes do mês</h1>
+  <div class="mes-nav">
+    <button type="button" id="mes-prev" aria-label="Mês anterior">‹</button>
+    <p class="sub" id="mes-atual"></p>
+    <button type="button" id="mes-next" aria-label="Próximo mês">›</button>
+  </div>
+  <button type="button" class="voltar-hoje" id="voltar-hoje">Voltar para o mês atual</button>
+</header>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+  <div id="empty" style="display:none;">
+    <div class="big">🎂</div>
+    <span id="empty-texto">Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<footer>Cadastre sua data de nascimento e foto na aba "Meu Perfil" para aparecer aqui no seu mês.</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const CONFETE_CORES = ['#c9463c','#d8b25a','#a9adb2','#5c1a16','#e8d9a0','#8a2e26'];
+
+  const els = {
+    gate: document.getElementById('gate'),
+    empty: document.getElementById('empty'),
+    emptyTexto: document.getElementById('empty-texto'),
+    grid: document.getElementById('grid'),
+    mesAtual: document.getElementById('mes-atual'),
+    titulo: document.getElementById('titulo'),
+    mesPrev: document.getElementById('mes-prev'),
+    mesNext: document.getElementById('mes-next'),
+    voltarHoje: document.getElementById('voltar-hoje'),
+  };
+
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+  const diaHoje = hoje.getDate();
+  let mesSelecionado = mesAtual;
+  let ultimosPerfis = [];
+
+  function atualizarCabecalho(){
+    const idx = mesSelecionado - 1;
+    const ehMesAtual = mesSelecionado === mesAtual;
+    els.mesAtual.textContent = MESES[idx] + ' de ' + anoAtual;
+    els.titulo.textContent = ehMesAtual ? '🎉 Aniversariantes do mês' : '🎉 Aniversariantes de ' + MESES[idx];
+    els.voltarHoje.style.display = ehMesAtual ? 'none' : 'inline-block';
+    els.emptyTexto.textContent = ehMesAtual
+      ? 'Ninguém do escritório faz aniversário este mês (ou ainda não preencheu a data em "Meu Perfil").'
+      : 'Ninguém do escritório faz aniversário em ' + MESES[idx] + ' (ou ainda não preencheu a data em "Meu Perfil").';
+  }
+  atualizarCabecalho();
+
+  function mudarMes(delta){
+    mesSelecionado += delta;
+    if (mesSelecionado > 12) mesSelecionado = 1;
+    if (mesSelecionado < 1) mesSelecionado = 12;
+    atualizarCabecalho();
+    renderGrid(ultimosPerfis);
+  }
+  els.mesPrev.addEventListener('click', function(){ mudarMes(-1); });
+  els.mesNext.addEventListener('click', function(){ mudarMes(1); });
+  els.voltarHoje.addEventListener('click', function(){
+    mesSelecionado = mesAtual;
+    atualizarCabecalho();
+    renderGrid(ultimosPerfis);
+  });
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function gerarConfetes(qtd){
+    // Confete só nas bordas superior/inferior do cartão — nunca na faixa central onde ficam nome/data/mensagem.
+    let html = '';
+    for (let i = 0; i < qtd; i++) {
+      const top = Math.random() < 0.5 ? Math.round(Math.random() * 26) : Math.round(94 + Math.random() * 6);
+      const left = Math.round(Math.random() * 100);
+      const rot = Math.round(Math.random() * 360);
+      const size = 5 + Math.round(Math.random() * 6);
+      const cor = CONFETE_CORES[i % CONFETE_CORES.length];
+      const redonda = i % 2 === 0;
+      html += '<span class="confetti" style="top:' + top + '%;left:' + left + '%;width:' + size + 'px;height:' + size +
+        'px;background:' + cor + ';transform:rotate(' + rot + 'deg);' + (redonda ? 'border-radius:50%;' : '') + '"></span>';
+    }
+    return html;
+  }
+
+  function gerarBandeirinhas(qtd){
+    let html = '<div class="bandeirinhas">';
+    for (let i = 0; i < qtd; i++) {
+      const cor = CONFETE_CORES[i % CONFETE_CORES.length];
+      html += '<span class="bandeira" style="--bandeira-cor:' + cor + '"></span>';
+    }
+    return html + '</div>';
+  }
+
+  function renderCard(p){
+    const partes = (p.birthDate || '').split('-');
+    const dia = parseInt(partes[2], 10);
+    const avatarInner = p.photoBase64
+      ? '<div class="avatar" style="background-image:url(' + p.photoBase64 + ')"></div>'
+      : '<div class="avatar">' + escapeHtml((p.displayName || '?').charAt(0).toUpperCase()) + '</div>';
+    const ehHoje = mesSelecionado === mesAtual && dia === diaHoje;
+    return '<div class="card' + (ehHoje ? ' hoje' : '') + '">' +
+      '<img class="logo-watermark" src="../../assets/logo-light.png" alt="">' +
+      gerarConfetes(16) +
+      '<span class="corner-deco" style="top:10px;left:10px;transform:rotate(-18deg);">🎁</span>' +
+      '<span class="corner-deco" style="bottom:14px;right:12px;transform:rotate(12deg);">🎈</span>' +
+      '<span class="corner-deco" style="top:14px;right:14px;font-size:1.1rem;transform:rotate(10deg);">🎊</span>' +
+      gerarBandeirinhas(9) +
+      '<div class="avatar-wrap"><span class="party-hat"></span>' + avatarInner +
+        '<span class="party-icon">' + (ehHoje ? '🎂' : '🎈') + '</span></div>' +
+      '<p class="nome">' + escapeHtml(p.displayName || 'Sem nome') + '</p>' +
+      '<p class="data">' + (ehHoje ? '🎉 Hoje!' : 'Dia ' + String(dia).padStart(2, '0')) + '</p>' +
+      '<p class="mensagem">Fonseca e Braga deseja um feliz aniversário e muito sucesso! 🎁</p>' +
+    '</div>';
+  }
+
+  function renderGrid(perfis){
+    ultimosPerfis = perfis;
+    const doMes = perfis
+      .filter(function(p){
+        if (!p.birthDate) return false;
+        const mes = parseInt(p.birthDate.split('-')[1], 10);
+        return mes === mesSelecionado;
+      })
+      .sort(function(a, b){
+        return parseInt(a.birthDate.split('-')[2], 10) - parseInt(b.birthDate.split('-')[2], 10);
+      });
+
+    if (doMes.length === 0) {
+      els.empty.style.display = 'block';
+      els.grid.innerHTML = '';
+      return;
+    }
+    els.empty.style.display = 'none';
+    els.grid.innerHTML = doMes.map(renderCard).join('');
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para ver os aniversariantes.';
+      return;
+    }
+    els.gate.style.display = 'none';
+    db.collection('perfis').onSnapshot(function(snap){
+      renderGrid(snap.docs.map(function(d){ return d.data(); }));
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

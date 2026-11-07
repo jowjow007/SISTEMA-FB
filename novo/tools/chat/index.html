@@ -1,0 +1,2419 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat Interno — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;height:100%;overflow:hidden;transition:background-color .2s,color .2s}
+#gate{padding:80px 20px;text-align:center}
+.shell{display:flex;height:100vh}
+.sidebar{width:320px;flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
+.sidebar-head{padding:16px 16px 12px}
+.sidebar-head-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sidebar-head h1{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-actions-row{display:flex;align-items:center;gap:6px;margin-top:12px}
+.btn-novo-pill{flex:0 0 auto;width:117px;height:30px;cursor:pointer;overflow:hidden}
+.btn-etiquetas-wrap{position:relative;flex:0 0 auto}
+.btn-etiquetas-side{width:42px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.btn-arquivadas-wrap{position:relative;flex:0 0 auto}
+.btn-arquivadas-pill{width:116px;height:30px;cursor:pointer;overflow:hidden}
+.arquivadas-badge{position:absolute;top:-6px;right:-6px;padding:1px 6px;pointer-events:none}
+.type-tabs{display:flex;gap:3px;margin-top:12px;padding:3px}
+.type-tab{flex:1;padding:6px 0;cursor:pointer}
+.search-row{display:flex;gap:8px;margin-top:12px}
+.search-row input{flex:1;min-width:0;padding:8px 12px}
+.tag-filter-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag-filter-row .tag-chip{cursor:pointer;opacity:.5;transition:opacity .12s}
+.tag-filter-row .tag-chip:hover{opacity:.85}
+.tag-filter-row .tag-chip.active{opacity:1}
+.icon-btn{flex:0 0 auto;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;position:relative}
+.icon-btn#btn-notif.muted{opacity:.6}
+.conv-list{flex:1;overflow-y:auto}
+.conv-empty{padding:50px 20px;text-align:center}
+.conv-item{display:flex;gap:10px;padding:11px 14px;cursor:pointer;align-items:flex-start;position:relative}
+.avatar{width:42px;height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;position:relative}
+.avatar.group svg{display:block}
+.presence-dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px}
+.conv-body{flex:1;min-width:0}
+.conv-top-line{display:flex;align-items:center;gap:6px}
+.conv-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.conv-time{flex:0 0 auto}
+.conv-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.conv-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag-chip{padding:2px 8px}
+.pin-mark{flex:0 0 auto;display:inline-flex}
+.unread-badge{padding:1px 7px;flex:0 0 auto}
+.conv-meta-col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto}
+.tag-filter-row .tag-chip .x{margin-left:5px;opacity:.7}
+.conv-quick{display:none;gap:2px}
+.conv-quick button{cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;opacity:.6}
+.conv-quick button:hover{opacity:1}
+.conv-quick button.on{opacity:1}
+@media (hover:hover) and (pointer:fine) and (min-width:721px){.conv-quick{display:inline-flex}
+.conv-item.nao-lida{animation:convPisca 1.2s ease-in-out infinite}
+@keyframes convPisca{0%,100%{}50%{}}
+.conv-item.nao-lida.active{animation:none}}
+.acoes-sheet-backdrop{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;z-index:65}
+.acoes-sheet-backdrop.open{display:flex}
+.acoes-sheet{width:100%;max-width:480px;padding:10px 10px calc(14px + env(safe-area-inset-bottom))}
+.acoes-sheet .titulo{text-align:center;padding:6px 10px 10px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acoes-sheet button{width:100%;display:flex;align-items:center;gap:12px;padding:13px 12px;cursor:pointer;text-align:left}
+.acoes-sheet button.cancelar{justify-content:center;margin-top:4px}
+.conv-item{-webkit-user-select:none;user-select:none}
+.sel-box{flex:0 0 auto;width:22px;height:22px;align-self:center;display:flex;align-items:center;justify-content:center}
+.lote-bar{display:none;flex:0 0 auto;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.lote-bar.show{display:block}
+.lote-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.lote-sair{padding:4px 12px;cursor:pointer}
+.lote-acoes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.lote-acoes button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;cursor:pointer}
+.lote-acoes button:disabled{opacity:.4;cursor:not-allowed}
+.thread{flex:1;display:flex;flex-direction:column;min-width:0}
+.thread-empty{flex:1;display:flex;align-items:center;justify-content:flex-end;text-align:center;padding:20px;padding-bottom:64px;flex-direction:column;gap:8px}
+.thread-empty .big{display:none}
+.thread-empty div:last-child{padding:8px 18px}
+.thread-head{padding:13px 20px;display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.back-btn{display:none;cursor:pointer;padding:0 4px}
+.thread-sub{margin-top:2px}
+.thread-tags-row{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.small-link-btn{padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.small-link-btn svg{flex:0 0 auto}
+.msg-list{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.day-sep{align-self:center;padding:3px 12px;margin:10px 0}
+.msg-sistema{align-self:center;text-align:center;margin:2px 0 12px}
+.msg-row{display:flex;gap:10px;max-width:74%;margin:8px 0;align-items:flex-start}
+.msg-row.own{align-self:flex-end}
+.msg-row.other{align-self:flex-start}
+.msg-row .avatar{width:32px;height:32px;margin-top:1px;flex:0 0 auto}
+.msg-col{min-width:0;flex:1;display:flex;flex-direction:column}
+.msg-row.own .msg-col{align-items:flex-end}
+.msg-head{display:flex;align-items:baseline;gap:8px;margin:0 4px 3px}
+.msg-bubble-wrap{display:flex;align-items:center;gap:6px}
+.msg-row.own .msg-bubble-wrap{flex-direction:row-reverse}
+.msg-bubble{padding:8px 12px;white-space:pre-wrap;word-break:break-word}
+.msg-row.other .msg-bubble{padding:0 4px}
+.msg-fwd-label{margin-bottom:3px;display:inline-flex;align-items:center;gap:4px}
+.msg-photo{max-width:220px;display:block;cursor:pointer;margin-bottom:4px}
+.msg-time{margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:3px;justify-content:flex-end}
+.msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn{cursor:pointer;opacity:0;transition:opacity .12s;padding:2px 4px;display:inline-flex;align-items:center;overflow:visible}
+.msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg,.msg-copy-btn svg{overflow:visible;display:block}
+.msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn{opacity:1}
+.msg-copy-btn.ok{opacity:1}
+.react-picker{display:none;position:fixed;z-index:200;width:310px;overflow:hidden;flex-direction:column}
+.react-picker.open{display:flex}
+.react-picker-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 4px;flex-shrink:0}
+.react-picker-fechar{cursor:pointer;padding:2px 4px;transition:color .12s,background .12s}
+.react-picker-search{padding:0 8px 0;flex-shrink:0}
+.react-picker-search input{width:100%;box-sizing:border-box;padding:6px 10px}
+.react-picker-tabs{display:flex;gap:0;padding:6px 8px 0;flex-shrink:0}
+.react-picker-tabs button{flex:1;cursor:pointer;padding:6px 4px;transition:background .12s,color .12s}
+.react-picker-body{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;padding:6px;max-height:240px;overflow-y:auto}
+.react-picker-body button{cursor:pointer;padding:5px 3px;transition:transform .1s,background .12s}
+.react-picker-body button:hover{transform:scale(1.3)}
+.react-picker-vazio{padding:16px;text-align:center;grid-column:1/-1}
+.msg-reacoes{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding:0 4px}
+.reacao-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;cursor:pointer;transition:background .12s;user-select:none}
+.msg-quote{padding:4px 8px;margin-bottom:6px;cursor:pointer;max-width:220px}
+.msg-quote .resumo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg-link{word-break:break-all}
+.msg-link:hover{opacity:.8}
+.composer{flex:0 0 auto;padding:10px 14px;position:relative}
+.reply-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px}
+.reply-preview-row.show{display:flex}
+.reply-preview-row .info{flex:1;min-width:0}
+.reply-preview-row .resumo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reply-preview-row button{cursor:pointer;flex:0 0 auto}
+.emoji-popover{display:none;position:absolute;bottom:58px;left:14px;padding:8px;width:248px;max-height:200px;overflow-y:auto;z-index:20;grid-template-columns:repeat(8,1fr);gap:2px}
+.emoji-popover.open{display:grid}
+.emoji-popover button{cursor:pointer;padding:4px}
+.photo-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px}
+.photo-preview-row.show{display:flex}
+.photo-preview-row img{width:52px;height:52px;object-fit:cover}
+.photo-preview-row button{padding:3px 10px;cursor:pointer;flex:0 0 auto}
+.doc-preview-icon{flex:0 0 auto;color:var(--gold);display:inline-flex;}
+.doc-preview-info{flex:1;min-width:0;}
+.doc-preview-nome{font-size:.82rem;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.doc-preview-tamanho{font-size:.68rem;color:var(--muted);}
+.msg-doc{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:4px;max-width:220px}
+.msg-doc .icone{flex:0 0 auto;display:inline-flex}
+.msg-doc .info{min-width:0}
+.msg-doc .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer-row{display:flex;align-items:flex-end;gap:8px}
+.composer-row textarea{flex:1;min-height:38px;max-height:120px;resize:none;padding:9px 14px}
+.send-btn{flex:0 0 auto;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.media-hint{margin-top:6px}
+.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+.modal-backdrop.open{display:flex}
+.modal{padding:18px;max-width:420px;width:100%;max-height:82vh;display:flex;flex-direction:column}
+.modal h3{margin:0 0 4px}
+.modal p.hint{margin:0 0 10px}
+.modal input[type=text]{width:100%;padding:8px 10px;margin-bottom:10px}
+.group-photo-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.group-photo-row .avatar{width:56px;height:56px;flex:0 0 auto}
+.picker-list{overflow-y:auto;flex:1;margin:4px 0 12px}
+.picker-item{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer}
+.picker-item .nome{flex:1}
+.picker-item input[type=checkbox]{flex:0 0 auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px}
+.modal .err{min-height:1.1em;margin:0 0 8px}
+.btn{padding:7px 16px;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.tag-catalog-list{max-height:260px;overflow-y:auto;margin:4px 0 12px}
+.tag-cat-row{display:flex;align-items:center;gap:8px;padding:8px 2px;cursor:pointer}
+.tag-cat-row .dot{width:14px;height:14px;flex:0 0 auto}
+.tag-cat-row .nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag-cat-row .acoes{display:flex;gap:2px;flex:0 0 auto}
+.tag-cat-row .acoes button{cursor:pointer;padding:3px 6px;display:inline-flex;align-items:center}
+.tag-cat-empty{padding:14px 2px;text-align:center}
+.tag-new-form{padding-top:12px}
+.tag-new-form label{display:block;margin-bottom:6px}
+.swatch-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.swatch{width:24px;height:24px;cursor:pointer;padding:0}
+#thread-active{position:relative}
+#thread-active.soltando::after{content:'📎  Solte o arquivo para anexar';position:absolute;inset:8px;z-index:30;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.lightbox-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:70;padding:20px;cursor:zoom-out}
+.lightbox-backdrop.open{display:flex}
+.lightbox-backdrop img{max-width:100%;max-height:100%}
+@media(max-width:720px){.sidebar{width:100%;position:absolute;inset:0;z-index:2}
+.shell.thread-open .sidebar{display:none}
+.thread{position:absolute;inset:0}
+.shell:not(.thread-open) .thread{display:none}
+.back-btn{display:block}
+.msg-row{max-width:90%}
+.msg-bubble-wrap{flex-wrap:wrap}
+.msg-bubble{min-width:0;max-width:100%;flex:0 1 auto}
+.msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn{display:none}
+.msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn,
+    .msg-row:focus-within .msg-fwd-btn,.msg-row:focus-within .msg-reply-btn,.msg-row:focus-within .msg-react-btn,.msg-row:focus-within .msg-copy-btn{display:inline-flex;opacity:1}}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<div id="gate" style="display:none;"></div>
+
+<div class="shell" id="shell" style="display:none;">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-head-top">
+        <button class="icon-btn" id="btn-notif" title="Ativar notificações"></button>
+        <h1>Chat Interno</h1>
+      </div>
+      <div class="search-row">
+        <input type="text" id="busca-conversas" placeholder="Buscar conversas ou etiquetas...">
+      </div>
+      <div class="type-tabs" id="type-tabs">
+        <button class="type-tab active" type="button" data-tipo="todos">Todos</button>
+        <button class="type-tab" type="button" data-tipo="prioritaria">Prioritária</button>
+      </div>
+      <div class="tag-filter-row" id="tag-filter-row"></div>
+      <div class="sidebar-actions-row">
+        <button class="btn-novo-pill" id="btn-nova-conversa" title="Nova conversa" aria-label="Nova conversa"></button>
+        <div class="btn-etiquetas-wrap">
+          <button class="btn-etiquetas-side" id="btn-etiquetas-side" title="Etiquetas: filtrar conversas e adicionar novas" aria-label="Etiquetas: filtrar e adicionar"></button>
+          <span class="arquivadas-badge" id="etiquetas-filtro-badge" style="display:none;"></span>
+        </div>
+        <div class="btn-arquivadas-wrap">
+          <button class="btn-arquivadas-pill" id="btn-ver-arquivadas" title="Ver arquivadas" aria-label="Ver arquivadas"></button>
+          <span class="arquivadas-badge" id="arquivadas-badge" style="display:none;"></span>
+        </div>
+      </div>
+    </div>
+    <div class="conv-list" id="conv-list"></div>
+    <div class="lote-bar" id="lote-bar"></div>
+  </aside>
+
+  <section class="thread" id="thread">
+    <div class="thread-empty" id="thread-empty">
+      <div class="big"></div>
+      <div>Selecione uma conversa ou inicie uma nova.</div>
+    </div>
+
+    <div id="thread-active" style="display:none;flex:1;flex-direction:column;min-height:0;">
+      <div class="thread-head">
+        <button class="back-btn" id="btn-voltar"></button>
+        <div>
+          <div class="thread-title" id="thread-title">—</div>
+          <div class="thread-sub" id="thread-sub"></div>
+        </div>
+        <div class="thread-tags-row">
+          <button class="small-link-btn" id="btn-pin"></button>
+          <button class="small-link-btn" id="btn-etiquetas"></button>
+          <button class="small-link-btn" id="btn-editar-grupo" style="display:none;"></button>
+          <button class="small-link-btn" id="btn-arquivar"></button>
+          <button class="small-link-btn danger" id="btn-excluir-conversa"></button>
+        </div>
+      </div>
+      <div class="msg-list" id="msg-list"></div>
+      <div class="composer">
+        <div class="reply-preview-row" id="reply-preview-row">
+          <div class="info">
+            <div class="autor" id="reply-autor"></div>
+            <div class="resumo" id="reply-resumo"></div>
+          </div>
+          <button id="btn-cancelar-resposta" title="Cancelar resposta">×</button>
+        </div>
+        <div class="photo-preview-row" id="photo-preview-row">
+          <img id="photo-preview-img" src="">
+          <button id="btn-remover-foto">Remover foto</button>
+        </div>
+        <div class="photo-preview-row" id="doc-preview-row">
+          <span class="doc-preview-icon" id="doc-preview-icon"></span>
+          <div class="doc-preview-info">
+            <div class="doc-preview-nome" id="doc-preview-nome"></div>
+            <div class="doc-preview-tamanho" id="doc-preview-tamanho"></div>
+          </div>
+          <button id="btn-remover-doc">Remover</button>
+        </div>
+        <div class="composer-row">
+          <button class="icon-btn" id="btn-anexar" title="Anexar foto">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </button>
+          <input type="file" id="foto-input" accept="image/*" hidden>
+          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documento">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+            </svg>
+          </button>
+          <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.odt,.ods" hidden>
+          <button class="icon-btn" id="btn-emoji" title="Emoji"></button>
+          <div class="emoji-popover" id="emoji-popover"></div>
+          <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
+          <button class="send-btn" id="btn-enviar" title="Enviar"></button>
+        </div>
+        <div class="media-hint">Suporta texto, fotos e documentos (até 500 KB). Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- modal: nova conversa / encaminhar -->
+<div class="modal-backdrop" id="picker-backdrop">
+  <div class="modal">
+    <h3 id="picker-title">Nova conversa</h3>
+    <p class="hint" id="picker-hint">Escolha um ou mais colegas.</p>
+    <input type="text" id="picker-nome-grupo" placeholder="Nome do grupo" style="display:none;">
+    <div class="group-photo-row" id="picker-foto-grupo-row" style="display:none;">
+      <div class="avatar group hash" id="picker-foto-grupo-preview"></div>
+      <div>
+        <input type="file" id="picker-foto-grupo-input" accept="image/*" hidden>
+        <button type="button" class="btn ghost" id="picker-foto-grupo-btn">Foto do grupo</button>
+      </div>
+    </div>
+    <input type="text" id="picker-busca" placeholder="Buscar colaborador...">
+    <div class="picker-list" id="picker-list"></div>
+    <div class="err" id="picker-err"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="picker-cancelar">Cancelar</button>
+      <button class="btn" id="picker-confirmar" style="display:none;">Iniciar</button>
+    </div>
+  </div>
+</div>
+
+<!-- menu do toque longo numa conversa (celular) -->
+<div class="acoes-sheet-backdrop" id="acoes-sheet-backdrop">
+  <div class="acoes-sheet" id="acoes-sheet"></div>
+</div>
+
+<!-- modal: etiquetas (pelo botão lateral = filtrar e criar; pela conversa = escolher as que valem para ela) -->
+<div class="modal-backdrop" id="tags-backdrop">
+  <div class="modal">
+    <h3 id="tags-modal-titulo">Etiquetas</h3>
+    <p class="hint" id="tags-modal-hint"></p>
+    <div class="tag-catalog-list" id="tag-catalog-list"></div>
+    <div class="tag-new-form">
+      <label id="tag-form-label">Nova etiqueta</label>
+      <input type="text" id="tag-nome-input" placeholder="Nome da etiqueta" maxlength="24">
+      <div class="swatch-row" id="tag-swatch-row"></div>
+      <div class="err" id="tag-form-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="tag-form-cancelar" style="display:none;">Cancelar edição</button>
+      <button class="btn ghost" id="tags-fechar">Fechar</button>
+      <button class="btn" id="tag-form-salvar">Criar etiqueta</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal: editar grupo -->
+<div class="modal-backdrop" id="grupo-backdrop">
+  <div class="modal">
+    <h3>Editar grupo</h3>
+    <div class="group-photo-row">
+      <div class="avatar group hash" id="grupo-foto-preview"></div>
+      <div>
+        <input type="file" id="grupo-foto-input" accept="image/*" hidden>
+        <button type="button" class="btn ghost" id="grupo-foto-btn">Trocar foto</button>
+      </div>
+    </div>
+    <input type="text" id="grupo-nome-input" placeholder="Nome do grupo" maxlength="80">
+    <div class="err" id="grupo-form-err"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="grupo-fechar">Cancelar</button>
+      <button class="btn" id="grupo-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="react-picker" id="react-picker">
+  <div class="react-picker-header">
+    <span class="react-picker-titulo">Reações</span>
+    <button class="react-picker-fechar" id="react-picker-fechar" title="Fechar">✕</button>
+  </div>
+  <div class="react-picker-search"><input type="text" id="react-search" placeholder="🔍 Pesquisar emoji…" autocomplete="off"></div>
+  <div class="react-picker-tabs">
+    <button data-tab="favoritos" class="ativa">⭐ Favoritos</button>
+    <button data-tab="todos">😀 Todos</button>
+  </div>
+  <div class="react-picker-body" id="react-picker-body"></div>
+</div>
+<div class="lightbox-backdrop" id="lightbox">
+  <img id="lightbox-img" src="">
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+  var FV = firebase.firestore.FieldValue;
+  var storage = firebase.storage();
+
+  function uploadParaStorage(blob, caminho){
+    return new Promise(function(resolve, reject){
+      var ref = storage.ref(caminho);
+      var task = ref.put(blob);
+      task.on('state_changed', null, reject, function(){
+        ref.getDownloadURL().then(resolve).catch(reject);
+      });
+    });
+  }
+
+  var els = {
+    gate: document.getElementById('gate'),
+    shell: document.getElementById('shell'),
+    convList: document.getElementById('conv-list'),
+    buscaConversas: document.getElementById('busca-conversas'),
+    btnNovaConversa: document.getElementById('btn-nova-conversa'),
+    btnNotif: document.getElementById('btn-notif'),
+    typeTabs: document.getElementById('type-tabs'),
+    threadEmpty: document.getElementById('thread-empty'),
+    threadActive: document.getElementById('thread-active'),
+    threadTitle: document.getElementById('thread-title'),
+    threadSub: document.getElementById('thread-sub'),
+    btnVoltar: document.getElementById('btn-voltar'),
+    btnPin: document.getElementById('btn-pin'),
+    btnEtiquetas: document.getElementById('btn-etiquetas'),
+    btnEditarGrupo: document.getElementById('btn-editar-grupo'),
+    grupoBackdrop: document.getElementById('grupo-backdrop'),
+    grupoFotoPreview: document.getElementById('grupo-foto-preview'),
+    grupoFotoInput: document.getElementById('grupo-foto-input'),
+    grupoFotoBtn: document.getElementById('grupo-foto-btn'),
+    grupoNomeInput: document.getElementById('grupo-nome-input'),
+    grupoFormErr: document.getElementById('grupo-form-err'),
+    grupoFechar: document.getElementById('grupo-fechar'),
+    grupoSalvar: document.getElementById('grupo-salvar'),
+    btnArquivar: document.getElementById('btn-arquivar'),
+    btnExcluirConversa: document.getElementById('btn-excluir-conversa'),
+    btnVerArquivadas: document.getElementById('btn-ver-arquivadas'),
+    arquivadasBadge: document.getElementById('arquivadas-badge'),
+    msgList: document.getElementById('msg-list'),
+    photoPreviewRow: document.getElementById('photo-preview-row'),
+    photoPreviewImg: document.getElementById('photo-preview-img'),
+    btnRemoverFoto: document.getElementById('btn-remover-foto'),
+    btnAnexar: document.getElementById('btn-anexar'),
+    fotoInput: document.getElementById('foto-input'),
+    docPreviewRow: document.getElementById('doc-preview-row'),
+    docPreviewNome: document.getElementById('doc-preview-nome'),
+    docPreviewTamanho: document.getElementById('doc-preview-tamanho'),
+    docPreviewIcon: document.getElementById('doc-preview-icon'),
+    btnRemoverDoc: document.getElementById('btn-remover-doc'),
+    btnAnexarDoc: document.getElementById('btn-anexar-doc'),
+    docInput: document.getElementById('doc-input'),
+    composerInput: document.getElementById('composer-input'),
+    btnEnviar: document.getElementById('btn-enviar'),
+    pickerBackdrop: document.getElementById('picker-backdrop'),
+    pickerTitle: document.getElementById('picker-title'),
+    pickerHint: document.getElementById('picker-hint'),
+    pickerNomeGrupo: document.getElementById('picker-nome-grupo'),
+    pickerFotoGrupoRow: document.getElementById('picker-foto-grupo-row'),
+    pickerFotoGrupoPreview: document.getElementById('picker-foto-grupo-preview'),
+    pickerFotoGrupoInput: document.getElementById('picker-foto-grupo-input'),
+    pickerFotoGrupoBtn: document.getElementById('picker-foto-grupo-btn'),
+    pickerBusca: document.getElementById('picker-busca'),
+    pickerList: document.getElementById('picker-list'),
+    pickerErr: document.getElementById('picker-err'),
+    pickerCancelar: document.getElementById('picker-cancelar'),
+    pickerConfirmar: document.getElementById('picker-confirmar'),
+    tagsBackdrop: document.getElementById('tags-backdrop'),
+    tagFilterRow: document.getElementById('tag-filter-row'),
+    tagCatalogList: document.getElementById('tag-catalog-list'),
+    tagNomeInput: document.getElementById('tag-nome-input'),
+    tagSwatchRow: document.getElementById('tag-swatch-row'),
+    tagFormErr: document.getElementById('tag-form-err'),
+    tagFormLabel: document.getElementById('tag-form-label'),
+    tagFormCancelar: document.getElementById('tag-form-cancelar'),
+    tagFormSalvar: document.getElementById('tag-form-salvar'),
+    tagsFechar: document.getElementById('tags-fechar'),
+    replyPreviewRow: document.getElementById('reply-preview-row'),
+    replyAutor: document.getElementById('reply-autor'),
+    replyResumo: document.getElementById('reply-resumo'),
+    btnCancelarResposta: document.getElementById('btn-cancelar-resposta'),
+    btnEmoji: document.getElementById('btn-emoji'),
+    emojiPopover: document.getElementById('emoji-popover'),
+    reactPicker: document.getElementById('react-picker'),
+    lightbox: document.getElementById('lightbox'),
+    lightboxImg: document.getElementById('lightbox-img')
+  };
+
+  var myUid = null;
+  var myNome = 'Você';
+  var perfis = {};          // uid -> {displayName, photoBase64}
+  var conversas = [];       // lista de conversas do usuário
+  var tagsPorConversa = {}; // conversaId -> {etiquetas:[], fixada:bool}
+  var activeId = null;
+  var mensagensCache = [];
+  var primeiraRenderConversa = false;
+  var unsubMensagens = null;
+  var novaFotoUrl = null;       // URL do Storage após upload (ou null)
+  var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
+  var pickerMode = null;      // 'nova' | 'encaminhar'
+  var pickerSelected = {};    // uid -> true (modo nova)
+  var forwardMsg = null;      // mensagem sendo encaminhada
+  var reactTargetId = null;   // id da mensagem aguardando reação
+  var reactTabAtiva = 'favoritos'; // 'favoritos' | 'todos'
+  var EMOJI_BANCO = {
+    expressoes: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
+    pessoas: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃','🦷','👀','👁️','👅','💋','🫦','🦴','🧠','🫀','🫁','👤','👥','🫂','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
+    animais: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪰','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦩','🦢','🦅','🌵','🌲','🌳','🌴','🌱','🌿','☘️','🍀','🎍','🎋','🍃','🍂','🍁','🍄','🌾','💐','🌷','🌹','🥀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌙','⭐','🌟','💫','✨','☄️','🌈','⛅','🌤️','☀️','🌊','💧','❄️','🔥','🌍','🌎','🌏'],
+    comida: ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍑','🍒','🍍','🥭','🥥','🥝','🍅','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🍠','🫘','🌽','🍞','🥐','🥨','🧀','🥚','🍳','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥙','🧆','🌮','🌯','🫔','🥗','🍝','🍜','🍛','🍣','🍱','🍤','🍙','🍚','🍘','🍥','🥮','🍡','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🍯','🧃','🥤','🧋','☕','🍵','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊'],
+    viagem: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛵','🏍️','🚲','🛴','🚏','✈️','🛩️','🚀','🛸','🚁','🛶','⛵','🚢','🛥️','⛽','🚦','🚥','🗺️','🗼','🗽','🗿','🏰','🏯','🏟️','🎡','🎢','🎠','⛪','🕌','🕍','🛕','⛩️','🕋','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🌃','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🌁'],
+    atividades: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🛹','🛼','🛷','🏹','🎣','🤿','🥊','🥋','🎽','🛶','🎿','⛷️','🏂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎫','🎟️','🎪','🤹','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'],
+    objetos: ['📱','💻','🖥️','🖨️','⌨️','🖱️','🖲️','💽','💾','💿','📀','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🧭','🕰️','⏰','⏱️','⏲️','⌚','⏳','⌛','📡','🔋','🔌','💡','🔦','🕯️','🗑️','🛢️','💰','💵','💴','💶','💷','💳','💎','⚖️','🦯','🔧','🔨','⚒️','🛠️','⛏️','🔩','🪛','🔫','💣','🔪','🗡️','⚔️','🛡️','🪚','🔒','🔓','🔏','🔐','🗝️','🔑','🪤','🔮','📿','💈','🛎️','🧲','🪜','🪞','🛋️','🚪','🛏️','🧸','🪆','🖼️','🧿','🪬','🪄','🎁','🎀','🎊','🎉','🎈','🎏','🎐','🎑','🧧','🎋','🎃','🎄','🎆','🎇','🧨','✨','🎍','🎎'],
+    simbolos: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💝','💟','☮️','✝️','☪️','🕉️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','▶️','⏸️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','💲','❓','❔','❕','❗','〰️','💱','🔚','🔙','🔛','🔜','🔝','🔛'],
+    negocios: ['✅','❎','✔️','☑️','🔲','🔳','📌','📍','📎','🖇️','📏','📐','✂️','🗃️','🗄️','🗑️','📁','📂','🗂️','📋','📄','📃','📑','📊','📈','📉','📆','📅','🗒️','🗓️','📇','📌','📍','🔖','🏷️','💼','👔','👗','🤝','🤜','🤛','👊','👋','🙏','💪','🧠','💡','🔍','🔎','🔒','🔓','🔑','🗝️','🔧','🔨','⚙️','🛠️','⛏️','🔩','🪛','⚖️','📡','💻','🖥️','⌨️','🖱️','🖨️','📱','📲','☎️','📞','📟','📠','📺','📷','📸','📹','🎥','📽️','🎬','💾','💿','📀','🔋','🔌','💡','🕯️','💰','💵','💴','💶','💷','💸','💳','💹','📤','📥','📦','📧','📨','📩','📪','📫','📬','📭','📮','🗳️','✉️','📝','✏️','✒️','🖊️','🖋️','🗺️','🏢','🏬','🏦','🏥','🏨','🏪','🏫','🏭','🏗️','🚀','🛸','⏰','⏱️','⏲️','⌚','⏳','⌛','🔔','🔕','📣','📢','🗣️','💬','💭','🗯️','🌐','🔗','📡','🧭','🎯','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎫','🎟️','🎪','🎭','🎨','🎤','🎧','🎼','📻','🎙️','🎚️','🎛️','🚦','🔐','🛡️','🚨','⚡','🌟','💫','✨','🔥','💥','🌊','🎆','🎇','🧨']
+  };
+
+  // Lista plana única (todas as categorias, sem duplicatas)
+  var TODOS_EMOJIS = (function(){
+    var seen = {}, result = [];
+    var keys = ['expressoes','pessoas','animais','comida','viagem','atividades','objetos','simbolos','negocios'];
+    keys.forEach(function(k){
+      (EMOJI_BANCO[k] || []).forEach(function(e){ if (!seen[e]){ seen[e]=1; result.push(e); } });
+    });
+    return result;
+  })();
+
+  // Mapa de nomes em português para pesquisa
+  var EMOJI_NOMES = {
+    '😀':'feliz sorriso','😃':'sorrindo animado','😄':'gargalhada','😁':'sorrindo dentes',
+    '😆':'rindo','😅':'suando rindo','🤣':'caindo de rir rolando','😂':'chorando de rir',
+    '🙂':'levemente sorrindo','😉':'piscando','😊':'envergonhado feliz','😇':'anjo',
+    '🥰':'apaixonado coração','😍':'olhos de coração amor','🤩':'estrelas nos olhos',
+    '😘':'beijo mandando','😗':'beijo boca','😚':'beijo fechado','😙':'beijo sorrindo',
+    '😋':'gostoso delicioso comendo','😛':'língua de fora','😜':'piscando língua',
+    '🤪':'louco maluco','😝':'língua olho fechado','🤑':'dinheiro cifrão','🤗':'abraço',
+    '🤭':'mão na boca surpresa','🤫':'silêncio shhh','🤔':'pensando reflexivo',
+    '🤐':'boca fechada zíper','🤨':'sobrancelha levantada','😐':'neutro sem expressão',
+    '😑':'irritado sem graça','😶':'sem boca','😏':'satisfeito irônico',
+    '😒':'não gostei aborrecido','🙄':'olhos revirados','😬':'sorriso forçado',
+    '🤥':'mentindo nariz','😔':'pensativo triste','😪':'com sono bocejando',
+    '🤤':'babando delícia','😴':'dormindo','😷':'máscara doente','🤒':'termômetro doente',
+    '🤕':'curativo machucado','🤢':'enjoado náusea','🤮':'vomitando','🤧':'espirrando',
+    '🥵':'quente calor suando','🥶':'frio congelando','🥴':'tonto zonzo','😵':'tonto atordoado',
+    '🤯':'explodindo cabeça chocado','🤠':'cowboy chapéu','🥳':'festa comemorando',
+    '😎':'óculos legal bacana','🤓':'nerd óculos','🧐':'monóculo curioso',
+    '😕':'confuso','😟':'preocupado','🙁':'ligeiramente triste','☹️':'triste',
+    '😮':'surpreso boca aberta','😯':'chocado','😲':'espantado','😳':'corado envergonhado',
+    '🥺':'suplica por favor','😦':'surpreso assustado','😨':'medo assustado',
+    '😰':'suando nervoso ansioso','😥':'aliviado triste','😢':'chorando lágrima',
+    '😭':'chorando muito','😱':'gritando medo','😖':'frustrado confuso','😣':'esforçando',
+    '😞':'desapontado','😓':'suando trabalho','😩':'cansado exausto','😫':'exausto',
+    '🥱':'bocejando sono','😤':'vapor nariz bravo','😡':'com raiva vermelho',
+    '😠':'zangado','🤬':'xingando palavrão','😈':'diabinho malvado','👿':'bravo malvado',
+    '💀':'caveira morte','☠️':'caveira ossos perigo','💩':'cocô engraçado',
+    '🤡':'palhaço','👹':'monstro','👻':'fantasma assombração','👽':'alien extraterrestre',
+    '🤖':'robô tecnologia',
+    '👋':'acenando olá tchau','👍':'joinha positivo bom','👎':'negativo ruim',
+    '👏':'palmas parabéns','🙏':'obrigado rezando por favor','💪':'força músculo',
+    '✊':'punho firmeza','🤝':'aperto de mão acordo parceria','✌️':'paz vitória dois',
+    '🤞':'dedos cruzados sorte','👀':'olhos olhando','🧠':'cérebro inteligência',
+    '❤️':'coração amor vermelho','🧡':'coração laranja','💛':'coração amarelo',
+    '💚':'coração verde','💙':'coração azul','💜':'coração roxo','🖤':'coração preto',
+    '💔':'coração partido','💕':'corações','💞':'corações girando','💓':'coração batendo',
+    '💗':'coração crescendo','💖':'coração brilhando','💝':'coração laço',
+    '🎉':'festa confete parabéns','🎊':'confete celebração','🎈':'balão festa',
+    '🎂':'bolo aniversário','🎁':'presente','🏆':'troféu campeão vencedor',
+    '🥇':'medalha ouro primeiro','🥈':'medalha prata segundo','🥉':'medalha bronze terceiro',
+    '⭐':'estrela','🌟':'estrela brilhante','🔥':'fogo quente trending',
+    '✅':'ok confirmado certo marcado','❌':'errado não x','⚠️':'atenção alerta cuidado',
+    '💯':'cem por cento perfeito','‼️':'atenção importante','❓':'dúvida pergunta',
+    '❗':'exclamação importante','🚀':'foguete lançamento startup',
+    '💡':'ideia lâmpada iluminação','🔍':'busca pesquisa lupa','🔎':'lupa pesquisa',
+    '📌':'fixado marcado pin','📍':'localização local','📋':'prancheta lista',
+    '📊':'gráfico barras estatística','📈':'gráfico subindo crescendo',
+    '📉':'gráfico caindo diminuindo','📅':'calendário data','📆':'calendário',
+    '⏰':'alarme hora despertador','⏱️':'cronômetro tempo','⌚':'relógio',
+    '💼':'maleta trabalho negócio','💰':'dinheiro dinheiro saco','💵':'nota dólar',
+    '💳':'cartão crédito pagamento','💸':'dinheiro voando','💹':'gráfico yene alta',
+    '📧':'email mensagem','📨':'recebido envelope','📩':'email entrada',
+    '📤':'enviado saída','📥':'recebido entrada','📦':'caixa pacote entrega',
+    '✏️':'lápis escrita','✒️':'caneta tinta','📝':'anotação bloco',
+    '📄':'documento papel','📃':'página documento','📑':'marcadores documento',
+    '🔒':'cadeado trancado segurança','🔓':'desbloqueado aberto','🔑':'chave acesso',
+    '🗝️':'chave antiga','⚙️':'engrenagem configuração','🔧':'chave ferramenta',
+    '🔨':'martelo','🛠️':'ferramentas','⚖️':'balança justiça','🖥️':'computador monitor',
+    '💻':'notebook laptop','📱':'celular smartphone','☎️':'telefone','📞':'ligação',
+    '🎯':'alvo objetivo meta','🏢':'prédio empresa escritório','🌐':'global internet mundo',
+    '🔗':'link corrente','📡':'antena sinal','🎤':'microfone apresentação',
+    '🎧':'fone ouvido música','🔔':'sino notificação alerta','📣':'megafone anúncio',
+    '💬':'mensagem chat conversa','💭':'pensamento balão','🗣️':'falando apresentando',
+    '🚗':'carro','✈️':'avião viagem voo','🍕':'pizza','🍔':'hambúrguer','☕':'café',
+    '🍺':'cerveja','🥂':'brinde comemoração','🎵':'música nota','🎶':'notas musicais',
+    '🌹':'rosa flor amor','🌻':'girassol','🌈':'arco íris','☀️':'sol',
+    '🌙':'lua noite','❄️':'neve frio','🌊':'onda mar praia'
+  };
+
+  var REACT_RECENTES_KEY = 'react_recentes_v1';
+  function getRecentes(){
+    try { return JSON.parse(localStorage.getItem(REACT_RECENTES_KEY) || '[]'); } catch(e){ return []; }
+  }
+  function addRecente(emoji){
+    var lista = getRecentes().filter(function(e){ return e !== emoji; });
+    lista.unshift(emoji);
+    if (lista.length > 54) lista = lista.slice(0, 54);
+    try { localStorage.setItem(REACT_RECENTES_KEY, JSON.stringify(lista)); } catch(e){}
+  }
+
+  function renderPickerBody(emojis, vazio){
+    var body = document.getElementById('react-picker-body');
+    if (!emojis.length){
+      body.innerHTML = '<div class="react-picker-vazio">' + (vazio || 'Nenhum resultado.') + '</div>';
+      return;
+    }
+    body.innerHTML = emojis.map(function(e){
+      var nome = EMOJI_NOMES[e] || '';
+      return '<button data-emo="' + e + '" title="' + escapeHtml(nome || e) + '">' + e + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(body.querySelectorAll('button'), function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        if (!reactTargetId || !activeId) return fecharReactPicker();
+        var emoji = btn.getAttribute('data-emo');
+        addRecente(emoji);
+        toggleReacao(activeId, reactTargetId, emoji);
+        fecharReactPicker();
+      });
+    });
+  }
+
+  function atualizarPicker(){
+    var q = (document.getElementById('react-search').value || '').trim().toLowerCase();
+    if (q) {
+      // pesquisa em todos os emojis pelo nome
+      var resultado = TODOS_EMOJIS.filter(function(e){
+        var n = (EMOJI_NOMES[e] || '').toLowerCase();
+        return n.indexOf(q) !== -1 || e === q;
+      });
+      renderPickerBody(resultado, 'Nenhum emoji encontrado para "' + escapeHtml(q) + '".');
+    } else if (reactTabAtiva === 'favoritos') {
+      var fav = getRecentes();
+      renderPickerBody(fav, 'Você ainda não usou nenhum emoji.<br>Escolha na aba Todos e eles aparecerão aqui.');
+    } else {
+      renderPickerBody(TODOS_EMOJIS);
+    }
+    // marcar aba ativa
+    Array.prototype.forEach.call(document.querySelectorAll('.react-picker-tabs button'), function(b){
+      b.classList.toggle('ativa', b.getAttribute('data-tab') === reactTabAtiva);
+    });
+  }
+
+  // configura picker (uma vez)
+  (function(){
+    els.reactPicker.addEventListener('click', function(ev){ ev.stopPropagation(); });
+    document.getElementById('react-picker-fechar').addEventListener('click', function(){ fecharReactPicker(); });
+    Array.prototype.forEach.call(document.querySelectorAll('.react-picker-tabs button'), function(btn){
+      btn.addEventListener('click', function(){
+        reactTabAtiva = btn.getAttribute('data-tab');
+        document.getElementById('react-search').value = '';
+        atualizarPicker();
+      });
+    });
+    document.getElementById('react-search').addEventListener('input', function(ev){
+      ev.stopPropagation();
+      atualizarPicker();
+    });
+    document.getElementById('react-search').addEventListener('keydown', function(ev){
+      ev.stopPropagation();
+    });
+  })();
+
+  function fecharReactPicker(){
+    els.reactPicker.classList.remove('open');
+    reactTargetId = null;
+    var s = document.getElementById('react-search');
+    if (s) s.value = '';
+  }
+  function toggleReacao(convId, msgId, emoji){
+    var msgRef = db.collection('conversas').doc(convId).collection('mensagens').doc(msgId);
+    msgRef.get().then(function(snap){
+      if (!snap.exists) return;
+      var reacoes = snap.data().reacoes || {};
+      var lista = (reacoes[emoji] || []).slice();
+      var idx = lista.indexOf(myUid);
+      if (idx === -1) lista.push(myUid); else lista.splice(idx, 1);
+      var update = {};
+      update['reacoes.' + emoji] = lista;
+      msgRef.update(update).catch(function(){});
+    });
+  }
+  var catalogoEtiquetas = {}; // tagId -> {nome, cor}
+  var tagFilterSelected = {}; // tagId -> true (filtro da lista de conversas)
+  var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
+  var replyTarget = null;     // mensagem sendo respondida
+  var verArquivadas = false;  // false = lista normal, true = mostrando só as arquivadas
+  var filtroTipo = 'todos';   // 'todos' | 'prioritaria' (marcadas com a estrela de Fixar)
+  var novaFotoGrupoDataUrl = null;  // foto escolhida ao criar um grupo novo
+  var edicaoGrupoFotoDataUrl = null; // foto escolhida ao editar um grupo existente
+
+  var PALETA_ETIQUETAS = ['#c9463c','#d8823c','#d8b25a','#4c9a6a','#3c9ea8','#4a7fc9','#8a5cc9','#c95c9e','#8a6a4a','#9c908b'];
+  var novaTagCor = PALETA_ETIQUETAS[0];
+
+  var EMOJIS = ['😀','😂','🙂','😉','😊','😍','😘','😢','😮','😡','🤔','😴','👍','👎','👏','🙏','💪','🎉','🔥','✅','❌','❤️','⭐','📌','📎','📅','⏰','☕','🎂','📄','✍️','🤝','🚀','👀'];
+
+  // ---------- Ícones (linha, mesmo estilo do restante do Portal) ----------
+  var ICO = {
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>',
+    bellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.9 17.9 0 0 1 18 8"></path><path d="M6.27 6.27A5.9 5.9 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line>',
+    compose: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+    composeDouble: '<path d="M2 4.2A2.2 2.2 0 0 1 4.2 2h11.6A2.2 2.2 0 0 1 18 4.2v6.6a2.2 2.2 0 0 1-2.2 2.2H9l-4.5 3.3v-3.3h-.3A2.2 2.2 0 0 1 2 10.8Z"></path><path d="M7 15.8c.5.4 1.1.5 1.3.5H16a2.2 2.2 0 0 0 2.2-2.2V7"></path><circle cx="6.3" cy="7.1" r=".95" fill="currentColor" stroke="none"></circle><circle cx="10" cy="7.1" r=".95" fill="currentColor" stroke="none"></circle><circle cx="13.7" cy="7.1" r=".95" fill="currentColor" stroke="none"></circle><line x1="20.5" y1="1.5" x2="20.5" y2="5.5"></line><line x1="18.5" y1="3.5" x2="22.5" y2="3.5"></line>',
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4H8l-4 3v-5.4A8.4 8.4 0 1 1 21 11.5Z"></path>',
+    archive: '<rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path><line x1="10" y1="12" x2="14" y2="12"></line>',
+    unarchive: '<rect x="3" y="4" width="18" height="4" rx="1"></rect><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path><path d="M9.5 14.3 12 11.8l2.5 2.5"></path><line x1="12" y1="11.8" x2="12" y2="17"></line>',
+    trash: '<polyline points="4 7 6 7 20 7"></polyline><path d="M6 7V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"></path><path d="M6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line>',
+    tag: '<path d="M3.5 5.2v5.3c0 .5.2 1 .6 1.4l7.9 7.9c.8.8 2 .8 2.8 0l5.4-5.4c.8-.8.8-2 0-2.8L12.3 3.7c-.4-.4-.9-.6-1.4-.6H5.6c-1.2 0-2.1.9-2.1 2.1z"></path><circle cx="8" cy="7.7" r="1.4"></circle>',
+    check: '<polyline points="5 12.5 10 17.5 19 7"></polyline>',
+    starOutline: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3"></polygon>',
+    starFilled: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3" fill="currentColor"></polygon>',
+    forward: '<polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>',
+    reply: '<polyline points="10 8 6 12 10 16"></polyline><path d="M20 5v4a3 3 0 0 1-3 3H6"></path>',
+    group: '<circle cx="9" cy="8" r="3"></circle><path d="M2.6 20c0-3.6 2.9-6.5 6.4-6.5s6.4 2.9 6.4 6.5"></path><circle cx="17" cy="8" r="2.6"></circle><path d="M15.5 13.8c2.9.4 5 2.9 5 6.2"></path>',
+    pencil: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path>',
+    document: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line>',
+    smiley: '<circle cx="12" cy="12" r="9"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9.4" x2="9" y2="9.5"></line><line x1="15" y1="9.4" x2="15" y2="9.5"></line>',
+    send: '<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>',
+    chevronLeft: '<polyline points="15 18 9 12 15 6"></polyline>'
+  };
+  function icoSvg(nome, tam){
+    var s = tam || 15;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="-3 -3 30 30" fill="none" stroke="currentColor" stroke-width="' + (nome==='starFilled'?'0':'1.9') + '" stroke-linecap="round" stroke-linejoin="round">' + (ICO[nome] || '') + '</svg>';
+  }
+
+  // ícones estáticos (os que alternam de estado são atualizados nas próprias funções de toggle)
+  els.btnNotif.innerHTML = icoSvg('bell');
+  document.querySelector('#thread-empty .big').innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+      (ICO.chat || '') +
+    '</svg>' +
+    '<img src="../../assets/favicon.png" alt="">';
+  els.btnPin.innerHTML = icoSvg('starOutline', 13) + ' Fixar';
+  els.btnEtiquetas.innerHTML = icoSvg('tag', 13) + ' Etiquetas';
+  els.btnEditarGrupo.innerHTML = icoSvg('pencil', 13) + ' Grupo';
+  els.btnArquivar.innerHTML = icoSvg('archive', 13) + ' Arquivar';
+  els.btnExcluirConversa.innerHTML = icoSvg('trash', 13) + ' Excluir';
+  els.btnEmoji.innerHTML = icoSvg('smiley', 18);
+  // no celular o campo é estreito e "Escreva uma mensagem..." ficava cortado
+  (function(){
+    var mq = window.matchMedia('(max-width: 720px)');
+    var ajustar = function(){ document.getElementById('composer-input').placeholder = mq.matches ? 'Escrever' : 'Escreva uma mensagem...'; };
+    ajustar();
+    if (mq.addEventListener) mq.addEventListener('change', ajustar); else mq.addListener(ajustar);
+  })();
+  els.btnEnviar.innerHTML = icoSvg('send', 16);
+  els.btnVoltar.innerHTML = icoSvg('chevronLeft', 20);
+  if (els.docPreviewIcon) els.docPreviewIcon.innerHTML = icoSvg('document', 20);
+  els.pickerFotoGrupoPreview.innerHTML = '#';
+  els.grupoFotoPreview.innerHTML = '#';
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  // URL de foto/documento vinda da mensagem: só https:, data: de mídia, blob: (e localhost, para testes).
+  // Qualquer outra coisa (javascript:, aspas para fechar o atributo...) vira vazio. Revisão de segurança 01/11/2026.
+  function urlDeMidia(u){
+    u = String(u || '');
+    return /^(https:\/\/|data:(image\/|application\/|text\/plain)|blob:|http:\/\/(127\.0\.0\.1|localhost)[:\/])/i.test(u) ? escapeHtml(u) : '';
+  }
+  // Escapa o texto e envolve URLs em links clicáveis
+  var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+  function linkify(s){
+    var parts = String(s || '').split(URL_RE);
+    return parts.map(function(p, i){
+      if (i % 2 === 1) {
+        // é uma URL — escapa e envolve em <a>; mostra o endereço inteiro (quebra de linha via CSS),
+        // senão quem copia o texto da mensagem leva o link encurtado e quebrado
+        var esc = escapeHtml(p);
+        return '<a href="' + esc + '" target="_blank" rel="noopener noreferrer" class="msg-link">' + esc + '</a>';
+      }
+      return escapeHtml(p);
+    }).join('');
+  }
+
+  // Copia o texto da mensagem exatamente como foi escrito (links inteiros, quebras de linha)
+  function copiarTexto(texto, btn){
+    function ok(){
+      btn.classList.add('ok'); btn.innerHTML = icoSvg('check', 28); btn.title = 'Copiado';
+      setTimeout(function(){ btn.classList.remove('ok'); btn.innerHTML = icoSvg('copy', 28); btn.title = 'Copiar mensagem'; }, 1500);
+    }
+    function alternativo(){
+      var ta = document.createElement('textarea');
+      ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var feito = false;
+      try { feito = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      if (feito) ok(); else window.prompt('Copie a mensagem:', texto);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, alternativo);
+    else alternativo();
+  }
+
+  function hexToRgba(hex, alpha){
+    var h = hex.replace('#', '');
+    var r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  function tagChipStyle(hex){
+    hex = hex || '#9c908b';
+    return 'background:' + hexToRgba(hex, .18) + ';border-color:' + hexToRgba(hex, .5) + ';color:' + hex + ';';
+  }
+
+  function tagChipHtml(tagId){
+    var t = catalogoEtiquetas[tagId];
+    if (!t) return '';
+    return '<span class="tag-chip" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '</span>';
+  }
+
+  function nomeDe(uid){
+    if (uid === myUid) return myNome;
+    var p = perfis[uid];
+    return (p && p.displayName) || 'Colaborador';
+  }
+
+  function fotoDe(uid){
+    var p = perfis[uid];
+    return p && p.photoBase64;
+  }
+
+  function iniciais(nome){
+    var partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return '?';
+    return (partes[0][0] + (partes[1] ? partes[1][0] : '')).toUpperCase();
+  }
+
+  function estaOnline(uid){
+    var p = perfis[uid];
+    if (!p || !p.lastActive || !p.lastActive.toMillis) return false;
+    return (Date.now() - p.lastActive.toMillis()) < 70000;
+  }
+
+  function dotHtml(uid){
+    if (!uid) return '';
+    return '<span class="presence-dot' + (estaOnline(uid) ? ' online' : '') + '"></span>';
+  }
+
+  function avatarHtml(nomeParaIniciais, fotoBase64, isGroup, uid){
+    var dot = isGroup ? '' : dotHtml(uid);
+    if (fotoBase64) return '<div class="avatar" style="background-image:url(\'' + fotoBase64 + '\')">' + dot + '</div>';
+    if (isGroup) return '<div class="avatar group hash">#</div>';
+    return '<div class="avatar">' + escapeHtml(iniciais(nomeParaIniciais)) + dot + '</div>';
+  }
+
+  function tituloConversa(c){
+    if (c.tipo === 'grupo') return '# ' + (c.nomeGrupo || 'Grupo');
+    var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
+    return outro ? nomeDe(outro) : 'Conversa';
+  }
+
+  function subConversa(c){
+    if (c.tipo === 'grupo') return (c.participantes || []).length + ' membros';
+    return '';
+  }
+
+  function avatarConversaHtml(c){
+    if (c.tipo === 'grupo') return avatarHtml(null, c.fotoGrupoBase64, true);
+    var outro = (c.participantes || []).filter(function(u){ return u !== myUid; })[0];
+    return avatarHtml(nomeDe(outro), fotoDe(outro), false, outro);
+  }
+
+  function formatHora(ts){
+    if (!ts || !ts.toDate) return '';
+    return ts.toDate().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function formatDiaCurto(ts){
+    if (!ts || !ts.toDate) return '';
+    var d = ts.toDate();
+    var hoje = new Date();
+    var ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+    function mesmoDia(a, b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    if (mesmoDia(d, hoje)) return 'agora';
+    if (mesmoDia(d, ontem)) return 'ontem';
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  }
+
+  function formatDiaLongo(date){
+    var hoje = new Date();
+    var ontem = new Date(); ontem.setDate(hoje.getDate() - 1);
+    function mesmoDia(a, b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    if (mesmoDia(date, hoje)) return 'Hoje';
+    if (mesmoDia(date, ontem)) return 'Ontem';
+    return date.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+  }
+
+  // ---------------- render: lista de conversas ----------------
+
+  function conversaExcluida(c){
+    var prefs = tagsPorConversa[c.id];
+    if (!prefs || !prefs.excluidaAte || !prefs.excluidaAte.toMillis) return false;
+    var ultima = c.ultimaMensagemEm && c.ultimaMensagemEm.toMillis ? c.ultimaMensagemEm.toMillis() : 0;
+    return ultima <= prefs.excluidaAte.toMillis();
+  }
+
+  function conversaOrdenada(){
+    var termo = els.buscaConversas.value.trim().toLowerCase();
+    var filtroAtivo = Object.keys(tagFilterSelected).filter(function(id){ return tagFilterSelected[id]; });
+    var lista = conversas.filter(function(c){
+      if (conversaExcluida(c)) return false;
+      var arquivada = !!(tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada);
+      if (arquivada !== verArquivadas) return false;
+      if (filtroTipo === 'prioritaria' && !(tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada)) return false;
+      var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
+      if (filtroAtivo.length && !filtroAtivo.some(function(id){ return tagIds.indexOf(id) !== -1; })) return false;
+      if (!termo) return true;
+      var nome = tituloConversa(c).toLowerCase();
+      if (nome.indexOf(termo) !== -1) return true;
+      return tagIds.some(function(id){
+        var t = catalogoEtiquetas[id];
+        return t && t.nome.toLowerCase().indexOf(termo) !== -1;
+      });
+    });
+    lista.sort(function(a, b){
+      var pa = (tagsPorConversa[a.id] && tagsPorConversa[a.id].fixada) ? 1 : 0;
+      var pb = (tagsPorConversa[b.id] && tagsPorConversa[b.id].fixada) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      var ta = a.ultimaMensagemEm && a.ultimaMensagemEm.toMillis ? a.ultimaMensagemEm.toMillis() : 0;
+      var tb = b.ultimaMensagemEm && b.ultimaMensagemEm.toMillis ? b.ultimaMensagemEm.toMillis() : 0;
+      return tb - ta;
+    });
+    return lista;
+  }
+
+  // Abaixo da busca ficam só as etiquetas usadas como filtro agora (clique no × tira o filtro).
+  // Escolher filtros e criar etiquetas é no botão de etiqueta entre "Nova conversa" e "Arquivadas".
+  function renderTagFilterRow(){
+    var ativos = Object.keys(tagFilterSelected).filter(function(id){ return tagFilterSelected[id] && catalogoEtiquetas[id]; });
+    var badge = document.getElementById('etiquetas-filtro-badge');
+    badge.textContent = ativos.length;
+    badge.style.display = ativos.length ? 'inline-block' : 'none';
+    document.getElementById('btn-etiquetas-side').classList.toggle('on', ativos.length > 0);
+    els.tagFilterRow.innerHTML = ativos.map(function(id){
+      var t = catalogoEtiquetas[id];
+      return '<span class="tag-chip active" data-filtro="' + id + '" title="Tirar este filtro" style="' + tagChipStyle(t.cor) + '">' + escapeHtml(t.nome) + '<span class="x">×</span></span>';
+    }).join('');
+    Array.prototype.forEach.call(els.tagFilterRow.querySelectorAll('[data-filtro]'), function(el){
+      el.addEventListener('click', function(){
+        delete tagFilterSelected[el.getAttribute('data-filtro')];
+        renderConvList();
+      });
+    });
+  }
+
+  function renderArquivadasToggle(){
+    var qtdArquivadas = conversas.filter(function(c){
+      return !conversaExcluida(c) && tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
+    }).length;
+    els.btnVerArquivadas.title = verArquivadas ? 'Ver conversas ativas' : 'Ver arquivadas';
+    els.btnVerArquivadas.classList.toggle('on', verArquivadas);
+    if (!verArquivadas && qtdArquivadas > 0){
+      els.arquivadasBadge.textContent = qtdArquivadas;
+      els.arquivadasBadge.style.display = 'inline-block';
+    } else {
+      els.arquivadasBadge.style.display = 'none';
+    }
+  }
+
+  function renderConvList(){
+    renderTagFilterRow();
+    renderArquivadasToggle();
+    var lista = conversaOrdenada();
+    if (!lista.length){
+      els.convList.innerHTML = '<div class="conv-empty">' + (verArquivadas
+        ? 'Nenhuma conversa arquivada.'
+        : 'Nenhuma conversa ainda. Toque em "+" para começar.') + '</div>';
+      return;
+    }
+    els.convList.innerHTML = lista.map(function(c){
+      var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
+      var fixada = tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada;
+      var naoLidas = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
+      var preview = c.ultimaMensagemPreview || '';
+      if (c.tipo === 'grupo' && c.ultimaMensagemAutor){
+        preview = nomeDe(c.ultimaMensagemAutor) + ': ' + preview;
+      }
+      var arquivada = tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
+      var marcada = modoSelecao && !!selecionadas[c.id];
+      var out = '<div class="conv-item' + (c.id === activeId && !modoSelecao ? ' active' : '') + (naoLidas > 0 ? ' nao-lida' : '') + (marcada ? ' marcada' : '') + '" data-id="' + c.id + '">';
+      if (modoSelecao) out += '<span class="sel-box">' + (marcada ? icoSvg('check', 14) : '') + '</span>';
+      out += avatarConversaHtml(c);
+      out += '<div class="conv-body">';
+      out += '<div class="conv-top-line">';
+      if (fixada) out += '<span class="pin-mark">★</span>';
+      out += '<span class="conv-name">' + escapeHtml(tituloConversa(c)) + '</span>';
+      out += '</div>';
+      out += '<div class="conv-preview' + (naoLidas > 0 ? ' unread' : '') + '">' + escapeHtml(preview) + '</div>';
+      if (tagIds.length){
+        out += '<div class="conv-tags">' + tagIds.map(tagChipHtml).join('') + '</div>';
+      }
+      out += '</div>';
+      out += '<div class="conv-meta-col">';
+      out += '<span class="conv-time">' + formatDiaCurto(c.ultimaMensagemEm) + '</span>';
+      if (naoLidas > 0) out += '<span class="unread-badge">' + naoLidas + '</span>';
+      out += '<span class="conv-quick">'
+        + '<button type="button" data-acao="fixar" class="' + (fixada ? 'on' : '') + '" title="' + (fixada ? 'Desafixar' : 'Fixar') + '">' + icoSvg(fixada ? 'starFilled' : 'starOutline', 13) + '</button>'
+        + '<button type="button" data-acao="arquivar" title="' + (arquivada ? 'Desarquivar' : 'Arquivar') + '">' + icoSvg(arquivada ? 'unarchive' : 'archive', 13) + '</button>'
+        + '</span>';
+      out += '</div>';
+      out += '</div>';
+      return out;
+    }).join('');
+
+    Array.prototype.forEach.call(els.convList.querySelectorAll('.conv-item'), function(el){
+      var id = el.getAttribute('data-id');
+      el.addEventListener('click', function(e){
+        if (toqueLongoAcabou){ toqueLongoAcabou = false; return; }
+        if (modoSelecao){ alternarSelecao(id); return; }
+        var acao = e.target.closest('[data-acao]');
+        if (acao){
+          e.stopPropagation();
+          if (acao.getAttribute('data-acao') === 'fixar') alternarFixada(id);
+          else alternarArquivada(id);
+          return;
+        }
+        selecionarConversa(id);
+      });
+      ligarToqueLongo(el, id);
+    });
+    if (modoSelecao) renderLoteBar();
+  }
+
+  // ---------------- toque longo numa conversa (celular): fixar, arquivar, etiquetas, excluir ----------------
+  var toqueLongoAcabou = false; // evita que o "click" de fim do toque abra a conversa
+  function ligarToqueLongo(el, id){
+    var timer = null, x0 = 0, y0 = 0;
+    el.addEventListener('touchstart', function(e){
+      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY;
+      timer = setTimeout(function(){
+        timer = null;
+        toqueLongoAcabou = true;
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch(err){} }
+        if (modoSelecao) alternarSelecao(id); else abrirMenuConversa(id);
+      }, 550);
+    }, { passive: true });
+    el.addEventListener('touchmove', function(e){
+      var t = e.touches[0];
+      if (timer && (Math.abs(t.clientX - x0) > 10 || Math.abs(t.clientY - y0) > 10)) { clearTimeout(timer); timer = null; }
+    }, { passive: true });
+    el.addEventListener('touchend', function(){ if (timer) { clearTimeout(timer); timer = null; } });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+
+  var acoesBackdrop = document.getElementById('acoes-sheet-backdrop');
+  var acoesSheet = document.getElementById('acoes-sheet');
+  var menuAbertoEm = 0;
+  function fecharMenuConversa(){ acoesBackdrop.classList.remove('open'); }
+  acoesBackdrop.addEventListener('click', function(e){
+    // o "click" de quando o dedo sai da tela chega logo depois de abrir — não fecha por causa dele
+    if (e.target === acoesBackdrop && Date.now() - menuAbertoEm > 450) fecharMenuConversa();
+  });
+
+  function abrirMenuConversa(id){
+    var c = conversas.filter(function(x){ return x.id === id; })[0];
+    if (!c) return;
+    var prefs = tagsPorConversa[id] || {};
+    var nome = tituloConversa(c);
+    acoesSheet.innerHTML = '<div class="titulo">' + escapeHtml(nome) + '</div>'
+      + '<button type="button" data-op="fixar">' + icoSvg(prefs.fixada ? 'starFilled' : 'starOutline', 18) + (prefs.fixada ? 'Desafixar' : 'Fixar') + '</button>'
+      + '<button type="button" data-op="arquivar">' + icoSvg(prefs.arquivada ? 'unarchive' : 'archive', 18) + (prefs.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>'
+      + '<button type="button" data-op="etiquetas">' + icoSvg('tag', 18) + 'Colocar etiqueta</button>'
+      + '<button type="button" data-op="excluir" class="danger">' + icoSvg('trash', 18) + 'Excluir</button>'
+      + '<button type="button" data-op="selecionar">' + icoSvg('check', 18) + 'Selecionar várias</button>'
+      + '<button type="button" data-op="cancelar" class="cancelar">Cancelar</button>';
+    Array.prototype.forEach.call(acoesSheet.querySelectorAll('[data-op]'), function(b){
+      b.addEventListener('click', function(){
+        if (Date.now() - menuAbertoEm < 450) return; // mesmo cuidado do fundo: ignora o toque que abriu o menu
+        var op = b.getAttribute('data-op');
+        fecharMenuConversa();
+        if (op === 'fixar'){
+          if (confirm((prefs.fixada ? 'Desafixar' : 'Fixar') + ' a conversa "' + nome + '"?')) alternarFixada(id);
+        } else if (op === 'arquivar'){
+          if (confirm((prefs.arquivada ? 'Desarquivar' : 'Arquivar') + ' a conversa "' + nome + '"?')) alternarArquivada(id);
+        } else if (op === 'etiquetas'){
+          abrirEtiquetasDaConversa(id);
+        } else if (op === 'excluir'){
+          excluirConversa(id);
+        } else if (op === 'selecionar'){
+          entrarModoSelecao(id);
+        }
+      });
+    });
+    menuAbertoEm = Date.now();
+    acoesBackdrop.classList.add('open');
+  }
+
+  // ---------------- seleção de várias conversas (alterar em lote) ----------------
+  var modoSelecao = false;
+  var selecionadas = {}; // conversaId -> true
+  var loteBar = document.getElementById('lote-bar');
+
+  function idsSelecionados(){ return Object.keys(selecionadas).filter(function(k){ return selecionadas[k]; }); }
+  function entrarModoSelecao(idInicial){
+    modoSelecao = true;
+    selecionadas = {};
+    if (idInicial) selecionadas[idInicial] = true;
+    renderConvList();
+    renderLoteBar();
+  }
+  function sairModoSelecao(){
+    modoSelecao = false;
+    selecionadas = {};
+    renderConvList();
+    renderLoteBar();
+  }
+  function alternarSelecao(id){
+    selecionadas[id] = !selecionadas[id];
+    renderConvList();
+    renderLoteBar();
+  }
+  function renderLoteBar(){
+    var ids = idsSelecionados();
+    loteBar.classList.toggle('show', modoSelecao);
+    if (!modoSelecao) return;
+    var todasFixadas = ids.length && ids.every(function(id){ return tagsPorConversa[id] && tagsPorConversa[id].fixada; });
+    var todasArquivadas = ids.length && ids.every(function(id){ return tagsPorConversa[id] && tagsPorConversa[id].arquivada; });
+    loteBar.innerHTML = '<div class="lote-top"><span>' + ids.length + (ids.length === 1 ? ' selecionada' : ' selecionadas') + '</span>'
+      + '<button type="button" data-lote="sair" class="lote-sair">Cancelar</button></div>'
+      + '<div class="lote-acoes">'
+      + '<button type="button" data-lote="fixar"' + (ids.length ? '' : ' disabled') + '>' + icoSvg(todasFixadas ? 'starFilled' : 'starOutline', 18) + '<span>' + (todasFixadas ? 'Desafixar' : 'Fixar') + '</span></button>'
+      + '<button type="button" data-lote="arquivar"' + (ids.length ? '' : ' disabled') + '>' + icoSvg(todasArquivadas ? 'unarchive' : 'archive', 18) + '<span>' + (todasArquivadas ? 'Desarquivar' : 'Arquivar') + '</span></button>'
+      + '<button type="button" data-lote="etiquetas"' + (ids.length ? '' : ' disabled') + '>' + icoSvg('tag', 18) + '<span>Etiqueta</span></button>'
+      + '<button type="button" data-lote="excluir" class="danger"' + (ids.length ? '' : ' disabled') + '>' + icoSvg('trash', 18) + '<span>Excluir</span></button>'
+      + '</div>';
+    Array.prototype.forEach.call(loteBar.querySelectorAll('[data-lote]'), function(b){
+      b.addEventListener('click', function(){
+        var op = b.getAttribute('data-lote');
+        var n = ids.length;
+        var qtd = n + (n === 1 ? ' conversa' : ' conversas');
+        if (op === 'sair') return sairModoSelecao();
+        if (op === 'etiquetas') return abrirModalEtiquetas('aplicar', ids);
+        var campo, pergunta;
+        if (op === 'fixar'){ campo = { fixada: !todasFixadas }; pergunta = (todasFixadas ? 'Desafixar ' : 'Fixar ') + qtd + '?'; }
+        else if (op === 'arquivar'){ campo = { arquivada: !todasArquivadas }; pergunta = (todasArquivadas ? 'Desarquivar ' : 'Arquivar ') + qtd + '?'; }
+        else if (op === 'excluir'){
+          campo = { excluidaAte: FV.serverTimestamp(), arquivada: false };
+          pergunta = 'Excluir ' + qtd + ' da sua lista?\n\nElas continuam existindo para as outras pessoas — isso só tira da SUA lista. Se chegar mensagem nova, a conversa volta a aparecer.';
+        }
+        if (!confirm(pergunta)) return;
+        var batch = db.batch();
+        ids.forEach(function(id){ batch.set(db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id), campo, { merge: true }); });
+        batch.commit().then(function(){
+          if ((op === 'arquivar' || op === 'excluir') && ids.indexOf(activeId) !== -1) voltarParaListaVazia();
+          sairModoSelecao();
+        }).catch(function(e){ alert('Não foi possível concluir: ' + e.message); });
+      });
+    });
+  }
+
+  els.btnVerArquivadas.addEventListener('click', function(){
+    verArquivadas = !verArquivadas;
+    renderConvList();
+  });
+
+  Array.prototype.forEach.call(els.typeTabs.querySelectorAll('.type-tab'), function(btn){
+    btn.addEventListener('click', function(){
+      filtroTipo = btn.getAttribute('data-tipo');
+      Array.prototype.forEach.call(els.typeTabs.querySelectorAll('.type-tab'), function(b){
+        b.classList.toggle('active', b === btn);
+      });
+      renderConvList();
+    });
+  });
+
+  // ---------------- thread ----------------
+
+  function selecionarConversa(id){
+    activeId = id;
+    primeiraRenderConversa = true;
+    cancelarResposta();
+    var prefsAtual = tagsPorConversa[id];
+    if (prefsAtual && prefsAtual.excluidaAte){
+      db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+        .set({ excluidaAte: null }, { merge: true }).catch(function(){});
+    }
+    els.shell.classList.add('thread-open');
+    els.threadEmpty.style.display = 'none';
+    els.threadActive.style.display = 'flex';
+    renderConvList();
+
+    var c = conversas.filter(function(x){ return x.id === id; })[0];
+    if (c){
+      els.threadTitle.textContent = tituloConversa(c);
+      els.threadSub.textContent = subConversa(c);
+      var fixada = tagsPorConversa[id] && tagsPorConversa[id].fixada;
+      els.btnPin.innerHTML = fixada ? (icoSvg('starFilled', 13) + ' Fixada') : (icoSvg('starOutline', 13) + ' Fixar');
+      els.btnPin.classList.toggle('on', !!fixada);
+      var arquivada = tagsPorConversa[id] && tagsPorConversa[id].arquivada;
+      els.btnArquivar.innerHTML = arquivada ? (icoSvg('unarchive', 13) + ' Desarquivar') : (icoSvg('archive', 13) + ' Arquivar');
+      els.btnArquivar.classList.toggle('on', !!arquivada);
+      els.btnEditarGrupo.style.display = c.tipo === 'grupo' ? 'inline-flex' : 'none';
+    }
+
+    db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
+
+    if (unsubMensagens) { unsubMensagens(); unsubMensagens = null; }
+    unsubMensagens = db.collection('conversas').doc(id).collection('mensagens')
+      .orderBy('criadoEm', 'asc')
+      .onSnapshot(function(snap){
+        mensagensCache = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        renderMensagens();
+        marcarComoLidas();
+      });
+  }
+
+  function fecharThreadMobile(){
+    els.shell.classList.remove('thread-open');
+  }
+
+  function marcarComoLidas(){
+    mensagensCache.forEach(function(m){
+      var lidaPor = m.lidaPor || [];
+      if (m.autorUid !== myUid && lidaPor.indexOf(myUid) === -1){
+        db.collection('conversas').doc(activeId).collection('mensagens').doc(m.id)
+          .update({ lidaPor: FV.arrayUnion(myUid) }).catch(function(){});
+      }
+    });
+  }
+
+  function renderMensagens(){
+    var out = '';
+    var ultimoDia = null;
+    mensagensCache.forEach(function(m){
+      var data = m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : new Date();
+      var chaveDia = data.toDateString();
+      if (chaveDia !== ultimoDia){
+        out += '<div class="day-sep">' + formatDiaLongo(data) + '</div>';
+        ultimoDia = chaveDia;
+      }
+      if (m.tipo === 'sistema'){
+        out += '<div class="msg-sistema">' + escapeHtml(m.texto || '') + '</div>';
+        return;
+      }
+
+      var own = m.autorUid === myUid;
+      out += '<div class="msg-row ' + (own ? 'own' : 'other') + '" data-msg-id="' + m.id + '">';
+      if (!own) out += avatarHtml(nomeDe(m.autorUid), fotoDe(m.autorUid), false);
+      out += '<div class="msg-col">';
+      if (!own){
+        out += '<div class="msg-head"><span class="msg-author-name">' + escapeHtml(nomeDe(m.autorUid)) + '</span><span class="msg-time-inline">' + formatHora(m.criadoEm) + '</span></div>';
+      }
+      out += '<div class="msg-bubble-wrap">';
+      out += '<div class="msg-bubble">';
+      if (m.respondendoA){
+        out += '<div class="msg-quote" data-jump="' + m.respondendoA.mensagemId + '">' +
+          '<div class="autor">' + escapeHtml(m.respondendoA.autorNome) + '</div>' +
+          '<div class="resumo">' + escapeHtml(m.respondendoA.resumo) + '</div></div>';
+      }
+      if (m.encaminhada){
+        out += '<div class="msg-fwd-label">' + icoSvg('forward', 11) + ' Encaminhada de ' + escapeHtml(m.encaminhadaDeAutorNome || 'alguém') + '</div>';
+      }
+      if (m.tipo === 'foto'){
+        var fotoSrc = urlDeMidia(m.fotoUrl || m.fotoBase64 || '');
+        if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '">';
+      }
+      if (m.tipo === 'documento'){
+        var docHref = urlDeMidia(m.documentoUrl || m.documentoBase64 || '') || '#';
+        var docAttr = m.documentoUrl ? 'target="_blank" rel="noopener"' : ('download="' + escapeHtml(m.documentoNome || 'documento') + '"');
+        out += '<a class="msg-doc" href="' + docHref + '" ' + docAttr + '>' +
+          '<span class="icone">' + icoSvg('document', 22) + '</span><span class="info">' +
+          '<div class="nome">' + escapeHtml(m.documentoNome || 'Documento') + '</div>' +
+          '<div class="tamanho">' + formatBytes(m.documentoTamanho || 0) + '</div>' +
+          '</span></a>';
+      }
+      if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
+      out += '</div>';
+      out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 28) + '</button>';
+      if (m.texto) out += '<button class="msg-copy-btn" data-copy="' + m.id + '" title="Copiar mensagem">' + icoSvg('copy', 28) + '</button>';
+      out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 28) + '</button>';
+      out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">' + icoSvg('smiley', 28) + '</button>';
+      out += '</div>';
+      var reacoes = m.reacoes || {};
+      var pillsHtml = '';
+      Object.keys(reacoes).forEach(function(emoji){
+        var uids = reacoes[emoji] || [];
+        if (!uids.length) return;
+        var minha = uids.indexOf(myUid) !== -1;
+        var nomes = uids.map(function(u){ return nomeDe(u); }).join(', ');
+        pillsHtml += '<span class="reacao-pill' + (minha ? ' minha' : '') + '" data-react-pill="' + m.id + '" data-emoji="' + emoji + '" title="' + escapeHtml(nomes) + '">' +
+          emoji + ' <span class="cnt">' + uids.length + '</span></span>';
+      });
+      if (pillsHtml) out += '<div class="msg-reacoes">' + pillsHtml + '</div>';
+      if (own){
+        var conv = conversas.filter(function(x){ return x.id === activeId; })[0];
+        var outros = conv ? (conv.participantes || []).filter(function(u){ return u !== myUid; }) : [];
+        var lidaPor = m.lidaPor || [];
+        var todosLeram = outros.length > 0 && outros.every(function(u){ return lidaPor.indexOf(u) !== -1; });
+        var tick = todosLeram
+          ? '<span class="tick lido" title="Lida">✓✓</span>'
+          : '<span class="tick" title="Enviada">✓</span>';
+        out += '<div class="msg-time">' + formatHora(m.criadoEm) + tick + '</div>';
+      }
+      out += '</div>';
+      out += '</div>';
+    });
+    var listEl = els.msgList;
+    // Na primeira carga da conversa, vai sempre ao fim
+    // Nas atualizações seguintes (nova msg, reação, leitura), preserva posição se o
+    // usuário estiver lendo mensagens antigas (mais de 120px acima do fim)
+    var deveIrAoFim = primeiraRenderConversa ||
+      (listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120);
+    var scrollAntes = listEl.scrollTop;
+    var alturaAntes = listEl.scrollHeight;
+    primeiraRenderConversa = false;
+
+    listEl.innerHTML = out;
+
+    if (deveIrAoFim) {
+      listEl.scrollTop = listEl.scrollHeight;
+    } else {
+      listEl.scrollTop = scrollAntes + (listEl.scrollHeight - alturaAntes);
+    }
+
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('.msg-photo'), function(img){
+      img.addEventListener('click', function(){
+        els.lightboxImg.src = img.getAttribute('data-full');
+        els.lightbox.classList.add('open');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-fwd]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-fwd');
+        forwardMsg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (forwardMsg) abrirPicker('encaminhar');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-copy]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-copy');
+        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (msg && msg.texto) copiarTexto(msg.texto, btn);
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-reply]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-reply');
+        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (msg) iniciarResposta(msg);
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react]'), function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        var id = btn.getAttribute('data-react');
+        if (reactTargetId === id && els.reactPicker.classList.contains('open')){
+          return fecharReactPicker();
+        }
+        reactTargetId = id;
+        var rect = btn.getBoundingClientRect();
+        var pickerW = 310, pickerH = 300;
+        // posição vertical: abre abaixo, se não couber abre acima
+        var top = rect.bottom + 4;
+        if (top + pickerH > window.innerHeight - 10) top = rect.top - pickerH - 4;
+        // posição horizontal: centraliza no botão mas puxa para a esquerda
+        var left = rect.left + rect.width / 2 - pickerW + 40;
+        if (left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
+        if (left < 8) left = 8;
+        els.reactPicker.style.top = top + 'px';
+        els.reactPicker.style.left = left + 'px';
+        // abre sempre na aba favoritos; limpa pesquisa
+        reactTabAtiva = 'favoritos';
+        document.getElementById('react-search').value = '';
+        atualizarPicker();
+        els.reactPicker.classList.add('open');
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react-pill]'), function(pill){
+      pill.addEventListener('click', function(){
+        var id = pill.getAttribute('data-react-pill');
+        var emoji = pill.getAttribute('data-emoji');
+        if (activeId) toggleReacao(activeId, id, emoji);
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-jump]'), function(el){
+      el.addEventListener('click', function(){
+        var id = el.getAttribute('data-jump');
+        var alvo = els.msgList.querySelector('[data-msg-id="' + id + '"]');
+        if (!alvo) return;
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        alvo.classList.add('highlight');
+        setTimeout(function(){ alvo.classList.remove('highlight'); }, 1200);
+      });
+    });
+  }
+
+  els.lightbox.addEventListener('click', function(){ els.lightbox.classList.remove('open'); });
+  // picker fecha só pelo X ou ao escolher emoji — não fecha com clique fora
+  els.btnVoltar.addEventListener('click', fecharThreadMobile);
+
+  // ---------------- envio de mensagens ----------------
+
+  function limparComposerFoto(){
+    novaFotoUrl = null;
+    els.photoPreviewRow.classList.remove('show');
+    els.fotoInput.value = '';
+  }
+
+  function comprimirParaBlob(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function(){
+          function reduzir(maxDim, quality){
+            var w = img.width, h = img.height;
+            if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
+            else { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            return canvas;
+          }
+          var canvas = reduzir(1200, 0.82);
+          canvas.toBlob(function(blob){
+            if (!blob){ reject(new Error('Não foi possível processar a imagem.')); return; }
+            if (blob.size > 800 * 1024){
+              canvas = reduzir(800, 0.72);
+              canvas.toBlob(function(b2){
+                resolve(b2 || blob);
+              }, 'image/jpeg', 0.72);
+            } else {
+              resolve(blob);
+            }
+          }, 'image/jpeg', 0.82);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function comprimirFoto(file){
+    return comprimirParaBlob(file).then(function(blob){
+      var ext = 'jpg';
+      // pasta da conversa: as regras do Storage só deixam participantes lerem/enviarem (revisão 01/11/2026)
+      var caminho = 'chat/' + activeId + '/' + myUid + '/' + Date.now() + '_foto.' + ext;
+      return uploadParaStorage(blob, caminho);
+    });
+  }
+
+  function comprimirFotoQuadrada(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function(){
+          var lado = Math.min(img.width, img.height);
+          var sx = (img.width - lado) / 2, sy = (img.height - lado) / 2;
+          var canvas = document.createElement('canvas');
+          canvas.width = maxDim; canvas.height = maxDim;
+          canvas.getContext('2d').drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.btnAnexar.addEventListener('click', function(){ els.fotoInput.click(); });
+  function processarFotoParaEnvio(file){
+    // Mostra preview local imediato; faz upload ao Storage em paralelo
+    var localUrl = URL.createObjectURL(file);
+    limparComposerDoc();
+    novaFotoUrl = null; // ainda fazendo upload
+    els.photoPreviewImg.src = localUrl;
+    els.photoPreviewRow.classList.add('show');
+    els.btnEnviar.disabled = true;
+    els.btnEnviar.title = 'Enviando imagem…';
+    comprimirFoto(file).then(function(url){
+      novaFotoUrl = url;
+      els.photoPreviewImg.src = url;
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+    }).catch(function(err){
+      limparComposerFoto();
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+      alert(err.message || 'Não foi possível enviar a imagem.');
+    });
+  }
+
+  els.fotoInput.addEventListener('change', function(){
+    var file = els.fotoInput.files[0];
+    if (!file) return;
+    processarFotoParaEnvio(file);
+    els.fotoInput.value = '';
+  });
+  els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
+
+  var LIMITE_DOCUMENTO_BYTES = 10 * 1024 * 1024; // 10 MB via Storage
+
+  function formatBytes(n){
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function limparComposerDoc(){
+    novoDocumento = null;
+    els.docPreviewRow.classList.remove('show');
+    els.docInput.value = '';
+  }
+
+  function fazerUploadDocumento(file){
+    return new Promise(function(resolve, reject){
+      if (file.size > LIMITE_DOCUMENTO_BYTES){
+        reject(new Error('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.'));
+        return;
+      }
+      var ext = file.name.split('.').pop() || 'bin';
+      var caminho = 'chat/' + activeId + '/' + myUid + '/' + Date.now() + '_doc.' + ext;
+      uploadParaStorage(file, caminho).then(function(url){
+        resolve({ storageUrl: url, dataUrl: null, nome: file.name, tipo: file.type || '', tamanho: file.size });
+      }).catch(reject);
+    });
+  }
+
+  els.btnAnexarDoc.addEventListener('click', function(){ els.docInput.click(); });
+  els.docInput.addEventListener('change', function(){
+    var file = els.docInput.files[0];
+    if (!file) return;
+    processarDocParaEnvio(file);
+  });
+  function processarDocParaEnvio(file){
+    if (file.size > LIMITE_DOCUMENTO_BYTES){
+      alert('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.');
+      els.docInput.value = '';
+      return;
+    }
+    limparComposerFoto();
+    novoDocumento = { storageUrl: null, dataUrl: null, nome: file.name, tipo: file.type || '', tamanho: file.size };
+    els.docPreviewNome.textContent = file.name;
+    els.docPreviewTamanho.textContent = formatBytes(file.size) + ' — enviando…';
+    els.docPreviewRow.classList.add('show');
+    els.btnEnviar.disabled = true;
+    els.btnEnviar.title = 'Enviando arquivo…';
+    fazerUploadDocumento(file).then(function(doc){
+      novoDocumento = doc;
+      els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+    }).catch(function(err){
+      limparComposerDoc();
+      els.btnEnviar.disabled = false;
+      els.btnEnviar.title = '';
+      alert(err.message || 'Não foi possível enviar o arquivo.');
+    });
+    els.docInput.value = '';
+  }
+  els.btnRemoverDoc.addEventListener('click', limparComposerDoc);
+
+  // Arrastar um arquivo para dentro da conversa aberta já anexa (como no WhatsApp)
+  var EXT_DOC_RE = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip|rar|odt|ods)$/i;
+  var threadAtiva = document.getElementById('thread-active'), arrastando = 0;
+  function temArquivo(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; }
+  threadAtiva.addEventListener('dragenter', function(e){
+    if (!activeId || !temArquivo(e)) return;
+    e.preventDefault(); arrastando++;
+    threadAtiva.classList.add('soltando');
+  });
+  threadAtiva.addEventListener('dragover', function(e){
+    if (!activeId || !temArquivo(e)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  threadAtiva.addEventListener('dragleave', function(){
+    if (--arrastando <= 0){ arrastando = 0; threadAtiva.classList.remove('soltando'); }
+  });
+  threadAtiva.addEventListener('drop', function(e){
+    if (!temArquivo(e)) return;
+    e.preventDefault(); arrastando = 0;
+    threadAtiva.classList.remove('soltando');
+    if (!activeId) return;
+    var files = e.dataTransfer.files;
+    if (!files || !files.length) return;
+    var file = files[0];
+    if (files.length > 1) alert('Dá para anexar um arquivo por mensagem — vou anexar "' + file.name + '". Envie os outros em seguida.');
+    if (/^image\//.test(file.type)) processarFotoParaEnvio(file);
+    else if (EXT_DOC_RE.test(file.name)) processarDocParaEnvio(file);
+    else alert('Esse tipo de arquivo não pode ser enviado no chat. Formatos aceitos: imagens, PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP, RAR, ODT e ODS.');
+    els.composerInput.focus();
+  });
+
+  function resumoMensagem(m){
+    if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
+    if (m.tipo === 'documento') return '📄 ' + (m.documentoNome || 'Documento') + (m.texto ? ': ' + m.texto : '');
+    return m.texto || '';
+  }
+
+  function iniciarResposta(msg){
+    replyTarget = msg;
+    els.replyAutor.textContent = nomeDe(msg.autorUid);
+    els.replyResumo.textContent = resumoMensagem(msg).slice(0, 140);
+    els.replyPreviewRow.classList.add('show');
+    els.composerInput.focus();
+  }
+
+  function cancelarResposta(){
+    replyTarget = null;
+    els.replyPreviewRow.classList.remove('show');
+  }
+  els.btnCancelarResposta.addEventListener('click', cancelarResposta);
+
+  // ---------------- emoji ----------------
+
+  els.emojiPopover.innerHTML = EMOJIS.map(function(e){ return '<button type="button">' + e + '</button>'; }).join('');
+  Array.prototype.forEach.call(els.emojiPopover.querySelectorAll('button'), function(btn){
+    btn.addEventListener('click', function(){
+      var inicio = els.composerInput.selectionStart || els.composerInput.value.length;
+      var fim = els.composerInput.selectionEnd || els.composerInput.value.length;
+      var valor = els.composerInput.value;
+      els.composerInput.value = valor.slice(0, inicio) + btn.textContent + valor.slice(fim);
+      var novaPos = inicio + btn.textContent.length;
+      els.composerInput.focus();
+      els.composerInput.setSelectionRange(novaPos, novaPos);
+      els.composerInput.style.height = 'auto';
+      els.composerInput.style.height = Math.min(els.composerInput.scrollHeight, 120) + 'px';
+    });
+  });
+  els.btnEmoji.addEventListener('click', function(e){
+    e.stopPropagation();
+    els.emojiPopover.classList.toggle('open');
+  });
+  document.addEventListener('click', function(e){
+    if (els.emojiPopover.classList.contains('open') && !els.emojiPopover.contains(e.target) && e.target !== els.btnEmoji){
+      els.emojiPopover.classList.remove('open');
+    }
+  });
+
+  els.composerInput.addEventListener('input', function(){
+    els.composerInput.style.height = 'auto';
+    els.composerInput.style.height = Math.min(els.composerInput.scrollHeight, 120) + 'px';
+  });
+  els.composerInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      enviarMensagem();
+    }
+  });
+
+  // Colar imagem do clipboard (Print Screen, Recorte do Windows, Paint)
+  els.composerInput.addEventListener('paste', function(e){
+    if (!activeId) return;
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (var i = 0; i < items.length; i++){
+      if (items[i].type.indexOf('image') !== -1){
+        e.preventDefault();
+        var file = items[i].getAsFile();
+        if (!file) return;
+        processarFotoParaEnvio(file);
+        return;
+      }
+    }
+  });
+
+  els.btnEnviar.addEventListener('click', enviarMensagem);
+
+  function postMessageTo(conversaId, msgData, preview){
+    return db.collection('conversas').doc(conversaId).collection('mensagens').add(msgData).then(function(){
+      var cached = conversas.filter(function(x){ return x.id === conversaId; })[0];
+      var participantesPromise = cached
+        ? Promise.resolve(cached.participantes || [])
+        : db.collection('conversas').doc(conversaId).get().then(function(doc){
+            return (doc.exists && doc.data().participantes) || [];
+          });
+      return participantesPromise.then(function(participantes){
+        var updates = {
+          ultimaMensagemEm: FV.serverTimestamp(),
+          ultimaMensagemPreview: preview.slice(0, 120),
+          ultimaMensagemAutor: msgData.autorUid
+        };
+        participantes.forEach(function(uid){
+          updates['naoLidoPor.' + uid] = (uid === msgData.autorUid) ? 0 : FV.increment(1);
+        });
+        return db.collection('conversas').doc(conversaId).update(updates);
+      });
+    });
+  }
+
+  function enviarMensagem(){
+    if (!activeId) return;
+    var texto = els.composerInput.value.trim();
+    if (!texto && !novaFotoUrl && !novoDocumento) return;
+    els.btnEnviar.disabled = true;
+    var tipo = novoDocumento ? 'documento' : (novaFotoUrl ? 'foto' : 'texto');
+    var msgData = {
+      autorUid: myUid,
+      tipo: tipo,
+      texto: texto || null,
+      fotoUrl: novaFotoUrl || null,
+      fotoBase64: null,
+      documentoUrl: novoDocumento ? novoDocumento.storageUrl : null,
+      documentoBase64: novoDocumento ? novoDocumento.dataUrl : null,
+      documentoNome: novoDocumento ? novoDocumento.nome : null,
+      documentoTipo: novoDocumento ? novoDocumento.tipo : null,
+      documentoTamanho: novoDocumento ? novoDocumento.tamanho : null,
+      encaminhada: false,
+      encaminhadaDeAutorNome: null,
+      respondendoA: replyTarget ? {
+        mensagemId: replyTarget.id,
+        autorNome: nomeDe(replyTarget.autorUid),
+        resumo: resumoMensagem(replyTarget).slice(0, 140)
+      } : null,
+      criadoEm: FV.serverTimestamp(),
+      lidaPor: [myUid]
+    };
+    var preview = resumoMensagem(msgData);
+    postMessageTo(activeId, msgData, preview).then(function(){
+      els.composerInput.value = '';
+      els.composerInput.style.height = 'auto';
+      limparComposerFoto();
+      limparComposerDoc();
+      cancelarResposta();
+    }).catch(function(e){
+      alert('Não foi possível enviar: ' + e.message);
+    }).finally(function(){
+      els.btnEnviar.disabled = false;
+    });
+  }
+
+  // ---------------- pin ----------------
+
+  function alternarFixada(id){
+    var atual = tagsPorConversa[id] && tagsPorConversa[id].fixada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+      .set({ fixada: !atual }, { merge: true }).catch(function(e){ alert('Erro: ' + e.message); });
+  }
+  els.btnPin.addEventListener('click', function(){
+    if (activeId) alternarFixada(activeId);
+  });
+
+  // ---------------- arquivar / excluir ----------------
+
+  function alternarArquivada(id){
+    var atual = tagsPorConversa[id] && tagsPorConversa[id].arquivada;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+      .set({ arquivada: !atual }, { merge: true })
+      .then(function(){
+        if (!atual && activeId === id) voltarParaListaVazia();
+      })
+      .catch(function(e){ alert('Erro: ' + e.message); });
+  }
+  els.btnArquivar.addEventListener('click', function(){
+    if (activeId) alternarArquivada(activeId);
+  });
+
+  function voltarParaListaVazia(){
+    activeId = null;
+    els.threadActive.style.display = 'none';
+    els.threadEmpty.style.display = 'flex';
+    fecharThreadMobile();
+    renderConvList();
+  }
+
+  els.btnExcluirConversa.addEventListener('click', function(){
+    if (activeId) excluirConversa(activeId);
+  });
+  function excluirConversa(id){
+    var ok = confirm('Excluir esta conversa da sua lista?\n\nEla continua existindo para a outra pessoa (ou para o grupo) — isso só tira ela da SUA lista. Se chegar mensagem nova aqui, a conversa volta a aparecer para você.');
+    if (!ok) return;
+    db.collection('chatPrefs').doc(myUid).collection('conversas').doc(id)
+      .set({ excluidaAte: FV.serverTimestamp(), arquivada: false }, { merge: true })
+      .then(function(){
+        if (activeId === id) voltarParaListaVazia();
+      })
+      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
+  }
+
+  // ---------------- editar grupo ----------------
+
+  els.btnEditarGrupo.addEventListener('click', function(){
+    if (!activeId) return;
+    var c = conversas.filter(function(x){ return x.id === activeId; })[0];
+    if (!c || c.tipo !== 'grupo') return;
+    edicaoGrupoFotoDataUrl = null;
+    els.grupoNomeInput.value = c.nomeGrupo || '';
+    els.grupoFormErr.textContent = '';
+    if (c.fotoGrupoBase64){
+      els.grupoFotoPreview.style.backgroundImage = 'url(\'' + c.fotoGrupoBase64 + '\')';
+      els.grupoFotoPreview.innerHTML = '';
+    } else {
+      els.grupoFotoPreview.style.backgroundImage = '';
+      els.grupoFotoPreview.innerHTML = '#';
+    }
+    els.grupoBackdrop.classList.add('open');
+  });
+  els.grupoFechar.addEventListener('click', function(){ els.grupoBackdrop.classList.remove('open'); });
+  els.grupoFotoBtn.addEventListener('click', function(){ els.grupoFotoInput.click(); });
+  els.grupoFotoInput.addEventListener('change', function(){
+    var file = els.grupoFotoInput.files[0];
+    if (!file) return;
+    comprimirFotoQuadrada(file, 220, 0.82).then(function(dataUrl){
+      edicaoGrupoFotoDataUrl = dataUrl;
+      els.grupoFotoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
+      els.grupoFotoPreview.innerHTML = '';
+    }).catch(function(){
+      alert('Não foi possível processar a imagem.');
+    });
+  });
+  els.grupoSalvar.addEventListener('click', function(){
+    if (!activeId) return;
+    var nome = els.grupoNomeInput.value.trim();
+    if (!nome){
+      els.grupoFormErr.textContent = 'Dê um nome para o grupo.';
+      return;
+    }
+    var updates = { nomeGrupo: nome };
+    if (edicaoGrupoFotoDataUrl) updates.fotoGrupoBase64 = edicaoGrupoFotoDataUrl;
+    db.collection('conversas').doc(activeId).update(updates).then(function(){
+      els.grupoBackdrop.classList.remove('open');
+    }).catch(function(e){ els.grupoFormErr.textContent = 'Erro: ' + e.message; });
+  });
+
+  // ---------------- etiquetas ----------------
+
+  // Dois jeitos de abrir o mesmo modal:
+  //  'filtro'  — botão lateral (entre Nova conversa e Arquivadas): filtra a lista, cria, edita e exclui etiquetas;
+  //  'aplicar' — dentro da conversa (ou no toque longo): só marca quais das etiquetas já criadas valem para ela.
+  var tagModalModo = 'filtro';
+  var tagModalConvId = null;
+  var tagNewForm = document.querySelector('.tag-new-form');
+
+  function abrirModalEtiquetas(modo, convId){
+    tagModalModo = modo;
+    tagModalConvId = convId || null;
+    resetFormularioEtiqueta();
+    var filtro = modo === 'filtro';
+    document.getElementById('tags-modal-titulo').textContent = filtro ? 'Etiquetas'
+      : (Array.isArray(convId) ? 'Etiquetas das ' + convId.length + ' conversas selecionadas' : 'Etiquetas da conversa');
+    document.getElementById('tags-modal-hint').textContent = filtro
+      ? 'Marque as etiquetas para filtrar a lista de conversas. Aqui você também cria, edita e exclui suas etiquetas (são só suas).'
+      : 'Marque quais etiquetas valem para esta conversa. Para criar uma etiqueta nova, use o botão de etiqueta no menu ao lado de "Nova conversa".';
+    tagNewForm.style.display = filtro ? '' : 'none';
+    els.tagFormSalvar.style.display = filtro ? '' : 'none';
+    renderTagsModal();
+    els.tagsBackdrop.classList.add('open');
+  }
+  function abrirEtiquetasDaConversa(id){ if (id) abrirModalEtiquetas('aplicar', id); }
+
+  els.btnEtiquetas.addEventListener('click', function(){ abrirEtiquetasDaConversa(activeId); });
+  // etiqueta + "+" separado à direita (desenho próprio, mais largo que os ícones 24x24)
+  document.getElementById('btn-etiquetas-side').innerHTML =
+    '<svg width="27" height="19" viewBox="0 0 34 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+    + ICO.tag
+    + '<line x1="29" y1="3.5" x2="29" y2="11.5"></line><line x1="25" y1="7.5" x2="33" y2="7.5"></line></svg>';
+  document.getElementById('btn-etiquetas-side').addEventListener('click', function(){ abrirModalEtiquetas('filtro'); });
+  els.tagsFechar.addEventListener('click', function(){ els.tagsBackdrop.classList.remove('open'); });
+
+  function resetFormularioEtiqueta(){
+    editingTagId = null;
+    novaTagCor = PALETA_ETIQUETAS[0];
+    els.tagNomeInput.value = '';
+    els.tagFormErr.textContent = '';
+    els.tagFormLabel.textContent = 'Nova etiqueta';
+    els.tagFormSalvar.textContent = 'Criar etiqueta';
+    els.tagFormCancelar.style.display = 'none';
+    renderSwatches();
+  }
+
+  function renderSwatches(){
+    els.tagSwatchRow.innerHTML = PALETA_ETIQUETAS.map(function(cor){
+      return '<button type="button" class="swatch' + (cor === novaTagCor ? ' active' : '') + '" data-cor="' + cor + '" style="background:' + cor + ';"></button>';
+    }).join('');
+    Array.prototype.forEach.call(els.tagSwatchRow.querySelectorAll('.swatch'), function(btn){
+      btn.addEventListener('click', function(){
+        novaTagCor = btn.getAttribute('data-cor');
+        renderSwatches();
+      });
+    });
+  }
+
+  function renderTagsModal(){
+    var ids = Object.keys(catalogoEtiquetas).sort(function(a, b){
+      return catalogoEtiquetas[a].nome.localeCompare(catalogoEtiquetas[b].nome, 'pt-BR');
+    });
+    var filtro = tagModalModo === 'filtro';
+    // tagModalConvId pode ser uma conversa ou várias (seleção em lote): marcada = vale para todas
+    var alvos = Array.isArray(tagModalConvId) ? tagModalConvId : (tagModalConvId ? [tagModalConvId] : []);
+    var etiquetasDe = function(id){ return (tagsPorConversa[id] && tagsPorConversa[id].etiquetasIds) || []; };
+    var aplicadas = Object.keys(catalogoEtiquetas).filter(function(tid){
+      return alvos.length && alvos.every(function(id){ return etiquetasDe(id).indexOf(tid) !== -1; });
+    });
+    if (!ids.length){
+      els.tagCatalogList.innerHTML = '<div class="tag-cat-empty">' + (filtro
+        ? 'Você ainda não criou nenhuma etiqueta. Crie a primeira ali embaixo.'
+        : 'Nenhuma etiqueta criada ainda. Crie no botão de etiqueta ao lado de "Nova conversa".') + '</div>';
+    } else {
+      els.tagCatalogList.innerHTML = ids.map(function(id){
+        var t = catalogoEtiquetas[id];
+        var marcada = filtro ? !!tagFilterSelected[id] : aplicadas.indexOf(id) !== -1;
+        return '<label class="tag-cat-row">' +
+          '<input type="checkbox" data-aplicar="' + id + '" ' + (marcada ? 'checked' : '') + '>' +
+          '<span class="dot" style="background:' + t.cor + ';"></span>' +
+          '<span class="nome">' + escapeHtml(t.nome) + '</span>' +
+          (filtro ? '<span class="acoes">' +
+            '<button type="button" data-editar="' + id + '" title="Editar">' + icoSvg('pencil', 13) + '</button>' +
+            '<button type="button" data-excluir="' + id + '" title="Excluir">' + icoSvg('trash', 13) + '</button>' +
+          '</span>' : '') + '</label>';
+      }).join('');
+    }
+
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-aplicar]'), function(chk){
+      chk.addEventListener('change', function(){
+        var id = chk.getAttribute('data-aplicar');
+        if (filtro){
+          if (chk.checked) tagFilterSelected[id] = true; else delete tagFilterSelected[id];
+          renderConvList();
+          return;
+        }
+        var campo = { etiquetasIds: chk.checked ? FV.arrayUnion(id) : FV.arrayRemove(id) };
+        var batch = db.batch();
+        alvos.forEach(function(cid){ batch.set(db.collection('chatPrefs').doc(myUid).collection('conversas').doc(cid), campo, { merge: true }); });
+        batch.commit().catch(function(e){ alert('Erro: ' + e.message); });
+      });
+    });
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-editar]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-editar');
+        var t = catalogoEtiquetas[id];
+        if (!t) return;
+        editingTagId = id;
+        novaTagCor = t.cor;
+        els.tagNomeInput.value = t.nome;
+        els.tagFormErr.textContent = '';
+        els.tagFormLabel.textContent = 'Editar etiqueta';
+        els.tagFormSalvar.textContent = 'Salvar alterações';
+        els.tagFormCancelar.style.display = 'inline-block';
+        renderSwatches();
+      });
+    });
+    Array.prototype.forEach.call(els.tagCatalogList.querySelectorAll('[data-excluir]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-excluir');
+        var t = catalogoEtiquetas[id];
+        if (!confirm('Excluir a etiqueta "' + (t ? t.nome : '') + '"? Ela será removida de todas as suas conversas.')) return;
+        excluirEtiquetaCatalogo(id);
+      });
+    });
+  }
+
+  function excluirEtiquetaCatalogo(tagId){
+    db.collection('chatPrefs').doc(myUid).collection('conversas').where('etiquetasIds', 'array-contains', tagId).get()
+      .then(function(snap){
+        var batch = db.batch();
+        snap.docs.forEach(function(d){ batch.update(d.ref, { etiquetasIds: FV.arrayRemove(tagId) }); });
+        return batch.commit();
+      })
+      .then(function(){
+        return db.collection('chatPrefs').doc(myUid).collection('etiquetas').doc(tagId).delete();
+      })
+      .then(function(){
+        delete tagFilterSelected[tagId];
+        if (editingTagId === tagId) resetFormularioEtiqueta();
+      })
+      .catch(function(e){ alert('Não foi possível excluir: ' + e.message); });
+  }
+
+  els.tagFormCancelar.addEventListener('click', resetFormularioEtiqueta);
+  els.tagNomeInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); els.tagFormSalvar.click(); }
+  });
+
+  els.tagFormSalvar.addEventListener('click', function(){
+    var nome = els.tagNomeInput.value.trim().toUpperCase();
+    if (!nome){
+      els.tagFormErr.textContent = 'Dê um nome para a etiqueta.';
+      return;
+    }
+    if (!editingTagId){
+      var existente = Object.keys(catalogoEtiquetas).filter(function(id){
+        return catalogoEtiquetas[id].nome === nome;
+      })[0];
+      if (existente){
+        els.tagFormErr.textContent = 'Já existe uma etiqueta com esse nome.';
+        return;
+      }
+      db.collection('chatPrefs').doc(myUid).collection('etiquetas').add({ nome: nome, cor: novaTagCor })
+        .then(resetFormularioEtiqueta)
+        .catch(function(e){ els.tagFormErr.textContent = 'Erro: ' + e.message; });
+    } else {
+      db.collection('chatPrefs').doc(myUid).collection('etiquetas').doc(editingTagId)
+        .set({ nome: nome, cor: novaTagCor }, { merge: true })
+        .then(resetFormularioEtiqueta)
+        .catch(function(e){ els.tagFormErr.textContent = 'Erro: ' + e.message; });
+    }
+  });
+
+  // ---------------- picker: nova conversa / encaminhar ----------------
+
+  // Chamado pelo portal (card de aniversário / tempo de escritório): abre a conversa com a pessoa
+  // e deixa a mensagem de parabéns escrita no campo, para quem quiser editar antes de enviar.
+  var conversasProntas = false;
+  window.__abrirConversaCom = function(uid, texto, tentativa){
+    if (!myUid || !conversasProntas){
+      if ((tentativa || 0) < 60) setTimeout(function(){ window.__abrirConversaCom(uid, texto, (tentativa || 0) + 1); }, 250);
+      return;
+    }
+    if (!uid || uid === myUid) return;
+    ensureIndividualConversa(uid).then(function(id){
+      selecionarConversa(id);
+      var campo = document.getElementById('composer-input');
+      if (campo && texto && !campo.value){
+        campo.value = texto;
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+        campo.focus();
+      }
+    });
+  };
+
+  function ensureIndividualConversa(otherUid){
+    var existente = conversas.filter(function(c){
+      return c.tipo === 'individual' && c.participantes.indexOf(otherUid) !== -1 && c.participantes.indexOf(myUid) !== -1;
+    })[0];
+    if (existente) return Promise.resolve(existente.id);
+    var naoLidoPor = {}; naoLidoPor[myUid] = 0; naoLidoPor[otherUid] = 0;
+    return db.collection('conversas').add({
+      participantes: [myUid, otherUid],
+      tipo: 'individual',
+      nomeGrupo: null,
+      criadoPor: myUid,
+      criadoEm: FV.serverTimestamp(),
+      ultimaMensagemEm: FV.serverTimestamp(),
+      ultimaMensagemPreview: 'Conversa iniciada',
+      ultimaMensagemAutor: myUid,
+      naoLidoPor: naoLidoPor
+    }).then(function(doc){ return doc.id; });
+  }
+
+  function criarGrupo(uids, nomeGrupo, fotoGrupoBase64){
+    var participantes = [myUid].concat(uids.filter(function(u){ return u !== myUid; }));
+    var naoLidoPor = {}; participantes.forEach(function(u){ naoLidoPor[u] = 0; });
+    var qtdOutros = participantes.length - 1;
+    var textoSistema = myNome + ' criou o canal' + (qtdOutros > 0
+      ? (' e adicionou ' + qtdOutros + (qtdOutros === 1 ? ' pessoa' : ' pessoas'))
+      : '');
+    return db.collection('conversas').add({
+      participantes: participantes,
+      tipo: 'grupo',
+      nomeGrupo: nomeGrupo,
+      fotoGrupoBase64: fotoGrupoBase64 || null,
+      criadoPor: myUid,
+      criadoEm: FV.serverTimestamp(),
+      ultimaMensagemEm: FV.serverTimestamp(),
+      ultimaMensagemPreview: textoSistema,
+      ultimaMensagemAutor: myUid,
+      naoLidoPor: naoLidoPor
+    }).then(function(doc){
+      return doc.collection('mensagens').add({
+        autorUid: myUid,
+        tipo: 'sistema',
+        texto: textoSistema,
+        fotoBase64: null,
+        documentoBase64: null,
+        documentoNome: null,
+        documentoTipo: null,
+        documentoTamanho: null,
+        encaminhada: false,
+        encaminhadaDeAutorNome: null,
+        respondendoA: null,
+        criadoEm: FV.serverTimestamp(),
+        lidaPor: [myUid]
+      }).then(function(){ return doc.id; });
+    });
+  }
+
+  function abrirPicker(mode){
+    pickerMode = mode;
+    pickerSelected = {};
+    els.pickerErr.textContent = '';
+    els.pickerBusca.value = '';
+    els.pickerNomeGrupo.value = '';
+    els.pickerNomeGrupo.style.display = 'none';
+    novaFotoGrupoDataUrl = null;
+    els.pickerFotoGrupoInput.value = '';
+    els.pickerFotoGrupoRow.style.display = 'none';
+    els.pickerFotoGrupoPreview.style.backgroundImage = '';
+    els.pickerFotoGrupoPreview.innerHTML = '#';
+    if (mode === 'nova'){
+      els.pickerTitle.textContent = 'Nova conversa';
+      els.pickerHint.textContent = 'Escolha um colega (conversa direta) ou vários (cria um canal).';
+      els.pickerConfirmar.style.display = 'inline-block';
+      els.pickerConfirmar.textContent = 'Iniciar';
+    } else {
+      els.pickerTitle.textContent = 'Encaminhar mensagem';
+      els.pickerHint.textContent = 'Toque numa conversa ou colega para encaminhar.';
+      els.pickerConfirmar.style.display = 'none';
+    }
+    renderPickerList();
+    els.pickerBackdrop.classList.add('open');
+  }
+
+  function fecharPicker(){
+    els.pickerBackdrop.classList.remove('open');
+    forwardMsg = null;
+  }
+  els.pickerCancelar.addEventListener('click', fecharPicker);
+  els.btnNovaConversa.addEventListener('click', function(){ abrirPicker('nova'); });
+  els.pickerFotoGrupoBtn.addEventListener('click', function(){ els.pickerFotoGrupoInput.click(); });
+  els.pickerFotoGrupoInput.addEventListener('change', function(){
+    var file = els.pickerFotoGrupoInput.files[0];
+    if (!file) return;
+    comprimirFotoQuadrada(file, 220, 0.82).then(function(dataUrl){
+      novaFotoGrupoDataUrl = dataUrl;
+      els.pickerFotoGrupoPreview.style.backgroundImage = 'url(\'' + dataUrl + '\')';
+      els.pickerFotoGrupoPreview.innerHTML = '';
+    }).catch(function(){
+      alert('Não foi possível processar a imagem.');
+    });
+  });
+
+  // ---------------- notificações ----------------
+  function atualizarBotaoNotif(){
+    if (!('Notification' in window)) { els.btnNotif.style.display = 'none'; return; }
+    var ligado = Notification.permission === 'granted' && localStorage.getItem('fb-chat-notif') !== 'off';
+    els.btnNotif.innerHTML = icoSvg(ligado ? 'bell' : 'bellOff', 16);
+    els.btnNotif.classList.toggle('muted', !ligado);
+    els.btnNotif.title = ligado ? 'Notificações ativadas (clique para silenciar)' : 'Ativar notificações de novas mensagens';
+  }
+
+  els.btnNotif.addEventListener('click', function(){
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      var ligado = localStorage.getItem('fb-chat-notif') !== 'off';
+      localStorage.setItem('fb-chat-notif', ligado ? 'off' : 'on');
+      atualizarBotaoNotif();
+    } else if (Notification.permission === 'denied') {
+      alert('As notificações estão bloqueadas nas configurações do navegador/celular para este site. Permita notificações para o Portal Fonseca e Braga e recarregue a página.');
+    } else {
+      Notification.requestPermission().then(function(perm){
+        if (perm === 'granted') localStorage.setItem('fb-chat-notif', 'on');
+        atualizarBotaoNotif();
+      });
+    }
+  });
+
+  function notificarNovaMensagem(c){
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (localStorage.getItem('fb-chat-notif') === 'off') return;
+    var corpo = c.ultimaMensagemPreview || 'Nova mensagem';
+    if (c.tipo === 'grupo' && c.ultimaMensagemAutor) corpo = nomeDe(c.ultimaMensagemAutor) + ': ' + corpo;
+    try {
+      var n = new Notification(tituloConversa(c), {
+        body: corpo,
+        icon: '../../assets/icons/icon-192.png',
+        tag: 'fb-chat-' + c.id
+      });
+      n.onclick = function(){
+        try { window.focus(); } catch(e){}
+        try { if (window.parent && window.parent !== window) window.parent.focus(); } catch(e){}
+        selecionarConversa(c.id);
+        n.close();
+      };
+    } catch(e){}
+  }
+
+  function atualizarBadgeApp(lista){
+    var total = lista.reduce(function(soma, c){ return soma + ((c.naoLidoPor && c.naoLidoPor[myUid]) || 0); }, 0);
+    try {
+      if (total > 0 && navigator.setAppBadge) navigator.setAppBadge(total);
+      else if (total === 0 && navigator.clearAppBadge) navigator.clearAppBadge();
+    } catch(e){}
+  }
+  els.pickerBusca.addEventListener('input', renderPickerList);
+
+  function renderPickerList(){
+    var termo = els.pickerBusca.value.trim().toLowerCase();
+
+    if (pickerMode === 'nova'){
+      var contatos = Object.keys(perfis)
+        .filter(function(uid){ return uid !== myUid; })
+        .map(function(uid){ return { uid: uid, nome: perfis[uid].displayName || 'Colaborador' }; })
+        .filter(function(c){ return !termo || c.nome.toLowerCase().indexOf(termo) !== -1; })
+        .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
+      if (!contatos.length){
+        els.pickerList.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.82rem;">Nenhum colaborador encontrado. As pessoas aparecem aqui depois de preencherem "Meu Perfil" ao menos uma vez.</div>';
+        return;
+      }
+      els.pickerList.innerHTML = contatos.map(function(c){
+        return '<div class="picker-item" data-uid="' + c.uid + '">' +
+          '<input type="checkbox" ' + (pickerSelected[c.uid] ? 'checked' : '') + '>' +
+          avatarHtml(c.nome, perfis[c.uid].photoBase64, false, c.uid) +
+          '<span class="nome">' + escapeHtml(c.nome) + '</span></div>';
+      }).join('');
+      Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){
+        el.addEventListener('click', function(){
+          var uid = el.getAttribute('data-uid');
+          pickerSelected[uid] = !pickerSelected[uid];
+          var qtd = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; }).length;
+          els.pickerNomeGrupo.style.display = qtd > 1 ? 'block' : 'none';
+          els.pickerFotoGrupoRow.style.display = qtd > 1 ? 'flex' : 'none';
+          renderPickerList();
+        });
+      });
+      return;
+    }
+
+    // modo encaminhar: conversas existentes + colaboradores sem conversa individual ainda
+    var alvos = conversas.map(function(c){
+      return { tipo: 'conversa', id: c.id, nome: tituloConversa(c), sub: c.tipo === 'grupo' ? 'Grupo' : '' };
+    });
+    var jaTemIndividual = {};
+    conversas.forEach(function(c){
+      if (c.tipo === 'individual'){
+        var outro = c.participantes.filter(function(u){ return u !== myUid; })[0];
+        if (outro) jaTemIndividual[outro] = true;
+      }
+    });
+    Object.keys(perfis).forEach(function(uid){
+      if (uid === myUid || jaTemIndividual[uid]) return;
+      alvos.push({ tipo: 'novo', uid: uid, nome: perfis[uid].displayName || 'Colaborador', sub: 'Nova conversa' });
+    });
+    alvos = alvos.filter(function(a){ return !termo || a.nome.toLowerCase().indexOf(termo) !== -1; })
+      .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
+    if (!alvos.length){
+      els.pickerList.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:.82rem;">Nada encontrado.</div>';
+      return;
+    }
+    els.pickerList.innerHTML = alvos.map(function(a){
+      return '<div class="picker-item" data-tipo="' + a.tipo + '" data-alvo="' + (a.id || a.uid) + '">' +
+        avatarHtml(a.nome, a.uid ? perfis[a.uid].photoBase64 : null, a.tipo === 'conversa' && a.sub === 'Grupo', a.uid) +
+        '<span class="nome">' + escapeHtml(a.nome) + (a.sub ? ' <span class="sub">· ' + escapeHtml(a.sub) + '</span>' : '') + '</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(els.pickerList.querySelectorAll('.picker-item'), function(el){
+      el.addEventListener('click', function(){
+        var tipo = el.getAttribute('data-tipo');
+        var alvo = el.getAttribute('data-alvo');
+        if (tipo === 'conversa') {
+          encaminharParaConversa(alvo);
+        } else {
+          ensureIndividualConversa(alvo).then(function(id){ encaminharParaConversa(id); });
+        }
+      });
+    });
+  }
+
+  function encaminharParaConversa(conversaId){
+    if (!forwardMsg) return;
+    var autorOriginal = forwardMsg.encaminhada ? forwardMsg.encaminhadaDeAutorNome : nomeDe(forwardMsg.autorUid);
+    var msgData = {
+      autorUid: myUid,
+      tipo: forwardMsg.tipo,
+      texto: forwardMsg.texto || null,
+      fotoUrl: forwardMsg.fotoUrl || null,
+      fotoBase64: forwardMsg.fotoBase64 || null,
+      documentoUrl: forwardMsg.documentoUrl || null,
+      documentoBase64: forwardMsg.documentoBase64 || null,
+      documentoNome: forwardMsg.documentoNome || null,
+      documentoTipo: forwardMsg.documentoTipo || null,
+      documentoTamanho: forwardMsg.documentoTamanho || null,
+      encaminhada: true,
+      encaminhadaDeAutorNome: autorOriginal,
+      criadoEm: FV.serverTimestamp(),
+      lidaPor: [myUid]
+    };
+    var preview = resumoMensagem(forwardMsg);
+    postMessageTo(conversaId, msgData, preview).then(function(){
+      fecharPicker();
+    }).catch(function(e){ alert('Não foi possível encaminhar: ' + e.message); });
+  }
+
+  els.pickerConfirmar.addEventListener('click', function(){
+    var uids = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; });
+    if (!uids.length){
+      els.pickerErr.textContent = 'Escolha ao menos um colaborador.';
+      return;
+    }
+    if (uids.length === 1){
+      ensureIndividualConversa(uids[0]).then(function(id){
+        fecharPicker();
+        selecionarConversa(id);
+      });
+      return;
+    }
+    var nomeGrupo = els.pickerNomeGrupo.value.trim();
+    if (!nomeGrupo){
+      els.pickerErr.textContent = 'Dê um nome para o grupo.';
+      return;
+    }
+    criarGrupo(uids, nomeGrupo, novaFotoGrupoDataUrl).then(function(id){
+      fecharPicker();
+      selecionarConversa(id);
+    });
+  });
+
+  // ---------------- boot ----------------
+
+  var naoLidoAnterior = null; // null = ainda não recebeu a primeira carga desta sessão
+
+  function iniciarListeners(){
+    atualizarBotaoNotif();
+
+    db.collection('perfis').onSnapshot(function(snap){
+      perfis = {};
+      snap.docs.forEach(function(d){ perfis[d.id] = d.data(); });
+      renderConvList();
+      if (activeId) renderMensagens();
+    });
+
+    db.collection('conversas').where('participantes', 'array-contains', myUid).onSnapshot(function(snap){
+      conversas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      conversasProntas = true;
+
+      if (naoLidoAnterior) {
+        conversas.forEach(function(c){
+          var atual = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
+          var anterior = naoLidoAnterior[c.id] || 0;
+          var estaAberta = activeId === c.id && !document.hidden;
+          if (atual > anterior && c.ultimaMensagemAutor !== myUid && !estaAberta) {
+            notificarNovaMensagem(c);
+          }
+        });
+      }
+      naoLidoAnterior = {};
+      conversas.forEach(function(c){ naoLidoAnterior[c.id] = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0; });
+      atualizarBadgeApp(conversas);
+
+      renderConvList();
+      if (activeId){
+        var c = conversas.filter(function(x){ return x.id === activeId; })[0];
+        if (c){
+          els.threadTitle.textContent = tituloConversa(c);
+          els.threadSub.textContent = subConversa(c);
+        }
+      }
+    }, function(e){
+      els.convList.innerHTML = '<div class="conv-empty">Não foi possível carregar as conversas: ' + escapeHtml(e.message) + '</div>';
+    });
+
+    db.collection('chatPrefs').doc(myUid).collection('conversas').onSnapshot(function(snap){
+      tagsPorConversa = {};
+      snap.docs.forEach(function(d){ tagsPorConversa[d.id] = d.data(); });
+      renderConvList();
+      if (els.tagsBackdrop.classList.contains('open')) renderTagsModal();
+      if (activeId){
+        var fixada = tagsPorConversa[activeId] && tagsPorConversa[activeId].fixada;
+        els.btnPin.innerHTML = fixada ? (icoSvg('starFilled', 13) + ' Fixada') : (icoSvg('starOutline', 13) + ' Fixar');
+        els.btnPin.classList.toggle('on', !!fixada);
+        var arquivada = tagsPorConversa[activeId] && tagsPorConversa[activeId].arquivada;
+        els.btnArquivar.innerHTML = arquivada ? (icoSvg('unarchive', 13) + ' Desarquivar') : (icoSvg('archive', 13) + ' Arquivar');
+        els.btnArquivar.classList.toggle('on', !!arquivada);
+        if (conversaExcluida(conversas.filter(function(x){ return x.id === activeId; })[0] || {})) voltarParaListaVazia();
+      }
+    });
+
+    db.collection('chatPrefs').doc(myUid).collection('etiquetas').onSnapshot(function(snap){
+      catalogoEtiquetas = {};
+      snap.docs.forEach(function(d){ catalogoEtiquetas[d.id] = d.data(); });
+      renderConvList();
+      if (els.tagsBackdrop.classList.contains('open')) renderTagsModal();
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login pelo Portal Fonseca e Braga para usar o chat interno.';
+      els.shell.style.display = 'none';
+      return;
+    }
+    myUid = user.uid;
+    Promise.all([
+      db.collection('users').doc(user.uid).get(),
+      db.collection('perfis').doc(user.uid).get()
+    ]).then(function(results){
+      var userDoc = results[0], perfilDoc = results[1];
+      if (!userDoc.exists){
+        els.gate.style.display = 'block';
+        els.gate.textContent = 'Seu usuário ainda não tem acesso configurado no portal.';
+        return;
+      }
+      myNome = (perfilDoc.exists && perfilDoc.data().displayName) || userDoc.data().displayName || user.email;
+      els.gate.style.display = 'none';
+      els.shell.style.display = 'flex';
+      iniciarListeners();
+    });
+  });
+
+  els.buscaConversas.addEventListener('input', renderConvList);
+
+})();
+</script>
+</body>
+</html>

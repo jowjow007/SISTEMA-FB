@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meu Perfil — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;min-height:100%;transition:background-color .2s,color .2s}
+header{position:sticky;top:0;z-index:5;padding:16px 20px 14px}
+header h1{margin:0 0 2px}
+header .sub{margin:0}
+main{max-width:480px;margin:0 auto;padding:24px 20px 60px}
+#gate{padding:80px 20px;text-align:center}
+.card{padding:22px}
+.photo-row{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+#photo-preview{width:88px;height:88px;flex:0 0 auto}
+.photo-actions{flex:1;min-width:0}
+.photo-actions input[type=file]{width:100%}
+.photo-actions .hint{margin-top:6px}
+.section-title{margin:24px 0 12px;padding-top:16px}
+.section-title:first-of-type{margin-top:0;padding-top:0}
+.field{margin-bottom:16px}
+.field label{display:block;margin-bottom:6px}
+.field input,.field select{width:100%;padding:10px 12px}
+.btn{width:100%;padding:11px 12px;cursor:pointer;transition:background .15s}
+.btn:disabled{opacity:.5;cursor:default}
+.msg-ok{margin-top:12px;display:none;text-align:center}
+.msg-err{margin-top:12px;display:none;text-align:center}
+.obrig{margin-left:2px}
+@keyframes piscaCampo{0%,100%{}50%{}}
+.campo-pisca{animation:piscaCampo .5s ease-in-out 3}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<header>
+  <h1>Meu Perfil</h1>
+  <p class="sub">Foto e data de nascimento (mural de aniversariantes) e seus dados de cadastro.</p>
+</header>
+
+<main>
+  <div id="gate" style="display:none;"></div>
+  <div class="card" id="app" style="display:none;">
+    <div class="photo-row">
+      <div id="photo-preview"></div>
+      <div class="photo-actions">
+        <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:6px;">Foto<span class="obrig">*</span></label>
+        <input type="file" id="photo-input" accept="image/*">
+        <p class="hint">A foto é usada em tamanho pequeno e circular — recorte automático no centro.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Nome<span class="obrig">*</span></label>
+      <input type="text" id="nome-input">
+    </div>
+    <div class="field">
+      <label>Sobrenome<span class="obrig">*</span></label>
+      <input type="text" id="sobrenome-input">
+    </div>
+    <div class="field">
+      <label>Data de nascimento<span class="obrig">*</span></label>
+      <input type="date" id="birthdate-input">
+    </div>
+
+    <div class="section-title">Dados cadastrais</div>
+    <div class="field">
+      <label>CPF<span class="obrig">*</span></label>
+      <input type="text" inputmode="numeric" id="cpf-input" placeholder="000.000.000-00" maxlength="14">
+    </div>
+    <div class="field">
+      <label>RG<span class="obrig">*</span></label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" inputmode="numeric" id="rg-input" placeholder="Número" style="flex:1.6;">
+        <input type="text" id="rg-orgao-input" placeholder="Órgão expedidor" style="flex:1.3;">
+        <select id="rg-uf-input" style="flex:.9;">
+          <option value="">UF</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>OAB <span style="opacity:.7;">(opcional)</span></label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" inputmode="numeric" id="oab-input" placeholder="Número" style="flex:2;">
+        <select id="oab-uf-input" style="flex:1;">
+          <option value="">UF</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option><option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option><option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option><option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option><option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option><option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option><option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Estado civil<span class="obrig">*</span></label>
+      <select id="estado-civil-input">
+        <option value="" disabled>Selecione</option>
+        <option value="solteiro">Solteiro(a)</option>
+        <option value="casado">Casado(a)</option>
+        <option value="uniao_estavel">União estável</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nacionalidade<span class="obrig">*</span></label>
+      <input type="text" id="nacionalidade-input" placeholder="Ex: brasileira">
+    </div>
+    <div class="field">
+      <label>Data de entrada no escritório<span class="obrig">*</span></label>
+      <input type="date" id="ingresso-input">
+    </div>
+    <div class="field">
+      <label>Telefone<span class="obrig">*</span></label>
+      <input type="tel" inputmode="numeric" id="telefone-input" placeholder="(00) 00000-0000" maxlength="15">
+    </div>
+    <div class="field">
+      <label>Endereço<span class="obrig">*</span></label>
+      <input type="text" id="endereco-input">
+    </div>
+    <div class="field">
+      <label>E-mail alternativo</label>
+      <input type="email" id="email-alt-input" placeholder="diferente do e-mail de acesso">
+    </div>
+
+    <button class="btn" id="salvar-btn">Salvar perfil</button>
+    <div class="msg-ok" id="msg-ok">Perfil salvo com sucesso.</div>
+    <div class="msg-err" id="msg-err"></div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let ingressoTravado = false;
+  const els = {
+    gate: document.getElementById('gate'),
+    appBox: document.getElementById('app'),
+    photoPreview: document.getElementById('photo-preview'),
+    photoInput: document.getElementById('photo-input'),
+    nomeInput: document.getElementById('nome-input'),
+    sobrenomeInput: document.getElementById('sobrenome-input'),
+    birthdateInput: document.getElementById('birthdate-input'),
+    cpfInput: document.getElementById('cpf-input'),
+    rgInput: document.getElementById('rg-input'),
+    rgOrgaoInput: document.getElementById('rg-orgao-input'),
+    rgUfInput: document.getElementById('rg-uf-input'),
+    oabInput: document.getElementById('oab-input'),
+    oabUfInput: document.getElementById('oab-uf-input'),
+    estadoCivilInput: document.getElementById('estado-civil-input'),
+    telefoneInput: document.getElementById('telefone-input'),
+    enderecoInput: document.getElementById('endereco-input'),
+    emailAltInput: document.getElementById('email-alt-input'),
+    salvarBtn: document.getElementById('salvar-btn'),
+    msgOk: document.getElementById('msg-ok'),
+    msgErr: document.getElementById('msg-err'),
+  };
+
+  let currentUid = null;
+  let novaFotoDataUrl = null;
+  let fotoJaExistente = false;
+
+  function resizeImageToDataUrl(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        img.onerror = reject;
+        img.onload = function(){
+          const lado = Math.min(img.width, img.height);
+          const sx = (img.width - lado) / 2;
+          const sy = (img.height - lado) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = maxDim;
+          canvas.height = maxDim;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, lado, lado, 0, 0, maxDim, maxDim);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  els.photoInput.addEventListener('change', function(){
+    const file = els.photoInput.files[0];
+    if (!file) return;
+    resizeImageToDataUrl(file, 220, 0.82).then(function(dataUrl){
+      novaFotoDataUrl = dataUrl;
+      els.photoPreview.style.backgroundImage = 'url(' + dataUrl + ')';
+    });
+  });
+
+  // ---------- Máscaras de campo (CPF, telefone, letras/números apenas) ----------
+  function apenasDigitos(s){ return (s || '').replace(/\D+/g, ''); }
+  function apenasLetras(s){ return (s || '').replace(/[^A-Za-zÀ-ÿ\s]+/g, ''); }
+  function formatarCPF(v){
+    return apenasDigitos(v).slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  function formatarTelefone(v){
+    const d = apenasDigitos(v).slice(0, 11);
+    if (d.length > 10) {
+      return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+    }
+    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d{1,4})$/, '$1-$2');
+  }
+  function ligarMascaraCPF(input){ input.addEventListener('input', function(){ input.value = formatarCPF(input.value); }); }
+  function ligarMascaraTelefone(input){ input.addEventListener('input', function(){ input.value = formatarTelefone(input.value); }); }
+  function ligarSomenteDigitos(input){ input.addEventListener('input', function(){ input.value = apenasDigitos(input.value); }); }
+  function ligarSomenteLetras(input){ input.addEventListener('input', function(){ input.value = apenasLetras(input.value).toUpperCase(); }); }
+  function parseRG(v){
+    const m = /^(\d+)\s+(.+)\/([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1], orgao: m[2].trim().toUpperCase(), uf: m[3].toUpperCase() };
+    return { numero: apenasDigitos(v), orgao: '', uf: '' };
+  }
+  function parseOAB(v){
+    const m = /^(\d+)\s*\/\s*([A-Za-zÀ-ÿ]{2})$/.exec((v || '').trim());
+    if (m) return { numero: m[1], uf: m[2].toUpperCase() };
+    return { numero: apenasDigitos(v), uf: '' };
+  }
+  ligarMascaraCPF(els.cpfInput);
+  ligarMascaraTelefone(els.telefoneInput);
+  ligarSomenteDigitos(els.rgInput);
+  ligarSomenteLetras(els.rgOrgaoInput);
+  ligarSomenteDigitos(els.oabInput);
+
+  function piscarCampos(elementos){
+    elementos.forEach(function(el){
+      if (!el) return;
+      el.classList.remove('campo-pisca');
+      void el.offsetWidth; // força reflow para poder reiniciar a animação
+      el.classList.add('campo-pisca');
+      function limpar(){ el.classList.remove('campo-pisca'); el.removeEventListener('input', limpar); el.removeEventListener('change', limpar); }
+      el.addEventListener('input', limpar);
+      el.addEventListener('change', limpar);
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) {
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga para editar seu perfil.';
+      els.appBox.style.display = 'none';
+      return;
+    }
+    currentUid = user.uid;
+    els.gate.style.display = 'none';
+    els.appBox.style.display = 'block';
+
+    Promise.all([
+      db.collection('users').doc(user.uid).get(),
+      db.collection('perfis').doc(user.uid).get()
+    ]).then(function(results){
+      const userDoc = results[0];
+      const perfilDoc = results[1];
+      // Prioriza o nome já salvo no perfil (pode ter sido corrigido/completado aqui);
+      // se ainda não existe, parte do nome da conta como sugestão inicial.
+      let nomeCompleto = (perfilDoc.exists && perfilDoc.data().displayName) ||
+        (userDoc.exists && userDoc.data().displayName) || user.email;
+      const partes = nomeCompleto.trim().split(/\s+/);
+      els.nomeInput.value = partes[0] || '';
+      els.sobrenomeInput.value = partes.slice(1).join(' ') || '';
+      if (perfilDoc.exists) {
+        const p = perfilDoc.data();
+        if (p.birthDate) els.birthdateInput.value = p.birthDate;
+        if (p.nacionalidade) document.getElementById('nacionalidade-input').value = p.nacionalidade;
+        if (p.photoBase64) {
+          els.photoPreview.style.backgroundImage = 'url(' + p.photoBase64 + ')';
+          fotoJaExistente = true;
+        }
+      }
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        els.cpfInput.value = formatarCPF(u.cpf || '');
+        const rgParsed = parseRG(u.rg);
+        els.rgInput.value = rgParsed.numero;
+        els.rgOrgaoInput.value = rgParsed.orgao;
+        els.rgUfInput.value = rgParsed.uf;
+        const oabParsed = parseOAB(u.oab);
+        els.oabInput.value = oabParsed.numero;
+        els.oabUfInput.value = oabParsed.uf;
+        els.estadoCivilInput.value = u.estadoCivil || '';
+        const nacEl = document.getElementById('nacionalidade-input');
+        if (!nacEl.value && u.nacionalidade) nacEl.value = u.nacionalidade;
+        document.getElementById('ingresso-input').value = u.dataIngresso || '';
+        // a data de entrada define o pagamento proporcional: depois de preenchida, só o admin altera
+        ingressoTravado = !!u.dataIngresso;
+        document.getElementById('ingresso-input').disabled = ingressoTravado;
+        if (ingressoTravado) document.getElementById('ingresso-input').title = 'Para corrigir a data de entrada, fale com o administrador.';
+        els.telefoneInput.value = formatarTelefone(u.telefone || '');
+        els.enderecoInput.value = u.endereco || '';
+        els.emailAltInput.value = u.emailAlternativo || '';
+      }
+    });
+  });
+
+  els.salvarBtn.addEventListener('click', function(){
+    els.msgOk.style.display = 'none';
+    els.msgErr.style.display = 'none';
+
+    const nome = els.nomeInput.value.trim();
+    const sobrenome = els.sobrenomeInput.value.trim();
+    const cpf = els.cpfInput.value.trim();
+    const rgNumero = els.rgInput.value.trim();
+    const rgOrgao = els.rgOrgaoInput.value.trim();
+    const rgUf = els.rgUfInput.value;
+    const oabNumero = els.oabInput.value.trim();
+    const oabUf = els.oabUfInput.value;
+    const telefone = els.telefoneInput.value.trim();
+    const endereco = els.enderecoInput.value.trim();
+
+    const camposObrigatorios = [
+      { el: els.nomeInput, ok: !!nome },
+      { el: els.sobrenomeInput, ok: !!sobrenome },
+      { el: els.birthdateInput, ok: !!els.birthdateInput.value },
+      { el: els.estadoCivilInput, ok: !!els.estadoCivilInput.value },
+      { el: document.getElementById('nacionalidade-input'), ok: !!document.getElementById('nacionalidade-input').value.trim() },
+      { el: document.getElementById('ingresso-input'), ok: !!document.getElementById('ingresso-input').value },
+      { el: els.cpfInput, ok: !!cpf },
+      { el: els.rgInput, ok: !!rgNumero },
+      { el: els.rgOrgaoInput, ok: !!rgOrgao },
+      { el: els.rgUfInput, ok: !!rgUf },
+      { el: els.telefoneInput, ok: !!telefone },
+      { el: els.enderecoInput, ok: !!endereco },
+      { el: els.photoInput, ok: !!(novaFotoDataUrl || fotoJaExistente) }
+    ];
+    const vazios = camposObrigatorios.filter(function(c){ return !c.ok; }).map(function(c){ return c.el; });
+    if (vazios.length) {
+      piscarCampos(vazios);
+      els.msgErr.textContent = 'Preencha os campos obrigatórios em destaque (com *).';
+      els.msgErr.style.display = 'block';
+      return;
+    }
+
+    els.salvarBtn.disabled = true;
+    els.salvarBtn.textContent = 'Salvando...';
+
+    const rg = rgNumero + ' ' + rgOrgao + '/' + rgUf;
+    const oab = oabNumero && oabUf ? (oabNumero + '/' + oabUf) : oabNumero;
+
+    const dados = {
+      displayName: (nome + ' ' + sobrenome).trim(),
+      birthDate: els.birthdateInput.value,
+      // oab/estadoCivil espelhados aqui (perfis é de leitura ampla — allow read: if isSignedIn())
+      // porque users/{uid} só pode ser lido pelo próprio dono ou admin (ver README-SETUP.md);
+      // outras ferramentas (ex.: Documentos) precisam olhar o OAB de qualquer colega.
+      oab: oab,
+      estadoCivil: els.estadoCivilInput.value,
+      nacionalidade: document.getElementById('nacionalidade-input').value.trim().toLowerCase(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (novaFotoDataUrl) dados.photoBase64 = novaFotoDataUrl;
+
+    const dadosCadastrais = {
+      cpf: cpf,
+      rg: rg,
+      oab: oab,
+      estadoCivil: els.estadoCivilInput.value,
+      nacionalidade: document.getElementById('nacionalidade-input').value.trim().toLowerCase(),
+      telefone: telefone,
+      endereco: endereco,
+      emailAlternativo: els.emailAltInput.value.trim()
+    };
+
+    if (!ingressoTravado) dadosCadastrais.dataIngresso = document.getElementById('ingresso-input').value;
+    Promise.all([
+      db.collection('perfis').doc(currentUid).set(dados, { merge: true }),
+      db.collection('users').doc(currentUid).update(dadosCadastrais)
+    ]).then(function(){
+      els.msgOk.style.display = 'block';
+    }).catch(function(err){
+      els.msgErr.textContent = 'Erro ao salvar: ' + err.message;
+      els.msgErr.style.display = 'block';
+    }).finally(function(){
+      els.salvarBtn.disabled = false;
+      els.salvarBtn.textContent = 'Salvar perfil';
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Migração de segurança</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+main{max-width:1060px;margin:0 auto;padding:24px 16px 60px}
+h1{margin:0 0 4px}
+h2{margin:0 0 6px}
+.sub{margin:0 0 20px}
+section{padding:18px;margin:0 0 18px}
+.passo{display:inline-block;padding:1px 10px;margin-right:6px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 6px;vertical-align:top}
+.wrap{overflow-x:auto}
+button{padding:9px 14px;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.tag{display:inline-block;padding:0 8px}
+.msg{margin:10px 0 0}
+input[type=text]{padding:8px;min-width:0;width:100%}
+select.sel-tipo{padding:6px 8px}
+.linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.linha > *{flex:1 1 200px}
+.linha > button{flex:0 0 auto}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+<main>
+  <h1>Migração de segurança</h1>
+  <p class="sub">Só para o administrador. Rode <b>depois</b> de publicar as novas regras do Firestore. Antes disso, pelo console, grave <code>acesso = "ativo"</code> no seu próprio cadastro, ou esta página não abre. Nas regras antigas, cada pessoa podia alterar o próprio cadastro, inclusive <code>acesso</code> e <code>patrimonioVerTudo</code>. Por isso esta página <b>não confia</b> nesses valores: a sugestão de acesso vem das abas, que só o admin libera. Cada gravação fica registrada em <code>auditoriaSeguranca</code> e no CSV.</p>
+  <div id="gate" class="msg">Verificando login…</div>
+
+  <div id="conteudo" hidden>
+    <section>
+      <h2><span class="passo">1</span>Acesso explícito</h2>
+      <p class="sub">As novas regras só liberam dados para quem tem <code>acesso = ativo</code>. A sugestão repete quem tinha acesso pelas abas (admin ou alguma aba liberada). Um <span class="tag warn">⚠</span> indica alguém marcado como "ativo" sem abas, que pode ter gravado isso por conta própria nas regras antigas. Desmarque quem não deve continuar.</p>
+      <div class="wrap"><table><thead><tr><th>Aprovar</th><th>Nome</th><th>E-mail</th><th>Papel</th><th>Abas</th><th>Hoje</th></tr></thead><tbody id="t-acesso"></tbody></table></div>
+      <div class="linha"><button id="b-acesso">Gravar acesso</button><button class="sec" id="b-csv">Baixar registro (CSV)</button></div>
+      <div class="msg" id="m-acesso"></div>
+    </section>
+
+    <section>
+      <h2><span class="passo">2</span>Quem vê todo o patrimônio</h2>
+      <p class="sub">Nas regras antigas, quem não tinha o campo via todo o patrimônio, e a própria pessoa podia gravar <code>true</code> no próprio cadastro. Por isso <b>ninguém vem marcado</b>: marque só quem deve ver tudo. Os demais veem os itens sob a própria responsabilidade. Quem cadastra patrimônio (permissão de Gestão) e os administradores veem tudo de qualquer forma.</p>
+      <div class="wrap"><table><thead><tr><th>Vê tudo</th><th>Nome</th><th>Situação hoje</th><th>Cadastra patrimônio?</th></tr></thead><tbody id="t-pat"></tbody></table></div>
+      <div class="linha"><button id="b-pat">Gravar patrimônio</button></div>
+      <div class="msg" id="m-pat"></div>
+    </section>
+
+    <section>
+      <h2><span class="passo">3</span>Robôs</h2>
+      <p class="sub">O robô do Astrea só grava a agenda se a UID dele estiver em <code>robos</code>. A UID aparece no log do robô ("UID para robos/{uid}") e em Firebase Console › Authentication, na conta do robô.</p>
+      <div class="wrap"><table><thead><tr><th>UID</th><th>Descrição</th><th>Criado em</th></tr></thead><tbody id="t-robos"></tbody></table></div>
+      <div class="linha"><input type="text" id="r-uid" placeholder="UID do robô"><input type="text" id="r-desc" placeholder="Descrição (ex.: PC do escritório — Agenda Astrea)"><button id="b-robo">Cadastrar robô</button></div>
+      <div class="msg" id="m-robo"></div>
+    </section>
+
+    <section>
+      <h2><span class="passo">4</span>Dados que saíram do site público</h2>
+      <p class="sub">Selecione os arquivos da pasta <code>privado/</code> do computador. Eles vão para o Firestore com leitura só para a equipe: <code>numeros-stats.json</code> (painel de Números), <code>condominios.json</code> (clientes e relatórios de Condomínios) e os PDFs/PNGs de <code>privado/condominios-pdfs/</code>.</p>
+      <div class="linha"><input type="file" id="f-dados" multiple accept=".json,.pdf,.png"><button id="b-dados">Enviar</button></div>
+      <div class="msg" id="m-dados"></div>
+    </section>
+
+    <section>
+      <h2><span class="passo">5</span>Tipos de usuário</h2>
+      <p class="sub">O tipo de usuário decide o acesso: <b>Membro</b>, <b>Gestor</b> e <b>Administrador</b> são da equipe; <b>Cliente</b>, <b>Conselheiro</b> e <b>Síndico</b> são de fora do escritório e só veem as próprias abas (nada dos dados internos). A coluna "Tipo novo" já vem com a padronização de 05/11/2026: todos como Membro e só o dono como Administrador. Confira, ajuste se precisar e clique em <b>Gravar tipos</b>. Você continua Administrador.</p>
+      <div class="wrap"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Tipo hoje</th><th>Tipo novo</th></tr></thead><tbody id="t-tipos"></tbody></table></div>
+      <div class="linha"><button id="b-tipos">Gravar tipos</button><button class="sec" id="b-csv2">Baixar registro (CSV)</button></div>
+      <div class="msg" id="m-tipos"></div>
+    </section>
+  </div>
+</main>
+
+<script src="../../firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script>
+(function(){
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const MIGRACAO = 'migracao-seguranca-2026-11';
+  let eu = null, usuarios = [], permissoes = {}, registro = [];
+
+  function auditar(acao, itens){
+    return db.collection('auditoriaSeguranca').add({ acao: acao, itens: itens.slice(0, 400), porUid: eu.uid,
+      porEmail: eu.email || '', em: FV.serverTimestamp() }).catch(function(e){ console.warn('auditoria não gravada:', e.message); });
+  }
+  function msg(id, txt, cls){ const el = $(id); el.className = 'msg ' + (cls || ''); el.textContent = txt; }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) { $('gate').textContent = 'Faça login no portal (mesmo navegador) e recarregue esta página.'; return; }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      if (!doc.exists || doc.data().role !== 'admin') { $('gate').textContent = 'Esta página é só para o administrador.'; return; }
+      eu = Object.assign({ uid: user.uid }, doc.data());
+      $('gate').hidden = true; $('conteudo').hidden = false;
+      carregar();
+    }).catch(function(e){ $('gate').textContent = 'Não foi possível ler seu cadastro: ' + e.message; });
+  });
+
+  function carregar(){
+    return Promise.all([
+      db.collection('users').get(),
+      db.collection('permissoesGestao').get().catch(function(){ return { docs: [] }; }),
+      db.collection('robos').get().catch(function(){ return null; })
+    ]).then(function(r){
+      usuarios = r[0].docs.map((d) => Object.assign({ uid: d.id }, d.data()))
+        .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+      permissoes = {}; r[1].docs.forEach((d) => { permissoes[d.id] = d.data(); });
+      renderAcesso(); renderPat(); renderRobos(r[2]); renderTipos();
+    });
+  }
+
+  // ---------- 1) acesso ----------
+  // Só pelas abas, que só o admin grava, também nas regras antigas. "acesso" e "patrimonioVerTudo"
+  // gravados antes da publicação podem ter sido escritos pela própria pessoa.
+  function sugestao(u){
+    if (u.acesso === 'bloqueado') return false;
+    return u.role === 'admin' || (u.tabs || []).length > 0;
+  }
+  function suspeito(u){ return u.acesso === 'ativo' && !sugestao(u) && u.uid !== eu.uid; }
+  function renderAcesso(){
+    $('t-acesso').innerHTML = usuarios.map(function(u){
+      const hoje = (u.acesso ? '<span class="tag">' + esc(u.acesso) + '</span>' : '<span class="tag warn">sem status</span>')
+        + (suspeito(u) ? ' <span class="tag warn" title="Marcado como ativo sem abas: pode ter sido gravado pela própria pessoa nas regras antigas">⚠ conferir</span>' : '');
+      const travado = u.uid === eu.uid ? ' checked disabled title="Você (admin) precisa continuar ativo"' : (sugestao(u) ? ' checked' : '');
+      return '<tr><td><input type="checkbox" class="cb-acesso" data-uid="' + esc(u.uid) + '"' + travado + '></td>'
+        + '<td>' + esc(u.displayName || '-') + '</td><td>' + esc(u.email || '-') + '</td><td>' + esc(u.role || '-') + '</td>'
+        + '<td>' + (u.tabs || []).length + '</td><td>' + hoje + '</td></tr>';
+    }).join('');
+  }
+  $('b-acesso').addEventListener('click', function(){
+    const marcados = {};
+    document.querySelectorAll('.cb-acesso').forEach((cb) => { marcados[cb.dataset.uid] = cb.checked; });
+    marcados[eu.uid] = true;
+    const batch = db.batch(); let n = 0;
+    usuarios.forEach(function(u){
+      const novo = marcados[u.uid] ? 'ativo' : (u.acesso === 'bloqueado' ? 'bloqueado' : 'pendente');
+      if (u.acesso === novo) return;
+      batch.update(db.collection('users').doc(u.uid), { acesso: novo, acessoOrigem: MIGRACAO,
+        acessoAprovadoPor: eu.uid, acessoAprovadoEm: FV.serverTimestamp() });
+      registro.push([new Date().toISOString(), 'acesso', u.uid, u.email || '', u.acesso || '(sem)', novo, eu.email || eu.uid]);
+      n++;
+    });
+    if (!n) { msg('m-acesso', 'Nada a alterar.', 'ok'); return; }
+    // o próprio admin primeiro (as regras novas exigem acesso ativo do admin)
+    $('b-acesso').disabled = true;
+    const itensAcesso = registro.filter((r) => r[1] === 'acesso').map((r) => ({ uid: r[2], antes: r[4], depois: r[5] }));
+    batch.commit().then(function(){ return auditar('acesso', itensAcesso); }).then(function(){ msg('m-acesso', n + ' cadastro(s) atualizado(s). Baixe o registro em CSV para guardar.', 'ok'); return carregar(); })
+      .catch(function(e){ msg('m-acesso', 'Falhou: ' + e.message, 'err'); })
+      .finally(function(){ $('b-acesso').disabled = false; });
+  });
+  $('b-csv').addEventListener('click', function(){
+    const linhas = [['quando', 'o quê', 'uid', 'e-mail', 'antes', 'depois', 'por']].concat(registro);
+    const csv = linhas.map((l) => l.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = MIGRACAO + '.csv'; a.click();
+  });
+
+  // ---------- 2) patrimônio ----------
+  function renderPat(){
+    $('t-pat').innerHTML = usuarios.filter((u) => u.role !== 'admin' && ['cliente', 'conselheiro', 'sindico'].indexOf(u.role) < 0).map(function(u){
+      const v = u.patrimonioVerTudo;
+      const hoje = v === true ? '<span class="tag warn">true hoje (conferir quem gravou)</span>'
+        : v === false ? '<span class="tag">só o próprio</span>'
+        : '<span class="tag warn">sem o campo — hoje vê tudo</span>';
+      const cad = permissoes[u.uid] && permissoes[u.uid].patrimonioCadastro === true ? 'sim (vê tudo de qualquer forma)' : 'não';
+      return '<tr><td><input type="checkbox" class="cb-pat" data-uid="' + esc(u.uid) + '"' + '' + '></td>'
+        + '<td>' + esc(u.displayName || u.email || u.uid) + '</td><td>' + hoje + '</td><td>' + cad + '</td></tr>';
+    }).join('');
+  }
+  $('b-pat').addEventListener('click', function(){
+    const batch = db.batch(); let n = 0;
+    document.querySelectorAll('.cb-pat').forEach(function(cb){
+      const u = usuarios.find((x) => x.uid === cb.dataset.uid);
+      if (u.patrimonioVerTudo === cb.checked) return;
+      batch.update(db.collection('users').doc(u.uid), { patrimonioVerTudo: cb.checked, patrimonioDefinidoPor: eu.uid,
+        patrimonioDefinidoEm: FV.serverTimestamp() });
+      registro.push([new Date().toISOString(), 'patrimonioVerTudo', u.uid, u.email || '',
+        u.patrimonioVerTudo === undefined ? '(sem campo = vê tudo)' : String(u.patrimonioVerTudo), String(cb.checked), eu.email || eu.uid]);
+      n++;
+    });
+    if (!n) { msg('m-pat', 'Nada a alterar.', 'ok'); return; }
+    const itensPat = registro.filter((r) => r[1] === 'patrimonioVerTudo').map((r) => ({ uid: r[2], antes: r[4], depois: r[5] }));
+    batch.commit().then(function(){ return auditar('patrimonioVerTudo', itensPat); }).then(function(){ msg('m-pat', n + ' cadastro(s) atualizado(s).', 'ok'); return carregar(); })
+      .catch(function(e){ msg('m-pat', 'Falhou: ' + e.message, 'err'); });
+  });
+
+  // ---------- 5) tipos de usuário ----------
+  const TIPOS = { membro: 'Membro', cliente: 'Cliente', gestor: 'Gestor', admin: 'Administrador', conselheiro: 'Conselheiro', sindico: 'Síndico' };
+  const DONO = 'jonathan@fonsecaebraga.com.br';   // padronização de 05/11/2026: só o dono fica Administrador
+  function tipoSugerido(u){
+    if (u.uid === eu.uid || String(u.email || '').toLowerCase() === DONO) return 'admin';
+    return 'membro';
+  }
+  function renderTipos(){
+    $('t-tipos').innerHTML = usuarios.map(function(u){
+      const novo = tipoSugerido(u);
+      const travado = u.uid === eu.uid ? ' disabled title="Você precisa continuar Administrador"' : '';
+      const mudou = (u.role || '') !== novo;
+      return '<tr><td>' + esc(u.displayName || '-') + '</td><td>' + esc(u.email || '-') + '</td>'
+        + '<td>' + (TIPOS[u.role] ? esc(TIPOS[u.role]) : '<span class="tag warn">' + esc(u.role || 'sem tipo') + '</span>') + '</td>'
+        + '<td><select class="sel-tipo" data-uid="' + esc(u.uid) + '"' + travado + '>' + Object.keys(TIPOS).map(function(k){
+            return '<option value="' + k + '"' + (k === novo ? ' selected' : '') + '>' + TIPOS[k] + '</option>'; }).join('') + '</select>'
+        + (mudou ? ' <span class="tag warn">muda</span>' : '') + '</td></tr>';
+    }).join('');
+  }
+  $('b-tipos').addEventListener('click', function(){
+    const mudar = [];
+    document.querySelectorAll('.sel-tipo').forEach(function(sel){
+      const u = usuarios.find((x) => x.uid === sel.dataset.uid);
+      const novo = u.uid === eu.uid ? 'admin' : sel.value;
+      if ((u.role || '') !== novo) mudar.push({ u: u, novo: novo });
+    });
+    if (!mudar.length) { msg('m-tipos', 'Nada a alterar: todos já estão com o tipo escolhido.', 'ok'); return; }
+    const resumo = {}; mudar.forEach((m) => { resumo[TIPOS[m.novo]] = (resumo[TIPOS[m.novo]] || 0) + 1; });
+    if (!confirm('Alterar o tipo de ' + mudar.length + ' pessoa(s)?\n\n' + Object.keys(resumo).map((k) => k + ': ' + resumo[k]).join('\n')
+      + '\n\nQuem deixar de ser Administrador ou Gestor perde esses poderes na hora.')) return;
+    const batch = db.batch();
+    mudar.forEach(function(m){
+      batch.update(db.collection('users').doc(m.u.uid), { role: m.novo, tipoDefinidoPor: eu.uid, tipoDefinidoEm: FV.serverTimestamp() });
+      registro.push([new Date().toISOString(), 'tipoUsuario', m.u.uid, m.u.email || '', m.u.role || '(sem)', m.novo, eu.email || eu.uid]);
+    });
+    $('b-tipos').disabled = true;
+    const itens = mudar.map((m) => ({ uid: m.u.uid, antes: m.u.role || '(sem)', depois: m.novo }));
+    batch.commit().then(function(){ return auditar('tipoUsuario', itens); })
+      .then(function(){ msg('m-tipos', mudar.length + ' cadastro(s) atualizado(s). Baixe o registro em CSV para guardar.', 'ok'); return carregar(); })
+      .catch(function(e){ msg('m-tipos', 'Falhou: ' + e.message, 'err'); })
+      .finally(function(){ $('b-tipos').disabled = false; });
+  });
+  $('b-csv2').addEventListener('click', function(){ $('b-csv').click(); });
+
+  // ---------- 3) robôs ----------
+  function renderRobos(snap){
+    if (!snap) { $('t-robos').innerHTML = '<tr><td colspan="3" class="warn">Ainda não dá para ler a coleção robos (as regras novas não foram publicadas). Crie pelo console ou volte aqui depois.</td></tr>'; return; }
+    $('t-robos').innerHTML = snap.docs.map(function(d){
+      const x = d.data();
+      return '<tr><td><code>' + esc(d.id) + '</code></td><td>' + esc(x.descricao || '') + '</td><td>' + (x.criadoEm && x.criadoEm.toDate ? x.criadoEm.toDate().toLocaleString('pt-BR') : '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="3">Nenhum robô cadastrado.</td></tr>';
+  }
+  $('b-robo').addEventListener('click', function(){
+    const uid = $('r-uid').value.trim(), desc = $('r-desc').value.trim();
+    if (!/^[A-Za-z0-9]{20,40}$/.test(uid)) { msg('m-robo', 'UID inválida (copie do log do robô ou do console).', 'err'); return; }
+    if (usuarios.some((u) => u.uid === uid)) { msg('m-robo', 'Essa UID é de uma pessoa cadastrada no portal, não de um robô.', 'err'); return; }
+    db.collection('robos').doc(uid).set({ descricao: desc, criadoPor: eu.uid, criadoEm: FV.serverTimestamp() })
+      .then(function(){ registro.push([new Date().toISOString(), 'robo', uid, '', '', 'cadastrado', eu.email || eu.uid]); msg('m-robo', 'Robô cadastrado.', 'ok'); return carregar(); })
+      .catch(function(e){ msg('m-robo', 'Falhou: ' + e.message + ' (as regras novas já foram publicadas?)', 'err'); });
+  });
+
+  // ---------- 4) dados privados ----------
+  const PARTE = 700000;   // caracteres de base64 por documento (limite do Firestore: 1 MiB)
+  function lerComo(file, modo){
+    return new Promise(function(ok, falha){
+      const r = new FileReader(); r.onerror = falha; r.onload = () => ok(r.result);
+      modo === 'texto' ? r.readAsText(file, 'utf-8') : r.readAsDataURL(file);
+    });
+  }
+  function enviarJson(file){
+    const chave = { 'numeros-stats.json': 'numerosStats', 'condominios.json': 'condominios' }[file.name];
+    if (!chave) return Promise.reject(new Error(file.name + ': nome não reconhecido'));
+    return lerComo(file, 'texto').then(function(txt){
+      const dados = JSON.parse(txt);   // valida antes de gravar
+      const gravar = function(doc, conteudo){ return db.collection('dadosPrivados').doc(doc).set({ json: conteudo, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }); };
+      if (chave !== 'numerosStats') return gravar(chave, txt);
+      // Números › Clientes, Juízo & Ação e Efetividade são áreas restritas: cada uma vai para um documento próprio,
+      // que as regras só entregam a quem o administrador liberou. O documento geral fica sem esses dados.
+      const SEPARAR = {
+        numerosClientes: ['totalClientesDistintos', 'totalClientesDemais', 'totalClientesCondo', 'topClientesDemais', 'topClientesCondo'],
+        numerosJuizo: ['topJuizos', 'totalJuizosDistintos', 'topAcoes', 'totalAcoesDistintas', 'andamentos'],
+        numerosEfetividade: ['efetividade']
+      };
+      const geral = Object.assign({}, dados), envios = [];
+      Object.keys(SEPARAR).forEach(function(doc){
+        const parte = {};
+        SEPARAR[doc].forEach(function(k){ if (k in dados) { parte[k] = dados[k]; delete geral[k]; } });
+        envios.push(gravar(doc, JSON.stringify(parte)));
+      });
+      return Promise.all(envios).then(function(){ return gravar('numerosStats', JSON.stringify(geral)); });
+    });
+  }
+  function enviarArquivo(file){
+    return lerComo(file, 'dataurl').then(function(url){
+      const b64 = url.slice(url.indexOf(',') + 1);
+      const partes = Math.ceil(b64.length / PARTE);
+      const ref = db.collection('arquivosPrivados').doc(file.name);
+      const envios = [];
+      for (let i = 0; i < partes; i++) envios.push(ref.collection('partes').doc(String(i)).set({ b64: b64.slice(i * PARTE, (i + 1) * PARTE) }));
+      return Promise.all(envios).then(() => ref.set({ nome: file.name, tipo: file.type || 'application/octet-stream',
+        tamanho: file.size, partes: partes, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }));
+    });
+  }
+  $('b-dados').addEventListener('click', function(){
+    const arquivos = Array.from($('f-dados').files || []);
+    if (!arquivos.length) { msg('m-dados', 'Selecione os arquivos.', 'err'); return; }
+    $('b-dados').disabled = true;
+    let feitos = 0; const erros = [];
+    arquivos.reduce(function(p, f){
+      return p.then(() => (f.name.endsWith('.json') ? enviarJson(f) : enviarArquivo(f)))
+        .then(() => { feitos++; registro.push([new Date().toISOString(), 'dadoPrivado', f.name, '', '', 'enviado', eu.email || eu.uid]); msg('m-dados', feitos + ' de ' + arquivos.length + ' enviados…'); })
+        .catch((e) => { erros.push(f.name + ': ' + e.message); });
+    }, Promise.resolve()).then(function(){
+      msg('m-dados', erros.length ? ('Enviados ' + feitos + '. Erros: ' + erros.join(' | ')) : ('Todos os ' + feitos + ' arquivos enviados.'), erros.length ? 'err' : 'ok');
+      $('b-dados').disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

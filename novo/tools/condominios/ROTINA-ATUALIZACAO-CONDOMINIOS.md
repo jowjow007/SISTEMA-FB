@@ -1,0 +1,257 @@
+> **Desde 01/11/2026 (revisão de segurança):** a lista de clientes (`CONDOMINIOS`: síndicos, CNPJ, endereço, observações), os `RELATORIOS` e os PDFs/PNGs dos relatórios **não ficam mais no HTML nem no repositório**, porque tudo aqui é publicado no site aberto. Eles ficam no Firestore (`dadosPrivados/condominios` e `arquivosPrivados/{arquivo}`), com leitura só para a equipe. Para atualizar, edite `privado/condominios.json` (pasta local, fora do git), coloque o PDF/PNG em `privado/condominios-pdfs/` e envie os arquivos pela página `tools/admin-seguranca` (passo 4). **Nunca** faça commit de relatório ou dado de cliente em `tools/`.
+
+# Rotina de atualização — Manual (Condomínios)
+
+Esta aba replica o manual "FB Onboard Guide" (`https://fb-onboard-guide.lovable.app/`)
+inteiro — Início, Comece por Aqui, POPs, Condomínios, ASTREA, BRCondos,
+Notificações, Nomenclatura e Links Úteis — como uma única página, com um menu
+horizontal no topo no lugar da barra lateral vertical do site original (pedido
+explícito do usuário). Conteúdo copiado manualmente em 2026-08-10. Não há
+integração automática com aquele site nem com BRCondos/ASTREA — é uma cópia
+estática, no mesmo padrão do `tools/pop`.
+
+Tudo fica em `tools/condominios/index.html`, num único arquivo. Estrutura:
+
+- `SECTIONS` — as 9 abas do menu horizontal.
+- `CONDOMINIOS` — array com os 10 condomínios (nome, síndico, plataforma,
+  CNPJ, endereço, nota/particularidade). É o mesmo dado usado na grade e na
+  página de detalhe de cada condomínio.
+- `POPS` — os 3 cards da aba POPs. Os PDFs de nº 008 e 009 são reaproveitados
+  de `../pop/pdfs/` (já existiam no repositório); o POP nº 010 (BRCondos —
+  Livro de Ocorrências) não tem PDF local, então o botão do card leva para a
+  aba BRCondos desta mesma página em vez de um arquivo.
+- `LINKS` — os 4 cards da aba Links Úteis.
+- As demais seções (Início, Comece por Aqui, ASTREA, BRCondos, Notificações)
+  são funções `view...()` com o texto direto no HTML — para editar o texto,
+  edite a função correspondente.
+- A aba Nomenclatura é um gerador funcional (JS puro, sem backend), com as
+  regras dos 4 tipos de documento extraídas do POP nº 008/2023 (Judicial,
+  Administrativo, Contrato de Honorários — data no formato DD.MM.AA, 2
+  dígitos de ano, confirmado no PDF real do POP) e um 4º tipo "Notificação
+  Condominial", corrigido em 2026-08-17 a partir de nomes de arquivo reais
+  vistos na pasta de modelos de um dos condomínios: padrão
+  `(COND. {NOME} X T{TORRE}, APTO {APTO}) #{OCORRÊNCIA} – {TÍTULO} - {CRIADOR} - {DD.MM.AAAA}`
+  — sem a palavra "NOTIFICAÇÃO" (a tentativa anterior, sem evidência real,
+  tinha isso errado) e com ano de 4 dígitos (diferente do padrão de 2 dígitos
+  dos outros 3 tipos).
+- A sub-área "AlmahCondos" (segundo pill do `condoSubnav`, dentro da aba
+  Condomínios) é o guia de cores de ocorrências do sistema ALMAH Condo,
+  reconstruído em HTML a partir de uma imagem que o usuário colou na
+  conversa (não há arquivo de imagem real embutido — ver `ALMAH_ABERTA` /
+  `ALMAH_ENCERRADA` / `ALMAH_PAINEL` no script).
+
+## Fluxo de aprovação de notificações ("Gerar Notificação" + "Notificações Prontas")
+
+Essa parte **usa Firebase de verdade** (Auth + Firestore), diferente do resto
+da ferramenta que é só HTML estático. Inclui os mesmos `<script>` do Firebase
+compat e o mesmo `../../firebase-config.js` que `tools/sugestoes` usa — como
+tudo roda no mesmo domínio do Portal (GitHub Pages), a ferramenta reconhece
+sozinha quem já está logado no Portal (`auth.onAuthStateChanged`), sem tela de
+login própria. Duas coleções novas no Firestore (regras completas e explicação
+em `README-SETUP.md` do repositório raiz — procure por `condoAprovadores` e
+`notificacoesGeradas`; **o usuário precisa colar o bloco de regras atualizado
+no console do Firebase** para isso funcionar em produção):
+
+- **`condoAprovadores/{slug}`** — um aprovador por condomínio (`slug` =
+  nome do condomínio simplificado, ex. `condominio-exemplo`, gerado pela
+  função `slugify()`). Só admin do Portal atribui, pela própria aba
+  "Notificações Prontas" (botão "⚙ Atribuir aprovadores por condomínio",
+  só aparece para quem tem `role:'admin'` em `users/{uid}`).
+- **`notificacoesGeradas/{docId}`** — cada notificação enviada em "Gerar
+  Notificação": `condominio`, `condominioSlug`, `torre`, `apto`, `ocorrencia`,
+  `tipoPenalidade`, `texto`, `status` (`pendente`/`aprovada`/`rejeitada`),
+  `tentativa` (contador, começa em 1), `historico` (array com cada rejeição
+  passada), `criadoPorUid`/`criadoPorNome`/`criadoEm`,
+  `decididoPorUid`/`decididoPorNome`/`decididoEm`, `motivoRejeicao`.
+
+**Modelos de notificação por condomínio (desde 02/11/2026, fora do HTML público)**:
+os nomes dos condomínios, as regras especiais, os avisos e os modelos reais de
+notificação (texto jurídico de cada categoria, cabeçalho e o rodapé com as
+assinaturas) **não ficam mais no `index.html`**, que é público no GitHub Pages.
+Ficam no campo `procedimentos` do arquivo local `privado/condominios.json`, que o
+admin envia em `tools/admin-seguranca` (passo 4) para `dadosPrivados/condominios`,
+documento que só a equipe ativa lê. Formato:
+
+```json
+"procedimentos": {
+  "avisos":          [{ "condominio": "...", "texto": "..." }],
+  "regrasEspeciais": [{ "condominio": "...", "regra": "..." }],
+  "modelos": [{ "condominio": "...", "cabecalho": "... {TORRE} ... {APTO} ...",
+                "rodape": "... {DATA_NOTIF} ...",
+                "categorias": [{ "id": "...", "label": "...", "valorSugerido": "...", "corpo": "... [DATA] [HORA] [DESCREVER: ...] ..." }],
+                "mapaCategorias": { "<id em CATEGORIAS_INFRACAO>": "<id da categoria do modelo>" } }]
+}
+```
+
+Tudo é exibido com `escapeHtml` (texto, não HTML). O bloco de penalidade
+(`PENALIDADE_ADVERTENCIA_TPL` / `penalidadeMultaTpl()`) é genérico e continua
+no código, seguindo o campo "Tipo" do formulário.
+
+**Lista única de categorias, válida para todos os condomínios (2026-08-17,
+pedido explícito do usuário)**: `CATEGORIAS_INFRACAO` tem as ~42 categorias
+que o usuário ditou (USO INADEQUADO DA INFRAESTRUTURA, ADEQUAÇÃO, ALTA
+VELOCIDADE, ... — ver o array no código para a lista completa), na mesma
+ordem, com `id` gerado por `slugify()`. O campo "Categoria da infração"
+aparece sempre, para qualquer condomínio selecionado. `getCategoriaModelo(condominio,
+categoriaId)` só retorna um texto quando o condomínio tem modelo em
+`procedimentos.modelos` **e** a categoria está em `mapaCategorias`; nos demais casos
+aparece o aviso "ainda não temos modelo pronto" e o texto continua manual. Para
+incluir o modelo de outro condomínio: acrescentar um item em `procedimentos.modelos`
+no `privado/condominios.json` e reenviar o arquivo pela página de administração.
+**Nunca** colocar nomes de condomínios, síndicos ou textos de modelos no HTML.
+
+**Campos estruturados dos fatos (sem IA)**: perguntado explicitamente, o
+usuário preferiu **não** integrar uma IA de verdade para reescrever texto
+livre em português formal (isso exigiria backend novo — ex. Cloudflare
+Workers — mais uma chave de API da Anthropic paga por uso; ver decisão em
+2026-08-17). Em vez disso, quando existe modelo real para a categoria
+(`getCategoriaModelo` retorna algo), aparecem os campos "Data do fato", "Hora do
+fato" e "O que aconteceu (em poucas palavras)" — o placeholder desse último
+campo é preenchido dinamicamente com o texto de exemplo que já estava dentro
+do `[DESCREVER: ...]` do modelo, para orientar o usuário sobre o nível de
+detalhe esperado. Ao clicar "🪄 Gerar texto do modelo", `gerarTextoDoModelo()`
+faz um `split/join` simples trocando `[DATA]` → data do fato, `[HORA]` → hora
+do fato, e a regex `/\[DESCREVER:[^\]]*\]/` → o texto digitado pelo usuário,
+sem nenhuma correção gramatical — é literalmente o que a pessoa escreveu,
+encaixado na frase do modelo. O resultado sempre fica editável no campo de
+texto antes de enviar.
+
+Fluxo: qualquer usuário logado monta e envia uma notificação em "Gerar
+Notificação" (`status:'pendente'`). Só quem está em `condoAprovadores` como
+aprovador **daquele condomínio específico** (ou admin) vê e decide essa
+notificação em "Notificações Prontas" — um aprovador de um condomínio nunca
+vê notificações de outro (é assim que a regra do Firestore filtra, e é assim
+que a consulta no cliente filtra também). Aprovar não pede motivo; rejeitar
+exige motivo (fica salvo em `motivoRejeicao` + entra no `historico`). O
+criador vê a rejeição e o motivo na lista "Minhas notificações enviadas" (em
+"Gerar Notificação"), corrige pelo botão "Corrigir e reenviar", que reabre o
+formulário pré-preenchido e, ao reenviar, volta o `status` para `pendente` e
+soma 1 em `tentativa` — é esse número que aparece como "🔁 já rejeitada Nx
+antes" para o aprovador.
+
+**Notificação ao criador é só dentro do app** (ele vê ao abrir "Gerar
+Notificação" de novo), não é push de verdade — mesma decisão já tomada para o
+Chat Interno: push com o app fechado exigiria upgrade do Firebase para o
+plano pago Blaze. Se um dia quiserem push de verdade, é só pedir.
+
+**Índices do Firestore**: as consultas usadas (`where('criadoPorUid','==',...)`,
+`where('condominioSlug','in',[...])`, e as de `fetchOcorrenciasUnidade()` —
+até 4 `where(...,'==',...)` encadeados: `condominioSlug`/`torre`/`apto`/
+`status` — sempre sem `orderBy` nem filtro de intervalo/`in` junto) foram
+desenhadas de propósito para não precisar de nenhum índice composto —
+Firestore só exige índice composto quando mistura `orderBy`/intervalo com
+outros filtros; múltiplos `==` sozinhos não precisam. A ordenação e o corte
+por data de reset são feitos no JavaScript depois de buscar os dados. Se um
+dia alguém adicionar um filtro combinado com `orderBy` ou intervalo (ex.:
+`criadoEm >= X` direto na query do Firestore, em vez de filtrar no cliente),
+o Firestore vai pedir para criar um índice (aparece um link no erro do
+console do navegador).
+
+## Reincidência por unidade e "zerar" (troca de inquilino)
+
+Adicionado em 2026-08-17, a pedido do usuário. Nova coleção no Firestore,
+**`unidadeResets/{docId}`** (`docId` = `slugify(condominioSlug + '-T' + torre
++ '-' + apto)`, função `unidadeResetDocId()`): guarda, por unidade, a partir
+de qual data (`resetAPartirDe`, string `AAAA-MM-DD`) as ocorrências antigas
+param de contar — quem zerou (`resetPorUid`/`resetPorNome`) e quando
+(`resetEm`). Regras: qualquer logado lê, só admin (`isAdmin()`) escreve — o
+usuário pediu que só ele pudesse zerar, mas quando perguntado se isso deveria
+ser travado numa conta específica ou em qualquer admin do Portal, escolheu
+"qualquer admin do Portal" (mais simples, reaproveita o `role:'admin'` que já
+existe em `users/{uid}`).
+
+**Nunca apaga nada.** Zerar só grava a data de corte; as notificações antigas
+continuam em `notificacoesGeradas` para histórico/auditoria. `aplicarCorteReset(itens, reset)`
+é quem aplica o corte, no cliente, comparando `criadoEm` de cada item com a
+data do reset — só entra na contagem de reincidência quem é `criadoEm >=`
+a data escolhida.
+
+**Duas telas usam isso:**
+- Em **Gerar Notificação**, o botão "🔍 Consultar reincidência desta unidade"
+  (`consultarReincidencia()`) aparece assim que Torre e Apartamento estão
+  preenchidos — mostra quantas notificações **aprovadas** (só aprovadas contam
+  como reincidência; pendente/rejeitada não) essa unidade já teve, filtradas
+  pelo reset se houver. É manual (botão), não dispara sozinho a cada tecla,
+  para não gerar uma consulta ao Firestore por keystroke.
+- Em **Notificações Prontas**, o painel "🔎 Consultar ocorrências por unidade"
+  (`viewConsultaUnidadePanel()`/`consultarUnidadeAprovador()`) deixa o
+  aprovador — ou o admin, que pode escolher qualquer condomínio, não só os
+  que aprova (`condominiosConsultaveis()`) — ver o histórico completo (todos
+  os status, não só aprovadas) de uma unidade, e é onde fica o botão "Zerar
+  ocorrências desta unidade", visível só para quem `isAdminUser()`.
+
+**Mudança de regra relacionada**: para o botão de reincidência funcionar para
+qualquer pessoa criando uma notificação nova (não só para quem já é aprovador
+daquele condomínio ou autor das notificações antigas), a regra de leitura de
+`notificacoesGeradas` deixou de ser restrita (`criadoPorUid == uid || isAdmin()
+|| isAprovadorDoCondo(...)`) e virou simplesmente `isSignedIn()` — qualquer
+colaborador logado lê qualquer notificação. A permissão de **decidir**
+(aprovar/rejeitar) continua travada como antes, só a leitura ficou mais
+aberta. Ver explicação completa no `README-SETUP.md` do repositório raiz.
+
+## Número de unidades + calculadoras
+
+Adicionado em 2026-08-27, a pedido do usuário. A aba "Clientes" (nome atual
+do que era "Condomínios" — outra sessão renomeou o label em `SECTIONS`, o
+`id` interno continua `condominios`) ganhou de volta um menu de duas abas no
+topo — `condoSubnav('grid'|'calc')` — depois de ter ficado só com a grade
+por um tempo: **Clientes** (a grade de sempre) e **Calculadoras** (nova).
+
+**Número de unidades**: nova coleção `condoUnidades/{slug}` (`unidades`,
+`atualizadoPorUid`/`atualizadoPorNome`/`atualizadoEm`). Aparece em cada card
+da grade de Clientes (`unidadesBlocoCard()`) — "🏠 N unidades" ou "unidades
+não definidas" — com um botão "editar" visível só para quem `isAdminUser()`;
+clicar abre um campo numérico inline (`unidadesState.editando`) que salva
+direto no Firestore. Carregado uma vez por sessão (`carregarUnidades()`,
+guarda por `unidadesState.loaded`), disparado ao entrar na aba Clientes ou
+Calculadoras (`go('condominios')` e `setCondoView()`).
+
+**Calculadora de Pauta de Assembleia** (`viewCalcAssembleia()`,
+`calcState.assembleia`): escolhe o condomínio (busca o número de unidades
+cadastrado automaticamente; se não houver, mostra aviso e libera um campo
+manual "só para este cálculo", que não grava em lugar nenhum), adiciona
+quantos itens de pauta quiser (descrição + valor + checkbox "incluir"),
+e cada item mostra ao lado o valor individual por unidade (valor ÷
+unidades). O total geral e o valor por unidade somam só os itens **marcados**
+— desmarcar um item tira ele da chamada de capital sem precisar apagar a
+linha. Para não perder o foco do campo a cada tecla digitada, digitar em
+descrição/valor ou marcar/desmarcar chama `recalcularAssembleia()`, que lê os
+valores direto do DOM e atualiza só os spans de resultado (sem `render()`
+completo); só ações estruturais (condomínio, adicionar/remover item) chamam
+`render()`. Valores aceitam vírgula decimal brasileira (`parseBRL()`, ex.
+"1.500,00").
+
+**Calculadora de Datas** (`viewCalcDatas()`, `calcState.datas`): soma ou
+subtrai uma quantidade de dias a partir de hoje e mostra a data resultante,
+o dia da semana e se é feriado. `calcularPascoa()` usa o algoritmo de
+Meeus/Jones/Butcher (verificado manualmente contra 2026: Páscoa 05/04,
+Carnaval 16-17/02, Sexta-feira Santa 03/04, Corpus Christi 04/06 — todos
+batem com o calendário real). `FERIADOS_FIXOS` cobre os feriados nacionais
+de data fixa (inclui 20/11, Consciência Negra, federal desde a Lei
+14.759/2023) mais **31/08 — Emancipação Político-Administrativa de
+Uberlândia** como único feriado municipal cadastrado (é o único que eu
+tinha certeza suficiente para incluir sem risco de errar um prazo real;
+pontos facultativos e outros decretos municipais/estaduais variam ano a ano
+e **não** estão aqui — por isso o resultado sempre mostra o aviso para
+confirmar no calendário oficial da Prefeitura de Uberlândia/MG antes de usar
+para prazo crítico). Carnaval e Corpus Christi são rotulados "ponto
+facultativo", não feriado nacional obrigatório, porque tecnicamente não são
+— só a Sexta-feira Santa entre os móveis é feriado nacional de verdade.
+
+**Ambiente de teste — nota**: durante esta sessão, `msedge.exe` chamado via
+a ferramenta Bash parou de gerar saída (`--screenshot`/`--dump-dom` sem
+erro, mas sem arquivo) no meio dos testes, sem relação com o código; chamar
+o mesmo comando via PowerShell (`& $edge --headless ...`) continuou
+funcionando normalmente. Se isso acontecer de novo num futuro debug deste
+arquivo, tentar a ferramenta PowerShell antes de assumir que é bug no
+próprio HTML/JS.
+
+Para atualizar (novo condomínio, novo POP, texto revisado, etc.):
+
+1. Edite `tools/condominios/index.html` na seção correspondente.
+2. Faça commit e push do repositório `portal-fb` (branch `main`).
+3. O GitHub Pages publica em ~1 minuto em
+   `https://jowjow007.github.io/SISTEMA-FB/tools/condominios/index.html`.
+
+**Ainda falta:** adicionar esta aba no Portal (Administração > Abas) — feito
+pela própria interface, não por código.

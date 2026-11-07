@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documentos gerados — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); }catch(e){}
+</script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+header{padding:16px 20px}
+header h1{margin:0 0 2px}
+header p{margin:0}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+.card{padding:16px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.tools input[type=search],.tools select{padding:8px 10px}
+.tools input[type=search]{flex:1;min-width:200px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 4px}
+.info{flex:1;min-width:0}
+.nome{word-break:break-word}
+.tipo{display:inline-block;padding:1px 6px;margin-right:6px}
+.meta{margin-top:2px}
+.acoes a{white-space:nowrap}
+.msg{padding:10px 4px}
+.count{margin:0 0 8px}
+@media(max-width:600px){.row{flex-wrap:wrap}
+.acoes{width:100%}}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+<header>
+  <h1>Documentos gerados</h1>
+  <p>Tudo o que a equipe gerou no Criador de Documentos.</p>
+</header>
+<main>
+  <div class="card">
+    <div class="tools">
+      <input type="search" id="busca" placeholder="Buscar por nome, CPF, valor ou quem gerou...">
+      <select id="filtro-tipo">
+        <option value="">Todos os tipos</option>
+        <option value="procuracao">Procuração</option>
+        <option value="substabelecimento">Substabelecimento</option>
+        <option value="hipossuficiencia">Hipossuficiência</option>
+        <option value="termo_repasse">Termo de Repasse</option>
+        <option value="recibo">Recibo</option>
+        <option value="carta_preposicao">Carta de Preposição</option>
+      </select>
+    </div>
+    <p class="count" id="count"></p>
+    <div id="lista"><p class="msg">Carregando…</p></div>
+  </div>
+</main>
+<script>
+var DOCUMENTOS_TIPOS = ['procuracao','substabelecimento','hipossuficiencia','termo_repasse','recibo','carta_preposicao'];
+var LABEL = {procuracao:'Procuração', substabelecimento:'Substabelecimento', hipossuficiencia:'Hipossuficiência', termo_repasse:'Termo de Repasse', recibo:'Recibo', carta_preposicao:'Carta de Preposição'};
+var app = firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(app), db = firebase.firestore(app);
+var itens = [], busca = '', tipo = new URLSearchParams(location.search).get('tipo') || '';
+if (tipo) document.getElementById('filtro-tipo').value = tipo;
+
+auth.onAuthStateChanged(function(user){
+  if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
+  // coleção compartilhada com o Contratos: filtra só os tipos do Criador de Documentos
+  db.collection('contratosGerados').orderBy('criadoEm','desc').limit(1000).onSnapshot(function(snap){
+    itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
+      .filter(function(it){ return DOCUMENTOS_TIPOS.indexOf(it.data.tipo) >= 0; });
+    desenhar();
+  }, function(e){
+    var p = document.createElement('p'); p.className = 'msg'; p.style.color = 'var(--err)';
+    p.textContent = 'Erro ao carregar: ' + e.message;
+    document.getElementById('lista').replaceChildren(p);
+  });
+});
+
+function visiveis(){
+  var f = busca.toLowerCase();
+  return itens.filter(function(it){
+    var d = it.data;
+    if(tipo && d.tipo !== tipo) return false;
+    if(!f) return true;
+    return [d.nomeDisplay, d.metaDisplay, d.dataDisplay, d.criadoPorNome, LABEL[d.tipo]].join(' ').toLowerCase().indexOf(f) >= 0;
+  });
+}
+
+function desenhar(){
+  var lista = document.getElementById('lista');
+  var vis = visiveis();
+  document.getElementById('count').textContent = itens.length
+    ? (vis.length === itens.length ? itens.length + ' documento(s)' : vis.length + ' de ' + itens.length + ' documento(s)') : '';
+  lista.innerHTML = '';
+  if(!vis.length){
+    lista.innerHTML = '<p class="msg">' + (itens.length ? 'Nenhum documento encontrado.' : 'Nenhum documento gerado ainda.') + '</p>';
+    return;
+  }
+  vis.forEach(function(it){
+    var d = it.data;
+    var row = document.createElement('div'); row.className = 'row';
+    var info = document.createElement('div'); info.className = 'info';
+    var nome = document.createElement('div'); nome.className = 'nome';
+    var tag = document.createElement('span'); tag.className = 'tipo'; tag.textContent = LABEL[d.tipo] || d.tipo;
+    nome.append(tag, document.createTextNode(d.nomeDisplay || '(sem nome)'));
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var dt = d.criadoEm ? new Date(d.criadoEm.seconds * 1000) : null;
+    meta.textContent = [
+      dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '',
+      d.metaDisplay || '',
+      d.criadoPorNome ? 'por ' + d.criadoPorNome : ''
+    ].filter(Boolean).join(' · ');
+    info.append(nome, meta);
+    var acoes = document.createElement('div'); acoes.className = 'acoes';
+    var a = document.createElement('a'); a.href = 'index.html?carregar=' + encodeURIComponent(it.id); a.textContent = 'Abrir no criador';
+    acoes.appendChild(a);
+    row.append(info, acoes);
+    lista.appendChild(row);
+  });
+}
+
+document.getElementById('busca').addEventListener('input', function(){ busca = this.value.trim(); desenhar(); });
+document.getElementById('filtro-tipo').addEventListener('change', function(){ tipo = this.value; desenhar(); });
+</script>
+</body>
+</html>

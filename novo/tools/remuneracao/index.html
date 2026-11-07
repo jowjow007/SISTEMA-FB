@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Remuneração — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;min-height:100%}
+header{position:sticky;top:0;z-index:5;padding:16px 20px 0}
+header h1{margin:0 0 4px}
+header .sub{margin:0 0 12px}
+.abas{display:flex;gap:4px;flex-wrap:wrap}
+.abas button{padding:8px 14px;cursor:pointer}
+main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:22px 20px 60px}
+#gate{padding:80px 20px;text-align:center}
+.painel{display:none}
+.painel.ativo{display:block}
+.card{padding:18px 20px;margin-bottom:18px}
+.card h2{margin:0 0 12px}
+.linha{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+label.campo{display:flex;flex-direction:column;gap:5px}
+input,select{padding:8px 10px}
+input.valor{width:180px;text-align:right}
+input.pct{width:72px;text-align:right}
+.btn{padding:9px 16px;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.peq{padding:5px 10px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:8px 8px}
+td{padding:8px 8px;vertical-align:middle}
+td.num,th.num{text-align:right;white-space:nowrap}
+.tabela-wrap{overflow-x:auto}
+.aviso{padding:10px 14px;margin:0 0 14px}
+.status{margin-left:6px}
+.meu-destaque{text-align:center;padding:30px 20px}
+.meu-destaque .val{margin:8px 0 4px}
+@media (max-width:640px){main{padding:16px 16px 50px}
+input.valor{width:100%}}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<header>
+  <h1>💰 Remuneração variável</h1>
+  <p class="sub" id="sub">Carregando…</p>
+  <nav class="abas" id="abas" style="display:none;">
+    <button type="button" data-aba="mes" class="ativa">Lançamento do mês</button>
+    <button type="button" data-aba="pessoas">Pessoas e cargos</button>
+    <button type="button" data-aba="cargos">Cargos e percentuais</button>
+  </nav>
+</header>
+
+<main>
+  <div id="gate"></div>
+
+  <!-- ===== Dono: lançamento do mês ===== -->
+  <section class="painel" id="painel-mes">
+    <div class="card">
+      <h2>Lucro do escritório</h2>
+      <div class="linha">
+        <label class="campo">Mês de referência <input type="month" id="mes-ref"></label>
+        <label class="campo">Lucro do escritório no mês (R$) <input type="text" class="valor" id="mes-lucro" inputmode="decimal" placeholder="0,00"></label>
+        <span id="mes-bases" class="linha"></span>
+      </div>
+      <p class="muted" style="font-size:.78rem;margin:12px 0 0;">Os valores abaixo são recalculados enquanto você digita. Só ficam visíveis para os colaboradores depois de clicar em <b>Salvar e liberar</b>.</p>
+    </div>
+    <div id="mes-avisos"></div>
+    <div class="card">
+      <h2>Quanto cada pessoa recebe</h2>
+      <div class="tabela-wrap"><table id="mes-tabela"></table></div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button type="button" class="btn" id="mes-salvar">Salvar e liberar para os colaboradores</button>
+        <span class="status" id="mes-status"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Dono: pessoas ===== -->
+  <section class="painel" id="painel-pessoas">
+    <div class="card">
+      <h2>Quem participa e em qual cargo</h2>
+      <p class="muted" style="font-size:.8rem;margin:0 0 12px;line-height:1.5;">O <b>cargo</b> só define o cálculo. Quem vê a aba é decidido por você em <b>"Pode ver"</b>: marcado, a pessoa recebe a aba no menu e vê <b>só o próprio valor</b>; desmarcado, a aba some. Pelo plano de carreira, só quem tem mais de 1 ano de escritório (tempo de casa vem do Organograma).
+        O "% próprio" é opcional — quando preenchido, substitui o percentual da tabela de cargos (ex.: dois sócios fundadores dividindo 50% / 50%).</p>
+      <div id="pessoas-aviso-aba"></div>
+      <div class="tabela-wrap"><table id="pessoas-tabela"></table></div>
+    </div>
+  </section>
+
+  <!-- ===== Dono: cargos e percentuais ===== -->
+  <section class="painel" id="painel-cargos">
+    <div class="card">
+      <h2>Importar da planilha</h2>
+      <p class="muted" style="font-size:.8rem;margin:0 0 12px;line-height:1.5;">Selecione a planilha de cargos e carreira (.xlsx). São lidas as abas "CARGOS E REQUISITOS" e "PERCENTUAL POR DIRETORIA". O arquivo é lido só no seu navegador; os percentuais ficam guardados no Firestore com acesso restrito a você.</p>
+      <div class="linha">
+        <input type="file" id="arq-planilha" accept=".xlsx,.xls">
+        <span class="status" id="import-status"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Diretorias</h2>
+      <p class="muted" style="font-size:.8rem;margin:0 0 12px;line-height:1.5;">O <b>estágio</b> (I, II ou III) é o nível de maturidade da estrutura da diretoria e escolhe qual coluna de "% de ganhos" vale para os cargos dela. Base "valor próprio" pede um valor separado no lançamento do mês (ex.: valores administrativos angariados pelo Paralegal).</p>
+      <div class="tabela-wrap"><table id="dir-tabela"></table></div>
+    </div>
+    <div class="card">
+      <h2>Cargos — % de ganhos dentro da diretoria</h2>
+      <p class="muted" style="font-size:.8rem;margin:0 0 12px;line-height:1.5;">Deixe em branco onde o cargo não existe naquele estágio. "igual" divide a diretoria em partes iguais. Se duas pessoas têm o mesmo cargo, o percentual do cargo é dividido entre elas.</p>
+      <div class="tabela-wrap"><table id="cargos-tabela"></table></div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button type="button" class="btn sec peq" id="cargo-novo">+ Cargo</button>
+        <button type="button" class="btn" id="config-salvar">Salvar tabela</button>
+        <span class="status" id="config-status"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Colaborador ===== -->
+  <section class="painel" id="painel-meu">
+    <div class="card meu-destaque" id="meu-destaque"></div>
+    <div class="card">
+      <h2>Histórico</h2>
+      <div class="tabela-wrap"><table id="meu-tabela"></table></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script src="../../autorizacao-restrita.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // Único dono da aba: só ele lança o lucro, define cargos e libera pessoas.
+  // A mesma conta está travada nas regras do Firestore (função isDonoRemuneracao).
+  const DONO_EMAIL = 'jonathan@fonsecaebraga.com.br';
+  const ESTAGIOS = ['I', 'II', 'III'];
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  const $ = function(id){ return document.getElementById(id); };
+  const els = { gate: $('gate'), sub: $('sub'), abas: $('abas') };
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    els.gate.textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let eu = null;
+  let config = { diretorias: [], cargos: [] };
+  let pessoas = {};      // uid -> doc remuneracaoPessoas
+  let usuarios = [];     // users do portal (só o dono lê)
+  let ingressos = {};    // uid -> data de ingresso (Organograma)
+  let tabRemuneracao = null;
+  let mesAtualDoc = null;
+
+  // ---------- utilidades ----------
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  function brl(v){ return fmtBRL.format(v || 0); }
+  function pctTxt(v){ return (Math.round(v * 10000) / 100).toLocaleString('pt-BR') + '%'; }
+  function lerValor(s){
+    s = String(s || '').replace(/[R$\s]/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(s);
+    return isFinite(n) ? n : 0;
+  }
+  function valorParaCampo(v){ return v ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''; }
+  function lerPct(s){
+    s = String(s == null ? '' : s).trim().toLowerCase();
+    if (!s || s === '-') return null;
+    if (/igual/.test(s)) return 'igual';
+    const n = parseFloat(s.replace('%', '').replace(',', '.'));
+    return isFinite(n) ? n / 100 : null;
+  }
+  function pctParaCampo(v){ return v === 'igual' ? 'igual' : (v == null ? '' : String(Math.round(v * 10000) / 100).replace('.', ',')); }
+  function centavos(v){ return Math.round(v * 100) / 100; }
+  function nomeMes(ref){ const p = String(ref).split('-'); return MESES[+p[1] - 1] + ' de ' + p[0]; }
+  function mesHoje(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function slug(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function status(id, txt, ok){ const el = $(id); el.innerHTML = ok ? '<span class="ok">' + escapeHtml(txt) + '</span>' : escapeHtml(txt); }
+
+  function cargoPorId(id){ return config.cargos.find(function(c){ return c.id === id; }); }
+  function dirPorId(id){ return config.diretorias.find(function(d){ return d.id === id; }); }
+  function rotuloCargo(c){ const d = dirPorId(c.diretoriaId); return (d ? d.nome + ' · ' : '') + (c.nivel ? c.nivel + ' · ' : '') + c.nome; }
+
+  // ---------- cálculo ----------
+  // Valor da pessoa = base da diretoria × % da diretoria × % da pessoa dentro da diretoria.
+  // % da pessoa: "% próprio" se preenchido; senão o % do cargo no estágio da diretoria, dividido entre
+  // quem tem o mesmo cargo; "igual" divide a diretoria em partes iguais entre todos dela.
+  function calcular(lucro, bases){
+    const porDir = {};
+    config.diretorias.forEach(function(d){
+      const base = d.base === 'manual' ? (bases[d.id] || 0) : lucro;
+      porDir[d.id] = { d: d, base: base, pote: base * (d.pct || 0), itens: [], somaPct: 0 };
+    });
+    const lista = Object.keys(pessoas).map(function(uid){ return Object.assign({ uid: uid }, pessoas[uid]); })
+      .filter(function(p){ return cargoPorId(p.cargoId); });
+    const avisos = [];
+    lista.forEach(function(p){
+      const c = cargoPorId(p.cargoId);
+      const g = porDir[c.diretoriaId];
+      if (!g) return;
+      let pct = 0, origem = '';
+      if (p.pctManual != null){
+        pct = p.pctManual; origem = 'próprio';
+      } else {
+        const v = (c.pct || {})[g.d.estagio || 'I'];
+        if (v === 'igual'){
+          const n = lista.filter(function(o){ const oc = cargoPorId(o.cargoId); return oc.diretoriaId === c.diretoriaId; }).length;
+          pct = 1 / n; origem = 'divisão igual';
+        } else if (typeof v === 'number'){
+          const mesmos = lista.filter(function(o){ return o.cargoId === c.id && o.pctManual == null; }).length;
+          pct = v / mesmos; origem = mesmos > 1 ? pctTxt(v) + ' ÷ ' + mesmos : 'tabela';
+        } else {
+          avisos.push(escapeHtml(p.nome) + ': o cargo "' + escapeHtml(c.nome) + '" não tem % no estágio ' + (g.d.estagio || 'I') + ' de ' + escapeHtml(g.d.nome) + ' — preencha um "% próprio" ou ajuste a tabela.');
+        }
+      }
+      g.somaPct += pct;
+      g.itens.push({ uid: p.uid, nome: p.nome, cargo: c.nome, nivel: c.nivel || '', diretoria: g.d.nome, pctDir: g.d.pct || 0, pct: pct, origem: origem, valor: centavos(g.pote * pct) });
+    });
+    let somaLucro = 0;
+    config.diretorias.forEach(function(d){
+      const g = porDir[d.id];
+      if (d.base !== 'manual') somaLucro += d.pct || 0;
+      if (g.somaPct > 1.0001) avisos.push(escapeHtml(d.nome) + ': as pessoas somam ' + pctTxt(g.somaPct) + ' da diretoria (mais de 100%).');
+    });
+    if (somaLucro > 1.0001) avisos.push('As diretorias calculadas sobre o lucro somam ' + pctTxt(somaLucro) + ' — mais do que o lucro inteiro.');
+    return { porDir: porDir, avisos: avisos };
+  }
+
+  // ---------- abas da página ----------
+  function abrirPainel(nome){
+    Array.prototype.forEach.call(document.querySelectorAll('.abas button'), function(b){ b.classList.toggle('ativa', b.dataset.aba === nome); });
+    Array.prototype.forEach.call(document.querySelectorAll('.painel'), function(p){ p.classList.toggle('ativo', p.id === 'painel-' + nome); });
+    if (nome === 'mes') renderMes();
+    if (nome === 'pessoas') renderPessoas();
+    if (nome === 'cargos') renderConfig();
+  }
+  els.abas.addEventListener('click', function(ev){ const b = ev.target.closest('button[data-aba]'); if (b) abrirPainel(b.dataset.aba); });
+
+  // ---------- dono: lançamento do mês ----------
+  function basesDoForm(){
+    const bases = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-base-dir]'), function(inp){ bases[inp.dataset.baseDir] = lerValor(inp.value); });
+    return bases;
+  }
+  function renderBasesForm(valores){
+    $('mes-bases').innerHTML = config.diretorias.filter(function(d){ return d.base === 'manual'; }).map(function(d){
+      return '<label class="campo">' + escapeHtml(d.baseRotulo || ('Base de ' + d.nome)) + ' (R$)' +
+        '<input type="text" class="valor" inputmode="decimal" placeholder="0,00" data-base-dir="' + escapeHtml(d.id) + '" value="' + valorParaCampo((valores || {})[d.id]) + '"></label>';
+    }).join('');
+  }
+  function carregarMes(ref){
+    status('mes-status', '');
+    db.collection('remuneracaoMeses').doc(ref).get().then(function(doc){
+      mesAtualDoc = doc.exists ? doc.data() : null;
+      $('mes-lucro').value = valorParaCampo(mesAtualDoc ? mesAtualDoc.lucro : 0);
+      renderBasesForm(mesAtualDoc ? mesAtualDoc.bases : {});
+      if (mesAtualDoc && mesAtualDoc.salvoEm) status('mes-status', 'Liberado em ' + mesAtualDoc.salvoEm.toDate().toLocaleString('pt-BR') + '.', true);
+      renderMes();
+    }).catch(function(e){ status('mes-status', 'Erro ao carregar o mês: ' + e.message); });
+  }
+  function renderMes(){
+    if (!config.diretorias.length){
+      $('mes-tabela').innerHTML = '<tr><td class="muted">Primeiro importe a planilha na aba "Cargos e percentuais".</td></tr>';
+      $('mes-avisos').innerHTML = '';
+      return;
+    }
+    // tabela recém-importada/alterada: recria os campos de base própria (ex.: Paralegal)
+    const manuais = config.diretorias.filter(function(d){ return d.base === 'manual'; }).map(function(d){ return d.id; }).join('|');
+    const naTela = Array.prototype.map.call(document.querySelectorAll('[data-base-dir]'), function(i){ return i.dataset.baseDir; }).join('|');
+    if (manuais !== naTela) renderBasesForm(Object.assign({}, mesAtualDoc ? mesAtualDoc.bases : {}, basesDoForm()));
+    const r = calcular(lerValor($('mes-lucro').value), basesDoForm());
+    $('mes-avisos').innerHTML = r.avisos.map(function(a){ return '<div class="aviso">⚠️ ' + a + '</div>'; }).join('');
+    let html = '<thead><tr><th>Pessoa</th><th>Cargo</th><th class="num">% na diretoria</th><th class="num">Valor extra</th></tr></thead><tbody>';
+    let total = 0, alguem = false;
+    config.diretorias.forEach(function(d){
+      const g = r.porDir[d.id];
+      html += '<tr class="dir"><td colspan="2">' + escapeHtml(d.nome) + ' <span class="muted" style="font-weight:400;">— ' + pctTxt(d.pct || 0) + ' de ' + brl(g.base) + ' · estágio ' + escapeHtml(d.estagio || 'I') + '</span></td>' +
+        '<td class="num">' + pctTxt(g.somaPct) + '</td><td class="num">' + brl(g.pote) + '</td></tr>';
+      g.itens.sort(function(a, b){ return b.valor - a.valor; }).forEach(function(i){
+        alguem = true; total += i.valor;
+        html += '<tr><td>' + escapeHtml(i.nome) + '</td><td>' + escapeHtml((i.nivel ? i.nivel + ' · ' : '') + i.cargo) + '</td>' +
+          '<td class="num">' + pctTxt(i.pct) + ' <span class="muted" style="font-size:.72rem;">(' + escapeHtml(i.origem) + ')</span></td><td class="num">' + brl(i.valor) + '</td></tr>';
+      });
+      if (!g.itens.length) html += '<tr><td colspan="4" class="muted">Ninguém nesta diretoria.</td></tr>';
+    });
+    html += '<tr class="total"><td colspan="3">Total a pagar</td><td class="num">' + brl(total) + '</td></tr></tbody>';
+    $('mes-tabela').innerHTML = html;
+    $('mes-salvar').disabled = !alguem;
+  }
+  $('mes-ref').addEventListener('change', function(){ if (this.value) carregarMes(this.value); });
+  $('mes-lucro').addEventListener('input', renderMes);
+  $('mes-bases').addEventListener('input', renderMes);
+  $('mes-lucro').addEventListener('blur', function(){ this.value = valorParaCampo(lerValor(this.value)); });
+
+  $('mes-salvar').addEventListener('click', function(){
+    const ref = $('mes-ref').value;
+    if (!ref) return status('mes-status', 'Escolha o mês.');
+    const lucro = lerValor($('mes-lucro').value), bases = basesDoForm();
+    const r = calcular(lucro, bases);
+    const itens = [];
+    config.diretorias.forEach(function(d){ r.porDir[d.id].itens.forEach(function(i){ itens.push(i); }); });
+    if (!confirm('Liberar os valores de ' + nomeMes(ref) + ' para ' + itens.length + ' pessoa(s)? Cada uma verá só o próprio valor.')) return;
+    const btn = this; btn.disabled = true;
+    status('mes-status', 'Salvando…');
+    const agora = firebase.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    const anteriores = (mesAtualDoc && mesAtualDoc.pessoas) || [];
+    const atuais = itens.map(function(i){ return i.uid; });
+    anteriores.forEach(function(uid){
+      if (atuais.indexOf(uid) === -1) batch.delete(db.collection('remuneracaoExtrato').doc(uid).collection('meses').doc(ref));
+    });
+    itens.forEach(function(i){
+      batch.set(db.collection('remuneracaoExtrato').doc(i.uid).collection('meses').doc(ref), {
+        mes: ref, valor: i.valor, cargo: i.cargo, nivel: i.nivel, diretoria: i.diretoria, salvoEm: agora
+      });
+    });
+    batch.set(db.collection('remuneracaoMeses').doc(ref), {
+      mes: ref, lucro: lucro, bases: bases, pessoas: atuais, itens: itens,
+      total: centavos(itens.reduce(function(s, i){ return s + i.valor; }, 0)), salvoEm: agora
+    });
+    batch.commit().then(function(){
+      btn.disabled = false;
+      carregarMes(ref);
+    }).catch(function(e){ btn.disabled = false; status('mes-status', 'Não foi possível salvar: ' + e.message); });
+  });
+
+  // ---------- dono: pessoas e cargos ----------
+  // tempo de casa a partir da data de ingresso do Organograma (AAAA-MM-DD)
+  function mesesDeCasa(iso){
+    const p = String(iso || '').split('-');
+    if (p.length !== 3) return null;
+    const d = new Date(+p[0], +p[1] - 1, +p[2]), h = new Date();
+    let m = (h.getFullYear() - d.getFullYear()) * 12 + (h.getMonth() - d.getMonth());
+    if (h.getDate() < d.getDate()) m--;
+    return m;
+  }
+  function tempoDeCasaHtml(uid){
+    const iso = ingressos[uid];
+    const m = mesesDeCasa(iso);
+    if (m == null) return '<span class="muted">sem data no Organograma</span>';
+    const a = Math.floor(m / 12), r = m % 12;
+    const txt = (a ? a + (a > 1 ? ' anos' : ' ano') : '') + (a && r ? ' e ' : '') + (r || !a ? r + (r === 1 ? ' mês' : ' meses') : '');
+    const p = iso.split('-');
+    return '<span' + (m < 12 ? ' style="color:var(--gold);font-weight:600;"' : '') + '>' + txt + '</span>' +
+      '<div class="muted" style="font-size:.72rem;">desde ' + p[2] + '/' + p[1] + '/' + p[0] + (m < 12 ? ' · menos de 1 ano' : '') + '</div>';
+  }
+  function opcoesCargo(sel){
+    let html = '<option value="">— Não participa —</option>';
+    config.diretorias.forEach(function(d){
+      const cs = config.cargos.filter(function(c){ return c.diretoriaId === d.id; });
+      if (!cs.length) return;
+      html += '<optgroup label="' + escapeHtml(d.nome) + '">' + cs.map(function(c){
+        return '<option value="' + escapeHtml(c.id) + '"' + (c.id === sel ? ' selected' : '') + '>' + escapeHtml((c.nivel ? c.nivel + ' · ' : '') + c.nome) + '</option>';
+      }).join('') + '</optgroup>';
+    });
+    return html;
+  }
+  function renderPessoas(){
+    $('pessoas-aviso-aba').innerHTML = tabRemuneracao ? '' :
+      '<div class="aviso">A aba ainda não foi cadastrada no portal (Administração → Abas, endereço <b>tools/remuneracao/</b>). Enquanto isso, marcar "Pode ver" guarda a liberação, mas a aba não aparece no menu da pessoa.</div>';
+    if (!config.cargos.length){
+      $('pessoas-tabela').innerHTML = '<tr><td class="muted">Primeiro importe a planilha na aba "Cargos e percentuais".</td></tr>';
+      return;
+    }
+    const lista = usuarios.slice();
+    Object.keys(pessoas).forEach(function(uid){
+      if (!lista.some(function(u){ return u.uid === uid; })) lista.push({ uid: uid, displayName: pessoas[uid].nome, email: pessoas[uid].email || '' });
+    });
+    lista.sort(function(a, b){ return String(a.displayName || '').localeCompare(String(b.displayName || ''), 'pt-BR'); });
+    $('pessoas-tabela').innerHTML = '<thead><tr><th>Pessoa</th><th>No escritório</th><th>Cargo</th><th class="num">% próprio</th><th>Pode ver</th><th></th></tr></thead><tbody>' +
+      lista.map(function(u){
+        const p = pessoas[u.uid];
+        return '<tr data-uid="' + escapeHtml(u.uid) + '"><td>' + escapeHtml(u.displayName || '(sem nome)') + '<div class="muted" style="font-size:.72rem;">' + escapeHtml(u.email || '') + '</div></td>' +
+          '<td>' + tempoDeCasaHtml(u.uid) + '</td>' +
+          '<td><select class="p-cargo">' + opcoesCargo(p ? p.cargoId : '') + '</select></td>' +
+          '<td class="num"><input class="pct p-pct" placeholder="—" value="' + (p ? pctParaCampo(p.pctManual) : '') + '"> %</td>' +
+          '<td style="text-align:center;"><input type="checkbox" class="p-liberado" title="A pessoa vê esta aba e o próprio valor"' + (p && p.liberado ? ' checked' : '') + '></td>' +
+          '<td><button type="button" class="btn peq p-salvar">Salvar</button> <span class="status p-status"></span></td></tr>';
+      }).join('') + '</tbody>';
+  }
+  $('pessoas-tabela').addEventListener('click', function(ev){
+    const btn = ev.target.closest('.p-salvar');
+    if (!btn) return;
+    const tr = btn.closest('tr'), uid = tr.dataset.uid;
+    const cargoId = tr.querySelector('.p-cargo').value;
+    const pctManual = lerPct(tr.querySelector('.p-pct').value);
+    const liberado = tr.querySelector('.p-liberado').checked;
+    const st = tr.querySelector('.p-status');
+    const u = usuarios.find(function(x){ return x.uid === uid; }) || { displayName: (pessoas[uid] || {}).nome, email: (pessoas[uid] || {}).email };
+    const casa = mesesDeCasa(ingressos[uid]);
+    if (liberado && uid !== eu.uid && !(pessoas[uid] && pessoas[uid].liberado) && (casa == null || casa < 12) &&
+        !confirm((u.displayName || 'Esta pessoa') + (casa == null ? ' não tem data de ingresso no Organograma.' : ' tem menos de 1 ano de escritório.') + ' Liberar o acesso mesmo assim?')) return;
+    // Remuneração variável é área restrita: liberar "Pode ver" para outra pessoa pede a senha (e as regras exigem
+    // a senha recente para gravar a aba no cadastro dela). Tirar o acesso não pede.
+    const estavaLiberado = !!(pessoas[uid] && pessoas[uid].liberado);   // antes de salvar (o onSnapshot atualiza depois)
+    const passaAVer = liberado && uid !== eu.uid && !estavaLiberado;
+    (passaAVer ? autorizarAreaRestrita({ pessoa: u.displayName || u.email || 'esta pessoa', itens: ['Remuneração variável'] }) : Promise.resolve())
+      .then(salvarPessoa, function(){ /* cancelou: nada muda */ });
+    function salvarPessoa(){
+    btn.disabled = true; st.textContent = 'Salvando…';
+    // o cargo só define o cálculo; ver a aba depende só de "Pode ver", marcado à mão
+    const p = (cargoId || liberado)
+      ? db.collection('remuneracaoPessoas').doc(uid).set({
+          nome: u.displayName || '', email: u.email || '', cargoId: cargoId, liberado: liberado,
+          pctManual: pctManual === 'igual' ? null : pctManual,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        })
+      : db.collection('remuneracaoPessoas').doc(uid).delete();
+    p.then(function(){
+      if (!tabRemuneracao || uid === eu.uid) return;
+      return db.collection('users').doc(uid).update({
+        tabs: liberado ? firebase.firestore.FieldValue.arrayUnion(tabRemuneracao.id) : firebase.firestore.FieldValue.arrayRemove(tabRemuneracao.id)
+      });
+    }).then(function(){
+      if (passaAVer) registrarAreaRestrita({ alvoUid: uid, liberadas: ['Remuneração variável'], retiradas: [] });
+      else if (!liberado && estavaLiberado && uid !== eu.uid) registrarAreaRestrita({ alvoUid: uid, liberadas: [], retiradas: ['Remuneração variável'] });
+      btn.disabled = false;
+      st.innerHTML = '<span class="ok">Salvo' + (liberado ? ' — pode ver' : ' — não vê a aba') + '</span>';
+    }).catch(function(e){ btn.disabled = false; st.textContent = 'Erro: ' + e.message; });
+    }
+  });
+
+  // ---------- dono: tabela de cargos ----------
+  function renderConfig(){
+    $('dir-tabela').innerHTML = '<thead><tr><th>Diretoria</th><th class="num">%</th><th>Calculado sobre</th><th>Estágio</th><th>Descrição</th></tr></thead><tbody>' +
+      config.diretorias.map(function(d, i){
+        return '<tr data-i="' + i + '"><td><b>' + escapeHtml(d.nome) + '</b></td>' +
+          '<td class="num"><input class="pct d-pct" value="' + pctParaCampo(d.pct) + '"> %</td>' +
+          '<td><select class="d-base"><option value="lucro"' + (d.base !== 'manual' ? ' selected' : '') + '>Lucro do escritório</option><option value="manual"' + (d.base === 'manual' ? ' selected' : '') + '>Valor próprio no mês</option></select></td>' +
+          '<td><select class="d-estagio">' + ESTAGIOS.map(function(e){ return '<option' + ((d.estagio || 'I') === e ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select></td>' +
+          '<td class="muted" style="font-size:.76rem;">' + escapeHtml(d.descricao || '') + '</td></tr>';
+      }).join('') + '</tbody>';
+    if (!config.diretorias.length) $('dir-tabela').innerHTML = '<tr><td class="muted">Nenhuma diretoria ainda — importe a planilha.</td></tr>';
+    $('cargos-tabela').innerHTML = '<thead><tr><th>Diretoria</th><th>Nível</th><th>Cargo</th>' + ESTAGIOS.map(function(e){ return '<th class="num">Estágio ' + e + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
+      config.cargos.map(function(c, i){
+        return '<tr data-i="' + i + '"><td><select class="c-dir">' + config.diretorias.map(function(d){ return '<option value="' + escapeHtml(d.id) + '"' + (d.id === c.diretoriaId ? ' selected' : '') + '>' + escapeHtml(d.nome) + '</option>'; }).join('') + '</select></td>' +
+          '<td><input class="c-nivel" style="width:56px;" value="' + escapeHtml(c.nivel || '') + '"></td>' +
+          '<td><input class="c-nome" style="min-width:220px;" value="' + escapeHtml(c.nome) + '"></td>' +
+          ESTAGIOS.map(function(e){ return '<td class="num"><input class="pct c-pct" data-e="' + e + '" value="' + pctParaCampo((c.pct || {})[e]) + '"> %</td>'; }).join('') +
+          '<td><button type="button" class="btn sec peq c-remover" title="Remover cargo">✕</button></td></tr>';
+      }).join('') + '</tbody>';
+  }
+  function lerConfigDaTela(){
+    Array.prototype.forEach.call(document.querySelectorAll('#dir-tabela tr[data-i]'), function(tr){
+      const d = config.diretorias[+tr.dataset.i];
+      const v = lerPct(tr.querySelector('.d-pct').value);
+      d.pct = typeof v === 'number' ? v : 0;
+      d.base = tr.querySelector('.d-base').value;
+      d.estagio = tr.querySelector('.d-estagio').value;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#cargos-tabela tr[data-i]'), function(tr){
+      const c = config.cargos[+tr.dataset.i];
+      c.diretoriaId = tr.querySelector('.c-dir').value;
+      c.nivel = tr.querySelector('.c-nivel').value.trim();
+      c.nome = tr.querySelector('.c-nome').value.trim() || 'Cargo';
+      c.pct = {};
+      Array.prototype.forEach.call(tr.querySelectorAll('.c-pct'), function(inp){ c.pct[inp.dataset.e] = lerPct(inp.value); });
+    });
+  }
+  $('cargos-tabela').addEventListener('click', function(ev){
+    const b = ev.target.closest('.c-remover');
+    if (!b) return;
+    lerConfigDaTela();
+    const i = +b.closest('tr').dataset.i;
+    const emUso = Object.keys(pessoas).filter(function(uid){ return pessoas[uid].cargoId === config.cargos[i].id; }).length;
+    if (emUso && !confirm(emUso + ' pessoa(s) estão neste cargo e ficarão sem cargo. Remover mesmo assim?')) return;
+    config.cargos.splice(i, 1);
+    renderConfig();
+  });
+  $('cargo-novo').addEventListener('click', function(){
+    if (!config.diretorias.length) return status('config-status', 'Importe a planilha primeiro.');
+    lerConfigDaTela();
+    config.cargos.push({ id: 'c' + Date.now().toString(36), diretoriaId: config.diretorias[0].id, nivel: '', nome: 'Novo cargo', pct: {} });
+    renderConfig();
+  });
+  $('config-salvar').addEventListener('click', function(){
+    lerConfigDaTela();
+    salvarConfig('Tabela salva.');
+  });
+  function salvarConfig(msg){
+    status('config-status', 'Salvando…');
+    return db.collection('remuneracaoConfig').doc('geral').set({
+      diretorias: config.diretorias, cargos: config.cargos, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){ status('config-status', msg, true); renderConfig(); })
+      .catch(function(e){ status('config-status', 'Não foi possível salvar: ' + e.message); });
+  }
+
+  // ---------- importação da planilha (SheetJS carregado só quando usado) ----------
+  function carregarSheetJS(){
+    if (window.XLSX) return Promise.resolve();
+    return new Promise(function(ok, falha){
+      const s = document.createElement('script');
+      s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+      s.integrity = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
+      s.crossOrigin = 'anonymous';
+      s.onload = ok; s.onerror = function(){ falha(new Error('não foi possível carregar o leitor de planilhas')); };
+      document.head.appendChild(s);
+    });
+  }
+  function aba(wb, trecho){
+    const nome = wb.SheetNames.find(function(n){ return slug(n).indexOf(trecho) !== -1; });
+    return nome ? XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, defval: '', raw: true }) : null;
+  }
+  function pctPlanilha(v){
+    if (typeof v === 'number') return v;
+    return lerPct(v);
+  }
+  $('arq-planilha').addEventListener('change', function(){
+    const f = this.files && this.files[0];
+    if (!f) return;
+    status('import-status', 'Lendo planilha…');
+    carregarSheetJS().then(function(){ return f.arrayBuffer(); }).then(function(buf){
+      const wb = XLSX.read(buf, { type: 'array' });
+      const linhasDir = aba(wb, 'percentual-por-diretoria');
+      const linhasCargos = aba(wb, 'cargos-e-requisitos');
+      if (!linhasDir || !linhasCargos) throw new Error('não encontrei as abas "PERCENTUAL POR DIRETORIA" e "CARGOS E REQUISITOS"');
+      const antigas = {};
+      config.diretorias.forEach(function(d){ antigas[d.id] = d; });
+      const diretorias = [];
+      linhasDir.forEach(function(l){
+        const idx = l.findIndex(function(c){ return typeof c === 'number' || /^\d+([.,]\d+)?\s*%$/.test(String(c).trim()); });
+        if (idx < 1) return;
+        const nome = String(l[idx - 1]).trim();
+        if (!nome || /percentual/i.test(nome)) return;
+        const id = slug(nome);
+        const ant = antigas[id] || {};
+        diretorias.push({
+          id: id, nome: nome.toUpperCase(), pct: pctPlanilha(l[idx]) || 0,
+          descricao: String(l[idx + 1] || '').trim(),
+          base: ant.base || (/paralegal/i.test(nome) ? 'manual' : 'lucro'),
+          baseRotulo: ant.baseRotulo || (/paralegal/i.test(nome) ? 'Valores administrativos angariados pelo Paralegal' : ''),
+          estagio: ant.estagio || 'I'
+        });
+      });
+      const cab = linhasCargos.findIndex(function(l){ return l.some(function(c){ return /diretoria/i.test(String(c)); }) && l.some(function(c){ return /ganhos/i.test(String(c)); }); });
+      if (cab === -1) throw new Error('não encontrei o cabeçalho da aba de cargos');
+      const h = linhasCargos[cab].map(function(c){ return slug(c); });
+      const col = function(t){ return h.findIndex(function(x){ return x.indexOf(t) !== -1; }); };
+      const cDir = col('diretoria'), cNiv = h.indexOf('nivel'), cCargo = col('maturidade');
+      const cE = {};
+      ESTAGIOS.forEach(function(e){
+        const fim = new RegExp('ganhos-nivel-' + e.toLowerCase() + '$');
+        cE[e] = h.findIndex(function(x){ return fim.test(x); });
+      });
+      const cargosAntigos = {};
+      config.cargos.forEach(function(c){ cargosAntigos[c.diretoriaId + '|' + slug(c.nome)] = c; });
+      const cargos = [];
+      linhasCargos.slice(cab + 1).forEach(function(l){
+        const dnome = String(l[cDir] || '').trim(), nome = String(l[cCargo] || '').trim();
+        if (!dnome || !nome) return;
+        let d = diretorias.find(function(x){ return x.id === slug(dnome) || slug(dnome).indexOf(x.id) === 0 || x.id.indexOf(slug(dnome)) === 0; });
+        if (!d){ d = { id: slug(dnome), nome: dnome.toUpperCase(), pct: 0, descricao: '', base: 'lucro', baseRotulo: '', estagio: 'I' }; diretorias.push(d); }
+        const ant = cargosAntigos[d.id + '|' + slug(nome)];
+        const pct = {};
+        ESTAGIOS.forEach(function(e){ pct[e] = cE[e] === -1 ? null : pctPlanilha(l[cE[e]]); });
+        cargos.push({ id: ant ? ant.id : 'c' + slug(dnome + '-' + (l[cNiv] || '') + '-' + nome).slice(0, 40), diretoriaId: d.id, nivel: String(l[cNiv] || '').trim(), nome: nome, pct: pct });
+      });
+      if (!diretorias.length || !cargos.length) throw new Error('nenhuma diretoria ou cargo encontrado');
+      config.diretorias = diretorias;
+      config.cargos = cargos;
+      status('import-status', diretorias.length + ' diretorias e ' + cargos.length + ' cargos lidos — confira abaixo e clique em "Salvar tabela".', true);
+      renderConfig();
+    }).catch(function(e){ status('import-status', 'Não foi possível ler: ' + e.message); });
+    this.value = '';
+  });
+
+  // ---------- colaborador ----------
+  function iniciarColaborador(pessoa){
+    els.sub.textContent = 'Seu valor extra mensal, calculado pelo seu cargo e pelo resultado do escritório.';
+    abrirPainel('meu');
+    db.collection('remuneracaoExtrato').doc(eu.uid).collection('meses').onSnapshot(function(snap){
+      const meses = snap.docs.map(function(d){ return d.data(); }).sort(function(a, b){ return a.mes < b.mes ? 1 : -1; });
+      const ult = meses[0];
+      $('meu-destaque').innerHTML = ult
+        ? '<div class="rot">' + escapeHtml(nomeMes(ult.mes)) + '</div><div class="val">' + brl(ult.valor) + '</div><div class="cargo">' + escapeHtml(ult.diretoria + ' · ' + (ult.nivel ? ult.nivel + ' · ' : '') + ult.cargo) + '</div>'
+        : '<div class="rot">Ainda não há valores liberados</div><div class="cargo" style="margin-top:8px;">Assim que o mês for fechado, o seu valor aparece aqui.</div>';
+      $('meu-tabela').innerHTML = meses.length
+        ? '<thead><tr><th>Mês</th><th>Cargo</th><th class="num">Valor extra</th></tr></thead><tbody>' + meses.map(function(m){
+            return '<tr><td>' + escapeHtml(nomeMes(m.mes)) + '</td><td>' + escapeHtml((m.nivel ? m.nivel + ' · ' : '') + m.cargo) + '</td><td class="num">' + brl(m.valor) + '</td></tr>';
+          }).join('') + '</tbody>'
+        : '<tr><td class="muted">Nenhum mês ainda.</td></tr>';
+    }, function(){ semAcesso(); });
+  }
+
+  function semAcesso(){
+    document.querySelectorAll('.painel').forEach(function(p){ p.classList.remove('ativo'); });
+    els.abas.style.display = 'none';
+    els.sub.textContent = '';
+    els.gate.style.display = 'block';
+    els.gate.innerHTML = '🔒 Esta área é restrita.<br>O acesso precisa ser liberado pela coordenação do escritório.';
+  }
+
+  // ---------- dono ----------
+  function iniciarDono(){
+    els.sub.textContent = 'Você lança o lucro do mês e vê o valor de todos. Cada pessoa liberada vê só o próprio valor.';
+    els.abas.style.display = 'flex';
+    $('mes-ref').value = mesHoje();
+    db.collection('tabs').get().then(function(snap){
+      const t = snap.docs.find(function(d){ return /tools\/remuneracao/.test(String(d.data().url || '')); });
+      tabRemuneracao = t ? { id: t.id } : null;
+    }).catch(function(){});
+    db.collection('organograma').get().then(function(snap){
+      snap.docs.forEach(function(d){ ingressos[d.id] = d.data().dataIngresso || ''; });
+      if ($('painel-pessoas').classList.contains('ativo')) renderPessoas();
+    }).catch(function(){});
+    db.collection('users').get().then(function(snap){
+      usuarios = snap.docs.filter(function(d){ return !d.data().contaTeste; })   // conta de teste não é pessoa do escritório
+        .map(function(d){ const u = d.data(); return { uid: d.id, displayName: u.displayName || '', email: u.email || '' }; });
+      if ($('painel-pessoas').classList.contains('ativo')) renderPessoas();
+    }).catch(function(){});
+    db.collection('remuneracaoPessoas').onSnapshot(function(snap){
+      pessoas = {};
+      snap.docs.forEach(function(d){ pessoas[d.id] = d.data(); });
+      if ($('painel-mes').classList.contains('ativo')) renderMes();
+    }, function(e){ els.gate.style.display = 'block'; els.gate.textContent = 'Sem permissão no Firestore (as regras da remuneração foram publicadas?): ' + e.message; });
+    db.collection('remuneracaoConfig').doc('geral').get().then(function(doc){
+      if (doc.exists){ const c = doc.data(); config = { diretorias: c.diretorias || [], cargos: c.cargos || [] }; }
+      abrirPainel(config.cargos.length ? 'mes' : 'cargos');
+      carregarMes($('mes-ref').value);
+    }).catch(function(e){ els.gate.style.display = 'block'; els.gate.textContent = 'Sem permissão no Firestore (as regras da remuneração foram publicadas?): ' + e.message; });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.gate.textContent = 'Faça login no Portal Fonseca e Braga.';
+      return;
+    }
+    eu = user;
+    els.gate.style.display = 'none';
+    if (String(user.email || '').toLowerCase() === DONO_EMAIL) return iniciarDono();
+    db.collection('remuneracaoPessoas').doc(user.uid).get().then(function(doc){
+      if (doc.exists && doc.data().liberado === true) iniciarColaborador(doc.data()); else semAcesso();
+    }).catch(semAcesso);
+  });
+
+})();
+</script>
+</body>
+</html>

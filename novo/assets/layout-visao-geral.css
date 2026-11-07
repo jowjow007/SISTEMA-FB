@@ -1,0 +1,238 @@
+/* ================================================================================================
+   VERSÃO DE TESTE — layout "Visão geral" (07/11/2026)
+   Painel escuro e monocromático: blocos arredondados com borda fina, menu lateral com "Visão geral"
+   no topo e seções recolhíveis em maiúsculas, botões em pílula branca e números em fonte monoespaçada.
+   Só a "casca" do portal (topo, menu e painel inicial); as ferramentas continuam com o visual delas.
+   No celular (até 860px) o layout de sempre continua valendo; aqui mudam só as cores.
+   ================================================================================================ */
+/* tema escuro = VINHO ESCURO (pedido de 07/11: no lugar do preto); tema claro = BRANCO com detalhes em vinho */
+:root{
+  --ink:#1b0a0f;
+  --panel:#25111a;
+  --panel-2:#2f1720;
+  --paper:#f6eef0;
+  --muted:#b79fa6;
+  --red:#f6eef0;
+  --red-bright:#ffffff;
+  --red-deep:#4a1a28;
+  --silver:#d2bfc4;
+  --line:rgba(246,238,240,.08);
+  --line-strong:rgba(246,238,240,.14);
+  --gold:#ecdde1;
+  --vg-card:#25111a;
+  --vg-borda:#3b1c28;
+  --vg-pilula:#3d1d2a;
+  --vg-pilula-txt:#000;
+  --vg-mono:"Cascadia Mono","Cascadia Code",Consolas,"SFMono-Regular",ui-monospace,monospace;
+  --font-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --font-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+:root[data-theme="light"]{
+  --ink:#f7f4f4;
+  --panel:#ffffff;
+  --panel-2:#f4eef0;
+  --paper:#22121a;
+  --muted:#76646a;
+  --red:#6e1a2b;
+  --red-bright:#5a1422;
+  --red-deep:#ecd9de;
+  --silver:#5d4c52;
+  --line:rgba(34,18,26,.07);
+  --line-strong:rgba(34,18,26,.13);
+  --gold:#6e1a2b;
+  --vg-card:#ffffff;
+  --vg-borda:#ebe2e5;
+  --vg-pilula:#f3e6ea;
+  --vg-pilula-txt:#fff;
+}
+/* botões que eram vinho com texto branco: agora pílula clara com texto escuro (e o inverso no tema claro) */
+.btn{background:var(--paper);color:var(--ink);border-radius:999px;font-weight:600;letter-spacing:.02em;}
+.btn:hover{background:var(--red-bright);color:var(--ink);}
+.btn.secondary{background:transparent;color:var(--paper);border:1px solid var(--line-strong);}
+.btn.secondary:hover{background:var(--panel-2);}
+.admin-subtabs button.active{background:var(--paper);color:var(--ink);border-color:var(--paper);}
+#app-update-banner{background:var(--paper)!important;color:var(--ink)!important;}
+*{scrollbar-color:#2a2a2d transparent;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#2a2a2d;border-color:var(--ink);}
+:root[data-theme="light"] *{scrollbar-color:#c9c9ce transparent;}
+
+@media (min-width:861px){
+  /* ---------- topo: marca + nome + tela atual, busca compacta, tema e usuário ---------- */
+  #topbar{min-height:52px;padding:6px 18px 6px 16px;background:var(--ink);border-bottom:none;gap:12px;}
+  #topbar::before{display:none;}
+  .topbar-logo-wrap{position:static;margin:0;flex-direction:row;align-items:center;gap:10px;pointer-events:auto;order:-1;}
+  #topbar .brand-logo{height:26px;filter:none;}
+  .vg-marca{display:flex;align-items:baseline;gap:10px;white-space:nowrap;}
+  .vg-marca b{font-size:.86rem;font-weight:700;letter-spacing:.04em;color:var(--paper);}
+  .vg-marca span{font-size:.86rem;color:var(--muted);}
+  #topbar .search-box{border-radius:999px;background:var(--vg-card);border:1px solid var(--vg-borda);height:34px;max-width:360px;}
+  #topbar .user-info{font-size:.78rem;}
+  #topbar .role-badge{background:transparent;border:1px solid var(--vg-borda);}
+  .vg-tema{background:transparent;border:0;color:var(--muted);width:34px;height:34px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .vg-tema:hover{color:var(--paper);background:var(--panel-2);}
+  .vg-tema svg{width:17px;height:17px;}
+
+  /* ---------- corpo: menu e conteúdo como dois blocos arredondados ---------- */
+  #body-wrap{padding:0 12px 12px;gap:12px;background:var(--ink);}
+  #tabstrip{width:236px;background:var(--vg-card);border:1px solid var(--vg-borda);border-radius:16px;padding:10px 10px 12px;overflow:hidden;}
+  #tabstrip::before{display:none;}
+  #tabstrip.collapsed{width:64px;}
+  .sidebar-toggle-btn{border-radius:10px;font-size:.74rem;color:var(--muted);}
+  #tabstrip-list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+  #tabstrip .tab-btn{padding:8px 12px;border-radius:10px;font-size:.88rem;color:var(--muted);border:0;}
+  #tabstrip .tab-btn svg{opacity:.85;}
+  #tabstrip .tab-btn:hover{background:var(--panel-2);color:var(--paper);}
+  #tabstrip .tab-btn.active{background:var(--vg-pilula);color:var(--paper);box-shadow:none;border:0;}
+  #tabstrip .tab-btn.active::before,#tabstrip .tab-btn.active::after{display:none;}
+  /* "Visão geral" no topo do menu */
+  .vg-home{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;margin:2px 0 10px;border:0;border-radius:12px;
+    background:var(--vg-pilula);color:var(--paper);font-weight:600;font-size:.92rem;cursor:pointer;text-align:left;}
+  .vg-home svg{width:18px;height:18px;}
+  .vg-home.fora{background:transparent;color:var(--muted);font-weight:500;}
+  .vg-home.fora:hover{background:var(--panel-2);color:var(--paper);}
+  /* seções recolhíveis em maiúsculas */
+  .vg-grupo{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}
+  .vg-grupo-cab{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px 8px;border:0;background:transparent;
+    color:var(--paper);font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-radius:8px;}
+  .vg-grupo-cab:hover{background:var(--panel-2);}
+  .vg-grupo-cab svg{width:14px;height:14px;transition:transform .15s;color:var(--muted);}
+  .vg-grupo.aberto .vg-grupo-cab svg{transform:rotate(90deg);}
+  .vg-grupo-itens{display:none;flex-direction:column;gap:2px;padding-left:4px;}
+  .vg-grupo.aberto .vg-grupo-itens{display:flex;}
+  #tabstrip.collapsed .vg-grupo-cab{display:none;}
+  #tabstrip.collapsed .vg-grupo-itens{display:flex;padding-left:0;}
+  #tabstrip.collapsed .vg-home span{display:none;}
+  #tabstrip.collapsed .vg-home{justify-content:center;padding:10px 6px;}
+  /* rodapé do menu: quadro de situação (como o aviso e os mini indicadores do modelo) */
+  #theme-toggle-row{padding:8px 0 0;border-top:0;}
+  .company-badge-wrap{display:none;}
+  .vg-situacao{border:1px solid var(--vg-borda);border-radius:12px;padding:12px;margin-top:8px;font-size:.8rem;}
+  .vg-situacao .t{color:var(--paper);font-weight:600;margin-bottom:2px;}
+  .vg-situacao .d{color:var(--muted);font-size:.74rem;margin-bottom:10px;}
+  .vg-situacao .vg-pilula{width:100%;}
+  .vg-mini{border:1px solid var(--vg-borda);border-radius:12px;padding:8px 12px;margin-top:8px;display:grid;grid-template-columns:auto 1fr;row-gap:4px;column-gap:14px;font-size:.7rem;}
+  .vg-mini span{color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .vg-mini b{font-family:var(--vg-mono);font-weight:400;color:var(--paper);text-align:right;}
+  #tabstrip.collapsed .vg-situacao,#tabstrip.collapsed .vg-mini{display:none;}
+  #content{background:var(--vg-card);border:1px solid var(--vg-borda);border-radius:16px;overflow:hidden;}
+}
+
+/* ---------- painel "Visão geral" (substitui a tela inicial em telas largas) ---------- */
+#vg-painel{display:none;}
+@media (min-width:861px){
+  #mobile-home.vg-ativo{background:var(--ink);}
+  #mobile-home.vg-ativo::before,#mobile-home.vg-ativo::after,#mobile-home.vg-ativo .mh-texture,#mobile-home.vg-ativo .mh-arc,#mobile-home.vg-ativo .mh-content{display:none;}
+  #mobile-home.vg-ativo #vg-painel{display:grid;}
+  #content:has(#mobile-home.active.vg-ativo){background:transparent;border:0;}
+}
+#vg-painel{grid-template-columns:repeat(12,1fr);gap:14px;padding:2px 2px 24px;color:var(--paper);font-family:var(--font-body);}
+.vg-bloco{background:var(--vg-card);border:1px solid var(--vg-borda);border-radius:18px;padding:22px 24px;min-width:0;}
+.vg-rot{font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.vg-rot.claro{color:var(--paper);}
+.vg-sub{font-size:.8rem;color:var(--muted);margin-top:4px;}
+.vg-num{font-family:var(--vg-mono);font-size:2rem;line-height:1.1;margin-top:6px;}
+.vg-num.grande{font-size:2.4rem;}
+.vg-h{font-size:1.3rem;font-weight:500;margin:0 0 6px;}
+.vg-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.vg-chip{border:1px solid var(--vg-borda);background:transparent;color:var(--paper);border-radius:999px;padding:6px 13px;font-size:.78rem;cursor:pointer;font-family:inherit;}
+.vg-chip:hover{border-color:var(--muted);}
+.vg-chip.on{background:var(--paper);color:var(--ink);border-color:var(--paper);}
+.vg-pilula{display:inline-flex;align-items:center;justify-content:center;background:var(--paper);color:var(--ink);border:0;border-radius:12px;
+  padding:12px 18px;font-weight:700;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:inherit;}
+.vg-pilula:hover{filter:brightness(.92);}
+.vg-pilula.peq{padding:7px 12px;border-radius:999px;font-size:.7rem;}
+.vg-graf{grid-column:span 8;}
+.vg-resumo{grid-column:span 4;display:flex;flex-direction:column;}
+.vg-tabela{grid-column:span 12;padding:10px 22px 6px;}
+.vg-c4{grid-column:span 4;}
+.vg-topo-bloco{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.vg-graf svg{width:100%;height:220px;display:block;margin-top:14px;}
+.vg-graf .eixo{fill:var(--muted);font-size:10px;font-family:var(--font-body);}
+.vg-graf .grade{stroke:var(--vg-borda);stroke-dasharray:3 4;}
+.vg-graf .l1{fill:none;stroke:var(--paper);stroke-width:1.8;}
+.vg-graf .l2{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:4 4;}
+.vg-graf .a1{fill:var(--paper);opacity:.06;}
+.vg-legenda{display:flex;gap:18px;font-size:.74rem;color:var(--muted);margin-top:6px;}
+.vg-legenda i{display:inline-block;width:16px;border-top:2px solid var(--paper);vertical-align:middle;margin-right:6px;}
+.vg-legenda i.tr{border-top:2px dashed var(--muted);}
+.vg-linhas{margin:16px 0 18px;border-top:1px solid var(--vg-borda);padding-top:12px;display:flex;flex-direction:column;gap:9px;font-size:.86rem;}
+.vg-linhas div{display:flex;justify-content:space-between;gap:10px;}
+.vg-linhas b{font-family:var(--vg-mono);font-weight:400;}
+.vg-caixa{border:1px solid var(--vg-borda);border-radius:14px;padding:4px 14px;margin-bottom:16px;font-size:.82rem;}
+.vg-caixa div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;}
+.vg-caixa div + div{border-top:1px solid var(--vg-borda);}
+.vg-caixa span{color:var(--muted);}
+.vg-resumo .vg-pilula{margin-top:auto;}
+.vg-tabela table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.vg-tabela th{text-align:left;font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:14px 10px 12px;border-bottom:1px solid var(--vg-borda);}
+.vg-tabela td{padding:12px 10px;border-bottom:1px solid var(--vg-borda);vertical-align:middle;}
+.vg-tabela tr:last-child td{border-bottom:0;}
+.vg-tabela td.mono{font-family:var(--vg-mono);}
+.vg-tabela .nome{display:flex;align-items:center;gap:12px;}
+.vg-tabela .nome .ic{width:32px;height:32px;border:1px solid var(--vg-borda);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--muted);flex:0 0 auto;}
+.vg-tabela .nome .ic svg{width:16px;height:16px;}
+.vg-tabela .nome small{display:block;color:var(--muted);font-size:.74rem;margin-top:2px;}
+.vg-tabela .ver{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:8px;}
+.vg-tabela .ver:hover{color:var(--paper);background:var(--panel-2);}
+.vg-anel{display:flex;justify-content:center;margin-top:14px;}
+.vg-anel svg{width:150px;height:150px;}
+.vg-anel .fundo{stroke:var(--vg-borda);}
+.vg-anel .valor{stroke:var(--paper);}
+.vg-eventos{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:12px;font-size:.84rem;}
+.vg-eventos li{display:flex;flex-direction:column;gap:2px;}
+.vg-eventos small{color:var(--muted);font-size:.74rem;}
+.vg-saude{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:14px;font-size:.84rem;}
+.vg-saude li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;}
+.vg-saude .cx{width:18px;height:18px;border:1.5px solid var(--muted);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.vg-saude .cx.ok{background:var(--paper);border-color:var(--paper);color:var(--ink);}
+.vg-saude .cx svg{width:12px;height:12px;}
+.vg-saude small{display:block;color:var(--muted);font-size:.74rem;margin-top:2px;}
+.vg-vazio{color:var(--muted);font-size:.84rem;margin-top:10px;}
+.vg-selo-teste{position:fixed;right:14px;bottom:12px;z-index:9999;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--vg-borda);background:var(--vg-card);color:var(--muted);padding:5px 10px;border-radius:999px;pointer-events:none;}
+@media (max-width:1200px){ .vg-graf{grid-column:span 12;} .vg-resumo{grid-column:span 12;} .vg-c4{grid-column:span 6;} }
+
+/* seções do menu também no menu do celular (gaveta); o que é só do layout de computador fica escondido */
+@media (max-width:860px){
+  .vg-home,.vg-situacao,.vg-mini,.vg-marca,.vg-tema{display:none!important;}
+  .vg-grupo{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}
+  .vg-grupo-cab{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 12px 8px;border:0;background:transparent;
+    color:var(--paper);font-size:.74rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+  .vg-grupo-cab svg{width:14px;height:14px;transition:transform .15s;color:var(--muted);}
+  .vg-grupo.aberto .vg-grupo-cab svg{transform:rotate(90deg);}
+  .vg-grupo-itens{display:none;flex-direction:column;gap:2px;}
+  .vg-grupo.aberto .vg-grupo-itens{display:flex;}
+  .vg-selo-teste{bottom:76px;}
+}
+
+/* ajustes depois das primeiras telas */
+#tabstrip-list > .group-label,#tabstrip-list > .divider{display:none;}
+@media (min-width:861px){
+  #tabstrip .tab-btn svg,#tabstrip .tab-btn img{width:18px;height:18px;flex:0 0 18px;}
+  #topbar .topbar-brand-logo{display:none;}
+  .vg-marca::before{content:'';width:24px;height:24px;border-radius:6px;background:url('favicon.png') center/cover no-repeat;align-self:center;}
+  #tabstrip-list{flex:1;min-height:0;}
+}
+@media (min-width:861px){
+  #tabstrip .tab-btn .tab-icon{width:20px;height:20px;flex:0 0 20px;opacity:.9;}
+  #tabstrip .tab-btn{gap:12px;}
+}
+/* ícones em imagem (branca, feita para o fundo escuro): no tema claro ficam escuros */
+:root[data-theme="light"] #tabstrip .tab-btn img.tab-icon{filter:invert(1) brightness(.35);}
+/* tema claro (branco): botões, filtros e pílulas em vinho */
+:root[data-theme="light"] .btn,:root[data-theme="light"] .vg-pilula{background:var(--red);color:#fff;}
+:root[data-theme="light"] .btn:hover,:root[data-theme="light"] .vg-pilula:hover{background:var(--red-bright);color:#fff;filter:none;}
+:root[data-theme="light"] .btn.secondary{background:transparent;color:var(--paper);}
+:root[data-theme="light"] .vg-chip.on{background:var(--red);border-color:var(--red);color:#fff;}
+:root[data-theme="light"] .vg-saude .cx.ok{background:var(--red);border-color:var(--red);color:#fff;}
+:root[data-theme="light"] .admin-subtabs button.active{background:var(--red);border-color:var(--red);color:#fff;}
+/* sub-abas no menu (nível 2 e nível 3) */
+.vg-subs{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px 22px;padding-left:10px;border-left:1px solid var(--vg-borda);}
+.vg-sub,.vg-sub2{display:block;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;cursor:pointer;font-family:inherit;color:var(--muted);}
+.vg-sub{padding:6px 10px;font-size:.8rem;}
+.vg-sub2{padding:5px 10px 5px 22px;font-size:.76rem;position:relative;}
+.vg-sub2::before{content:'';position:absolute;left:10px;top:50%;width:6px;border-top:1px solid var(--vg-borda);}
+.vg-sub:hover,.vg-sub2:hover{background:var(--panel-2);color:var(--paper);}
+.vg-sub.on,.vg-sub2.on{color:var(--paper);background:var(--vg-pilula);font-weight:600;}
+#tabstrip.collapsed .vg-subs{display:none;}

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minhas petições — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); }catch(e){}
+</script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+header{padding:16px 20px}
+header h1{margin:0 0 2px}
+header p{margin:0}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+.card{padding:16px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.tools input[type=search]{flex:1;min-width:200px;padding:8px 10px}
+label.all{display:flex;align-items:center;gap:6px;cursor:pointer}
+.btn{padding:8px 14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;align-items:center;gap:10px;padding:10px 4px}
+.info{flex:1;min-width:0}
+.nome{word-break:break-word}
+.meta{margin-top:2px}
+.acoes{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.acoes a{white-space:nowrap}
+.del{cursor:pointer;padding:2px 6px}
+.msg{padding:10px 4px}
+.count{margin:0 0 8px}
+.tipos{display:inline-flex;gap:4px;padding:3px;margin-top:10px}
+.tipos a{padding:6px 12px}
+@media(max-width:600px){.row{flex-wrap:wrap}
+.acoes{width:100%;justify-content:flex-start;padding-left:26px}}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+<header>
+  <h1 id="h-titulo">Minhas petições</h1>
+  <p id="h-sub">Tudo o que você gerou no Formatador de Petições.</p>
+  <nav class="tipos"><a href="historico.html" id="t-pet">Petições</a><a href="historico.html?tipo=parecer" id="t-par">Pareceres</a></nav>
+</header>
+<main>
+  <div class="card">
+    <div class="tools">
+      <input type="search" id="busca" placeholder="Buscar por parte, peça ou número do processo...">
+      <label class="all"><input type="checkbox" id="all"> Selecionar todas</label>
+      <button class="btn" id="del-sel" disabled>Excluir selecionadas</button>
+    </div>
+    <p class="count" id="count"></p>
+    <div id="lista"><p class="msg">Carregando…</p></div>
+  </div>
+</main>
+<script>
+var app = firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(app), db = firebase.firestore(app);
+var itens = [], filtro = '';
+// históricos separados: ?tipo=parecer lista só os pareceres (título "PARECER ..."); sem o parâmetro, as petições
+var PARECER = new URLSearchParams(location.search).get('tipo') === 'parecer';
+var PAL = PARECER ? {varios:'parecer(es)', nenhum:'Nenhum parecer encontrado.', vazio:'Você ainda não gerou pareceres.'}
+                  : {varios:'petição(ões)', nenhum:'Nenhuma petição encontrada.', vazio:'Você ainda não gerou petições.'};
+document.getElementById(PARECER ? 't-par' : 't-pet').className = 'ativo';
+if(PARECER){
+  document.title = 'Meus pareceres — Fonseca e Braga';
+  document.getElementById('h-titulo').textContent = 'Meus pareceres';
+  document.getElementById('h-sub').textContent = 'Tudo o que você gerou na aba "Formatar parecer".';
+}
+function ehParecer(d){ return /^PARECER\b/.test(String(d.titulo||'').trim().toUpperCase()); }
+
+function nomePeticao(d){ return d.nomeArquivo || d.titulo || 'Petição'; }
+
+auth.onAuthStateChanged(function(user){
+  if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
+  db.collection('peticoes_historico').where('criadoPor','==',user.uid).onSnapshot(function(snap){
+    itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
+      .filter(function(it){ return ehParecer(it.data) === PARECER; })
+      .sort(function(a,b){ return ((b.data.criadoEm||{}).seconds||9e12) - ((a.data.criadoEm||{}).seconds||9e12); });
+    desenhar();
+  }, function(e){
+    document.getElementById('lista').innerHTML = '<p class="msg" style="color:var(--err)">Erro ao carregar: '+e.message+'</p>';
+  });
+});
+
+function visiveis(){
+  if(!filtro) return itens;
+  var f = filtro.toLowerCase();
+  return itens.filter(function(it){
+    return (nomePeticao(it.data)+' '+(it.data.processo||'')+' '+(it.data.titulo||'')).toLowerCase().indexOf(f) >= 0;
+  });
+}
+
+function desenhar(){
+  var lista = document.getElementById('lista');
+  var vis = visiveis();
+  document.getElementById('count').textContent = itens.length
+    ? (vis.length === itens.length ? itens.length+' '+PAL.varios : vis.length+' de '+itens.length+' '+PAL.varios) : '';
+  lista.innerHTML = '';
+  document.getElementById('all').checked = false;
+  atualizar();
+  if(!vis.length){ lista.innerHTML = '<p class="msg">'+(itens.length ? PAL.nenhum : PAL.vazio)+'</p>'; return; }
+  vis.forEach(function(it){
+    var d = it.data;
+    var row = document.createElement('div'); row.className = 'row';
+    var chk = document.createElement('input'); chk.type = 'checkbox'; chk.className = 'chk'; chk.dataset.id = it.id;
+    chk.addEventListener('change', atualizar);
+    var info = document.createElement('div'); info.className = 'info';
+    var nome = document.createElement('div'); nome.className = 'nome'; nome.textContent = nomePeticao(d);
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var dt = d.criadoEm ? new Date(d.criadoEm.seconds*1000) : null;
+    meta.textContent = (dt ? dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '') + (d.processo ? ' · Autos '+d.processo : '');
+    info.append(nome, meta);
+    var acoes = document.createElement('div'); acoes.className = 'acoes';
+    if(d.docsUrl){
+      var a1 = document.createElement('a'); a1.className = 'a-docs'; a1.href = d.docsUrl; a1.target = '_blank'; a1.rel = 'noopener'; a1.textContent = 'Abrir Docs';
+      acoes.appendChild(a1);
+    }
+    var a2 = document.createElement('a'); a2.className = 'a-form'; a2.href = 'index.html?carregar='+encodeURIComponent(it.id); a2.textContent = 'Abrir no formatador';
+    acoes.appendChild(a2);
+    var del = document.createElement('button'); del.className = 'del'; del.title = 'Excluir do histórico'; del.textContent = '🗑';
+    del.addEventListener('click', function(){ excluir([it]); });
+    acoes.appendChild(del);
+    row.append(chk, info, acoes);
+    lista.appendChild(row);
+  });
+}
+
+function atualizar(){
+  var chks = Array.from(document.querySelectorAll('.chk'));
+  var n = chks.filter(function(c){ return c.checked; }).length;
+  var b = document.getElementById('del-sel');
+  b.disabled = !n;
+  b.textContent = n ? 'Excluir selecionadas ('+n+')' : 'Excluir selecionadas';
+  document.getElementById('all').checked = n > 0 && n === chks.length;
+}
+
+function excluir(sel){
+  if(!sel.length) return;
+  var lista = sel.slice(0,8).map(function(it){ return '• '+nomePeticao(it.data); }).join('\n');
+  if(sel.length > 8) lista += '\n… e mais '+(sel.length-8);
+  var msg = (sel.length === 1 ? (PARECER ? 'Excluir este parecer do histórico?' : 'Excluir esta petição do histórico?')
+      : (PARECER ? 'Excluir estes '+sel.length+' pareceres do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?'))
+    + '\n\n'+lista+'\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
+  if(!confirm(msg)) return;
+  var lotes = [];
+  for(var i = 0; i < sel.length; i += 450){
+    var b = db.batch();
+    sel.slice(i, i+450).forEach(function(it){ b.delete(db.collection('peticoes_historico').doc(it.id)); });
+    lotes.push(b.commit());
+  }
+  Promise.all(lotes).catch(function(e){ alert('Não foi possível excluir: '+e.message); });
+}
+
+document.getElementById('busca').addEventListener('input', function(){ filtro = this.value.trim(); desenhar(); });
+document.getElementById('all').addEventListener('change', function(){
+  var v = this.checked;
+  document.querySelectorAll('.chk').forEach(function(c){ c.checked = v; });
+  atualizar();
+});
+document.getElementById('del-sel').addEventListener('click', function(){
+  var ids = Array.from(document.querySelectorAll('.chk:checked')).map(function(c){ return c.dataset.id; });
+  excluir(itens.filter(function(it){ return ids.indexOf(it.id) >= 0; }));
+});
+</script>
+</body>
+</html>

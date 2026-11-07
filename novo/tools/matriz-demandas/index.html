@@ -1,0 +1,1852 @@
+<title>Matriz de Demandas — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t !== 'light') document.documentElement.setAttribute('data-theme','dark');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme','dark');
+    }
+  });
+})();
+</script>
+<style>
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;padding:0}
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+body{min-height:100vh}
+.skip{position:absolute;left:-9999px}
+.shell{max-width:1560px;margin:0 auto;padding:20px 20px 64px}
+header.masthead{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:20px;padding:16px 20px 14px}
+.tool-title h1{margin:0}
+.tool-title p{margin:4px 0 0}
+@media (max-width: 640px){.masthead{flex-wrap:wrap}}
+.controls{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.search-row{display:flex;gap:10px}
+.search-box{flex:1;position:relative}
+.search-box input{width:100%;padding:12px 14px 12px 40px}
+.search-box input::placeholder{opacity:.75}
+.search-box svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;pointer-events:none;transition:color .15s ease, transform .15s ease}
+.search-box:focus-within svg{transform:translateY(-50%) scale(1.12)}
+.sugg-toggle{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:0 4px;cursor:pointer}
+.switch{position:relative;width:34px;height:20px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch .track{position:absolute;inset:0;transition:background .15s}
+.switch .thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;transition:transform .15s;display:flex;align-items:center;justify-content:center}
+.switch .thumb svg{width:9px;height:9px;opacity:0;transition:opacity .15s, transform .2s}
+.switch input:checked + .track + .thumb{transform:translateX(14px)}
+.switch input:checked ~ .thumb svg{opacity:1;transform:scale(1)}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;transition:background .12s, color .12s, border-color .12s}
+.chip-icon{flex:none;width:13px;height:13px;display:block;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.chip:hover .chip-icon, .chip:focus-visible .chip-icon{transform:scale(1.1)}
+.tab-icon{flex:none;width:15px;height:15px;display:block;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.mode-tab:hover .tab-icon{transform:scale(1.1)}
+.field-icon{flex:none;width:17px;height:17px;display:block;transition:transform .22s cubic-bezier(.2,.8,.2,1), color .18s ease}
+.field:hover .field-icon{transform:scale(1.12)}
+.row-chevron{flex:none;width:14px;height:14px;display:block;opacity:0;transform:translateX(-4px);transition:opacity .16s ease, transform .16s ease, color .16s ease}
+.item:hover .row-chevron, .item:focus-visible .row-chevron,
+  .person-item:hover .row-chevron, .person-item:focus-visible .row-chevron,
+  .assign-row:hover .row-chevron, .assign-row:focus-visible .row-chevron{opacity:1;transform:translateX(0)}
+.sugg-icon{flex:none;width:13px;height:13px;display:block;transition:transform .22s cubic-bezier(.2,.8,.2,1), color .18s ease}
+.sugg-toggle:hover .sugg-icon{transform:scale(1.12)}
+.pop-icon{flex:none;width:14px;height:14px;display:inline-block;vertical-align:middle}
+@keyframes popIn{0%{transform:scale(.55);opacity:0}100%{transform:scale(1);opacity:1}}
+.pop-icon{animation:popIn .22s ease-out}
+.mode-tabs{display:inline-flex;gap:2px;padding:3px;align-self:flex-start}
+.mode-tab{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+@media (max-width:560px){.mode-tabs{width:100%}
+.mode-tab{flex:1}}
+.lookup-controls{display:flex;flex-direction:column;gap:12px}
+.calc-panel{padding:28px 30px 30px}
+.calendar-tab-panel{padding:28px 30px 30px}
+.calc-head h2{margin:0 0 8px}
+.calc-head p{margin:0 0 22px;max-width:640px}
+.calc-form{display:grid;grid-template-columns:repeat(3, minmax(0,1fr)) auto;gap:16px;align-items:end;padding-bottom:24px;margin-bottom:24px}
+@media (max-width:760px){.calc-form{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.calc-form{grid-template-columns:1fr}}
+.calc-field label{display:block;margin-bottom:7px}
+.calc-field input{width:100%;padding:11px 12px}
+.calc-field select{width:100%;padding:11px 12px}
+#calcBtn{white-space:nowrap;height:44px}
+.calendar-tab-controls{display:grid;grid-template-columns:repeat(2, minmax(0,160px)) auto;gap:16px;align-items:end;padding-bottom:24px;margin-bottom:24px}
+@media (max-width:480px){.calendar-tab-controls{grid-template-columns:1fr 1fr}}
+#calTabToday{white-space:nowrap;height:44px}
+.calendar-tab-body .cal-weekdays{margin-bottom:8px}
+.cal-days-lg{gap:6px}
+.calendar-tab-panel .calendar-status{display:block;padding:14px 20px;margin-top:16px}
+.calendar-tab-panel .calendar-legend{margin-top:8px}
+.calendar-tab-panel .calendar-legend .dot{width:9px;height:9px}
+.calendar-tab-panel .calc-footnote{max-width:none}
+.calendar-tab-panel .calc-head p{max-width:none}
+.calc-results{display:flex;flex-direction:column;gap:16px}
+.calc-result-card{padding:18px 20px}
+.calc-result-card h3{margin:0 0 14px}
+.calc-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0}
+.calc-row:first-of-type{padding-top:0}
+.calc-row-label{flex:none}
+.calc-row.recommended{margin:0 -10px;padding:9px 10px}
+.recommend-badge{display:inline-block;padding:2px 9px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.calc-row-value{text-align:right}
+.calc-row-value small{display:block}
+.calc-row-note{display:block;margin-top:3px}
+.calc-empty{padding:8px 2px}
+.calc-footnote{margin:22px 0 0;max-width:760px}
+.guide-panel{padding:28px 30px 30px}
+.flow-hint{margin:0 0 18px}
+.flow-chart{display:flex;flex-direction:column;align-items:stretch;margin-bottom:28px}
+.flow-arrow{align-self:center;margin:2px 0}
+.flow-arrow svg{width:20px;height:20px;display:block}
+.flow-step{display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:14px 18px;cursor:pointer;transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease}
+.flow-step:hover{transform:translateY(-1px)}
+.flow-num{flex:none;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.flow-mockup{flex:none;width:128px;height:66px;position:relative;overflow:hidden;padding:8px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:5px}
+.flow-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.flow-goto{flex:none;width:18px;height:18px;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.flow-step:hover .flow-goto{transform:translateX(3px)}
+@media (max-width:640px){.flow-step{flex-wrap:wrap}
+.flow-mockup{width:100px;height:56px}}
+.mk-cursor{position:absolute;width:15px;height:15px}
+.mk-tab{padding:3px 6px}
+.mk-search{padding:4px 6px;display:flex;align-items:center;gap:3px;width:100%}
+.mk-search svg{width:9px;height:9px;flex:none}
+.mk-chip{padding:2px 6px}
+.mk-list-box{flex-direction:column}
+.mk-row{width:100%;height:9px}
+.mk-detail-box{flex-direction:column}
+.mk-line{height:6px}
+.mk-line-lg{width:90%}
+.mk-line-sm{width:60%}
+.mk-calc-box{align-items:center}
+.mk-input{width:60%;height:16px}
+.mk-btn{padding:4px 8px;display:flex;align-items:center;gap:3px}
+.mk-btn svg{width:9px;height:9px}
+.mk-copy-box{align-items:center;justify-content:center}
+@keyframes flowPulse{0%{}70%{}100%{}}
+.flow-pulse{position:relative;animation:flowPulse 1.6s ease-out 2}
+.guide-video{padding-top:22px}
+.guide-player{padding:26px 24px;min-height:170px;display:flex;align-items:center;gap:20px;position:relative;overflow:hidden}
+.guide-step{display:flex;align-items:center;gap:20px;width:100%;opacity:0;transform:translateX(12px);transition:opacity .35s ease, transform .35s ease;position:absolute;left:24px;right:24px}
+.guide-step.active{opacity:1;transform:translateX(0);position:relative}
+.guide-step-icon{flex:none;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
+.guide-step-icon svg{width:28px;height:28px}
+.guide-step-num{margin:0 0 3px}
+.guide-step-title{margin:0 0 4px}
+.guide-step-text{margin:0}
+.guide-progress{position:absolute;bottom:0;left:0;height:3px;width:0%;transition:width .05s linear}
+.guide-controls{display:flex;align-items:center;gap:16px;margin-top:16px}
+.guide-dots{display:flex;gap:7px}
+.guide-dot{width:8px;height:8px;cursor:pointer;padding:0;transition:background .15s, transform .15s}
+.guide-dot.active{transform:scale(1.25)}
+@media (max-width:560px){.guide-player{padding:20px 16px}
+.guide-step{flex-direction:column;text-align:center;gap:10px}}
+.feedback-panel{padding:28px 30px 30px}
+.feedback-form{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px 20px;padding-bottom:20px}
+.feedback-form textarea{width:100%;padding:11px 12px;resize:vertical}
+.feedback-form #fbSubmitBtn{grid-column:1/-1;justify-self:start}
+@media (max-width:560px){.feedback-form{grid-template-columns:1fr}}
+.sync-status{margin-left:2px}
+.sync-refresh-btn{margin-left:6px;cursor:pointer;opacity:.7;padding:2px 4px;vertical-align:middle}
+.sync-refresh-btn:hover{opacity:1}
+.fb-status{margin:4px 0 18px}
+.fb-status code{display:inline-block;margin-top:4px;padding:2px 6px}
+.inline-calc{padding:12px 14px;margin:2px 0 18px}
+.inline-calc-head{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.inline-calc-head h4{margin:0}
+.inline-calc-row{display:flex;align-items:end;gap:8px;margin-bottom:10px}
+.inline-calc-row .calc-field{flex:1;max-width:200px}
+.inline-calc .calc-field label{margin-bottom:4px}
+.inline-calc .calc-field input{padding:7px 9px}
+@media (max-width:520px){.inline-calc-row{flex-direction:column;align-items:stretch}
+.inline-calc-row .calc-field{max-width:none}}
+.inline-calc #tipoCalcBtn{height:34px;flex:none;padding:0 12px}
+.inline-calc .calc-results{gap:8px}
+.inline-calc .calc-result-card{padding:10px 12px}
+.inline-calc .calc-result-card h3{margin-bottom:6px}
+.inline-calc .calc-row{padding:6px 0}
+.inline-calc .calc-row.recommended{padding:8px 10px}
+.inline-calc .calc-empty{padding:4px 2px}
+.person-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 10px;cursor:pointer}
+.person-avatar{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center}
+.person-name{flex:1;min-width:0}
+.person-count{padding:2px 8px;flex:none}
+.person-summary{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:20px}
+.person-summary .person-avatar{width:48px;height:48px}
+.person-summary h2{margin:0}
+.person-summary p{margin:2px 0 0}
+.assign-list{display:flex;flex-direction:column;gap:8px}
+.assign-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;cursor:pointer}
+.assign-main{flex:1;min-width:0}
+.assign-cat{display:block;margin-bottom:2px}
+.assign-other{text-align:right;flex:none;max-width:180px}
+.assign-other b{display:block}
+@media (max-width:560px){.assign-other{display:none}}
+.summary-row{display:flex;align-items:baseline;gap:14px;margin:2px 2px 4px}
+.dot{width:6px;height:6px;display:inline-block;margin-right:5px;position:relative;top:-1px}
+.console{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:18px;align-items:stretch}
+@media (max-width: 860px){.console{grid-template-columns:1fr}}
+.sidebar-col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.list-panel{max-height:74vh;overflow-y:auto;padding:6px}
+.cat-group{padding:10px 8px 4px}
+.cat-group .cat-label{padding:4px 8px 8px}
+.item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 10px;cursor:pointer}
+.item-sev{width:7px;height:7px;flex:none}
+.item-title{flex:1;min-width:0}
+.item-badge{padding:2px 6px;flex:none}
+.empty-list{padding:28px 18px;text-align:center}
+.calendar-panel{padding:12px 12px 11px;display:flex;flex-direction:column;flex:1}
+.calendar-inner{width:100%}
+.calendar-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.calendar-head svg{flex:none;width:12px;height:12px}
+.calendar-controls{display:flex;gap:4px;margin-bottom:7px}
+.calendar-controls select{padding:3px 3px;min-width:0}
+.calendar-controls select#calMonth{flex:1.6;min-width:0}
+.calendar-controls select#calYear{flex:1;min-width:0}
+.calendar-controls .btn{padding:3px 6px;gap:0}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:2px}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cal-day.empty{visibility:hidden;cursor:default}
+.calendar-legend{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:7px}
+.calendar-legend span{display:inline-flex;align-items:center;gap:3px}
+.calendar-legend .dot{display:inline-block;width:5px;height:5px;flex:none}
+.calendar-status{margin-top:7px;padding-top:7px;min-height:14px}
+.calendar-note{margin-top:7px}
+.detail-panel{padding:28px 30px 30px;min-height:74vh}
+.detail-empty{height:100%;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:40px 20px}
+.detail-empty svg{width:40px;height:40px}
+.detail-empty p{margin:0;max-width:340px}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:18px;margin-bottom:22px}
+.detail-eyebrow{margin:0 0 6px}
+.detail-head h2{margin:0}
+.status-pill{padding:5px 10px;white-space:nowrap;flex:none}
+.field-grid{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:20px 28px;margin-bottom:24px}
+@media (max-width:560px){.field-grid{grid-template-columns:1fr}}
+.field label{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.field .value.legal-text{max-width:680px}
+.field .value.copy-field{cursor:pointer;display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:2px;padding:3px 6px;margin:-3px -6px;transition:background .12s ease}
+.field .value.copy-field.legal-text{display:block}
+.field .value.copy-field:hover .copy-hint{opacity:1;transform:scale(1)}
+.copy-hint{flex:none;width:13px;height:13px;opacity:0;transform:scale(.85);margin-left:4px;vertical-align:middle;transition:opacity .15s ease, transform .15s ease}
+.calc-row-value.copy-date{cursor:pointer;transition:background .12s ease}
+.sla-badge{display:inline-block}
+.forma-badge{display:inline-block;padding:2px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.uf-select{padding:6px 8px;max-width:100%}
+.name-chip{display:inline-flex;align-items:center;padding:4px 10px;margin:0 6px 6px 0}
+.sev-strip{display:inline-flex;align-items:center;gap:7px}
+.sev-strip .sd{width:8px;height:8px}
+.detail-actions{display:flex;gap:10px;padding-top:20px}
+.btn{padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn svg{width:14px;height:14px;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.btn:hover svg{transform:scale(1.1)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);padding:10px 18px;opacity:0;pointer-events:none;transition:opacity .18s, transform .18s;z-index:20}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+footer.note{margin-top:28px;padding-top:18px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+
+<header class="masthead">
+  <div class="tool-title">
+    <h1>Matriz de Demandas</h1>
+    <p>Consulta rápida de atividades &amp; responsáveis · <span style="opacity:.7">v46</span>
+      <span id="syncStatus" class="sync-status" role="status" aria-live="polite"></span>
+      <button type="button" id="syncRefreshBtn" class="sync-refresh-btn" title="Buscar de novo na planilha">↻</button>
+    </p>
+  </div>
+</header>
+
+<div class="shell">
+
+  <div class="controls">
+    <div class="mode-tabs" id="modeTabs" role="tablist" aria-label="Consultar por">
+      <button class="mode-tab" type="button" data-mode="tipo" aria-pressed="true">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        <span>Atividade</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="responsavel" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+        <span>Responsável</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="revisor" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+        <span>Revisor/Orientador</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="calculadora" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2 2 4-4"/></svg>
+        <span>Calculadora de Prazo</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="guia" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>
+        <span>Como Usar</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="feedback" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4H8l-4 3v-5.4A8.4 8.4 0 1 1 21 11.5Z"/><path d="M8.5 11h7M8.5 14h4"/></svg>
+        <span>Sugestões</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="calendario" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+        <span>Calendário</span>
+      </button>
+    </div>
+    <div class="lookup-controls" id="lookupControls">
+      <div class="search-row">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="q" type="text" autocomplete="off" placeholder="Buscar atividade — ex.: agravo, contestação, usucapião…" aria-label="Buscar atividade">
+        </div>
+        <label class="sugg-toggle">
+          <svg class="sugg-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l8.5 15h-17z"/><path d="M12 10v3.2"/><circle cx="12" cy="16" r=".6" fill="currentColor" stroke="none"/></svg>
+          <span class="switch">
+            <input id="togglePending" type="checkbox">
+            <span class="track"></span>
+            <span class="thumb"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M12 3.5l8.5 15h-17z"/></svg></span>
+          </span>
+          Mostrar só sem responsável
+        </label>
+      </div>
+      <div class="chip-row" id="catChips" role="group" aria-label="Filtrar por categoria"></div>
+      <div class="summary-row" id="summaryRow"></div>
+    </div>
+  </div>
+
+  <div class="console" id="console">
+    <div class="sidebar-col">
+      <nav class="panel list-panel" id="listPanel" aria-label="Resultados"></nav>
+
+      <aside class="panel calendar-panel" id="calendarPanel">
+        <div class="calendar-inner">
+          <div class="calendar-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+            <h4>Dia útil ou não útil?</h4>
+          </div>
+          <div class="calendar-controls">
+            <select id="calMonth" aria-label="Mês"></select>
+            <select id="calYear" aria-label="Ano"></select>
+            <button class="btn" id="calToday" type="button">Hoje</button>
+          </div>
+          <div class="cal-weekdays" id="calendarWeekdays"></div>
+          <div class="cal-days" id="calendarGrid"></div>
+          <div class="calendar-status" id="calendarStatus"></div>
+          <div class="calendar-legend">
+            <span><i class="dot util"></i>Dia útil</span>
+            <span><i class="dot weekend"></i>Fim de semana</span>
+            <span><i class="dot national"></i>Feriado nacional</span>
+          </div>
+          <p class="calendar-note">Considera fins de semana e feriados nacionais. Carnaval, Corpus Christi, recesso forense e feriados estaduais/municipais não estão incluídos.</p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="panel detail-panel" id="detailPanel">
+      <div class="detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg>
+        <p>Escolha uma atividade à esquerda para ver quem é o responsável, o revisor e para onde protocolar.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel calc-panel" id="calcPanel" style="display:none">
+    <div class="calc-head">
+      <h2>Calculadora de Prazo</h2>
+      <p>Informe a data de publicação/recebimento e a quantidade de dias de cada prazo. O dia da publicação não entra na contagem — a contagem começa no dia seguinte, como determina o CPC (art. 224) e o Código Civil (art. 132) para prazos em geral.</p>
+    </div>
+    <div class="calc-form">
+      <div class="calc-field">
+        <label>Data da publicação/recebimento</label>
+        <input type="date" id="calcDate">
+      </div>
+      <div class="calc-field">
+        <label>Prazo Fatal — quantidade de dias</label>
+        <input type="number" id="calcFatalDays" min="1" step="1" inputmode="numeric" placeholder="ex.: 15">
+      </div>
+      <div class="calc-field">
+        <label>Prazo SLA interno — quantidade de dias</label>
+        <input type="number" id="calcSlaDays" min="1" step="1" inputmode="numeric" placeholder="ex.: 5">
+      </div>
+      <button class="btn primary" id="calcBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" transform="rotate(90 12 12)"/></svg>
+        Calcular
+      </button>
+    </div>
+    <div class="calc-results" id="calcResults"></div>
+    <p class="calc-footnote">Contagem em dias úteis considera apenas <b>sábados, domingos e feriados nacionais</b> (Confraternização Universal, Sexta-feira da Paixão, Tiradentes, Dia do Trabalho, Independência, Nossa Senhora Aparecida, Finados, Proclamação da República, Consciência Negra e Natal) — não considera Carnaval, Corpus Christi, recesso forense nem feriados estaduais/municipais, que variam por tribunal e comarca. Se o resultado em dias corridos cair em dia não útil, mostramos também a data prorrogada.</p>
+  </section>
+
+  <section class="panel guide-panel" id="guiaPanel" style="display:none">
+    <div class="calc-head">
+      <h2>Como Usar o Sistema</h2>
+      <p>Fluxo resumido — da escolha da aba até calcular o prazo exato de uma atividade.</p>
+    </div>
+
+    <p class="flow-hint">👉 Clique em qualquer passo abaixo — o sistema muda de aba e destaca o local exato na tela.</p>
+    <div class="flow-chart" id="flowChart">
+
+      <button class="flow-step" type="button" data-goto="tabs">
+        <span class="flow-num">1</span>
+        <span class="flow-mockup">
+          <span class="mk-tab mk-active">Atividade</span>
+          <span class="mk-tab">Responsável</span>
+          <span class="mk-tab">Revisor</span>
+          <svg class="mk-cursor" viewBox="0 0 24 24" fill="currentColor" style="left:14%;top:38%;"><path d="M4 2l15.5 6.7-6 1.8 4.3 6.9-2.3 1.4-4.3-6.9-3.9 4.4z"/></svg>
+        </span>
+        <span class="flow-text">
+          <b>Escolha a aba</b>
+          <small>Atividade, Responsável, Revisor/Orientador ou Calculadora de Prazo.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v14M6 13l6 6 6-6"/></svg></div>
+
+      <button class="flow-step" type="button" data-goto="search">
+        <span class="flow-num">2</span>
+        <span class="flow-mockup">
+          <span class="mk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="10" cy="10" r="6"/><path d="M19 19l-4.3-4.3"/></svg>Buscar…</span>
+          <span class="mk-chip mk-chip-on">Criminal</span>
+          <span class="mk-chip">Cível</span>
+          <svg class="mk-cursor" viewBox="0 0 24 24" fill="currentColor" style="left:38%;top:8%;"><path d="M4 2l15.5 6.7-6 1.8 4.3 6.9-2.3 1.4-4.3-6.9-3.9 4.4z"/></svg>
+        </span>
+        <span class="flow-text">
+          <b>Busque ou filtre</b>
+          <small>Digite um termo ou clique nos chips de categoria para estreitar a lista.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v14M6 13l6 6 6-6"/></svg></div>
+
+      <button class="flow-step" type="button" data-goto="list">
+        <span class="flow-num">3</span>
+        <span class="flow-mockup mk-list-box">
+          <span class="mk-row"></span>
+          <span class="mk-row mk-row-active"></span>
+          <span class="mk-row"></span>
+          <svg class="mk-cursor" viewBox="0 0 24 24" fill="currentColor" style="left:55%;top:38%;"><path d="M4 2l15.5 6.7-6 1.8 4.3 6.9-2.3 1.4-4.3-6.9-3.9 4.4z"/></svg>
+        </span>
+        <span class="flow-text">
+          <b>Clique no resultado</b>
+          <small>Na lista à esquerda, clique na atividade, responsável ou revisor desejado.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v14M6 13l6 6 6-6"/></svg></div>
+
+      <button class="flow-step" type="button" data-goto="detail">
+        <span class="flow-num">4</span>
+        <span class="flow-mockup mk-detail-box">
+          <span class="mk-line mk-line-lg"></span>
+          <span class="mk-line mk-line-sm"></span>
+          <span class="mk-chip mk-chip-on" style="margin-top:4px;">Jonathan Fonseca</span>
+        </span>
+        <span class="flow-text">
+          <b>Veja os detalhes</b>
+          <small>À direita: Complexidade, SLA, Prazo Fatal, Responsável, Revisor, Base Legal e Protocolo.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v14M6 13l6 6 6-6"/></svg></div>
+
+      <button class="flow-step" type="button" data-goto="calc">
+        <span class="flow-num">5</span>
+        <span class="flow-mockup mk-calc-box">
+          <span class="mk-input"></span>
+          <span class="mk-btn">Calcular</span>
+          <svg class="mk-cursor" viewBox="0 0 24 24" fill="currentColor" style="left:66%;top:44%;"><path d="M4 2l15.5 6.7-6 1.8 4.3 6.9-2.3 1.4-4.3-6.9-3.9 4.4z"/></svg>
+        </span>
+        <span class="flow-text">
+          <b>Calcule o prazo</b>
+          <small>Informe a data de publicação/recebimento e veja o prazo em dias úteis e corridos.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v14M6 13l6 6 6-6"/></svg></div>
+
+      <button class="flow-step" type="button" data-goto="copy">
+        <span class="flow-num">6</span>
+        <span class="flow-mockup mk-copy-box">
+          <span class="mk-btn mk-btn-wine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar</span>
+          <svg class="mk-cursor" viewBox="0 0 24 24" fill="currentColor" style="left:62%;top:8%;"><path d="M4 2l15.5 6.7-6 1.8 4.3 6.9-2.3 1.4-4.3-6.9-3.9 4.4z"/></svg>
+        </span>
+        <span class="flow-text">
+          <b>Copie ou continue</b>
+          <small>Use "Copiar" para levar os dados, ou clique em outra atividade relacionada.</small>
+        </span>
+        <svg class="flow-goto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+
+    </div>
+
+    <div class="guide-video">
+      <div class="inline-calc-head" style="margin-bottom:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>
+        <h4>Demonstração animada</h4>
+      </div>
+      <div class="guide-player" id="guidePlayer"></div>
+      <div class="guide-controls">
+        <div class="guide-dots" id="guideDots"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel feedback-panel" id="feedbackPanel" style="display:none">
+    <div class="calc-head">
+      <h2>💡 Sugestões de Melhoria</h2>
+      <p>Encontrou algo que poderia funcionar melhor, ou tem uma ideia para o sistema? Escreva abaixo — a sugestão vai direto para a coordenação.</p>
+    </div>
+    <form class="feedback-form" id="feedbackForm">
+      <div class="calc-field">
+        <label>Seu nome (opcional)</label>
+        <input type="text" id="fbName" autocomplete="off" placeholder="ex.: Jonathan Fonseca">
+      </div>
+      <div class="calc-field">
+        <label>Seu e-mail (opcional, para retorno)</label>
+        <input type="email" id="fbEmail" autocomplete="off" placeholder="seuemail@fonsecaebraga.com.br">
+      </div>
+      <div class="calc-field" style="grid-column:1/-1;">
+        <label>Sua sugestão</label>
+        <textarea id="fbMessage" rows="5" placeholder="Descreva a melhoria, o problema ou a ideia…" required></textarea>
+      </div>
+      <button class="btn primary" type="submit" id="fbSubmitBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"/></svg>
+        Enviar sugestão
+      </button>
+    </form>
+    <div class="fb-status" id="fbStatus"></div>
+    <p class="calc-footnote">As sugestões vão direto para <b>jonathan@fonsecaebraga.com.br</b>, automaticamente — não precisa abrir nem enviar nada em outro lugar.</p>
+  </section>
+
+  <section class="panel calendar-tab-panel" id="calendarTabPanel" style="display:none">
+    <div class="calc-head">
+      <h2>Calendário Forense</h2>
+      <p>Consulte se um dia é útil ou não útil por mês e ano, com destaque para os feriados nacionais do Brasil. Calculado automaticamente — sem necessidade de atualização manual.</p>
+    </div>
+    <div class="calendar-tab-controls">
+      <div class="calc-field">
+        <label>Mês</label>
+        <select id="calTabMonth"></select>
+      </div>
+      <div class="calc-field">
+        <label>Ano</label>
+        <select id="calTabYear"></select>
+      </div>
+      <button class="btn" id="calTabToday" type="button">Hoje</button>
+    </div>
+    <div class="calendar-tab-body">
+      <div class="cal-weekdays" id="calTabWeekdays"></div>
+      <div class="cal-days cal-days-lg" id="calTabGrid"></div>
+    </div>
+    <div class="calendar-status" id="calTabStatus"></div>
+    <div class="calendar-legend">
+      <span><i class="dot util"></i>Dia útil</span>
+      <span><i class="dot weekend"></i>Fim de semana</span>
+      <span><i class="dot national"></i>Feriado nacional</span>
+    </div>
+    <p class="calc-footnote">Os feriados nacionais (Confraternização Universal, Sexta-feira da Paixão, Tiradentes, Dia do Trabalho, Independência, Nossa Senhora Aparecida, Finados, Proclamação da República, Consciência Negra e Natal) são <b>calculados automaticamente pela data</b> — nunca ficam desatualizados. Carnaval, Corpus Christi, recesso forense e feriados estaduais/municipais/de tribunais específicos não estão incluídos nesta visão.</p>
+  </section>
+
+  <footer class="note">
+    <b>Como usar:</b> escolha a aba (Atividade, Responsável, Revisor/Orientador ou Calculadora de Prazo) → busque pelo nome ou filtre por categoria → clique no resultado à esquerda → veja os detalhes à direita (Complexidade, SLA, Prazo Fatal, Responsável, Revisor, Base Legal e Protocolo) → use a calculadora embutida para saber a data exata do prazo. Veja o passo a passo completo na aba "Como Usar".<br><br>
+    <b>Fontes:</b> Categoria, Complexidade, Prazo Fatal, Forma de Contagem, Base Legal, SLA, Responsável, Revisor/Orientador, SLA da Revisão e Protocolo/Envio replicam a Matriz de Demandas Jurídicas oficial do escritório. Linhas marcadas <b>"Sem responsável definido"</b> já têm prazo e base legal mapeados, mas ainda aguardam atribuição de responsável pela coordenação.
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// [cat, tipo, complexidade, prazo, forma, baseLegal, sla, responsavel, revisor, slaRevisao, protocolo, etiqueta]
+// Cópia de segurança: usada só se a planilha estiver fora do ar E não houver
+// nenhuma versão em cache salva localmente (ver loadRowsFromSheet mais abaixo).
+const FALLBACK_ROWS = [
+["Condomínio","Notificação de Infração RI","Baixa","3","Dias Úteis","Convenção/RI do condomínio","2","Thauany Oliveira","Yasmin Karoline Ramos Silva","1 Dia Útil","Yasmin Karoline Ramos Silva","NOTIFICAÇÕES (CONDOMÍNIOS)"],
+["Condomínio","Notificação Extrajudicial","Média","7","Dias Úteis","Contrato e legislação material aplicável","5","Yasmin Karoline Ramos Silva","Jonathan Fonseca","2 Dias Úteis","Yasmin Karoline Ramos Silva","NOTIFICAÇÃO E CONTRANOTIFICAÇÃO"],
+["Cível/Emp./Fam.","Notificação Extrajudicial","Média","7","Dias Úteis","Contrato e legislação material aplicável","5","André Akira dos Reis Emi","Erika Borges","2 Dias Úteis","André Akira dos Reis Emi","NOTIFICAÇÃO E CONTRANOTIFICAÇÃO"],
+["Cível/Emp./Fam.","Análise Contratual","Alta","7","Dias Úteis","—","5","Yasmin Karoline Ramos Silva","Erika Borges","2 Dias Úteis","Micaela Lino","CONTRATO E ANÁLISE CONTRATUAL"],
+["Condomínio","Análise Contratual","Alta","7","Dias Úteis","—","5","Yasmin Karoline Ramos Silva","Erika Borges","2 Dias Úteis","Yasmin Karoline Ramos Silva","CONTRATO E ANÁLISE CONTRATUAL"],
+["Condomínio","Parecer Técnico","Média","7","Dias Úteis","—","5","Yasmin Karoline Ramos Silva","Jonathan Fonseca","2 Dias Úteis","Yasmin Karoline Ramos Silva","PARECER"],
+["Cível/Emp./Fam.","Parecer Técnico","Média","7","Dias Úteis","—","5","Erika Borges, Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino, Danielly Dutra","PARECER"],
+["Cível/Emp./Fam.","Petição Inicial","Alta","20","Dias Úteis","Código de Processo Civil (CPC), arts. 2º e 319","20","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Contestação","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 219, 231 e 335","12","Micaela Lino","Jonathan Fonseca","2 Dias Úteis","André Akira dos Reis Emi","DEFESA"],
+["Cível/Emp./Fam.","Impugnação à Contestação","Média","15","Dias Úteis","Código de Processo Civil (CPC), arts. 350 e 351","12","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","MANIFESTAÇÃO"],
+["Cível/Emp./Fam.","Especificação de Provas","Baixa","5","Dias Úteis","Código de Processo Civil (CPC), art. 218, §§ 1º e 3º","3","André Akira dos Reis Emi","Erika Borges","2 Dias Úteis","André Akira dos Reis Emi","MANIFESTAÇÃO"],
+["Cível/Emp./Fam.","Oposição ao Julgamento Virtual","Baixa","VERIFICAR ESTADO","AP, GO, MA, MS, PA, PB, PR, PE, PI, RN, RO, RR, SE e TO – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 8º, II, da Resolução CNJ nº 591/2024.\nAM – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 59, II, do Regimento Interno do TJAM e art. 8º, II, da Resolução CNJ nº 591/2024.\nBA – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 55-A do Regimento Interno do TJBA e art. 8º, II, da Resolução CNJ nº 591/2024.\nCE – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 3º, § 1º, da Resolução do Tribunal Pleno do TJCE nº 5/2026.\nDF – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 124-A, II, do Regimento Interno do TJDFT.\nMT – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 8º, II, da Resolução CNJ nº 591/2024 e regulamentação local do TJMT.\nRJ – 48 horas – Horas corridas, anteriores ao início da sessão – Ato Normativo TJ nº 12/2020 e art. 8º, II, da Resolução CNJ nº 591/2024.\nSP – 48 horas – Horas corridas, anteriores ao início da sessão – Art. 11, II, da Resolução TJSP nº 984/2025 e art. 8º, II, da Resolução CNJ nº 591/2024.\nRS e SC – 2 dias – Dias úteis, anteriores à data e ao horário de início da sessão – Ato TJRS nº 72/2025 e art. 142-M, I e § 1º, do Regimento Interno do TJSC, respectivamente.\nMG – 5 dias – Contados da publicação da inclusão em pauta; úteis no processo civil e corridos no processo penal, salvo indicação diversa – Art. 118 do Regimento Interno do TJMG e intimação da pauta.\nAC – 2 ou 3 dias – Dias úteis, conforme a classe processual e a intimação – Art. 93 do Regimento Interno do TJAC e prazo indicado na pauta.\nAL – 48 horas no segundo grau ou 2 dias nas Turmas Recursais – Horas corridas no segundo grau e dias úteis nas Turmas Recursais – Art. 8º, II, da Resolução CNJ nº 591/2024 e Regimento Interno das Turmas Recursais do TJAL.\nES – 3 dias ou, subsidiariamente, 48 horas – Dias úteis conforme o ato local ou horas corridas pela regra nacional – Atos locais dos órgãos julgadores do TJES e art. 8º, II, da Resolução CNJ nº 591/2024.","Regimento interno e ato normativo do tribunal","VERIFICAR ESTADO","André Akira dos Reis Emi","-","2 Dias Úteis","André Akira dos Reis Emi","MANIFESTAÇÃO"],
+["Cível/Emp./Fam.","Esclarecimento Processual (Ctt com Cliente)","Baixa","2","-","—","2","Danielly Dutra","Erika Borges","2 Dias Úteis","Danielly Dutra","CONTATOS (CLIENTE ou OUTROS)"],
+["Gestão","Acompanhamento (Caso não citado)","Baixa","2","-","—","2","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","REPETIÇÃO SEMANAL"],
+["Recursal","Embargos de Declaração","Média","5 (CÍVEL) 2 (CRIMINAL)","Cível em Dias Úteis e Criminal em Dias Corridos","Código de Processo Civil (CPC), art. 1.023; CLT, art. 897-A; CPP, art. 619; Lei 9.099/95, arts. 12-A e 49","3 (CÍVEL) 1 (CRIMINAL)","André Akira dos Reis Emi","Erika Borges","2 Dias Úteis","André Akira dos Reis Emi","RECURSOS"],
+["Recursal","Agravo de Instrumento","Média","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.015","12","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Recursal","Agravo Interno","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.021","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Recursal","Recurso Especial / Extraordinário","Altíssima","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.029","12","Thais Marquez","Jonathan Fonseca","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Trabalhista","Contestação","Alta","ATÉ AUDIÊNCIA","-","Consolidação das Leis do Trabalho (CLT), arts. 11, 775 e 847","ATÉ AUDIÊNCIA","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","DEFESA"],
+["Trabalhista","Reclamatória","Média/Alta","20","Dias Úteis","Consolidação das Leis do Trabalho (CLT), arts. 11, 775","20","Parceiro","Parceiro","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Trabalhista","Recurso Ordinário (RO)","Alta","8","Dias Úteis","Consolidação das Leis do Trabalho (CLT), arts. 775 e 895","5","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Trabalhista","Consignação em Pagamento","Média","5","Dias Úteis","Código de Processo Civil (CPC), arts. 539 e 542, I","3","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Geral","Audiência de Conciliação","Baixa","-","-","Código de Processo Civil (CPC), art. 334, §§ 5º e 8º","-","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","AUDIÊNCIA"],
+["Geral","Audiência de Instrução e Julgamento","Média","-","-","Código de Processo Civil (CPC)/CPP/CLT e decisão de designação","-","Thais Marquez, Erika Borges, Jonathan Fonseca, Hecy Braga","-","2 Dias Úteis","Danielly Dutra","AUDIÊNCIA"],
+["Geral","Sustentação Oral","Alta","-","-","Regimento interno do tribunal","-","Thais Marquez, Jonathan Fonseca, Hecy Braga","-","2 Dias Úteis","Danielly Dutra","AUDIÊNCIA"],
+["Criminal","Apelação Criminal","Alta","5 (INTERPOSIÇÃO) + 8 (RAZÕES)","Dias Corridos","Código de Processo Penal (CPP), arts. 593, 600 e 798","3 (INTERPOSIÇÃO) + 6 (RAZÕES)","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Cível/Emp./Fam.","Apelação Cível","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.009","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Criminal","Notícia Crime","Baixa","20","Dias Úteis","Código de Processo Penal (CPP) e Código Penal","20","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Geral","Manifestação Simples (Custas/Juntada de Docs)","Baixa","5","Dias Úteis","Código de Processo Civil (CPC), art. 218, §§ 1º e 3º","3","André Akira dos Reis Emi","-","2 Dias Úteis","André Akira dos Reis Emi","MANIFESTAÇÃO"],
+["Geral","Manifestação Intermediária / Complexa","Média/Alta","5","Dias Úteis","Código de Processo Civil (CPC), art. 218, §§ 1º e 3º","3","André Akira dos Reis Emi","Erika Borges","2 Dias Úteis","André Akira dos Reis Emi","MANIFESTAÇÃO"],
+["Geral","Informativo de Decisão","Média","3","Dias Úteis","—","2","Danielly Dutra","Erika Borges","2 Dias Úteis","Danielly Dutra","INFORMATIVO DE DECISÃO"],
+["Geral","Cadastro de Processo","Baixa","2","Dias Úteis","—","2","Danielly Dutra","André Akira dos Reis Emi","2 Dias Úteis","Danielly Dutra","PROD. DOCUMENTOS E CADASTROS DIVERSOS"],
+["Geral","Paralegal","Baixa/Média","7","Dias Úteis","—","6","Angela, Danielly Dutra, Micaela Lino","Micaela Lino","2 Dias Úteis","Danielly Dutra, Micaela Lino","PARALEGAL"],
+["Geral","Procuração e DHF","Baixa","5","Dias Úteis","Código de Processo Civil (CPC), art. 104, § 1º","3","Danielly Dutra","-","2 Dias Úteis","Danielly Dutra","PROD. DOCUMENTOS E CADASTROS DIVERSOS"],
+["Geral","Relatório Processual","Média","5","Dias Úteis","—","5","Danielly Dutra","Erika Borges","2 Dias Úteis","Danielly Dutra","RELATÓRIO"],
+["Geral","Despachos e Diligências","Média","7","Dias Úteis","Código de Processo Civil (CPC), art. 218, §§ 1º e 3º","5","Micaela Lino","-","2 Dias Úteis","-","ATV. EXTERNA - DESPACHOS E DILIGÊNCIAS"],
+["Geral","Análise","Alta","7","Dias Úteis","—","5","Erika Borges","Jonathan Fonseca","2 Dias Úteis","Erika Borges","ANÁLISE"],
+["Geral","Acordo","Média","15","Dias Úteis","—","15","Erika Borges","Jonathan Fonseca","2 Dias Úteis","Erika Borges","ANAL./PROD. ACORDO"],
+["Geral","Contatos Diversos","Baixa","2","Dias Úteis","—","2","Danielly Dutra","Erika Borges","2 Dias Úteis","Danielly Dutra","CONTATOS (CLIENTE ou OUTROS)"],
+["Geral","Produção de Contrato","Média","7","Dias Úteis","—","5","Yasmin Karoline Ramos Silva","Erika Borges","2 Dias Úteis","Yasmin Karoline Ramos Silva","CONTRATO E ANÁLISE CONTRATUAL"],
+["Geral","Produção de PPSA","Altíssima","2","Dias Úteis","—","2","Hecy Braga","Jonathan Fonseca","2 Dias Úteis","Hecy Braga","CPSA"],
+["Geral","Docs, Cadastros e Ass. Diversos","Baixa","2","Dias Úteis","—","2","Danielly Dutra","Todos","2 Dias Úteis","Danielly Dutra","PROD. DOCUMENTOS E CADASTROS DIVERSOS"],
+["Geral","Contrarrazões de Apelação","Alta","15","Dias Úteis","Código de Processo Civil (CPC), art. 1.010, § 1º","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Geral","Alegações Finais - Memoriais","Média","15 (CÍVEL) 5 (CRIMINAL)","Cível em Dias Úteis e Criminal em Dias Corridos","Código de Processo Civil (CPC), art. 364, § 2º; CPP, arts. 403, § 3º, e 404, parágrafo único","12 (CÍVEL) 3 (CRIMINAL)","Responsável","Erika Borges","2 Dias Úteis","Danielly Dutra","MANIFESTAÇÃO"],
+["Trabalhista","Agravo de Petição","Alta","8","Dias Úteis","Consolidação das Leis do Trabalho (CLT), arts. 775 e 897, a","5","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Geral","Exceção de Pré-Executividade","Média","NO CURSO DA EXECUÇÃO","-","Construção jurisprudencial","NO CURSO DA EXECUÇÃO","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","DEFESA"],
+["Geral","Lançamento de Prazo","Altíssima","Diário","Imediato","Política interna de controle","Diário","Erika Borges","-","2 Dias Úteis","-",""],
+["Geral","Cumprimento de Sentença e Impugnação","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 523 e 525","12","André Akira dos Reis Emi","Erika Borges","2 Dias Úteis","André Akira dos Reis Emi","PETIÇÃO INICIAL"],
+["Geral","Preparação para Audiência","Média/Alta","3","Antes da audiência","Decisão de designação","3","Responsável","-","2 Dias Úteis","-","ANÁLISE"],
+["Geral","Roteiro de Perguntas para Audiência","Média/Alta","3","Antes da audiência","Decisão de designação","3","Responsável","-","2 Dias Úteis","-","PROD. DOCUMENTOS E CADASTROS DIVERSOS"],
+["Geral","Recurso/Contrarrazões de Inominado","Alta","10","Dias Úteis","Lei 9.099/95, arts. 12-A e 42","7","Thais Marquez","Jonathan Fonseca","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Geral","Distribuição de Carta Precatória","Média","-","Conforme ato","Código de Processo Civil (CPC), art. 261 e decisão judicial","-","Danielly Dutra","-","2 Dias Úteis","Danielly Dutra","DISTRIBUIÇÃO"],
+["Geral","Plano de Partilha e Afins","Média","15","Dias Úteis","Código de Processo Civil (CPC), art. 647","12","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","MANIFESTAÇÃO"],
+["Geral","Quesitos Técnicos","Alta","15","Dias Úteis","Código de Processo Civil (CPC), art. 465, § 1º, III","12","Erika Borges","Jonathan Fonseca","2 Dias Úteis","Erika Borges","ANÁLISE"],
+["Geral","Embargos à Monitória","Alta","15","Dias Úteis","Código de Processo Civil (CPC), art. 702","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Cível/Emp./Fam.","Reconvenção","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 335 e 343","12","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","DEFESA"],
+["Cível/Emp./Fam.","Embargos a execução de Título Extrajudicial","Alta","3 (PAGAR A DÍVIDA) 15 (EMBARGOS)","Dias Úteis","Código de Processo Civil (CPC), arts. 829 e 915","3 (PAGAR A DÍVIDA) 12 (EMBARGOS)","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","DEFESA"],
+["Cível/Emp./Fam.","Liquidação de Sentença","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 509 a 511","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","MANIFESTAÇÃO"],
+["Cível/Emp./Fam.","Petição Inicial - Família","Alta","20","Dias Úteis","Lei de Alimentos e CPC","20","Hecy Braga","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Inventário e Partilha Extrajudicial","Alta","2 (ABERTURA) 12 (CONCLUIR)","MESES","Código de Processo Civil (CPC), art. 611","2 (ABERTURA) 12 (CONCLUIR)","Hecy Braga","Erika Borges","2 Dias Úteis","Micaela Lino","PARALEGAL"],
+["Cível/Emp./Fam.","Usucapião Extrajudicial","Alta","20","Dias Úteis","Código Civil, Lei de Registros Públicos e provimentos","20","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","PARALEGAL"],
+["Cível/Emp./Fam.","Usucapião Judicial","Altíssima","20","Dias Úteis","Código Civil e CPC","20","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Ação de Despejo","Média","20","Dias Úteis","Lei 8.245/91","20","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Ação Renovatória de Locação","Alta","12 A 6","MESES ANTES DO TÉRMINO DA LOCAÇÃO","Lei 8.245/91, art. 51, § 5º","12 A 6","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Recursal","Contrarrazões de Agravo de Instrumento","Média","15","Dias Úteis","Código de Processo Civil (CPC), art. 1.019, II","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Recursal","Embargos Infringentes","Alta","10","Dias Úteis na hipótese da LEF","Lei 6.830/80, art. 34","7","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Recursal","Embargos de Divergência","Altíssima","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.043","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Recursal","Agravo em Recurso Especial (AREsp)","Alta","15","Dias Úteis","Código de Processo Civil (CPC), arts. 1.003, § 5º, e 1.042","12","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Recursal","Recurso de Revista (TST)","Alta","8","Dias Úteis","Consolidação das Leis do Trabalho (CLT), arts. 775 e 896","6","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Trabalhista","Contrarrazões Trabalhistas (RO/AP)","Média","8","Dias Úteis","Consolidação das Leis do Trabalho (CLT), arts. 775 e 900","6","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Trabalhista","Cálculo de Verbas Rescisórias / TRCT","Média","10","Dias Corridos","Consolidação das Leis do Trabalho (CLT), art. 477, § 6º","8","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","CÁLCULOS"],
+["Criminal","Resposta à Acusação","Alta","10","Dias Corridos","Código de Processo Penal (CPP), arts. 396, 396-A e 798","8","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","DEFESA"],
+["Criminal","Habeas Corpus","Alta","10","Dias Úteis","Constituição Federal e CPP","10","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Criminal","Relaxamento de Prisão / Revisão de Preventiva","Alta","10","Dias Úteis","Código de Processo Penal (CPP), arts. 310 e 316","10","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","MANIFESTAÇÃO"],
+["Criminal","Recurso em Sentido Estrito (RESE)","Média","5 (INTERPOSIÇÃO) 2 (RAZÕES)","Dias Corridos","Código de Processo Penal (CPP), arts. 586, 588 e 798","5 (INTERPOSIÇÃO) 2 (RAZÕES)","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","RECURSOS"],
+["Criminal","Queixa-crime / Representação Criminal","Média","20","Dias Úteis","Código de Processo Penal (CPP), art. 38","20","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Tributário/Fazenda","Embargos à Execução Fiscal","Alta","30","Dias Úteis","Lei 6.830/80, art. 16; CPC, art. 219","16","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","DEFESA"],
+["Tributário/Fazenda","Mandado de Segurança Tributário","Alta","120","Dias Corridos","Lei 12.016/2009, art. 23","110","Thais Marquez","Erika Borges","2 Dias Úteis","Thais Marquez","RECURSOS"],
+["Tributário/Fazenda","Defesa Administrativa Tributária","Média","20","Dias Úteis","Decreto 70.235/72, arts. 10, V, e 15, com redação da LC 227/2026","20","Micaela Lino","Erika Borges","2 Dias Úteis","Micaela Lino","DEFESA"],
+["Cível/Emp./Fam.","Due Diligence (M&A/Investimento)","Altíssima","Não se aplica","Não se aplica","—","Não se aplica","Jonathan Fonseca","-","2 Dias Úteis","Danielly Dutra","PARALEGAL"],
+["Cível/Emp./Fam.","Contrato Social (Elaboração/Alteração)","Média","Não se aplica","Não se aplica","—","Não se aplica","Jonathan Fonseca","-","2 Dias Úteis","Danielly Dutra","CONTRATO E ANÁLISE CONTRATUAL"],
+["Cível/Emp./Fam.","Acordo de Acionistas/Quotistas","Alta","Não se aplica","Não se aplica","—","Não se aplica","Jonathan Fonseca","-","2 Dias Úteis","Danielly Dutra","ANAL./PROD. ACORDO"],
+["Cível/Emp./Fam.","Recuperação Judicial Empresarial","Altíssima","60 Para apresentar o Plano","Dias Corridos","Lei 11.101/2005, arts. 53 e 189, § 1º, I","60 Para apresentar o Plano","Jonathan Fonseca","-","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Ação Consumidor (CDC)","Média","20","Dias Úteis","Código de Defesa do Consumidor (CDC), Código Civil e CPC","20","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","PETIÇÃO INICIAL"],
+["Cível/Emp./Fam.","Parecer/Resposta a Incidente LGPD","Alta","3","Dias Úteis","Resolução CD/ANPD nº 15/2024, arts. 6º e 9º","2","Jonathan Fonseca","Erika Borges","2 Dias Úteis","Micaela Lino","PARECER"],
+["Gestão","Triagem de Novo Caso (Intake)","Baixa","7","Dias Úteis","—","5","Erika Borges","Erika Borges","2 Dias Úteis","-","ANÁLISE"],
+["Gestão","Onboarding de Cliente (Contrato+Procuração+LGPD)","Baixa","3","Dias Úteis","—","2","Danielly Dutra","-","2 Dias Úteis","Danielly Dutra","PROD. DOCUMENTOS E CADASTROS DIVERSOS"],
+["Gestão","Cobrança de Honorários Atrasados","Média","30","Dias Corridos","Contrato de honorários e legislação aplicável","30","Danielly Dutra","Hecy Braga","2 Dias Úteis","Danielly Dutra","FINANCEIRO"],
+["Gestão","Follow-up Periódico com Cliente","Baixa","3","Dias Corridos","—","2","Danielly Dutra","Jonathan Fonseca","2 Dias Úteis","Danielly Dutra","CONTATOS (CLIENTE ou OUTROS)"],
+["Gestão","Relatório Mensal Geral","Média","7","Dias Corridos","","5","Erika Borges","Jonathan Fonseca","2 Dias Úteis","Danielly Dutra","RELATÓRIO"],
+["Condomínio","Relatório Mensal Geral","Média","7","Dias Corridos","","5","Yasmin Karoline Ramos Silva","Jonathan Fonseca","2 Dias Úteis","Yasmin Karoline Ramos Silva","RELATÓRIO"]
+]
+;
+
+// ---------- Sincronização com a Google Sheets "Matriz de Demandas Jurídicas Atualizada" ----------
+// A planilha é a fonte oficial dos dados (compartilhada como "qualquer pessoa com o link
+// pode visualizar"). Em vez de colar os dados aqui manualmente a cada mudança, a página busca
+// o CSV publicado da planilha a cada carregamento e substitui ROWS por ele. FALLBACK_ROWS acima
+// só é usado se a busca falhar E não existir nenhuma cópia salva no cache local do navegador.
+const SHEET_ID = '1W0RBUb3d2h9i3NQi1-9ecT6Jlz_Xnsf90Xl5CQ4pFO4';
+const SHEET_GID = '1111019649';
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+const SHEET_CACHE_KEY = 'matrizDemandasSheetCache_v1';
+const SHEET_MIN_ROWS = 10; // se vier menos que isso, algo deu errado na busca — não sobrescreve
+
+let ROWS = normalizeRows(FALLBACK_ROWS);
+
+// Parser de CSV simples (RFC4180): trata campos entre aspas com vírgula/quebra de linha
+// internas e aspas duplicadas ("") como aspas literais — a planilha usa isso na coluna
+// BASE LEGAL/OBS da linha "Oposição ao Julgamento Virtual", que tem uma lista por estado.
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else if(c === '"'){
+      inQuotes = true;
+    } else if(c === ','){
+      row.push(field); field = '';
+    } else if(c === '\r'){
+      // ignora — quebra de linha CRLF
+    } else if(c === '\n'){
+      row.push(field); rows.push(row); row = []; field = '';
+    } else {
+      field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function rowsFromCSV(text){
+  const table = parseCSV(text).filter(r => r.some(cell => cell.trim() !== ''));
+  return normalizeRows(table.slice(1).map(r => {
+    const cells = r.map(c => c.trim());
+    while(cells.length < 12) cells.push('');
+    return cells.slice(0,12);
+  }).filter(r => r[1])); // descarta linha sem "Tipo de Peça" preenchido
+}
+
+// ---------- Normalização do nome da atividade ----------
+// Algumas linhas da planilha são digitadas em CAIXA ALTA. Para a matriz não
+// mostrar atividades "gritando", qualquer nome 100% maiúsculo vira Primeira
+// Letra Maiúscula (preposições/artigos curtos ficam minúsculos, exceto na
+// primeira palavra). Nomes que já vêm com case correto não são tocados —
+// preserva siglas como "PPSA", "LGPD", "CDC", "(RESE)" que estão em meio a
+// texto com minúsculas.
+const TITLE_CASE_STOPWORDS = new Set(['de','da','do','das','dos','e','em','a','à','ao','aos','com','para','por','no','na','nos','nas','ou']);
+function isShouting(str){
+  const letters = String(str||'').replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '');
+  return letters.length > 1 && letters === letters.toUpperCase() && letters !== letters.toLowerCase();
+}
+function titleCaseToken(token){
+  // maiúscula na 1ª letra e em cada início de "palavra" depois de "/" (ex.:
+  // "Acionistas/Quotistas"); depois de hífen continua minúsculo (ex.: "Pré-executividade")
+  let capitalizeNext = true;
+  return token.split('').map(ch=>{
+    if(/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(ch)){
+      if(capitalizeNext){ capitalizeNext = false; return ch.toUpperCase(); }
+      return ch.toLowerCase();
+    }
+    if(ch === '/') capitalizeNext = true;
+    return ch;
+  }).join('');
+}
+function toTitleCaseIfShouting(str){
+  if(!str || !isShouting(str)) return str;
+  return str.split(' ').map((w,i)=>{
+    const bare = w.toLowerCase().replace(/[().,;:]/g,'');
+    return (i>0 && TITLE_CASE_STOPWORDS.has(bare)) ? w.toLowerCase() : titleCaseToken(w);
+  }).join(' ');
+}
+function normalizeRows(rows){
+  return rows.map(r=>{
+    const copy = r.slice();
+    copy[1] = toTitleCaseIfShouting(copy[1]); // só a coluna "Tipo de Peça" (atividade)
+    return copy;
+  });
+}
+
+function readSheetCache(){
+  try{
+    const raw = localStorage.getItem(SHEET_CACHE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && Array.isArray(parsed.rows) && parsed.rows.length) ? parsed : null;
+  } catch(e){ return null; }
+}
+function writeSheetCache(rows){
+  try{ localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify({rows, ts:Date.now()})); }
+  catch(e){ /* localStorage indisponível (modo privado etc.) — segue sem cache */ }
+}
+function setSyncStatus(kind, ts){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  const hora = ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+  if(kind === 'loading'){
+    el.className = 'sync-status loading';
+    el.textContent = '· atualizando da planilha…';
+  } else if(kind === 'ok'){
+    el.className = 'sync-status ok';
+    el.textContent = `· atualizado da planilha às ${hora}`;
+  } else if(kind === 'cache'){
+    el.className = 'sync-status warn';
+    el.textContent = `· sem conexão com a planilha — mostrando última cópia salva (${hora})`;
+  } else {
+    el.className = 'sync-status warn';
+    el.textContent = '· sem conexão com a planilha — mostrando dados internos do arquivo';
+  }
+}
+async function loadRowsFromSheet(isRetry){
+  setSyncStatus('loading');
+  try{
+    const res = await fetch(SHEET_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const parsed = rowsFromCSV(text);
+    if(parsed.length < SHEET_MIN_ROWS) throw new Error('Planilha retornou poucas linhas (' + parsed.length + ')');
+    ROWS = parsed;
+    writeSheetCache(parsed);
+    setSyncStatus('ok', Date.now());
+  } catch(err){
+    console.warn('Matriz de Demandas: falha ao buscar a planilha, mantendo dados locais.', err);
+    const cached = readSheetCache();
+    if(cached){ ROWS = normalizeRows(cached.rows); setSyncStatus('cache', cached.ts); }
+    else setSyncStatus('fallback');
+  }
+  buildChips();
+  updateModeUI();
+  render();
+}
+
+const CATS = ["Cível/Emp./Fam.","Condomínio","Trabalhista","Criminal","Recursal","Tributário/Fazenda","Geral","Gestão"];
+
+function sevLevel(comp){
+  const parts = comp.split('/').map(s=>s.trim());
+  const rank = {Baixa:1, Média:2, Alta:3, Altíssima:4};
+  return Math.max(...parts.map(p=>rank[p]||2));
+}
+function sevClass(comp){
+  return ['','baixa','media','alta','altissima'][sevLevel(comp)];
+}
+
+function svgIcon(inner, cls, strokeW){
+  return `<svg class="${cls||''}" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="${strokeW||1.6}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+const ICON = {
+  chevron: '<path d="M9 6l6 6-6 6"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  person: '<circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.6"/>',
+  gauge: '<path d="M4 15a8 8 0 1 1 16 0"/><path d="M12 15l3.2-4.2"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  send: '<path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"/><path d="M10.5 13 15 8.5"/>',
+  doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  tag: '<path d="M20.6 12.6 12.4 20.8a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8L11.4 3.4A2 2 0 0 1 12.8 3H19a1 1 0 0 1 1 1v6.2a2 2 0 0 1-.6 1.4Z"/><circle cx="15" cy="7.5" r="1.4"/>'
+};
+const CATEGORY_ICON = {
+  "Cível/Emp./Fam.": '<path d="M3 11l9-7 9 7"/><path d="M5 10v9h14v-9"/>',
+  "Condomínio": '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7.5h1M14 7.5h1M9 11.5h1M14 11.5h1M9 15.5h1M14 15.5h1"/>',
+  "Trabalhista": '<rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  "Criminal": '<path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6z"/>',
+  "Recursal": '<path d="M7 17 17 7"/><path d="M9 7h8v8"/>',
+  "Tributário/Fazenda": '<circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/><path d="M17 7 7 17"/>',
+  "Geral": '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  "Gestão": '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 12l1.5 1.5L13 10"/>'
+};
+
+const PLACEHOLDER_NAMES = new Set(['Responsável','Todos','Parceiro','-','—','']);
+const MODE_FIELD = { responsavel:7, revisor:8 };
+const MODE_LABEL = {
+  tipo: { placeholder:'Buscar atividade — ex.: agravo, contestação, usucapião…', aria:'Buscar atividade', list:'Atividades' },
+  responsavel: { placeholder:'Buscar pelo nome do responsável…', aria:'Buscar responsável', list:'Responsáveis' },
+  revisor: { placeholder:'Buscar pelo nome do revisor ou orientador…', aria:'Buscar revisor ou orientador', list:'Revisores e orientadores' }
+};
+
+function normVal(v){
+  if(!v) return null;
+  const t = String(v).trim();
+  if(t==='' || t==='-' || t==='—') return null;
+  return t;
+}
+
+let state = { mode:'tipo', q:'', cats:new Set(), onlyPending:false, selected:null, selectedPerson:null, calcPrefill:null };
+
+const listPanel = document.getElementById('listPanel');
+const detailPanel = document.getElementById('detailPanel');
+const summaryRow = document.getElementById('summaryRow');
+const catChips = document.getElementById('catChips');
+const modeTabs = document.getElementById('modeTabs');
+const qInput = document.getElementById('q');
+const toast = document.getElementById('toast');
+const consoleEl = document.getElementById('console');
+const lookupControls = document.getElementById('lookupControls');
+const calcPanel = document.getElementById('calcPanel');
+const guiaPanel = document.getElementById('guiaPanel');
+const feedbackPanel = document.getElementById('feedbackPanel');
+const calendarTabPanel = document.getElementById('calendarTabPanel');
+const calMonthSelect = document.getElementById('calMonth');
+const calYearSelect = document.getElementById('calYear');
+const calTodayBtn = document.getElementById('calToday');
+const calendarWeekdays = document.getElementById('calendarWeekdays');
+const calendarGrid = document.getElementById('calendarGrid');
+const calendarStatus = document.getElementById('calendarStatus');
+const calTabMonthSelect = document.getElementById('calTabMonth');
+const calTabYearSelect = document.getElementById('calTabYear');
+const calTabTodayBtn = document.getElementById('calTabToday');
+const calTabWeekdays = document.getElementById('calTabWeekdays');
+const calTabGrid = document.getElementById('calTabGrid');
+const calTabStatus = document.getElementById('calTabStatus');
+
+// ---------- Calculadora de Prazo: feriados nacionais + contagem de dias ----------
+const WEEKDAY_PT = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+function easterSunday(year){
+  const a = year % 19, b = Math.floor(year/100), c = year % 100;
+  const d = Math.floor(b/4), e = b % 4;
+  const f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3);
+  const h = (19*a + b - d - g + 15) % 30;
+  const i = Math.floor(c/4), k = c % 4;
+  const l = (32 + 2*e + 2*i - h - k) % 7;
+  const m = Math.floor((a + 11*h + 22*l)/451);
+  const monthDay = h + l - 7*m + 114;
+  const month = Math.floor(monthDay/31);
+  const day = (monthDay % 31) + 1;
+  return new Date(year, month-1, day);
+}
+
+const holidayCache = {};
+function nationalHolidaysForYear(year){
+  if(holidayCache[year]) return holidayCache[year];
+  const easter = easterSunday(year);
+  const goodFriday = new Date(easter);
+  goodFriday.setDate(easter.getDate()-2);
+  const entries = [
+    [new Date(year,0,1), 'Confraternização Universal'],
+    [goodFriday, 'Sexta-feira da Paixão'],
+    [new Date(year,3,21), 'Tiradentes'],
+    [new Date(year,4,1), 'Dia do Trabalho'],
+    [new Date(year,8,7), 'Independência do Brasil'],
+    [new Date(year,9,12), 'Nossa Senhora Aparecida'],
+    [new Date(year,10,2), 'Finados'],
+    [new Date(year,10,15), 'Proclamação da República'],
+    [new Date(year,11,25), 'Natal']
+  ];
+  if(year >= 2024) entries.push([new Date(year,10,20), 'Consciência Negra']);
+  const map = new Map(entries.map(([d,name])=>[dateKey(d), name]));
+  holidayCache[year] = map;
+  return map;
+}
+function dateKey(d){
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+function isHoliday(d){
+  return nationalHolidaysForYear(d.getFullYear()).has(dateKey(d));
+}
+function holidayName(d){
+  return nationalHolidaysForYear(d.getFullYear()).get(dateKey(d)) || 'Feriado nacional';
+}
+function isBusinessDay(d){
+  const dow = d.getDay();
+  return dow!==0 && dow!==6 && !isHoliday(d);
+}
+
+
+const MONTH_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function initCalendar(){
+  calendarWeekdays.innerHTML = ['D','S','T','Q','Q','S','S'].map(w=>`<span>${w}</span>`).join('');
+  calMonthSelect.innerHTML = MONTH_PT.map((name,i)=>`<option value="${i}">${name}</option>`).join('');
+  const nowY = new Date().getFullYear();
+  const years = [];
+  for(let y=nowY-2; y<=nowY+6; y++) years.push(y);
+  calYearSelect.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  goToToday();
+  calMonthSelect.addEventListener('change', ()=>renderCalendarGrid());
+  calYearSelect.addEventListener('change', ()=>renderCalendarGrid());
+  calTodayBtn.addEventListener('click', goToToday);
+  calendarGrid.addEventListener('click', e=>{
+    const btn = e.target.closest('.cal-day');
+    if(!btn || btn.classList.contains('empty')) return;
+    const y = Number(calYearSelect.value), m = Number(calMonthSelect.value);
+    const d = new Date(y, m, Number(btn.dataset.day));
+    showCalendarStatus(d);
+  });
+}
+function goToToday(){
+  const today = new Date();
+  calMonthSelect.value = String(today.getMonth());
+  calYearSelect.value = String(today.getFullYear());
+  renderCalendarGrid();
+  showCalendarStatus(today);
+}
+function renderCalendarGrid(){
+  const y = Number(calYearSelect.value), m = Number(calMonthSelect.value);
+  const startDow = new Date(y,m,1).getDay();
+  const total = daysInMonth(y,m);
+  const today = new Date();
+  let html = '';
+  for(let i=0;i<startDow;i++) html += `<span class="cal-day empty"></span>`;
+  for(let day=1; day<=total; day++){
+    const d = new Date(y,m,day);
+    const st = dayStatusNationalOnly(d);
+    const isToday = d.toDateString()===today.toDateString();
+    html += `<button type="button" class="cal-day ${st.type}${isToday?' today':''}" data-day="${day}" title="${st.label}">${day}</button>`;
+  }
+  calendarGrid.innerHTML = html;
+}
+function showCalendarStatus(d){
+  const st = dayStatusNationalOnly(d);
+  calendarStatus.innerHTML = `<b>${fmtDate(d)}</b> — ${fmtWeekday(d)} — ${st.label}`;
+}
+
+function dayStatusNationalOnly(d){
+  if(isHoliday(d)) return {type:'national', label:holidayName(d)};
+  const dow = d.getDay();
+  if(dow===0) return {type:'weekend', label:'Domingo'};
+  if(dow===6) return {type:'weekend', label:'Sábado'};
+  return {type:'util', label:'Dia útil'};
+}
+function initCalendarTab(){
+  calTabWeekdays.innerHTML = ['D','S','T','Q','Q','S','S'].map(w=>`<span>${w}</span>`).join('');
+  calTabMonthSelect.innerHTML = MONTH_PT.map((name,i)=>`<option value="${i}">${name}</option>`).join('');
+  const nowY = new Date().getFullYear();
+  const years = [];
+  for(let y=nowY-2; y<=nowY+6; y++) years.push(y);
+  calTabYearSelect.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  goToCalTabToday();
+  calTabMonthSelect.addEventListener('change', renderCalTabGrid);
+  calTabYearSelect.addEventListener('change', renderCalTabGrid);
+  calTabTodayBtn.addEventListener('click', goToCalTabToday);
+  calTabGrid.addEventListener('click', e=>{
+    const btn = e.target.closest('.cal-day');
+    if(!btn || btn.classList.contains('empty')) return;
+    const y = Number(calTabYearSelect.value), m = Number(calTabMonthSelect.value);
+    const d = new Date(y, m, Number(btn.dataset.day));
+    showCalTabStatus(d);
+  });
+}
+function goToCalTabToday(){
+  const today = new Date();
+  calTabMonthSelect.value = String(today.getMonth());
+  calTabYearSelect.value = String(today.getFullYear());
+  renderCalTabGrid();
+  showCalTabStatus(today);
+}
+function renderCalTabGrid(){
+  const y = Number(calTabYearSelect.value), m = Number(calTabMonthSelect.value);
+  const startDow = new Date(y,m,1).getDay();
+  const total = daysInMonth(y,m);
+  const today = new Date();
+  let html = '';
+  for(let i=0;i<startDow;i++) html += `<span class="cal-day empty"></span>`;
+  for(let day=1; day<=total; day++){
+    const d = new Date(y,m,day);
+    const st = dayStatusNationalOnly(d);
+    const isToday = d.toDateString()===today.toDateString();
+    html += `<button type="button" class="cal-day ${st.type}${isToday?' today':''}" data-day="${day}" title="${st.label}">${day}</button>`;
+  }
+  calTabGrid.innerHTML = html;
+}
+function showCalTabStatus(d){
+  const st = dayStatusNationalOnly(d);
+  calTabStatus.innerHTML = `<b>${fmtDate(d)}</b> — ${fmtWeekday(d)} — ${st.label}`;
+}
+function scheduleDailyRefresh(){
+  const now = new Date();
+  const next7am = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0, 0);
+  if(now >= next7am) next7am.setDate(next7am.getDate()+1);
+  const msUntil = next7am - now;
+  setTimeout(()=>{
+    renderCalendarGrid();
+    renderCalTabGrid();
+    setInterval(()=>{ renderCalendarGrid(); renderCalTabGrid(); }, 24*60*60*1000);
+  }, msUntil);
+}
+function addBusinessDays(start, n){
+  const d = new Date(start);
+  let count = 0;
+  const holidaysSkipped = [];
+  while(count < n){
+    d.setDate(d.getDate()+1);
+    if(isHoliday(d)) holidaysSkipped.push(new Date(d));
+    if(isBusinessDay(d)) count++;
+  }
+  return { date: new Date(d), holidays: holidaysSkipped };
+}
+function addCalendarDays(start, n){
+  const d = new Date(start);
+  d.setDate(d.getDate()+n);
+  return d;
+}
+function nextBusinessDay(d){
+  const r = new Date(d);
+  while(!isBusinessDay(r)) r.setDate(r.getDate()+1);
+  return r;
+}
+function fmtDate(d){
+  return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function fmtWeekday(d){
+  return WEEKDAY_PT[d.getDay()];
+}
+function parseDateInput(str){
+  const [y,m,dd] = str.split('-').map(Number);
+  return new Date(y, m-1, dd);
+}
+
+function buildChips(){
+  catChips.innerHTML = CATS.map(c =>
+    `<button class="chip" type="button" data-cat="${c}" aria-pressed="false">${svgIcon(CATEGORY_ICON[c],'chip-icon')}<span>${c}</span></button>`
+  ).join('');
+  catChips.addEventListener('click', e=>{
+    const b = e.target.closest('.chip');
+    if(!b) return;
+    const c = b.dataset.cat;
+    if(state.cats.has(c)){ state.cats.delete(c); b.setAttribute('aria-pressed','false'); }
+    else { state.cats.add(c); b.setAttribute('aria-pressed','true'); }
+    render();
+  });
+}
+
+function norm(s){
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+}
+
+// Copia com fallback: tenta a API moderna e, se falhar (comum dentro de iframes
+// como o embed do Wix, que costuma bloquear/restringir essa permissão), cai
+// para o método antigo via textarea + execCommand, que funciona quase sempre.
+function fallbackCopy(text){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch(e){
+    return false;
+  }
+}
+function copyText(text){
+  return new Promise((resolve, reject)=>{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(resolve).catch(()=>{
+        fallbackCopy(text) ? resolve() : reject(new Error('fallback falhou'));
+      });
+    } else {
+      fallbackCopy(text) ? resolve() : reject(new Error('sem suporte'));
+    }
+  });
+}
+
+function initials(name){
+  return name.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+function isRespMissing(r){
+  return !normVal(r[7]);
+}
+
+// Filtro base: categoria + pendência de responsável (comum a todos os modos)
+function baseFiltered(){
+  return ROWS.filter(r=>{
+    if(state.onlyPending && !isRespMissing(r)) return false;
+    if(state.cats.size && !state.cats.has(r[0])) return false;
+    return true;
+  });
+}
+
+// Modo "Atividade": aplica também a busca por atividade/categoria
+function filteredTipos(){
+  const q = norm(state.q.trim());
+  return baseFiltered().filter(r=>{
+    if(q && !(norm(r[1]).includes(q) || norm(r[0]).includes(q))) return false;
+    return true;
+  });
+}
+
+function extractNames(str){
+  if(!str) return [];
+  return str.split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+// Modos "Responsável" / "Revisor": agrupa linhas por pessoa no campo escolhido
+function peopleMap(fieldIdx){
+  const rows = baseFiltered();
+  const map = new Map();
+  for(const r of rows){
+    for(const n of extractNames(r[fieldIdx])){
+      if(PLACEHOLDER_NAMES.has(n)) continue;
+      if(!map.has(n)) map.set(n, []);
+      map.get(n).push(r);
+    }
+  }
+  return map;
+}
+
+function groupByCat(rows){
+  const map = new Map();
+  for(const r of rows){
+    if(!map.has(r[0])) map.set(r[0], []);
+    map.get(r[0]).push(r);
+  }
+  return map;
+}
+
+function render(){
+  if(state.mode === 'calculadora' || state.mode === 'guia' || state.mode === 'feedback') return;
+  if(state.mode === 'tipo'){
+    renderTipoList();
+    if(state.selected!==null){
+      const rows = filteredTipos();
+      if(rows.includes(ROWS[state.selected])) renderTipoDetail(ROWS[state.selected]);
+      else detailPanel.innerHTML = `<div class="detail-empty"><p>O item selecionado não está no filtro atual.</p></div>`;
+    } else {
+      detailPanel.innerHTML = `<div class="detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg>
+        <p>Escolha uma atividade à esquerda para ver quem é o responsável, o revisor e para onde protocolar.</p>
+      </div>`;
+    }
+  } else {
+    renderPeopleList();
+    if(state.selectedPerson){
+      const map = peopleMap(MODE_FIELD[state.mode]);
+      if(map.has(state.selectedPerson)) renderPersonDetail(state.selectedPerson, map.get(state.selectedPerson));
+      else detailPanel.innerHTML = `<div class="detail-empty"><p>Essa pessoa não aparece no filtro atual.</p></div>`;
+    } else {
+      const label = state.mode==='responsavel' ? 'responsável' : 'revisor(a) ou orientador(a)';
+      detailPanel.innerHTML = `<div class="detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>
+        <p>Escolha um(a) ${label} à esquerda para ver todas as atividades pelas quais ele(a) responde.</p>
+      </div>`;
+    }
+  }
+}
+
+function renderTipoList(){
+  const rows = filteredTipos();
+  const total = rows.length;
+  const pending = rows.filter(isRespMissing).length;
+  summaryRow.innerHTML = `<span><strong>${total}</strong> atividade${total===1?'':'s'} encontrada${total===1?'':'s'}</span>` +
+    (pending ? `<span><span class="dot sugestao"></span>${pending} sem responsável definido</span>` : '');
+
+  if(!rows.length){
+    listPanel.innerHTML = `<div class="empty-list">Nenhuma atividade encontrada para esse filtro.</div>`;
+    return;
+  }
+  const grouped = groupByCat(rows);
+  let html = '';
+  for(const [cat, items] of grouped){
+    html += `<div class="cat-group"><div class="cat-label">${cat}</div>`;
+    for(const r of items){
+      const idx = ROWS.indexOf(r);
+      const active = state.selected===idx ? ' active' : '';
+      html += `<button class="item${active}" type="button" data-idx="${idx}">
+        <span class="item-sev sd ${sevClass(r[2])}" style="background:var(--sev-${sevClass(r[2])})"></span>
+        <span class="item-title">${r[1]}</span>
+        ${isRespMissing(r) ? '<span class="item-badge">sem resp.</span>' : ''}
+        ${svgIcon(ICON.chevron,'row-chevron',2.2)}
+      </button>`;
+    }
+    html += `</div>`;
+  }
+  listPanel.innerHTML = html;
+}
+
+function renderPeopleList(){
+  const fieldIdx = MODE_FIELD[state.mode];
+  const map = peopleMap(fieldIdx);
+  const q = norm(state.q.trim());
+  const names = [...map.keys()]
+    .filter(n => !q || norm(n).includes(q))
+    .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+  const roleWord = state.mode==='responsavel' ? 'responsável' : 'revisor(a)/orientador(a)';
+  summaryRow.innerHTML = `<span><strong>${names.length}</strong> ${names.length===1?roleWord:roleWord+'(s)'} encontrado${names.length===1?'':'s'}</span>`;
+
+  if(!names.length){
+    listPanel.innerHTML = `<div class="empty-list">Nenhuma pessoa encontrada para esse filtro.</div>`;
+    return;
+  }
+  listPanel.innerHTML = names.map(n=>{
+    const active = state.selectedPerson===n ? ' active' : '';
+    return `<button class="person-item${active}" type="button" data-name="${n.replace(/"/g,'&quot;')}">
+      <span class="person-avatar">${initials(n)}</span>
+      <span class="person-name">${n}</span>
+      <span class="person-count">${map.get(n).length}</span>
+      ${svgIcon(ICON.chevron,'row-chevron',2.2)}
+    </button>`;
+  }).join('');
+}
+
+function chips(str){
+  const v = normVal(str);
+  if(!v) return `<span class="value pending">Verificar</span>`;
+  return v.split(',').map(s=>`<span class="name-chip">${s.trim()}</span>`).join('');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function copyableField(rawStr, innerHtml, label, extraClass){
+  const v = normVal(rawStr);
+  if(!v) return `<div class="value pending">Verificar</div>`;
+  return `<div class="value copy-field${extraClass?' '+extraClass:''}" data-copy="${escAttr(v)}" data-copy-label="${label}">${innerHtml}${svgIcon(ICON.copy,'copy-hint',1.8)}</div>`;
+}
+function parseIntLoose(str){
+  const v = normVal(str);
+  if(!v) return null;
+  const m = v.match(/\d+/);
+  return m ? parseInt(m[0],10) : null;
+}
+
+const UF_NAMES = {AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
+function parseStateVariants(text){
+  const map = {};
+  String(text||'').split('\n').forEach(line=>{
+    const parts = line.split(' – ');
+    if(parts.length < 4) return;
+    const [ufsPart, prazoPart, formaPart] = parts;
+    const baseLegalPart = parts.slice(3).join(' – ').trim();
+    ufsPart.replace(/\se\s/g, ',').split(',').map(s=>s.trim()).filter(Boolean).forEach(uf=>{
+      map[uf.toUpperCase()] = { prazo: prazoPart.trim(), forma: formaPart.trim(), baseLegal: baseLegalPart };
+    });
+  });
+  return map;
+}
+function ufOptionsHtml(variantsMap){
+  return Object.keys(UF_NAMES)
+    .filter(uf=>variantsMap[uf])
+    .sort((a,b)=>UF_NAMES[a].localeCompare(UF_NAMES[b],'pt-BR'))
+    .map(uf=>`<option value="${uf}">${UF_NAMES[uf]} (${uf})</option>`)
+    .join('');
+}
+
+function renderTipoDetail(r){
+  const [cat, tipo, comp, prazo, forma, baseLegal, sla, resp, rev, slaRevisao, prot, etiqueta] = r;
+  const sc = sevClass(comp);
+  const isStateSpecific = tipo === 'Oposição ao Julgamento Virtual';
+  const stateVariants = isStateSpecific ? parseStateVariants(forma) : {};
+  let prazoNum = isStateSpecific ? null : parseIntLoose(prazo);
+  let slaNum = isStateSpecific ? null : parseIntLoose(sla);
+  let formaMode = isStateSpecific ? null : (normVal(forma)==='Dias Úteis' ? 'util' : normVal(forma)==='Dias Corridos' ? 'corrido' : null);
+  const prazoTxt = normVal(prazo) ? `${prazo}${normVal(forma) ? ` — ${forma}` : ''}` : null;
+
+  function formaBadge(f){
+    const v = normVal(f);
+    if(!v) return '';
+    if(v === 'Dias Úteis') return `<span class="forma-badge util">Dias Úteis</span>`;
+    if(v === 'Dias Corridos') return `<span class="forma-badge corrido">Dias Corridos</span>`;
+    return `<span class="forma-badge neutro">${v}</span>`;
+  }
+
+  detailPanel.innerHTML = `
+    <div class="detail-head">
+      <div>
+        <p class="detail-eyebrow">${cat}</p>
+        <h2>${tipo}</h2>
+      </div>
+      ${isRespMissing(r) ? '<span class="status-pill sugestao">Sem responsável definido</span>' : ''}
+    </div>
+
+    <div class="field-grid">
+      ${isStateSpecific ? `
+      <div class="field" style="grid-column:1/-1;">
+        <label>${svgIcon(ICON.tag,'field-icon')}Estado (UF)</label>
+        <select id="ufSelect" class="uf-select">
+          <option value="">Selecione o estado…</option>
+          ${ufOptionsHtml(stateVariants)}
+        </select>
+      </div>` : ''}
+      <div class="field">
+        <label>${svgIcon(ICON.gauge,'field-icon')}Complexidade</label>
+        <span class="sev-strip ${sc}"><span class="sd ${sc}"></span>${comp}</span>
+      </div>
+      <div class="field sla-highlight">
+        <label>${svgIcon(ICON.clock,'field-icon')}SLA interno</label>
+        ${isStateSpecific ? `<div class="value" id="slaInternoValue">Selecione o estado acima</div>` : (normVal(sla) ? `<div class="value"><span class="sla-badge">${sla}</span> ${formaBadge(forma)}</div>` : `<div class="value pending">Verificar</div>`)}
+      </div>
+      <div class="field">
+        <label>${svgIcon(ICON.clock,'field-icon')}Prazo Fatal</label>
+        ${isStateSpecific ? `<div class="value prazo-fatal" id="prazoFatalValue">Selecione o estado acima</div>` : (prazoTxt ? `<div class="value prazo-fatal">${prazoTxt}</div>` : `<div class="value prazo-fatal pending">Verificar</div>`)}
+      </div>
+      <div class="field emphasis">
+        <label>${svgIcon(ICON.person,'field-icon')}Responsável</label>
+        ${copyableField(resp, chips(resp), 'Responsável')}
+      </div>
+      <div class="field">
+        <label>${svgIcon(ICON.eye,'field-icon')}Revisor / Orientador</label>
+        ${copyableField(rev, chips(rev), 'Revisor/Orientador')}${normVal(slaRevisao) ? `<small style="display:block;color:var(--ink-soft);font-weight:400;margin-top:4px;">revisão em até ${slaRevisao}</small>` : ''}
+      </div>
+      <div class="field">
+        <label>${svgIcon(ICON.send,'field-icon')}Protocolo / Envio</label>
+        ${copyableField(prot, chips(prot), 'Protocolo/Envio')}
+      </div>
+      <div class="field">
+        <label>${svgIcon(ICON.doc,'field-icon')}Base Legal</label>
+        ${isStateSpecific ? `<div class="value" id="baseLegalValue">Selecione o estado acima para ver o dispositivo aplicável.</div>` : (normVal(baseLegal) ? copyableField(baseLegal, normVal(baseLegal).replace(/\n/g,'<br>'), 'Base Legal', 'legal-text') : `<div class="value pending">Verificar</div>`)}
+      </div>
+      <div class="field">
+        <label>${svgIcon(ICON.tag,'field-icon astrea')}Etiqueta no ASTREA</label>
+        ${copyableField(etiqueta, normVal(etiqueta)||'', 'Etiqueta ASTREA')}
+      </div>
+    </div>
+
+    ${(isStateSpecific || prazoNum || slaNum) ? `
+    <div class="inline-calc">
+      <div class="inline-calc-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2 2 4-4"/></svg>
+        <h4>Calcular prazo desta atividade</h4>
+      </div>
+      <div class="inline-calc-row">
+        <div class="calc-field">
+          <label>Data da publicação/recebimento</label>
+          <input type="date" id="tipoCalcDate">
+        </div>
+        <button class="btn primary" id="tipoCalcBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" transform="rotate(90 12 12)"/></svg>
+          Calcular
+        </button>
+      </div>
+      <p class="calc-empty" id="tipoCalcNote" style="display:none"></p>
+      <div class="calc-results" id="tipoCalcResults"></div>
+    </div>` : ''}
+  `;
+  const tipoCalcBtn = document.getElementById('tipoCalcBtn');
+  if(tipoCalcBtn){
+    const dateInput = document.getElementById('tipoCalcDate');
+    const today = new Date();
+    dateInput.value = today.toISOString().slice(0,10);
+    const runTipoCalc = ()=>{
+      const results = document.getElementById('tipoCalcResults');
+      if(!dateInput.value){ results.innerHTML = `<p class="calc-empty">Informe a data de publicação/recebimento.</p>`; return; }
+      const startDate = parseDateInput(dateInput.value);
+      let html = '';
+      if(slaNum) html += calcResultCard('SLA interno', startDate, slaNum, formaMode);
+      if(prazoNum) html += calcResultCard('Prazo Fatal', startDate, prazoNum, null);
+      results.innerHTML = html;
+    };
+    tipoCalcBtn.addEventListener('click', runTipoCalc);
+    dateInput.addEventListener('keydown', e=>{ if(e.key==='Enter') runTipoCalc(); });
+    dateInput.addEventListener('change', runTipoCalc);
+    runTipoCalc();
+  }
+  const ufSelect = document.getElementById('ufSelect');
+  if(ufSelect){
+    const prazoFatalValue = document.getElementById('prazoFatalValue');
+    const slaInternoValue = document.getElementById('slaInternoValue');
+    const baseLegalValue = document.getElementById('baseLegalValue');
+    const tipoCalcNote = document.getElementById('tipoCalcNote');
+    ufSelect.addEventListener('change', ()=>{
+      const uf = ufSelect.value;
+      if(!uf){
+        prazoFatalValue.textContent = 'Selecione o estado acima';
+        slaInternoValue.textContent = 'Selecione o estado acima';
+        baseLegalValue.textContent = 'Selecione o estado acima para ver o dispositivo aplicável.';
+        prazoNum = null; slaNum = null; formaMode = null;
+        if(tipoCalcNote) tipoCalcNote.style.display = 'none';
+        document.getElementById('tipoCalcBtn').click();
+        return;
+      }
+      const v = stateVariants[uf];
+      prazoFatalValue.textContent = `${v.prazo} — ${v.forma}`;
+      baseLegalValue.textContent = v.baseLegal;
+      const m = v.prazo.match(/\d+/);
+      const num = m ? parseInt(m[0],10) : null;
+      const isHoras = /hora/i.test(v.prazo) || /hora/i.test(v.forma);
+      if(num && !isHoras){
+        prazoNum = num;
+        slaNum = Math.max(num - 2, 1);
+        formaMode = v.forma.includes('úteis') ? 'util' : v.forma.includes('corrido') ? 'corrido' : null;
+        slaInternoValue.textContent = `${slaNum} dias — 2 dias antes do prazo fatal`;
+        if(tipoCalcNote) tipoCalcNote.style.display = 'none';
+      } else {
+        prazoNum = null; slaNum = null; formaMode = null;
+        slaInternoValue.textContent = '2 dias antes do prazo fatal informado acima';
+        if(tipoCalcNote){
+          tipoCalcNote.style.display = 'block';
+          tipoCalcNote.textContent = isHoras
+            ? 'Prazo em horas corridas — a calculadora de dias úteis não se aplica a este caso; use o prazo informado acima.'
+            : 'Não foi possível interpretar automaticamente este prazo — verifique manualmente o texto acima.';
+        }
+      }
+      document.getElementById('tipoCalcBtn').click();
+    });
+  }
+}
+
+function renderPersonDetail(name, rows){
+  const fieldIdx = MODE_FIELD[state.mode];
+  const otherIdx = fieldIdx===7 ? 8 : 7;
+  const otherLabel = fieldIdx===7 ? 'Revisor' : 'Responsável';
+  const roleTitle = state.mode==='responsavel' ? 'Responsável em' : 'Revisor(a)/Orientador(a) em';
+  const sorted = [...rows].sort((a,b)=> a[0].localeCompare(b[0],'pt-BR') || a[1].localeCompare(b[1],'pt-BR'));
+
+  detailPanel.innerHTML = `
+    <div class="person-summary">
+      <span class="person-avatar">${initials(name)}</span>
+      <div>
+        <h2>${name}</h2>
+        <p>${roleTitle} ${rows.length} atividade${rows.length===1?'':'s'}</p>
+      </div>
+    </div>
+    <div class="assign-list">
+      ${sorted.map(r=>{
+        const idx = ROWS.indexOf(r);
+        const sc = sevClass(r[2]);
+        const otherVal = normVal(r[otherIdx]) || '—';
+        return `<button class="assign-row" type="button" data-idx="${idx}">
+          <span class="item-sev sd ${sc}" style="background:var(--sev-${sc})"></span>
+          <span class="assign-main">
+            <span class="assign-cat">${r[0]}</span>
+            <span class="assign-tipo">${r[1]}</span>
+          </span>
+          <span class="assign-other"><b>${otherLabel}</b>${otherVal}</span>
+          ${svgIcon(ICON.chevron,'row-chevron',2.2)}
+        </button>`;
+      }).join('')}
+    </div>
+    <div class="detail-actions">
+      <button class="btn primary" id="copyListBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        Copiar lista
+      </button>
+    </div>
+  `;
+  document.getElementById('copyListBtn').addEventListener('click', ()=>{
+    const text = `${name} — ${roleTitle.toLowerCase()} ${rows.length} atividade(s):\n` +
+      sorted.map(r=>`- ${r[1]} (${r[0]})`).join('\n');
+    copyText(text).then(()=>{ flashCopied('copyListBtn','Copiar lista'); showToast('Copiado para a área de transferência'); }).catch(()=>showToast('Não foi possível copiar'));
+  });
+}
+
+function flashCopied(btnId, originalLabel){
+  const btn = document.getElementById(btnId);
+  if(!btn || btn.dataset.flashing) return;
+  btn.dataset.flashing = '1';
+  btn.innerHTML = `${svgIcon(ICON.check,'pop-icon',2.4)}${originalLabel.replace(/^Copiar/,'Copiado')}!`;
+  setTimeout(()=>{
+    const again = document.getElementById(btnId);
+    if(again){
+      again.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>${originalLabel}`;
+      delete again.dataset.flashing;
+    }
+  }, 1600);
+}
+
+let toastTimer;
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 2200);
+}
+
+listPanel.addEventListener('click', e=>{
+  const itemBtn = e.target.closest('.item');
+  if(itemBtn){
+    state.selected = Number(itemBtn.dataset.idx);
+    render();
+    if(window.innerWidth <= 860) detailPanel.scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  const personBtn = e.target.closest('.person-item');
+  if(personBtn){
+    state.selectedPerson = personBtn.dataset.name;
+    render();
+    if(window.innerWidth <= 860) detailPanel.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+});
+
+detailPanel.addEventListener('click', e=>{
+  const copyField = e.target.closest('.copy-field');
+  if(copyField){
+    const text = copyField.dataset.copy;
+    const label = copyField.dataset.copyLabel || 'Valor';
+    if(!text) return;
+    copyText(text).then(()=>showToast(`${label} copiado!`)).catch(()=>showToast('Não foi possível copiar'));
+    return;
+  }
+  const assignBtn = e.target.closest('.assign-row');
+  if(!assignBtn) return;
+  state.mode = 'tipo';
+  state.q = '';
+  qInput.value = '';
+  state.selected = Number(assignBtn.dataset.idx);
+  updateModeUI();
+  render();
+});
+
+document.addEventListener('click', e=>{
+  const copyDate = e.target.closest('.copy-date');
+  if(!copyDate) return;
+  const date = copyDate.dataset.date;
+  if(!date) return;
+  copyText(date).then(()=>showToast('Data copiada!')).catch(()=>showToast('Não foi possível copiar'));
+});
+
+function updateModeUI(){
+  modeTabs.querySelectorAll('.mode-tab').forEach(b=>{
+    b.setAttribute('aria-pressed', String(b.dataset.mode===state.mode));
+  });
+  const isLookup = state.mode==='tipo' || state.mode==='responsavel' || state.mode==='revisor';
+  lookupControls.style.display = isLookup ? 'flex' : 'none';
+  consoleEl.style.display = isLookup ? 'grid' : 'none';
+  calcPanel.style.display = state.mode==='calculadora' ? 'block' : 'none';
+  guiaPanel.style.display = state.mode==='guia' ? 'block' : 'none';
+  feedbackPanel.style.display = state.mode==='feedback' ? 'block' : 'none';
+  calendarTabPanel.style.display = state.mode==='calendario' ? 'block' : 'none';
+  if(state.mode==='guia') initGuide();
+  else stopGuide();
+  if(state.mode==='calendario') renderCalTabGrid();
+  if(!isLookup) return;
+  const cfg = MODE_LABEL[state.mode];
+  qInput.placeholder = cfg.placeholder;
+  qInput.setAttribute('aria-label', cfg.aria);
+  listPanel.setAttribute('aria-label', cfg.list);
+}
+
+modeTabs.addEventListener('click', e=>{
+  const b = e.target.closest('.mode-tab');
+  if(!b || b.dataset.mode===state.mode) return;
+  state.mode = b.dataset.mode;
+  state.q = '';
+  qInput.value = '';
+  updateModeUI();
+  render();
+});
+
+qInput.addEventListener('input', e=>{
+  state.q = e.target.value;
+  render();
+});
+document.getElementById('togglePending').addEventListener('change', e=>{
+  state.onlyPending = e.target.checked;
+  render();
+});
+
+function recommendBadge(mode){
+  if(mode==='util') return `<span class="forma-badge util">Recomendado</span>`;
+  if(mode==='corrido') return `<span class="forma-badge corrido">Recomendado</span>`;
+  return '';
+}
+
+function holidayNote(holidays){
+  if(!holidays.length) return '';
+  const parts = holidays.map(d=>`${fmtDate(d)} (${holidayName(d)})`);
+  const list = parts.length===1 ? parts[0] : parts.slice(0,-1).join(', ') + ' e ' + parts[parts.length-1];
+  const verbo = holidays.length===1 ? 'não contou' : 'não contaram';
+  const serVerbo = holidays.length===1 ? 'é feriado' : 'são feriados';
+  return `<span class="calc-row-note">📅 ${list} ${verbo} porque ${serVerbo} — feriado é um dia em que a Justiça e o escritório não funcionam, então ele não entra na contagem de dias úteis.</span>`;
+}
+
+function calcResultCard(title, startDate, days, recommend){
+  const { date: dUtil, holidays: holidaysSkipped } = addBusinessDays(startDate, days);
+  const dCorridoRaw = addCalendarDays(startDate, days);
+  const dCorrido = nextBusinessDay(dCorridoRaw);
+  const prorrogado = dCorrido.getTime() !== dCorridoRaw.getTime();
+  const isSla = /sla/i.test(title);
+  return `
+    <div class="calc-result-card${isSla ? ' sla-card' : ''}">
+      <h3>${title} — ${days} dia${days===1?'':'s'}</h3>
+      <div class="calc-row${recommend==='util' ? ' recommended' : ''}">
+        <span class="calc-row-label">Contagem em dias úteis${recommendBadge(recommend==='util' ? 'util' : null)}</span>
+        <span class="calc-row-value copy-date" data-date="${fmtDate(dUtil)}" title="Clique para copiar a data">${fmtDate(dUtil)}<small>${fmtWeekday(dUtil)}</small>${holidayNote(holidaysSkipped)}</span>
+      </div>
+      <div class="calc-row${recommend==='corrido' ? ' recommended' : ''}">
+        <span class="calc-row-label">Contagem em dias corridos${recommendBadge(recommend==='corrido' ? 'corrido' : null)}</span>
+        <span class="calc-row-value copy-date" data-date="${fmtDate(dCorridoRaw)}" title="Clique para copiar a data">${fmtDate(dCorridoRaw)}<small>${fmtWeekday(dCorridoRaw)}</small>${prorrogado ? `<span class="calc-row-note">cai em dia não útil — prorrogado para ${fmtDate(dCorrido)} (${fmtWeekday(dCorrido)})</span>` : ''}</span>
+      </div>
+    </div>`;
+}
+
+function runCalc(){
+  const calcResults = document.getElementById('calcResults');
+  const dateVal = document.getElementById('calcDate').value;
+  const fatalVal = document.getElementById('calcFatalDays').value;
+  const slaVal = document.getElementById('calcSlaDays').value;
+
+  if(!dateVal){
+    calcResults.innerHTML = `<p class="calc-empty">Informe a data de publicação/recebimento para calcular.</p>`;
+    return;
+  }
+  if(!fatalVal && !slaVal){
+    calcResults.innerHTML = `<p class="calc-empty">Informe ao menos um prazo (Fatal ou SLA) em número de dias.</p>`;
+    return;
+  }
+  const startDate = parseDateInput(dateVal);
+  let html = '';
+  if(fatalVal) html += calcResultCard('Prazo Fatal', startDate, parseInt(fatalVal,10));
+  if(slaVal) html += calcResultCard('Prazo SLA interno', startDate, parseInt(slaVal,10));
+  calcResults.innerHTML = html;
+}
+
+document.getElementById('calcBtn').addEventListener('click', runCalc);
+['calcDate','calcFatalDays','calcSlaDays'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{
+    if(e.key==='Enter') runCalc();
+  });
+});
+
+// ---------- Como Usar: demonstração animada ----------
+const GUIDE_STEPS = [
+  { icon:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/>', title:'1. Escolha a aba', text:'No topo, escolha Atividade, Responsável, Revisor/Orientador ou Calculadora de Prazo.' },
+  { icon:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', title:'2. Busque ou filtre', text:'Digite um termo na busca ou clique nos chips de categoria para estreitar a lista.' },
+  { icon:'<path d="M9 6l6 6-6 6"/>', title:'3. Clique no resultado', text:'Na lista à esquerda, clique na atividade, responsável ou revisor que você quer ver.' },
+  { icon:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>', title:'4. Veja os detalhes', text:'À direita aparecem Complexidade, SLA, Prazo Fatal, Responsável, Revisor, Base Legal e Protocolo.' },
+  { icon:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', title:'5. Calcule o prazo', text:'Informe a data de publicação/recebimento na calculadora embutida e veja o prazo final em dias úteis e corridos.' },
+  { icon:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>', title:'6. Copie ou continue', text:'Use "Copiar" para levar os dados para outro lugar, ou clique em outra atividade relacionada.' }
+];
+let guideIdx = 0;
+let guideTimer = null;
+let guideProgressTimer = null;
+let guideInited = false;
+const guidePlayer = document.getElementById('guidePlayer');
+const guideDots = document.getElementById('guideDots');
+
+function buildGuideDOM(){
+  guidePlayer.innerHTML = GUIDE_STEPS.map((s,i)=>`
+    <div class="guide-step${i===0?' active':''}" data-i="${i}">
+      <span class="guide-step-icon">${svgIcon(s.icon,'',1.8)}</span>
+      <div>
+        <p class="guide-step-num">Passo ${i+1} de ${GUIDE_STEPS.length}</p>
+        <p class="guide-step-title">${s.title.replace(/^\d+\.\s*/,'')}</p>
+        <p class="guide-step-text">${s.text}</p>
+      </div>
+    </div>
+  `).join('') + `<div class="guide-progress" id="guideProgress"></div>`;
+  guideDots.innerHTML = GUIDE_STEPS.map((s,i)=>`<button class="guide-dot${i===0?' active':''}" type="button" data-i="${i}" aria-label="Ir para o passo ${i+1}"></button>`).join('');
+  guideDots.addEventListener('click', e=>{
+    const b = e.target.closest('.guide-dot');
+    if(!b) return;
+    showGuideStep(Number(b.dataset.i));
+  });
+}
+
+function showGuideStep(i){
+  guideIdx = (i + GUIDE_STEPS.length) % GUIDE_STEPS.length;
+  guidePlayer.querySelectorAll('.guide-step').forEach(el=>{
+    el.classList.toggle('active', Number(el.dataset.i)===guideIdx);
+  });
+  guideDots.querySelectorAll('.guide-dot').forEach(el=>{
+    el.classList.toggle('active', Number(el.dataset.i)===guideIdx);
+  });
+  restartGuideProgress();
+}
+
+function restartGuideProgress(){
+  clearInterval(guideProgressTimer);
+  const bar = document.getElementById('guideProgress');
+  if(!bar) return;
+  let pct = 0;
+  bar.style.width = '0%';
+  if(!guideTimer) return;
+  guideProgressTimer = setInterval(()=>{
+    pct += 100/70;
+    bar.style.width = Math.min(pct,100) + '%';
+  }, 50);
+}
+
+function playGuide(){
+  if(guideTimer) return;
+  restartGuideProgress();
+  guideTimer = setInterval(()=>showGuideStep(guideIdx+1), 3500);
+}
+function pauseGuide(){
+  clearInterval(guideTimer);
+  clearInterval(guideProgressTimer);
+  guideTimer = null;
+}
+function stopGuide(){ pauseGuide(); }
+
+function initGuide(){
+  if(!guideInited){ buildGuideDOM(); guideInited = true; }
+  playGuide();
+}
+
+// ---------- Fluxograma clicável: leva direto ao local explicado ----------
+function goToUIPart(part){
+  if(part === 'calc'){
+    state.mode = 'calculadora';
+  } else if(state.mode === 'guia'){
+    state.mode = 'tipo';
+  }
+  updateModeUI();
+  if(state.mode === 'tipo' || state.mode === 'responsavel' || state.mode === 'revisor') render();
+  requestAnimationFrame(()=>{
+    const targets = {
+      tabs: modeTabs,
+      search: lookupControls,
+      list: listPanel,
+      detail: detailPanel,
+      calc: document.querySelector('#calcPanel .calc-form'),
+      copy: detailPanel
+    };
+    const el = targets[part];
+    if(!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.classList.add('flow-pulse');
+    setTimeout(()=>el.classList.remove('flow-pulse'), 3300);
+  });
+}
+document.getElementById('flowChart').addEventListener('click', e=>{
+  const step = e.target.closest('.flow-step');
+  if(!step) return;
+  goToUIPart(step.dataset.goto);
+});
+
+// ---------- Sugestões: envio para a coordenação ----------
+const FEEDBACK_EMAIL = 'jonathan@fonsecaebraga.com.br';
+// Cole aqui o endpoint do Formspree (ex.: 'https://formspree.io/f/xxxxxxxx') para o envio
+// ficar 100% automático e silencioso, sem abrir programa de e-mail nenhum.
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/xbdnazzy';
+
+const feedbackForm = document.getElementById('feedbackForm');
+const fbStatus = document.getElementById('fbStatus');
+const fbSubmitBtn = document.getElementById('fbSubmitBtn');
+
+function sendViaMailto(name, email, message, errorReason){
+  const subject = encodeURIComponent('Sugestão — Sistema F&B (Matriz de Demandas)');
+  const body = encodeURIComponent(
+    `Nome: ${name || '(não informado)'}\nE-mail para retorno: ${email || '(não informado)'}\n\nSugestão:\n${message}`
+  );
+  const link = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
+  const reasonHtml = errorReason ? `<br><small style="font-weight:400;">Motivo técnico (envie este texto se for pedir ajuda): <code>${errorReason}</code></small>` : '';
+  fbStatus.innerHTML = `<span class="fb-info">📧 Não consegui enviar automaticamente — abrindo seu e-mail com a sugestão pronta, só falta clicar em "Enviar" lá. <a href="${link}">Não abriu? Clique aqui.</a>${reasonHtml}</span>`;
+  window.location.href = link;
+}
+
+feedbackForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('fbName').value.trim();
+  const email = document.getElementById('fbEmail').value.trim();
+  const message = document.getElementById('fbMessage').value.trim();
+  if(!message) return;
+
+  fbSubmitBtn.disabled = true;
+
+  if(FORMSPREE_ENDPOINT){
+    try{
+      const fd = new FormData();
+      fd.append('name', name || '(não informado)');
+      if(email) fd.append('email', email);
+      fd.append('message', message);
+      fd.append('_subject', 'Sugestão — Sistema F&B (Matriz de Demandas)');
+      const res = await fetch(FORMSPREE_ENDPOINT, {
+        method:'POST',
+        headers:{ 'Accept':'application/json' },
+        body: fd
+      });
+      if(!res.ok) throw new Error('Formspree respondeu com erro');
+      fbStatus.innerHTML = `<span class="fb-ok">✅ Sugestão enviada — obrigado!</span>`;
+      feedbackForm.reset();
+    } catch(err){
+      console.error('Falha ao enviar via Formspree:', err);
+      sendViaMailto(name, email, message, err.message || String(err));
+    }
+  } else {
+    sendViaMailto(name, email, message);
+  }
+  fbSubmitBtn.disabled = false;
+});
+
+(function useLastKnownGoodCacheBeforeFirstPaint(){
+  const cached = readSheetCache();
+  if(cached){ ROWS = normalizeRows(cached.rows); }
+})();
+
+buildChips();
+updateModeUI();
+render();
+initCalendar();
+initCalendarTab();
+scheduleDailyRefresh();
+loadRowsFromSheet();
+document.getElementById('syncRefreshBtn')?.addEventListener('click', ()=>loadRowsFromSheet());
+</script><link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+

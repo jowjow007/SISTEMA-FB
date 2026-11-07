@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sugestões — Fonseca e Braga</title>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+body::before{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:11px;height:11px}
+html,body{margin:0;min-height:100%;transition:background-color .2s,color .2s}
+header{position:sticky;top:0;z-index:5;padding:16px 20px 14px}
+header h1{margin:0 0 2px}
+header .sub{margin:0 0 12px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chip{padding:6px 14px;cursor:pointer;user-select:none;transition:background .15s,color .15s,border-color .15s}
+.toolbar .status{margin-left:auto;text-align:right;white-space:nowrap}
+main{max-width:760px;margin:0 auto;padding:18px 20px 60px}
+#gate{padding:80px 20px;text-align:center}
+.composer{padding:14px;margin-bottom:18px}
+.composer label{display:block;margin:0 0 4px}
+.composer input[type="text"]{width:100%;padding:9px 10px;margin-bottom:10px}
+.composer textarea{width:100%;min-height:80px;resize:vertical;padding:10px}
+.composer-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.composer .field-err{min-height:1.2em;margin:-6px 0 8px}
+.btn{padding:7px 16px;cursor:pointer;transition:background .15s}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+#empty{text-align:center;padding:60px 20px}
+.sug-list{display:flex;flex-direction:column;gap:10px}
+.sug-card{padding:14px}
+.sug-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.badge{display:inline-block;padding:2px 9px;flex:0 0 auto}
+.sug-text{white-space:pre-wrap;margin:2px 0 8px}
+.sug-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sug-decision{margin-top:8px;padding-top:8px}
+.sug-danger{margin-top:8px;text-align:right}
+.sug-danger .btn{padding:4px 12px}
+.motivo-box{margin-top:6px;padding:8px 10px;white-space:pre-wrap}
+.add-obs-btn{margin-top:6px}
+.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal-backdrop.open{display:flex}
+.modal{padding:18px;max-width:440px;width:100%;position:relative;z-index:201}
+.modal h3{margin:0 0 4px}
+.modal p{margin:0 0 10px}
+.modal textarea{width:100%;min-height:90px;resize:vertical;padding:10px;pointer-events:auto;position:relative;z-index:202}
+.modal .modal-err{min-height:1.2em;margin-top:4px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+@media(max-width:560px){.toolbar .status{width:100%;margin-left:0;text-align:left;order:5}}
+.notif-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.notif-backdrop.open{display:flex}
+.notif-box{padding:20px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto}
+.notif-box h3{margin:0 0 4px}
+.notif-box .notif-sub{margin:0 0 14px}
+.notif-item{padding:12px;margin-bottom:10px}
+.notif-item:last-child{margin-bottom:0}
+.notif-item-status{margin-bottom:4px}
+.notif-item-texto{white-space:pre-wrap;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.notif-item-obs{padding:7px 9px;white-space:pre-wrap}
+.notif-box-foot{display:flex;justify-content:flex-end;margin-top:14px}
+</style>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=3">
+<script src="../../assets/ds-teste.js?v=3" defer></script>
+</head>
+<body>
+
+<header>
+  <h1>Sugestões</h1>
+  <p class="sub">Envie ideias para o escritório. Toda sugestão fica visível para a equipe, aberta ou já decidida.</p>
+  <div class="toolbar">
+    <button class="chip active" data-view="abertas">Abertas</button>
+    <button class="chip" data-view="historico">Implantadas e excluídas</button>
+    <span class="status" id="status">carregando…</span>
+  </div>
+</header>
+
+<main>
+  <div id="gate" style="display:none;">
+    Esta ferramenta faz parte do <b>Portal Fonseca e Braga</b>.<br>
+    Faça login pelo portal para enviar ou ver sugestões.
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="composer">
+      <label for="nomeAutor">Seu nome e sobrenome</label>
+      <input type="text" id="nomeAutor" maxlength="120" placeholder="Ex.: Maria Silva">
+      <div class="field-err" id="nomeErr"></div>
+      <label for="novaSugestao">Sugestão</label>
+      <textarea id="novaSugestao" maxlength="2000" placeholder="Descreva sua sugestão..."></textarea>
+      <div class="composer-foot">
+        <span class="count" id="charCount">0/2000</span>
+        <button class="btn" id="enviarBtn">Enviar sugestão</button>
+      </div>
+    </div>
+
+    <div id="empty" style="display:none;"></div>
+    <div class="sug-list" id="list"></div>
+  </div>
+</main>
+
+<!-- Popup: notificação ao autor -->
+<div class="notif-backdrop" id="notifBackdrop">
+  <div class="notif-box">
+    <h3>Novidades nas suas sugestões</h3>
+    <p class="notif-sub">As seguintes sugestões suas foram analisadas:</p>
+    <div id="notifList"></div>
+    <div class="notif-box-foot">
+      <button class="btn" id="notifFechar">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: aceitar (justificativa opcional) -->
+<div class="modal-backdrop" id="aceitarBackdrop">
+  <div class="modal">
+    <h3>Marcar como implantada</h3>
+    <p>Opcional: explique como ou quando será implantada. Ficará visível para toda a equipe.</p>
+    <textarea id="aceitarTexto" maxlength="1000" placeholder="Ex.: Será implementada na próxima atualização do sistema..."></textarea>
+    <div class="modal-err" id="aceitarErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="aceitarCancelar">Cancelar</button>
+      <button class="btn" id="aceitarConfirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: observação pós-aceite -->
+<div class="modal-backdrop" id="obsBackdrop">
+  <div class="modal">
+    <h3>Observação sobre a implantação</h3>
+    <p>Adicione ou edite uma nota sobre como foi implantada. Ficará visível para toda a equipe.</p>
+    <textarea id="obsTexto" maxlength="1000" placeholder="Ex.: Concluído em outubro de 2026, disponível na aba de Gestão..."></textarea>
+    <div class="modal-err" id="obsErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="obsCancelar">Cancelar</button>
+      <button class="btn" id="obsConfirmar">Salvar observação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: excluir (motivo obrigatório) -->
+<div class="modal-backdrop" id="motivoBackdrop">
+  <div class="modal">
+    <h3>Motivo da exclusão</h3>
+    <p>Obrigatório — ficará visível para toda a equipe junto com a sugestão.</p>
+    <textarea id="motivoTexto" maxlength="1000" placeholder="Explique por que essa sugestão não será implantada..."></textarea>
+    <div class="modal-err" id="motivoErr"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="motivoCancelar">Cancelar</button>
+      <button class="btn" id="motivoConfirmar">Confirmar exclusão</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+
+  if (!firebaseConfig || firebaseConfig.apiKey === "COLE_AQUI_SUA_API_KEY") {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.';
+    document.getElementById('status').textContent = 'erro de configuração';
+    return;
+  }
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const els = {
+    gate: document.getElementById('gate'),
+    appBox: document.getElementById('app'),
+    status: document.getElementById('status'),
+    nomeAutor: document.getElementById('nomeAutor'),
+    nomeErr: document.getElementById('nomeErr'),
+    novaSugestao: document.getElementById('novaSugestao'),
+    charCount: document.getElementById('charCount'),
+    enviarBtn: document.getElementById('enviarBtn'),
+    empty: document.getElementById('empty'),
+    list: document.getElementById('list'),
+    aceitarBackdrop: document.getElementById('aceitarBackdrop'),
+    aceitarTexto: document.getElementById('aceitarTexto'),
+    aceitarErr: document.getElementById('aceitarErr'),
+    aceitarCancelar: document.getElementById('aceitarCancelar'),
+    aceitarConfirmar: document.getElementById('aceitarConfirmar'),
+    obsBackdrop: document.getElementById('obsBackdrop'),
+    obsTexto: document.getElementById('obsTexto'),
+    obsErr: document.getElementById('obsErr'),
+    obsCancelar: document.getElementById('obsCancelar'),
+    obsConfirmar: document.getElementById('obsConfirmar'),
+    motivoBackdrop: document.getElementById('motivoBackdrop'),
+    motivoTexto: document.getElementById('motivoTexto'),
+    motivoErr: document.getElementById('motivoErr'),
+    motivoCancelar: document.getElementById('motivoCancelar'),
+    motivoConfirmar: document.getElementById('motivoConfirmar'),
+  };
+
+  let currentProfile = null;
+  let allSugestoes = [];
+  let currentView = 'abertas';
+  let motivoAlvoId = null;
+  let aceitarAlvoId = null;
+  let obsAlvoId = null;
+  let unsubscribe = null;
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function formatDateTime(ts){
+    if (!ts || !ts.toDate) return 'agora';
+    return ts.toDate().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  const NOME_CACHE_KEY = 'sugestoesfb_nome_v1';
+  try {
+    const nomeSalvo = localStorage.getItem(NOME_CACHE_KEY);
+    if (nomeSalvo) els.nomeAutor.value = nomeSalvo;
+  } catch(e) { /* indisponível */ }
+
+  function nomeCompletoValido(nome){
+    const partes = nome.trim().split(/\s+/).filter(Boolean);
+    return partes.length >= 2 && partes.every(function(p){ return p.length >= 2; });
+  }
+
+  els.novaSugestao.addEventListener('input', function(){
+    els.charCount.textContent = els.novaSugestao.value.length + '/2000';
+  });
+
+  els.enviarBtn.addEventListener('click', function(){
+    const nome = els.nomeAutor.value.trim().replace(/\s+/g, ' ');
+    const texto = els.novaSugestao.value.trim();
+    els.nomeErr.textContent = '';
+    if (!nomeCompletoValido(nome)){
+      els.nomeErr.textContent = 'Informe nome e sobrenome.';
+      els.nomeAutor.focus();
+      return;
+    }
+    if (!texto) return;
+    if (!currentProfile) return;
+    els.enviarBtn.disabled = true;
+    db.collection('sugestoes').add({
+      texto: texto,
+      autorUid: currentProfile.uid,
+      autorNome: nome,
+      status: 'aberta',
+      motivoExclusao: null,
+      decididoPor: null,
+      decididoEm: null,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      try { localStorage.setItem(NOME_CACHE_KEY, nome); } catch(e) { /* indisponível */ }
+      els.novaSugestao.value = '';
+      els.charCount.textContent = '0/2000';
+    }).catch(function(e){
+      alert('Não foi possível enviar a sugestão: ' + e.message);
+    }).finally(function(){
+      els.enviarBtn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.chip[data-view]').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      currentView = chip.dataset.view;
+      document.querySelectorAll('.chip[data-view]').forEach(function(c){
+        c.classList.toggle('active', c === chip);
+      });
+      render();
+    });
+  });
+
+  window.__marcarImplantada = function(id){
+    aceitarAlvoId = id;
+    els.aceitarTexto.value = '';
+    els.aceitarErr.textContent = '';
+    els.aceitarBackdrop.classList.add('open');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ els.aceitarTexto.focus(); });
+    });
+  };
+
+  els.aceitarCancelar.addEventListener('click', function(){
+    els.aceitarBackdrop.classList.remove('open');
+    aceitarAlvoId = null;
+  });
+
+  els.aceitarConfirmar.addEventListener('click', function(){
+    if (!aceitarAlvoId) return;
+    const obs = els.aceitarTexto.value.trim();
+    els.aceitarConfirmar.disabled = true;
+    var upd = {
+      status: 'implantada',
+      motivoExclusao: null,
+      decididoPor: currentProfile.displayName || currentProfile.email,
+      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (obs) upd.motivoImplantacao = obs;
+    db.collection('sugestoes').doc(aceitarAlvoId).update(upd).then(function(){
+      els.aceitarBackdrop.classList.remove('open');
+      aceitarAlvoId = null;
+    }).catch(function(e){
+      els.aceitarErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.aceitarConfirmar.disabled = false;
+    });
+  });
+
+  window.__abrirObservacao = function(id){
+    obsAlvoId = id;
+    var s = allSugestoes.find(function(x){ return x.id === id; });
+    els.obsTexto.value = (s && s.motivoImplantacao) || '';
+    els.obsErr.textContent = '';
+    els.obsBackdrop.classList.add('open');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ els.obsTexto.focus(); });
+    });
+  };
+
+  els.obsCancelar.addEventListener('click', function(){
+    els.obsBackdrop.classList.remove('open');
+    obsAlvoId = null;
+  });
+
+  els.obsConfirmar.addEventListener('click', function(){
+    if (!obsAlvoId) return;
+    const obs = els.obsTexto.value.trim();
+    els.obsConfirmar.disabled = true;
+    db.collection('sugestoes').doc(obsAlvoId).update({
+      motivoImplantacao: obs || firebase.firestore.FieldValue.delete()
+    }).then(function(){
+      els.obsBackdrop.classList.remove('open');
+      obsAlvoId = null;
+    }).catch(function(e){
+      els.obsErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.obsConfirmar.disabled = false;
+    });
+  });
+
+  window.__excluirPermanente = function(id){
+    if (!confirm('Excluir esta sugestão PERMANENTEMENTE?\n\nEla some do histórico para todo mundo e não pode ser recuperada. Use isso só para lixo/teste — para recusar uma sugestão de verdade, use "Marcar como excluída" (com motivo).')) return;
+    db.collection('sugestoes').doc(id).delete().catch(function(e){
+      alert('Não foi possível excluir: ' + e.message);
+    });
+  };
+
+  window.__abrirMotivoExclusao = function(id){
+    motivoAlvoId = id;
+    els.motivoTexto.value = '';
+    els.motivoErr.textContent = '';
+    els.motivoBackdrop.classList.add('open');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ els.motivoTexto.focus(); });
+    });
+  };
+
+  els.motivoCancelar.addEventListener('click', function(){
+    els.motivoBackdrop.classList.remove('open');
+    motivoAlvoId = null;
+  });
+
+  els.motivoConfirmar.addEventListener('click', function(){
+    const motivo = els.motivoTexto.value.trim();
+    if (!motivo){
+      els.motivoErr.textContent = 'Informe o motivo da exclusão.';
+      return;
+    }
+    if (!motivoAlvoId) return;
+    els.motivoConfirmar.disabled = true;
+    db.collection('sugestoes').doc(motivoAlvoId).update({
+      status: 'excluida',
+      motivoExclusao: motivo,
+      decididoPor: currentProfile.displayName || currentProfile.email,
+      decididoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      els.motivoBackdrop.classList.remove('open');
+      motivoAlvoId = null;
+    }).catch(function(e){
+      els.motivoErr.textContent = 'Erro: ' + e.message;
+    }).finally(function(){
+      els.motivoConfirmar.disabled = false;
+    });
+  });
+
+  function cardHtml(s){
+    const isAdmin = currentProfile && currentProfile.role === 'admin';
+    let out = '<div class="sug-card">';
+    out += '<div class="sug-top"><span class="badge ' + s.status + '">' +
+      (s.status === 'aberta' ? 'Aberta' : s.status === 'implantada' ? 'Implantada' : 'Excluída') +
+      '</span><span class="sug-meta">' + escapeHtml(s.autorNome) + ' · ' + formatDateTime(s.criadoEm) + '</span></div>';
+    out += '<div class="sug-text">' + escapeHtml(s.texto) + '</div>';
+    if (s.status === 'aberta' && isAdmin){
+      out += '<div class="sug-actions">' +
+        '<button class="btn secondary" onclick="__marcarImplantada(\'' + s.id + '\')">Marcar como implantada</button>' +
+        '<button class="btn ghost" onclick="__abrirMotivoExclusao(\'' + s.id + '\')">Marcar como excluída</button>' +
+        '</div>';
+    }
+    if (s.status !== 'aberta'){
+      out += '<div class="sug-decision"><b>' + escapeHtml(s.decididoPor || '-') + '</b> em ' + formatDateTime(s.decididoEm) + '</div>';
+      if (s.status === 'excluida' && s.motivoExclusao){
+        out += '<div class="motivo-box">' + escapeHtml(s.motivoExclusao) + '</div>';
+      }
+      if (s.status === 'implantada'){
+        if (s.motivoImplantacao){
+          out += '<div class="motivo-box verde">' + escapeHtml(s.motivoImplantacao) + '</div>';
+        } else {
+          out += '<div class="motivo-box vazio">Nenhuma observação sobre a implantação.</div>';
+        }
+        if (isAdmin){
+          out += '<button class="btn ghost add-obs-btn" onclick="__abrirObservacao(\'' + s.id + '\')">' +
+            (s.motivoImplantacao ? 'Editar observação' : 'Adicionar observação') + '</button>';
+        }
+      }
+    }
+    if (isAdmin){
+      out += '<div class="sug-danger"><button class="btn ghost danger" onclick="__excluirPermanente(\'' + s.id + '\')">Excluir permanentemente</button></div>';
+    }
+    out += '</div>';
+    return out;
+  }
+
+  function render(){
+    const filtered = allSugestoes.filter(function(s){
+      return currentView === 'abertas' ? s.status === 'aberta' : s.status !== 'aberta';
+    });
+    if (!filtered.length){
+      els.list.innerHTML = '';
+      els.empty.style.display = 'block';
+      els.empty.textContent = currentView === 'abertas'
+        ? 'Nenhuma sugestão aberta no momento.'
+        : 'Nenhuma sugestão implantada ou excluída ainda.';
+      return;
+    }
+    els.empty.style.display = 'none';
+    els.list.innerHTML = filtered.map(cardHtml).join('');
+  }
+
+  function startListening(){
+    if (unsubscribe) return;
+    unsubscribe = db.collection('sugestoes').orderBy('criadoEm', 'desc')
+      .onSnapshot(function(snap){
+        allSugestoes = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        els.status.textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+        render();
+      }, function(e){
+        els.status.textContent = 'falha ao carregar';
+        els.list.innerHTML = '';
+        els.empty.style.display = 'block';
+        els.empty.textContent = 'Não foi possível carregar as sugestões: ' + e.message;
+      });
+  }
+
+  var notifBackdrop = document.getElementById('notifBackdrop');
+  var notifList = document.getElementById('notifList');
+  var notifFechar = document.getElementById('notifFechar');
+
+  notifFechar.addEventListener('click', function(){
+    notifBackdrop.classList.remove('open');
+  });
+
+  function verificarNotificacoes(uid){
+    // Lê quais IDs o usuário já viu (armazenado no perfil dele em users/{uid})
+    var vistoRef = db.collection('users').doc(uid);
+    db.collection('sugestoes')
+      .where('autorUid', '==', uid)
+      .get().then(function(snap){
+        if (snap.empty) return;
+        return vistoRef.get().then(function(userDoc){
+          var vistos = (userDoc.exists && userDoc.data().sugestoesNotificadas) || [];
+          var pendentes = snap.docs.filter(function(d){
+            return d.data().status !== 'aberta' && vistos.indexOf(d.id) === -1;
+          });
+          if (!pendentes.length) return;
+          notifList.innerHTML = pendentes.map(function(d){
+            var s = d.data();
+            var implantada = s.status === 'implantada';
+            var obs = implantada ? s.motivoImplantacao : s.motivoExclusao;
+            var labelStatus = implantada ? 'Implantada ✓' : 'Não será implantada';
+            var html = '<div class="notif-item">';
+            html += '<div class="notif-item-status ' + s.status + '">' + labelStatus + '</div>';
+            html += '<div class="notif-item-texto">' + escapeHtml(s.texto || '') + '</div>';
+            if (obs){
+              html += '<div class="notif-item-obs' + (implantada ? ' verde' : '') + '">' + escapeHtml(obs) + '</div>';
+            }
+            html += '</div>';
+            return html;
+          }).join('');
+          notifBackdrop.classList.add('open');
+          // Marca como vistos no perfil do usuário
+          var novosIds = pendentes.map(function(d){ return d.id; });
+          var merged = vistos.concat(novosIds);
+          vistoRef.update({ sugestoesNotificadas: merged }).catch(function(){});
+        });
+      }).catch(function(){});
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if (!user){
+      els.gate.style.display = 'block';
+      els.appBox.style.display = 'none';
+      els.status.textContent = 'não conectado';
+      currentProfile = null;
+      return;
+    }
+    db.collection('users').doc(user.uid).get().then(function(doc){
+      if (!doc.exists){
+        els.gate.style.display = 'block';
+        els.gate.textContent = 'Seu usuário ainda não tem acesso configurado no portal.';
+        return;
+      }
+      currentProfile = Object.assign({ uid: user.uid, email: user.email }, doc.data());
+      els.gate.style.display = 'none';
+      els.appBox.style.display = 'block';
+      startListening();
+      verificarNotificacoes(user.uid);
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
