@@ -278,6 +278,54 @@ service cloud.firestore {
                     && request.resource.data.em == request.time;
       allow update, delete: if false;
     }
+    // Contrato de associação (Contratos › Contrato de associação + tela obrigatória no login, contrato-associacao.js).
+    // modelo: texto do contrato e quem assina (só o admin lê — o site é público, o texto não fica no código);
+    // regras: só a chave "exigirAssinatura", que a tela de login de todo usuário ativo precisa ler.
+    match /contratosAssociacaoConfig/{docId} {
+      allow read: if isAdmin() || (docId == 'regras' && isAtivo());
+      allow write: if isAdmin();
+    }
+    // Admin cria já assinado pela sociedade (com a senha digitada há pouco) e depois só cancela/encerra — nunca mexe
+    // no texto nem nas assinaturas. O associado só assina (uma vez, com a senha) o texto que recebeu; o diretor
+    // interveniente só acrescenta a assinatura dele. Ninguém apaga.
+    match /contratosAssociacao/{docId} {
+      allow read: if isAdmin()
+                  || (isAtivo() && (resource.data.associadoUid == request.auth.uid
+                                    || resource.data.get('diretorUid', '') == request.auth.uid));
+      allow create: if isAdmin() && senhaRecente()
+                    && request.resource.data.status == 'aguardando_associado'
+                    && request.resource.data.associadoUid is string
+                    && request.resource.data.textoFinal is string
+                    && request.resource.data.hashTexto is string
+                    && request.resource.data.sociedade.uid == request.auth.uid
+                    && request.resource.data.sociedade.assinaturaPng is string
+                    && request.resource.data.sociedade.assinadoEm == request.time
+                    && !('associado' in request.resource.data)
+                    && !('interveniente' in request.resource.data);
+      allow update: if (isAdmin()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['status', 'canceladoEm', 'canceladoPorUid', 'encerradoEm', 'encerradoPorUid'])
+                        && ((resource.data.status == 'aguardando_associado' && request.resource.data.status == 'cancelado')
+                            || (resource.data.status == 'assinado' && request.resource.data.status == 'encerrado')))
+                    || (isAtivo() && senhaRecente()
+                        && resource.data.associadoUid == request.auth.uid
+                        && resource.data.status == 'aguardando_associado'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'associado', 'assinadoEm', 'assinadoEmISO'])
+                        && request.resource.data.status == 'assinado'
+                        && request.resource.data.assinadoEm == request.time
+                        && request.resource.data.associado.uid == request.auth.uid
+                        && request.resource.data.associado.assinaturaPng is string
+                        && request.resource.data.associado.assinadoEm == request.time)
+                    || (isAtivo() && senhaRecente()
+                        && resource.data.get('diretorUid', '') == request.auth.uid
+                        && resource.data.status in ['aguardando_associado', 'assinado']
+                        && !('interveniente' in resource.data)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interveniente'])
+                        && request.resource.data.interveniente.uid == request.auth.uid
+                        && request.resource.data.interveniente.assinaturaPng is string
+                        && request.resource.data.interveniente.assinadoEm == request.time);
+      allow delete: if false;
+    }
 
     // Remuneração variável (tools/remuneracao): só o dono configura, lança o lucro e libera pessoas.
     // Cada pessoa liberada lê apenas o próprio cadastro e o próprio extrato — nem outros admins veem o resto.

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Contrato de Associação — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
+<!--
+  Contrato de associação profissional de advogado — mesmo papel do Criador de Documentos e das procurações:
+  timbrado de fundo (assets/timbrado-bg.png), Poppins 9,3pt, A4.
+  O TEXTO do contrato não fica neste arquivo (o site é público): vem pronto do Firestore (contratosAssociacao.textoFinal).
+  - ?id=<docId>  → abre o contrato salvo para consultar/imprimir/baixar (admin ou o próprio associado/diretor)
+  - ?preview=1   → só desenha; quem chama usa window.mostrarContrato(dados)
+-->
+<style>
+  html,body{margin:0;background:#0e0b0b;color:#eee;font-family:'Poppins',Arial,sans-serif;}
+  .barra{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px 12px;background:rgba(14,11,11,.92);border-bottom:1px solid rgba(212,175,106,.22);}
+  .barra button{font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;border-radius:10px;padding:8px 16px;
+    color:#F3E6C8;border:1px solid rgba(212,175,106,.4);background:linear-gradient(155deg,rgba(126,31,44,.75),rgba(90,20,30,.75));}
+  .barra button:disabled{opacity:.5;cursor:default;}
+  .barra .st{font-size:.78rem;color:#bbb;align-self:center;}
+  body.preview .barra{display:none;}
+  #msg{padding:60px 20px;text-align:center;color:#bbb;font-size:.9rem;}
+  #doc-pages-wrap{padding:18px 12px 30px;overflow-x:hidden;}
+  #doc-pages{display:flex;flex-direction:column;align-items:center;gap:24px;}
+
+  /* ---- papel: idêntico ao Criador de Documentos (tools/documentos) ---- */
+  .doc-page{width:210mm;height:297mm;flex:0 0 auto;background:#ffffff;position:relative;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:'Poppins',Arial,sans-serif;color:#1a1a1a;overflow:hidden;}
+  .doc-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;user-select:none;}
+  .doc-pagenum{position:absolute;right:27mm;bottom:20.5mm;width:14mm;height:9mm;background:#fff;z-index:1;font-size:8pt;font-weight:700;color:#1a1a1a;display:flex;align-items:center;justify-content:center;}
+  .nw{white-space:nowrap;}
+  .doc-content{position:absolute;z-index:1;top:34mm;left:18mm;right:18mm;bottom:30mm;overflow:hidden;font-size:9.3pt;line-height:1.55;}
+
+  .blk{margin-bottom:2.4mm;text-align:justify;}
+  .blk.center{text-align:center;}
+  .blk.item{margin-left:7mm;}
+  .blk strong,.blk b{font-weight:700;}
+  .doc-h1{text-align:center;font-weight:700;font-size:11.5pt;text-transform:uppercase;margin:1mm 0 1.5mm;letter-spacing:.02em;}
+  .doc-sub{text-align:center;font-size:9pt;margin:0 0 5mm;color:#333;}
+  .doc-label{font-weight:700;margin:3.6mm 0 1.6mm;text-transform:uppercase;font-size:9.3pt;}
+
+  .sig-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:6mm 10mm;margin-top:4mm;}
+  .sig-line{text-align:center;width:76mm;}
+  .sig-img{height:17mm;display:flex;align-items:flex-end;justify-content:center;}
+  .sig-img img{max-height:17mm;max-width:72mm;}
+  .sig-img .ph{font-size:7pt;color:#999;font-style:italic;padding-bottom:1mm;}
+  .sig-line .rule{border-top:1pt solid #1a1a1a;margin-bottom:1.4mm;}
+  .sig-line .name{font-weight:700;font-size:9pt;}
+  .sig-line .doc{font-size:8pt;}
+  .sig-line .meta{font-size:6.4pt;color:#555;line-height:1.35;margin-top:.8mm;}
+  .verif{font-size:6.6pt;color:#555;text-align:center;margin-top:4mm;line-height:1.45;word-break:break-all;}
+
+  @media print{
+    @page{ size:A4; margin:0; }
+    html,body{background:#fff;margin:0;padding:0;}
+    .barra{display:none !important;}
+    #doc-pages-wrap{padding:0;}
+    #doc-pages{display:block;gap:0;zoom:1 !important;}
+    .doc-page{box-shadow:none;margin:0;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;}
+    .doc-page:last-child{page-break-after:auto;break-after:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="barra">
+  <button type="button" id="btn-imprimir" disabled>🖨 Imprimir</button>
+  <button type="button" id="btn-pdf" disabled>⬇ Baixar PDF</button>
+  <span class="st" id="st"></span>
+</div>
+<div id="msg">Carregando contrato…</div>
+<div id="doc-pages-wrap"><div id="doc-pages"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+  const params = new URLSearchParams(location.search);
+  const PREVIEW = params.get('preview') === '1';
+  if (PREVIEW) document.body.classList.add('preview');
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function paraData(t){
+    if (!t) return null;
+    if (t.toDate) return t.toDate();
+    if (typeof t === 'object' && typeof t.seconds === 'number') return new Date(t.seconds * 1000);
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function dataBR(d){ return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear(); }
+  function horaBR(d){ return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+  function dataExtenso(d){ return d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
+  function quando(a){ return a ? (paraData(a.assinadoEm) || (a.assinadoEmISO ? new Date(a.assinadoEmISO) : null)) : null; }
+
+  /* ---------- blocos de assinatura ---------- */
+  function registroTxt(r){
+    if (!r) return '';
+    const loc = r.localizacao || {};
+    const local = loc.status === 'ok'
+      ? 'lat. ' + String(loc.lat).replace('.', ',') + ', long. ' + String(loc.lng).replace('.', ',') + (loc.precisaoM ? ' (±' + loc.precisaoM + ' m)' : '')
+      : (loc.status || 'não obtida');
+    return 'IP ' + esc(r.ip || 'não obtido') + ' · localização: ' + esc(local);
+  }
+  function assinante(a, nome, papel, extra){
+    const dt = quando(a);
+    const img = a && a.assinaturaPng ? '<img src="' + esc(a.assinaturaPng) + '" alt="Assinatura">' : '<span class="ph">(aguardando assinatura)</span>';
+    const meta = dt
+      ? 'Assinado eletronicamente no Portal em ' + esc(dataBR(dt)) + ' às ' + esc(horaBR(dt)) + ', com confirmação da senha pessoal.<br>' + registroTxt(a.registroAssinatura)
+      : 'Assinatura eletrônica com confirmação da senha pessoal do Portal.';
+    return '<div class="sig-line"><div class="sig-img">' + img + '</div><div class="rule"></div>' +
+      '<div class="name">' + esc(nome || '—') + '</div><div class="doc">' + esc(papel) + (extra ? ' — ' + esc(extra) : '') + '</div>' +
+      '<div class="meta">' + meta + '</div></div>';
+  }
+  function blocoAssinaturas(d, comVerificacao){
+    let h = '<div><div class="sig-grid">' +
+      assinante(d.sociedade, d.titularNome, 'pela SOCIEDADE (titular)', d.titularOab) +
+      assinante(d.associado, d.associadoNome, 'ASSOCIADO', d.associadoOab);
+    if (d.diretorNome) h += assinante(d.interveniente, d.diretorNome, 'DIRETOR INTERVENIENTE', d.diretorOab);
+    h += '</div>';
+    if (comVerificacao) {
+      h += '<div class="verif">Documento assinado eletronicamente no Portal Fonseca e Braga (MP 2.200-2/2001, art. 10, § 2º).' +
+        (d.id ? ' Código de verificação: <b>' + esc(d.id) + '</b>.' : '') +
+        (d.hashTexto ? '<br>Integridade do texto (SHA-256): ' + esc(d.hashTexto) : '') + '</div>';
+    }
+    return h + '</div>';
+  }
+
+  /* ---------- texto → blocos (mesmo padrão visual das procurações) ---------- */
+  function linhaHtml(l){
+    let h = esc(l);
+    let m = l.match(/^(A?\d+(?:\.\d+)*\.)\s/);
+    if (m) return { html: '<div class="blk"><b>' + esc(m[1]) + '</b>' + esc(l.slice(m[1].length)) + '</div>' };
+    m = l.match(/^(SOCIEDADE|ASSOCIADO|DIRETOR INTERVENIENTE):/);
+    if (m) return { html: '<div class="blk"><b>' + esc(m[0]) + '</b>' + esc(l.slice(m[0].length)) + '</div>' };
+    if (/^[IVX]+ – /.test(l)) return { html: '<div class="blk item">' + h + '</div>' };
+    return { html: '<div class="blk">' + h + '</div>' };
+  }
+  function montarBlocos(d){
+    const datas = [quando(d.sociedade), quando(d.associado)].filter(Boolean);
+    const ultima = datas.length === 2 ? new Date(Math.max(datas[0], datas[1])) : null;
+    const dataAss = ultima ? dataExtenso(ultima) : 'data da última assinatura eletrônica';
+    const linhas = String(d.textoFinal || '').replace(/\{\{DATA_ASSINATURA\}\}/g, dataAss).split(/\r?\n/);
+    const total = linhas.filter(function(l){ return l.trim() === '[[ASSINATURAS]]'; }).length;
+    const b = [];
+    let vistos = 0, quebra = false, depoisTitulo = false;
+    linhas.forEach(function(l){
+      if (!l.trim()) return;
+      if (l === '=PAGEBREAK') { quebra = true; return; }
+      let blk;
+      if (l.indexOf('# ') === 0) { blk = { html: '<div class="doc-h1">' + esc(l.slice(2)) + '</div>' }; depoisTitulo = true; }
+      else if (depoisTitulo) { blk = { html: '<div class="doc-sub">' + esc(l) + '</div>' }; depoisTitulo = false; }
+      else if (l.indexOf('## ') === 0) blk = { html: '<div class="doc-label">' + esc(l.slice(3)) + '</div>', manterComProximo: true };
+      else if (l.trim() === '[[ASSINATURAS]]') { vistos++; blk = { html: blocoAssinaturas(d, vistos === total), puxar: 2 }; }
+      else blk = linhaHtml(l);
+      if (quebra) { blk.quebra = true; quebra = false; }
+      b.push(blk);
+    });
+    return b;
+  }
+
+  /* ---------- páginas (mesma lógica do Criador de Documentos) ---------- */
+  function makePageShell(){
+    const page = document.createElement('div');
+    page.className = 'doc-page';
+    page.innerHTML = '<img class="doc-bg" src="../../assets/timbrado-bg.png" alt=""><div class="doc-pagenum"></div><div class="doc-content"></div>';
+    return page;
+  }
+  // html2canvas desenhava números longos (CPF, OAB) por cima da palavra seguinte — cada número vira um bloco que não quebra
+  function protegerNumeros(root){
+    if (!root || root.nodeType !== 1) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const alvos = [];
+    while (walker.nextNode()) {
+      const t = walker.currentNode;
+      if (/\d[\d.\/\-,]*\d/.test(t.nodeValue) && !(t.parentElement && t.parentElement.closest('.nw,.verif'))) alvos.push(t);
+    }
+    alvos.forEach(function(t){
+      const frag = document.createDocumentFragment();
+      const resto = t.nodeValue, re = /\d[\d.\/\-,]*\d/g;
+      let ultimo = 0, m;
+      while ((m = re.exec(resto))) {
+        if (m.index > ultimo) frag.appendChild(document.createTextNode(resto.slice(ultimo, m.index)));
+        const s = document.createElement('span'); s.className = 'nw'; s.textContent = m[0];
+        frag.appendChild(s);
+        ultimo = m.index + m[0].length;
+      }
+      if (ultimo < resto.length) frag.appendChild(document.createTextNode(resto.slice(ultimo)));
+      t.parentNode.replaceChild(frag, t);
+    });
+  }
+  function paginar(blocos){
+    const wrap = document.getElementById('doc-pages');
+    wrap.style.zoom = 1;
+    wrap.innerHTML = '';
+    const pages = [makePageShell()];
+    wrap.appendChild(pages[0]);
+    let content = pages[0].querySelector('.doc-content');
+    function novaPagina(){
+      const pg = makePageShell();
+      wrap.appendChild(pg); pages.push(pg);
+      content = pg.querySelector('.doc-content');
+    }
+    blocos.forEach(function(blk){
+      const w = document.createElement('div');
+      w.innerHTML = blk.html;
+      const node = w.firstElementChild;
+      protegerNumeros(node);
+      if (blk.quebra && content.children.length) novaPagina();
+      content.appendChild(node);
+      if (content.scrollHeight > content.clientHeight && content.children.length > 1) {
+        content.removeChild(node);
+        // título de cláusula não fica sozinho no pé da página: vai junto com o primeiro item;
+        // as assinaturas levam junto o "local e data" e o título que vêm antes delas
+        const levar = [];
+        const max = blk.puxar || 1;
+        while (levar.length < max && content.children.length > 1) {
+          const ant = content.lastElementChild;
+          if (!blk.puxar && !ant.classList.contains('doc-label')) break;
+          levar.unshift(content.removeChild(ant));
+        }
+        novaPagina();
+        levar.forEach(function(el){ content.appendChild(el); });
+        content.appendChild(node);
+      }
+    });
+    pages.forEach(function(pg, i){ pg.querySelector('.doc-pagenum').textContent = (i + 1) + '/' + pages.length; });
+    ajustarZoom();
+    return pages;
+  }
+  function ajustarZoom(){
+    const wrap = document.getElementById('doc-pages');
+    const largura = 210 * 96 / 25.4;
+    const disponivel = document.documentElement.clientWidth - 24;
+    wrap.style.zoom = Math.min(1, disponivel / largura);
+  }
+  window.addEventListener('resize', ajustarZoom);
+
+  let atual = null;
+  window.mostrarContrato = function(dados){
+    atual = dados;
+    document.getElementById('msg').style.display = 'none';
+    paginar(montarBlocos(dados));
+    // a Poppins chega depois e ocupa mais espaço: medir de novo, senão o fim de uma página some
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function(){ if (atual === dados) paginar(montarBlocos(dados)); });
+    }
+    document.getElementById('btn-imprimir').disabled = false;
+    document.getElementById('btn-pdf').disabled = false;
+    return document.querySelectorAll('.doc-page').length;
+  };
+  if (document.fonts && document.fonts.addEventListener) {
+    document.fonts.addEventListener('loadingdone', function(){ if (atual) paginar(montarBlocos(atual)); });
+  }
+
+  /* ---------- imprimir / PDF ---------- */
+  document.getElementById('btn-imprimir').addEventListener('click', function(){ window.print(); });
+  const PDF_OPTS = {margin:0, image:{type:'png'}, html2canvas:{scale:3, useCORS:true, backgroundColor:'#ffffff'}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}};
+  function aguardarFundos(pageEls){
+    return Promise.all(pageEls.map(function(pg){
+      const img = pg.querySelector('.doc-bg');
+      if (!img || (img.complete && img.naturalWidth > 0)) return Promise.resolve();
+      return new Promise(function(res){ img.addEventListener('load', res, {once:true}); img.addEventListener('error', res, {once:true}); });
+    }));
+  }
+  async function gerarPdf(){
+    const wrap = document.getElementById('doc-pages');
+    const pageEls = Array.prototype.slice.call(wrap.querySelectorAll('.doc-page'));
+    wrap.style.zoom = 1;
+    try {
+      await aguardarFundos(pageEls);
+      const seed = document.createElement('div');
+      seed.style.cssText = 'width:2px;height:2px;';
+      document.body.appendChild(seed);
+      const pdf = await html2pdf().set(PDF_OPTS).from(seed).toPdf().get('pdf');
+      document.body.removeChild(seed);
+      while (pdf.internal.getNumberOfPages() > 1) pdf.deletePage(pdf.internal.getNumberOfPages());
+      for (let i = 0; i < pageEls.length; i++) {
+        pageEls[i].scrollIntoView({block:'start'});
+        await new Promise(function(r){ setTimeout(r, 30); });
+        const opts = JSON.parse(JSON.stringify(PDF_OPTS));
+        opts.html2canvas.scrollX = 0; opts.html2canvas.scrollY = 0;
+        opts.html2canvas.windowWidth = Math.max(document.documentElement.scrollWidth, pageEls[i].scrollWidth + 100);
+        opts.html2canvas.windowHeight = Math.max(document.documentElement.scrollHeight, pageEls[i].scrollHeight + 200);
+        const canvas = await html2pdf().set(opts).from(pageEls[i]).toCanvas().get('canvas');
+        if (i > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+      pdf.save(nomeArquivo(atual));
+    } finally { ajustarZoom(); }
+  }
+  // POP 008/2023: (PARTE) – DOCUMENTO – CRIADOR – dd.mm.aa
+  function nomeArquivo(d){
+    const dt = quando(d.associado) || quando(d.sociedade) || new Date();
+    const data = String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0') + '.' + String(dt.getFullYear()).slice(2);
+    const criador = (String(d.titularNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
+    return ['(' + String(d.associadoNome || 'ASSOCIADO').toUpperCase() + ')', 'CONTRATO DE ASSOCIAÇÃO', criador, data]
+      .join(' – ').replace(/[\\\/:*?"<>|]/g, '-') + '.pdf';
+  }
+  document.getElementById('btn-pdf').addEventListener('click', function(){
+    const btn = this, st = document.getElementById('st');
+    btn.disabled = true; st.textContent = 'Gerando PDF…';
+    gerarPdf().then(function(){ st.textContent = 'PDF baixado.'; })
+      .catch(function(e){ st.textContent = 'Erro ao gerar PDF: ' + e.message; })
+      .finally(function(){ btn.disabled = false; });
+  });
+
+  /* ---------- modo consulta ---------- */
+  if (PREVIEW) { document.getElementById('msg').textContent = 'Montando a prévia do contrato…'; return; }
+  const id = params.get('id');
+  if (!id) { document.getElementById('msg').textContent = 'Nenhum contrato informado.'; return; }
+  if (typeof firebaseConfig === 'undefined') { document.getElementById('msg').textContent = 'Configuração pendente.'; return; }
+  firebase.initializeApp(firebaseConfig);
+  firebase.auth().onAuthStateChanged(function(user){
+    if (!user) { document.getElementById('msg').textContent = 'Faça login no Portal Fonseca e Braga para ver o contrato.'; return; }
+    firebase.firestore().collection('contratosAssociacao').doc(id).get().then(function(doc){
+      if (!doc.exists) { document.getElementById('msg').textContent = 'Contrato não encontrado.'; return; }
+      window.mostrarContrato(Object.assign({ id: doc.id }, doc.data()));
+    }).catch(function(err){
+      document.getElementById('msg').textContent = 'Não foi possível abrir o contrato: ' + err.message;
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -78,3 +78,11 @@ WORKER_ARQUIVO=/tmp/worker-antigo.mjs npm run test:worker
 ```
 
 Se o Java estiver em português e o emulador travar com `MissingResourceException ... locale pt_BR`, defina `JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.country=US"`.
+
+## Contrato de associação (`tests/contrato-associacao/`)
+
+Preparo pelo admin, prévia, assinatura da sociedade, tela obrigatória no login, diretor interveniente, chave "exigir", texto adulterado, documento final e sub-aba em Contratos. Usa um Firebase **falso em memória** (`fake-firebase.js`): nenhum pedido sai para a internet, só fontes e o html2pdf. Precisa do arquivo `privado/contrato-associacao-modelo.txt`.
+
+```bash
+python tests/contrato-associacao/teste.py   # fotos em tests/contrato-associacao/fotos/
+```

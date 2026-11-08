@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Contrato de Associação — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<!--
+  Contrato de associação (sub-aba de Contratos). Só o administrador usa.
+  O MODELO do contrato não fica neste arquivo (o site é público): o admin carrega uma vez o .txt da pasta
+  privado/ do computador e ele vai para contratosAssociacaoConfig/modelo (leitura só do admin).
+  Fluxo: escolher o associado (dados vêm do cadastro) → preencher valor, início, prazo e nível → prévia →
+  assinar pela sociedade (senha + assinatura) → o associado assina no próximo login (contrato-associacao.js).
+-->
+<style>
+  :root{
+    --ink:#161010; --panel:#211918; --panel-2:#2a1f1e; --panel-3:#332524; --paper:#ece6e1; --muted:#9c908b;
+    --red:#b8362e; --red-deep:#5c1a16; --ok:#4caf7d; --err:#ffb4ae; --warn:#f0c674; --gold:#d4af6a;
+    --line:rgba(236,230,225,0.10); --line-strong:rgba(236,230,225,0.20);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9; --panel:#ffffff; --panel-2:#f1ece6; --panel-3:#e6dfd7; --paper:#241c1b; --muted:#7d716b;
+    --ok:#2f8f5b; --err:#9c2c20; --warn:#8a5a00; --gold:#8a6a2a;
+    --line:rgba(36,28,27,0.10); --line-strong:rgba(36,28,27,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--panel);color:var(--paper);font-family:var(--font-body);}
+  button,input,select,textarea{font-family:inherit;}
+  main{max-width:1200px;margin:0 auto;padding:20px 20px 70px;}
+  h1{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 4px;}
+  .sub{font-size:.8rem;color:var(--muted);margin:0 0 18px;line-height:1.5;}
+  .card{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:14px;padding:18px;margin-bottom:16px;}
+  .card h2{font-size:.95rem;margin:0 0 4px;}
+  .card .desc{font-size:.76rem;color:var(--muted);margin:0 0 12px;line-height:1.5;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:5px;}
+  .field input,.field select{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel);color:var(--paper);font-size:.86rem;outline:none;}
+  .field input:focus,.field select:focus{border-color:var(--red);}
+  .field .hint{font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .btn{padding:9px 16px;border-radius:8px;border:none;background:var(--red);color:#fff;font-weight:600;font-size:.82rem;cursor:pointer;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.secondary{background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);}
+  .btn.small{padding:6px 11px;font-size:.74rem;}
+  .btn.ghost{background:transparent;color:var(--err);border:1px solid var(--line-strong);}
+  .acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  th{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.7rem;font-weight:600;border:1px solid var(--line-strong);}
+  .pill.ok{color:var(--ok);border-color:var(--ok);}
+  .pill.wait{color:var(--warn);border-color:var(--warn);}
+  .pill.none{color:var(--muted);}
+  .pill.off{color:var(--err);border-color:var(--err);}
+  .msg{font-size:.8rem;margin-top:8px;line-height:1.45;}
+  .msg.err{color:var(--err);} .msg.ok{color:var(--ok);} .msg.warn{color:var(--warn);}
+  .dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 16px;font-size:.8rem;margin-bottom:12px;}
+  .dados div b{color:var(--muted);font-weight:600;}
+  .falta{color:var(--err);font-weight:600;}
+  .toggle{display:flex;gap:10px;align-items:flex-start;font-size:.82rem;line-height:1.45;cursor:pointer;}
+  .toggle input{margin-top:3px;width:16px;height:16px;}
+  .frame-wrap{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:#0e0b0b;margin-top:12px;}
+  .frame-wrap iframe{display:block;width:100%;height:70vh;border:none;}
+  .bloqueio{padding:60px 20px;text-align:center;color:var(--muted);}
+  .modal-bd{position:fixed;inset:0;z-index:50;background:rgba(10,6,6,.78);display:none;align-items:center;justify-content:center;padding:16px;}
+  .modal-bd.show{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;padding:20px;width:min(560px,100%);max-height:94vh;overflow:auto;}
+  .modal h3{margin:0 0 6px;font-size:1rem;}
+  canvas.sig{display:block;width:100%;height:160px;background:#fff;border:1px solid var(--line-strong);border-radius:10px;touch-action:none;cursor:crosshair;}
+  @media (max-width:640px){ main{padding:14px 12px 60px;} th:nth-child(2),td:nth-child(2){display:none;} }
+</style>
+</head>
+<body>
+<main>
+  <h1>Contrato de associação</h1>
+  <p class="sub">Os dados de qualificação vêm do cadastro do Portal. Aqui você preenche o que é negociado na entrada: valor fixo, data de início, prazo de habilitação e nível. Em seguida, assina pela sociedade e envia. O associado assina no próximo acesso ao Portal.</p>
+
+  <div id="bloqueio" class="bloqueio">Carregando…</div>
+
+  <div id="conteudo" style="display:none;">
+    <div class="card" id="card-config">
+      <h2>Configuração</h2>
+      <p class="desc">O texto do contrato não fica no site, que é público. Carregue o arquivo <code>privado/contrato-associacao-modelo.txt</code> do computador. Ele vai para o Firestore com leitura restrita ao administrador.</p>
+      <div class="grid">
+        <div class="field">
+          <label>Modelo do contrato (.txt)</label>
+          <input type="file" id="cfg-modelo" accept=".txt,text/plain">
+          <div class="hint" id="cfg-modelo-info">Nenhum modelo carregado.</div>
+        </div>
+        <div class="field">
+          <label>Titular que assina pela sociedade</label>
+          <select id="cfg-titular"></select>
+        </div>
+        <div class="field">
+          <label>Diretor interveniente</label>
+          <select id="cfg-diretor"></select>
+          <div class="hint">Assina no próximo acesso ao Portal, sem bloquear o uso dele.</div>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="cfg-exigir">
+        <span><b>Exigir contrato assinado para associados usarem o Portal.</b> Desligado, só quem recebeu um contrato para assinar vê a tela de assinatura, o que serve para testar. Ligado, todo associado sem contrato assinado fica bloqueado até assinar.</span></label>
+      <div class="acoes" style="margin-top:12px;"><button class="btn secondary" id="cfg-salvar">Salvar configuração</button><span class="msg" id="cfg-msg"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Associados</h2>
+      <p class="desc">Todo cadastro marcado como <b>Associado</b> em Administração › Usuários › Dados entra aqui automaticamente, inclusive os novos.</p>
+      <table>
+        <thead><tr><th>Associado</th><th>Ingresso</th><th>Contrato</th><th></th></tr></thead>
+        <tbody id="lista"></tbody>
+      </table>
+      <div class="field" style="margin-top:14px;max-width:420px;">
+        <label>Preparar para outro cadastro (ex.: conta de teste)</label>
+        <select id="outro-usuario"><option value="">— escolher —</option></select>
+      </div>
+    </div>
+
+    <div class="card" id="editor" style="display:none;">
+      <h2 id="ed-titulo">Novo contrato</h2>
+      <p class="desc">Confira a qualificação. Se faltar algum dado, corrija em Administração › Usuários › Dados e abra de novo.</p>
+      <div class="dados" id="ed-dados"></div>
+      <div class="grid">
+        <div class="field"><label>Repasse fixo mensal (R$)</label><input id="ed-valor" inputmode="decimal" placeholder="0,00"><div class="hint" id="ed-valor-ext"></div></div>
+        <div class="field"><label>Data de início</label><input type="date" id="ed-inicio"></div>
+        <div class="field"><label>Prazo de habilitação (meses, 0 a 12)</label><input type="number" id="ed-prazo" min="0" max="12" step="1" value="12"></div>
+        <div class="field"><label>Nível inicial</label>
+          <select id="ed-nivel"><option>Júnior</option><option>Pleno</option><option>Sênior</option><option>Líder/Gestor</option></select></div>
+        <div class="field"><label>Data de habilitação</label><input type="date" id="ed-habilitacao">
+          <div class="hint">Calculada pela regra do A1.3: mesmo dia do mês final e depois o próximo dia útil, desconsiderando fins de semana, feriados nacionais e 31/08. Confira os feriados municipais.</div></div>
+      </div>
+      <label class="toggle" id="ed-dir-wrap"><input type="checkbox" id="ed-diretor" checked><span>Incluir o diretor interveniente</span></label>
+      <div class="acoes" style="margin-top:12px;">
+        <button class="btn secondary" id="ed-previa">Pré-visualizar</button>
+        <button class="btn" id="ed-enviar">✍ Assinar pela sociedade e enviar</button>
+        <button class="btn secondary" id="ed-fechar">Fechar</button>
+      </div>
+      <div class="msg" id="ed-msg"></div>
+      <div class="frame-wrap" id="ed-frame-wrap" style="display:none;"><iframe id="ed-frame" title="Prévia do contrato"></iframe></div>
+    </div>
+
+    <div class="card" id="visor" style="display:none;">
+      <div class="acoes" style="justify-content:space-between;"><h2 id="vi-titulo" style="margin:0;">Contrato</h2>
+        <button class="btn secondary small" id="vi-fechar">Fechar</button></div>
+      <div class="frame-wrap"><iframe id="vi-frame" title="Contrato"></iframe></div>
+    </div>
+  </div>
+</main>
+
+<div class="modal-bd" id="ass-bd">
+  <div class="modal">
+    <h3>Assinar pela sociedade</h3>
+    <p class="sub" style="margin-bottom:12px;">Ao assinar, o contrato fica travado e vai para o associado assinar no próximo acesso.</p>
+    <div class="field"><label>Sua senha do Portal</label><input type="password" id="ass-senha" autocomplete="current-password"></div>
+    <div class="field"><label style="display:flex;justify-content:space-between;align-items:center;">Assinatura <button type="button" class="btn secondary small" id="ass-limpar">Limpar</button></label>
+      <canvas class="sig" id="ass-canvas"></canvas></div>
+    <div class="msg err" id="ass-err"></div>
+    <div class="acoes" style="justify-content:flex-end;margin-top:10px;">
+      <button class="btn secondary" id="ass-cancelar">Cancelar</button>
+      <button class="btn" id="ass-ok">Assinar e enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = function(id){ return document.getElementById(id); };
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const STATUS = {
+    aguardando_associado: ['wait', 'Aguardando o associado'],
+    assinado: ['ok', 'Assinado'],
+    cancelado: ['off', 'Cancelado'],
+    encerrado: ['none', 'Encerrado']
+  };
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function bloquear(t){ $('bloqueio').style.display = 'block'; $('bloqueio').textContent = t; $('conteudo').style.display = 'none'; }
+
+  /* ---------- formatação ---------- */
+  function digitos(s){ return String(s || '').replace(/\D/g, ''); }
+  function milhar(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function fmtCPF(s){ const d = digitos(s); return d.length === 11 ? d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9) : String(s || '').trim(); }
+  function fmtOAB(s){
+    s = String(s || '').trim(); if (!s) return '';
+    const m = s.match(/(\d[\d.]*)\s*\/?\s*([A-Za-z]{2})?/);
+    if (!m) return s;
+    const uf = (m[2] || (s.match(/[A-Za-z]{2}/) || [''])[0] || 'MG').toUpperCase();
+    return 'OAB/' + uf + ' ' + milhar(digitos(m[1]));
+  }
+  function fmtTel(s){
+    const d = digitos(s);
+    if (d.length === 11) return '(' + d.slice(0,2) + ') ' + d.slice(2,7) + '-' + d.slice(7);
+    if (d.length === 10) return '(' + d.slice(0,2) + ') ' + d.slice(2,6) + '-' + d.slice(6);
+    return String(s || '').trim();
+  }
+  function isoParaBR(iso){ const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+  function minusc(s){ return String(s || '').trim().toLowerCase(); }
+  function parseValor(s){
+    s = String(s || '').replace(/[^\d,.-]/g, '');
+    if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    const n = Number(s); return isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+  }
+  function fmtValor(n){ return milhar(Math.floor(n)) + ',' + String(Math.round((n - Math.floor(n)) * 100)).padStart(2, '0'); }
+  const UN = ['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const DZ = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const CT = ['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(n){
+    if (n === 100) return 'cem';
+    const c = Math.floor(n / 100), r = n % 100, p = [];
+    if (c) p.push(CT[c]);
+    if (r) p.push(r < 20 ? UN[r] : DZ[Math.floor(r / 10)] + (r % 10 ? ' e ' + UN[r % 10] : ''));
+    return p.join(' e ');
+  }
+  function inteiroExtenso(n){
+    if (n === 0) return 'zero';
+    const g = [[Math.floor(n / 1e6), 'milhao'], [Math.floor(n % 1e6 / 1000), 'mil'], [n % 1000, '']].filter(function(x){ return x[0]; });
+    const partes = g.map(function(x){
+      if (x[1] === 'milhao') return x[0] === 1 ? 'um milhão' : ate999(x[0]) + ' milhões';
+      if (x[1] === 'mil') return x[0] === 1 ? 'mil' : ate999(x[0]) + ' mil';
+      return ate999(x[0]);
+    });
+    if (partes.length === 1) return partes[0];
+    const ult = g[g.length - 1][0];
+    const ultimo = partes.pop();
+    return partes.join(' e ') + ((ult < 100 || ult % 100 === 0) ? ' e ' : ' ') + ultimo;
+  }
+  function valorExtenso(v){
+    const r = Math.floor(v), c = Math.round((v - r) * 100);
+    let t = '';
+    if (r) t = inteiroExtenso(r) + (r === 1 ? ' real' : (r % 1e6 === 0 ? ' de reais' : ' reais'));
+    if (c) t += (t ? ' e ' : '') + inteiroExtenso(c) + (c === 1 ? ' centavo' : ' centavos');
+    return t || 'zero real';
+  }
+  function prazoTxt(n){ return n + ' (' + inteiroExtenso(n) + ') ' + (n === 1 ? 'mês' : 'meses'); }
+
+  /* ---------- data de habilitação (A1.3 + A1.5) ---------- */
+  function pascoa(a){
+    const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
+      i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
+      mes = Math.floor((i + m - 7 * n + 114) / 31), dia = ((i + m - 7 * n + 114) % 31) + 1;
+    return new Date(a, mes - 1, dia);
+  }
+  function ehFeriado(dt){
+    const md = String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    if (['01-01','04-21','05-01','08-31','09-07','10-12','11-02','11-15','11-20','12-25'].indexOf(md) !== -1) return true;
+    const sexta = pascoa(dt.getFullYear()); sexta.setDate(sexta.getDate() - 2);
+    return sexta.getMonth() === dt.getMonth() && sexta.getDate() === dt.getDate();
+  }
+  function diaUtil(dt){ return dt.getDay() !== 0 && dt.getDay() !== 6 && !ehFeriado(dt); }
+  function isoDe(dt){ return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+  function calcHabilitacao(inicioISO, meses){
+    const m = String(inicioISO || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return '';
+    if (!meses) return inicioISO;
+    const y = +m[1], mo = +m[2] - 1 + meses, d = +m[3];
+    const ultimoDia = new Date(y, mo + 1, 0).getDate();
+    const fim = new Date(y, mo, Math.min(d, ultimoDia));
+    const hab = new Date(fim); hab.setDate(hab.getDate() + 1);
+    while (!diaUtil(hab)) hab.setDate(hab.getDate() + 1);
+    return isoDe(hab);
+  }
+
+  /* ---------- estado ---------- */
+  let db, auth, eu = null;
+  let usuarios = {};      // uid -> users
+  let perfis = {};        // uid -> perfis
+  let contratos = [];     // contratosAssociacao
+  let config = {};        // contratosAssociacaoConfig/modelo
+  let regras = {};        // contratosAssociacaoConfig/regras
+  let editando = null;    // uid do associado no editor
+  let prontoParaEnviar = null;
+
+  function nomeDe(uid){ const u = usuarios[uid] || {}; return u.displayName || (perfis[uid] || {}).displayName || u.email || uid; }
+
+  function qualificacao(uid, papel){
+    const u = usuarios[uid] || {}, p = perfis[uid] || {};
+    const pix = u.pixChave ? ('chave PIX' + (u.pixTipo ? ' (' + u.pixTipo + ')' : '') + ' ' + u.pixChave) : '';
+    const banco = [u.banco && ('banco ' + u.banco), u.agencia && ('agência ' + u.agencia), u.conta && ('conta ' + u.conta)].filter(Boolean).join(', ');
+    return {
+      NOME: String(u.displayName || p.displayName || '').trim().toUpperCase(),
+      NACIONALIDADE: minusc(u.nacionalidade || p.nacionalidade),
+      ESTADO_CIVIL: minusc(u.estadoCivil || p.estadoCivil),
+      NASCIMENTO: isoParaBR(p.birthDate),
+      OAB: fmtOAB(u.oab || p.oab),
+      RG: String(u.rg || '').trim(),
+      CPF: fmtCPF(u.cpf),
+      ENDERECO: String(u.endereco || '').trim(),
+      EMAIL: String(u.email || '').trim(),
+      TELEFONE: fmtTel(u.telefone),
+      PIX: [pix, banco].filter(Boolean).join('; ')
+    };
+  }
+  const ROTULOS = { NOME:'Nome', NACIONALIDADE:'Nacionalidade', ESTADO_CIVIL:'Estado civil', NASCIMENTO:'Nascimento', OAB:'OAB', RG:'RG', CPF:'CPF',
+    ENDERECO:'Endereço', EMAIL:'E-mail', TELEFONE:'Telefone', PIX:'PIX/conta' };
+
+  function variaveis(){
+    const uid = editando;
+    const a = qualificacao(uid);
+    const t = qualificacao(config.titularUid || '');
+    const incluiDir = $('ed-diretor').checked && !!config.diretorUid;
+    const d = incluiDir ? qualificacao(config.diretorUid) : {};
+    const valor = parseValor($('ed-valor').value);
+    const prazo = parseInt($('ed-prazo').value, 10);
+    const v = {};
+    Object.keys(a).forEach(function(k){ if (k !== 'PIX') v['ASSOCIADO_' + k] = a[k]; });
+    ['NOME','NACIONALIDADE','ESTADO_CIVIL','OAB','CPF','EMAIL'].forEach(function(k){ v['TITULAR_' + k] = t[k]; v['DIRETOR_' + k] = d[k] || ''; });
+    v.PIX = a.PIX;
+    v.VALOR_FIXO = isFinite(valor) && valor > 0 ? fmtValor(valor) : '';
+    v.VALOR_FIXO_EXTENSO = isFinite(valor) && valor > 0 ? valorExtenso(valor) : '';
+    v.DATA_INICIO = isoParaBR($('ed-inicio').value);
+    v.PRAZO_HABILITACAO = prazo >= 0 && prazo <= 12 ? prazoTxt(prazo) : '';
+    v.NIVEL_INICIAL = $('ed-nivel').value;
+    v.DATA_HABILITACAO = isoParaBR($('ed-habilitacao').value);
+    return { v: v, incluiDir: incluiDir, valor: valor, prazo: prazo };
+  }
+  // sem diretor: tira o parágrafo do interveniente da qualificação
+  function preencher(texto, x){
+    let linhas = texto.split(/\r?\n/);
+    if (!x.incluiDir) linhas = linhas.filter(function(l){ return l.indexOf('DIRETOR INTERVENIENTE:') !== 0; });
+    const faltando = [];
+    const out = linhas.join('\n').replace(/\{\{(\w+)\}\}/g, function(m, k){
+      if (k === 'DATA_ASSINATURA') return m;   // entra na hora de mostrar, com a data das assinaturas
+      const val = x.v[k];
+      if (val == null || String(val).trim() === '') { faltando.push(k); return '[FALTA: ' + k + ']'; }
+      return val;
+    });
+    return { texto: out, faltando: faltando.filter(function(k, i, a){ return a.indexOf(k) === i; }) };
+  }
+  async function sha256(t){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  /* ---------- tela ---------- */
+  function associados(){
+    return Object.keys(usuarios).filter(function(uid){ return usuarios[uid].tipoColaborador === 'associado'; })
+      .sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b)); });
+  }
+  function contratosDe(uid){
+    return contratos.filter(function(c){ return c.associadoUid === uid; })
+      .sort(function(a, b){ return (b.criadoEmISO || '').localeCompare(a.criadoEmISO || ''); });
+  }
+  function renderLista(){
+    const lista = associados();
+    const extras = contratos.map(function(c){ return c.associadoUid; }).filter(function(uid, i, a){ return a.indexOf(uid) === i && lista.indexOf(uid) === -1; });
+    const todos = lista.concat(extras);
+    $('lista').innerHTML = todos.length ? todos.map(function(uid){
+      const cs = contratosDe(uid), c = cs[0];
+      const st = c ? STATUS[c.status] || ['none', c.status] : ['none', 'Sem contrato'];
+      let extra = '';
+      if (c && c.status === 'assinado') extra = ' em ' + isoParaBR((c.assinadoEmISO || '').slice(0, 10));
+      if (c && c.status === 'aguardando_associado') extra = ' desde ' + isoParaBR((c.criadoEmISO || '').slice(0, 10));
+      if (c && c.diretorUid && !c.interveniente && c.status !== 'cancelado') extra += ' · falta o diretor';
+      const btns = [];
+      if (c) btns.push('<button class="btn secondary small" data-ver="' + esc(c.id) + '">Abrir</button>');
+      if (!c || c.status === 'cancelado' || c.status === 'encerrado') btns.push('<button class="btn small" data-preparar="' + esc(uid) + '">Preparar contrato</button>');
+      if (c && c.status === 'aguardando_associado') btns.push('<button class="btn ghost small" data-cancelar="' + esc(c.id) + '">Cancelar envio</button>');
+      if (c && c.status === 'assinado') btns.push('<button class="btn ghost small" data-encerrar="' + esc(c.id) + '">Encerrar</button>');
+      const naoAssoc = usuarios[uid] && usuarios[uid].tipoColaborador !== 'associado' ? ' <span class="pill none">não marcado como associado</span>' : '';
+      return '<tr><td><b>' + esc(nomeDe(uid)) + '</b>' + naoAssoc + '</td><td>' + esc(isoParaBR((usuarios[uid] || {}).dataIngresso)) + '</td>' +
+        '<td><span class="pill ' + st[0] + '">' + esc(st[1]) + '</span><span style="font-size:.72rem;color:var(--muted);">' + esc(extra) + '</span></td>' +
+        '<td><div class="acoes" style="justify-content:flex-end;">' + btns.join('') + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="4" style="color:var(--muted);">Nenhum cadastro marcado como Associado.</td></tr>';
+  }
+  function renderConfig(){
+    const opts = function(sel, vazio){
+      return '<option value="">' + vazio + '</option>' + Object.keys(usuarios).sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b)); })
+        .map(function(uid){ return '<option value="' + esc(uid) + '"' + (uid === sel ? ' selected' : '') + '>' + esc(nomeDe(uid)) + '</option>'; }).join('');
+    };
+    $('cfg-titular').innerHTML = opts(config.titularUid, '— escolher —');
+    $('cfg-diretor').innerHTML = opts(config.diretorUid, '— sem interveniente —');
+    $('outro-usuario').innerHTML = '<option value="">— escolher —</option>' + Object.keys(usuarios).filter(function(uid){ return usuarios[uid].tipoColaborador !== 'associado'; })
+      .sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b)); })
+      .map(function(uid){ return '<option value="' + esc(uid) + '">' + esc(nomeDe(uid)) + '</option>'; }).join('');
+    $('cfg-exigir').checked = !!regras.exigirAssinatura;
+    $('cfg-modelo-info').textContent = config.texto
+      ? 'Modelo carregado: versão ' + (config.versao || '?') + ' (' + config.texto.length.toLocaleString('pt-BR') + ' caracteres).'
+      : 'Nenhum modelo carregado.';
+  }
+
+  /* ---------- configuração ---------- */
+  let modeloNovo = null;
+  $('cfg-modelo').addEventListener('change', function(){
+    const f = this.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = function(){
+      const t = String(r.result || '');
+      if (t.indexOf('{{ASSOCIADO_NOME}}') === -1 || t.indexOf('[[ASSINATURAS]]') === -1) {
+        modeloNovo = null; $('cfg-msg').className = 'msg err'; $('cfg-msg').textContent = 'Esse arquivo não parece o modelo do contrato: faltam os campos {{ASSOCIADO_NOME}} ou [[ASSINATURAS]].'; return;
+      }
+      modeloNovo = t;
+      $('cfg-msg').className = 'msg warn'; $('cfg-msg').textContent = 'Modelo lido. Clique em "Salvar configuração" para gravar.';
+    };
+    r.readAsText(f, 'utf-8');
+  });
+  $('cfg-salvar').addEventListener('click', async function(){
+    const btn = this; btn.disabled = true;
+    try {
+      const patch = { titularUid: $('cfg-titular').value, diretorUid: $('cfg-diretor').value || '', atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+      if (modeloNovo) {
+        patch.texto = modeloNovo;
+        patch.versao = new Date().toISOString().slice(0, 10) + '-' + (await sha256(modeloNovo)).slice(0, 8);
+      }
+      await db.collection('contratosAssociacaoConfig').doc('modelo').set(patch, { merge: true });
+      await db.collection('contratosAssociacaoConfig').doc('regras').set({ exigirAssinatura: $('cfg-exigir').checked, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      modeloNovo = null; $('cfg-modelo').value = '';
+      $('cfg-msg').className = 'msg ok'; $('cfg-msg').textContent = 'Configuração salva.';
+      await carregarConfig(); renderConfig();
+    } catch (e) {
+      $('cfg-msg').className = 'msg err'; $('cfg-msg').textContent = 'Não foi possível salvar: ' + e.message;
+    } finally { btn.disabled = false; }
+  });
+
+  /* ---------- editor ---------- */
+  function abrirEditor(uid){
+    editando = uid; prontoParaEnviar = null;
+    $('visor').style.display = 'none';
+    $('editor').style.display = 'block';
+    $('ed-titulo').textContent = 'Contrato de ' + nomeDe(uid);
+    const q = qualificacao(uid);
+    $('ed-dados').innerHTML = Object.keys(ROTULOS).map(function(k){
+      return '<div><b>' + ROTULOS[k] + ':</b> ' + (q[k] ? esc(q[k]) : '<span class="falta">falta no cadastro</span>') + '</div>';
+    }).join('');
+    const u = usuarios[uid] || {};
+    $('ed-valor').value = u.remuneracao ? String(u.remuneracao).replace(/^R\$\s*/, '') : '';
+    $('ed-inicio').value = /^\d{4}-\d{2}-\d{2}$/.test(u.dataIngresso || '') ? u.dataIngresso : new Date().toISOString().slice(0, 10);
+    $('ed-prazo').value = 12;
+    $('ed-nivel').value = 'Júnior';
+    $('ed-dir-wrap').style.display = config.diretorUid ? 'flex' : 'none';
+    $('ed-diretor').checked = !!config.diretorUid;
+    recalcular();
+    $('ed-msg').textContent = ''; $('ed-frame-wrap').style.display = 'none';
+    $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function recalcular(){
+    const v = parseValor($('ed-valor').value);
+    $('ed-valor-ext').textContent = isFinite(v) && v > 0 ? 'R$ ' + fmtValor(v) + ' (' + valorExtenso(v) + ')' : '';
+    let p = parseInt($('ed-prazo').value, 10);
+    if (p > 12) { p = 12; $('ed-prazo').value = 12; }
+    if (p < 0) { p = 0; $('ed-prazo').value = 0; }
+    $('ed-habilitacao').value = calcHabilitacao($('ed-inicio').value, isFinite(p) ? p : 0);
+    prontoParaEnviar = null;
+  }
+  ['ed-valor', 'ed-inicio', 'ed-prazo'].forEach(function(id){ $(id).addEventListener('input', recalcular); });
+  ['ed-nivel', 'ed-habilitacao', 'ed-diretor'].forEach(function(id){ $(id).addEventListener('change', function(){ prontoParaEnviar = null; }); });
+  $('ed-fechar').addEventListener('click', function(){ $('editor').style.display = 'none'; editando = null; });
+
+  async function montar(){
+    if (!config.texto) throw new Error('Carregue o modelo do contrato em Configuração.');
+    if (!config.titularUid) throw new Error('Escolha o titular que assina pela sociedade em Configuração.');
+    const x = variaveis();
+    if (!(x.prazo >= 0 && x.prazo <= 12)) throw new Error('O prazo de habilitação vai de 0 a 12 meses.');
+    const r = preencher(config.texto, x);
+    const t = qualificacao(config.titularUid), d = x.incluiDir ? qualificacao(config.diretorUid) : {};
+    const a = qualificacao(editando);
+    return {
+      textoFinal: r.texto, faltando: r.faltando, hashTexto: await sha256(r.texto),
+      associadoUid: editando, associadoNome: a.NOME, associadoOab: a.OAB, associadoEmail: a.EMAIL,
+      titularUid: config.titularUid, titularNome: t.NOME, titularOab: t.OAB,
+      diretorUid: x.incluiDir ? config.diretorUid : '', diretorNome: x.incluiDir ? d.NOME : '', diretorOab: x.incluiDir ? d.OAB : '',
+      modeloVersao: config.versao || '',
+      dados: { valorFixo: x.valor, dataInicio: $('ed-inicio').value, prazoMeses: x.prazo, nivel: $('ed-nivel').value, dataHabilitacao: $('ed-habilitacao').value }
+    };
+  }
+  function mostrarEm(frame, dados){
+    frame.onload = function(){ try { frame.contentWindow.mostrarContrato(dados); } catch (e) {} };
+    frame.src = 'associacao-documento.html?preview=1&t=' + Date.now();
+  }
+  $('ed-previa').addEventListener('click', async function(){
+    try {
+      const m = await montar();
+      $('ed-frame-wrap').style.display = 'block';
+      mostrarEm($('ed-frame'), m);
+      const nomes = m.faltando.map(function(k){ return k.replace(/_/g, ' ').toLowerCase(); });
+      $('ed-msg').className = m.faltando.length ? 'msg err' : 'msg ok';
+      $('ed-msg').textContent = m.faltando.length ? 'Faltam dados: ' + nomes.join(', ') + '. Eles aparecem como [FALTA] na prévia, e o envio fica bloqueado até corrigir.' : 'Prévia pronta. Confira o texto antes de assinar.';
+      prontoParaEnviar = m.faltando.length ? null : m;
+    } catch (e) { $('ed-msg').className = 'msg err'; $('ed-msg').textContent = e.message; }
+  });
+
+  /* ---------- assinatura da sociedade ---------- */
+  const cv = $('ass-canvas'); let ctx = null, desenhou = false, desenhando = false, registro = null;
+  function prepCanvas(){
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+    ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#13233f'; desenhou = false;
+  }
+  function pos(e){ const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  cv.addEventListener('pointerdown', function(e){ e.preventDefault(); if (!ctx) prepCanvas(); try { cv.setPointerCapture(e.pointerId); } catch (er) {}
+    desenhando = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + .1, p.y + .1); ctx.stroke(); desenhou = true; });
+  cv.addEventListener('pointermove', function(e){ if (!desenhando) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev){ cv.addEventListener(ev, function(){ desenhando = false; }); });
+  $('ass-limpar').addEventListener('click', prepCanvas);
+  function png(){ const w = Math.min(600, cv.width), h = Math.round(cv.height * w / cv.width), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(cv, 0, 0, w, h); return c.toDataURL('image/png'); }
+  function comTempo(p, ms, padrao){ return Promise.race([p, new Promise(function(r){ setTimeout(function(){ r(padrao); }, ms); })]); }
+  function coletarRegistro(){
+    const ip = comTempo(fetch('https://api.ipify.org?format=json', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){ return j.ip || ''; }).catch(function(){ return ''; }), 6000, '');
+    const local = !navigator.geolocation ? Promise.resolve({ status: 'indisponível no aparelho' }) : comTempo(new Promise(function(res){
+      navigator.geolocation.getCurrentPosition(function(p){ res({ status: 'ok', lat: Number(p.coords.latitude.toFixed(6)), lng: Number(p.coords.longitude.toFixed(6)), precisaoM: Math.round(p.coords.accuracy) }); },
+        function(err){ res({ status: err && err.code === 1 ? 'não autorizada pelo usuário' : 'não obtida' }); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    }), 16000, { status: 'não obtida (tempo esgotado)' });
+    return Promise.all([ip, local]).then(function(r){ return { ip: r[0], localizacao: r[1], dispositivo: String(navigator.userAgent || '').slice(0, 200) }; });
+  }
+  $('ed-enviar').addEventListener('click', function(){
+    if (!prontoParaEnviar) { $('ed-msg').className = 'msg err'; $('ed-msg').textContent = 'Clique em "Pré-visualizar" e confira o texto antes de assinar. Se mudar algum campo, pré-visualize de novo.'; return; }
+    const aberto = contratosDe(editando).find(function(c){ return c.status === 'aguardando_associado' || c.status === 'assinado'; });
+    if (aberto && !confirm('Essa pessoa já tem um contrato ' + (STATUS[aberto.status] || [0, aberto.status])[1].toLowerCase() + '. Enviar outro mesmo assim?')) return;
+    $('ass-senha').value = ''; $('ass-err').textContent = '';
+    $('ass-bd').classList.add('show'); prepCanvas(); registro = coletarRegistro();
+  });
+  $('ass-cancelar').addEventListener('click', function(){ $('ass-bd').classList.remove('show'); });
+  $('ass-ok').addEventListener('click', async function(){
+    const btn = this, senha = $('ass-senha').value;
+    const erro = function(t){ $('ass-err').textContent = t; };
+    if (!senha) return erro('Digite sua senha.');
+    if (!desenhou) return erro('Assine no quadro.');
+    btn.disabled = true; btn.textContent = 'Conferindo senha…';
+    try {
+      const user = auth.currentUser;
+      await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, senha));
+      await user.getIdToken(true);
+      btn.textContent = 'Enviando…';
+      const reg = await comTempo(registro || Promise.resolve(null), 8000, null);
+      const m = Object.assign({}, prontoParaEnviar); delete m.faltando;
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      Object.assign(m, {
+        status: 'aguardando_associado', criadoEm: ts, criadoEmISO: new Date().toISOString(), criadoPorUid: user.uid,
+        sociedade: { uid: user.uid, assinaturaPng: png(), assinadoEm: ts, assinadoEmISO: new Date().toISOString(),
+          registroAssinatura: reg || { ip: '', localizacao: { status: 'não obtida' } }, metodo: 'Assinatura desenhada + confirmação da senha do Portal' }
+      });
+      await db.collection('contratosAssociacao').add(m);
+      $('ass-bd').classList.remove('show');
+      $('editor').style.display = 'none'; editando = null; prontoParaEnviar = null;
+      await carregarContratos(); renderLista();
+    } catch (e) {
+      const c = e && e.code;
+      if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') erro('Senha incorreta.');
+      else if (c === 'permission-denied') erro('Sem permissão. As regras novas do Firestore precisam ser publicadas.');
+      else erro('Não foi possível enviar: ' + (e && e.message ? e.message : e));
+    } finally { btn.disabled = false; btn.textContent = 'Assinar e enviar'; }
+  });
+
+  /* ---------- ações da lista ---------- */
+  $('lista').addEventListener('click', async function(e){
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.preparar) return abrirEditor(b.dataset.preparar);
+    if (b.dataset.ver) {
+      const c = contratos.find(function(x){ return x.id === b.dataset.ver; }); if (!c) return;
+      $('editor').style.display = 'none'; $('visor').style.display = 'block';
+      $('vi-titulo').textContent = 'Contrato de ' + (c.associadoNome || '') + ' — ' + ((STATUS[c.status] || [0, c.status])[1]);
+      const fr = $('vi-frame'); fr.onload = null; fr.src = 'associacao-documento.html?id=' + encodeURIComponent(c.id);
+      $('visor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const id = b.dataset.cancelar || b.dataset.encerrar; if (!id) return;
+    const cancelar = !!b.dataset.cancelar;
+    if (!confirm(cancelar ? 'Cancelar o envio? O associado deixa de ver a tela de assinatura.' : 'Encerrar este contrato (desligamento)? O documento assinado continua guardado.')) return;
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    try {
+      await db.collection('contratosAssociacao').doc(id).update(cancelar
+        ? { status: 'cancelado', canceladoEm: ts, canceladoPorUid: auth.currentUser.uid }
+        : { status: 'encerrado', encerradoEm: ts, encerradoPorUid: auth.currentUser.uid });
+      await carregarContratos(); renderLista();
+    } catch (er) { alert('Não foi possível: ' + er.message); }
+  });
+  $('vi-fechar').addEventListener('click', function(){ $('visor').style.display = 'none'; $('vi-frame').src = 'about:blank'; });
+  $('outro-usuario').addEventListener('change', function(){ if (this.value) { abrirEditor(this.value); this.value = ''; } });
+
+  /* ---------- dados ---------- */
+  function carregarConfig(){
+    return Promise.all([
+      db.collection('contratosAssociacaoConfig').doc('modelo').get(),
+      db.collection('contratosAssociacaoConfig').doc('regras').get()
+    ]).then(function(r){ config = r[0].exists ? r[0].data() : {}; regras = r[1].exists ? r[1].data() : {}; });
+  }
+  function carregarContratos(){
+    return db.collection('contratosAssociacao').get().then(function(s){
+      contratos = s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+    });
+  }
+  if (typeof firebaseConfig === 'undefined') return bloquear('Configuração do Firebase pendente.');
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth(); db = firebase.firestore();
+  auth.onAuthStateChanged(function(user){
+    if (!user) return bloquear('Faça login no Portal para usar esta área.');
+    db.collection('users').doc(user.uid).get().then(function(d){
+      eu = d.exists ? d.data() : {};
+      if (eu.role !== 'admin') return bloquear('🔒 Só o administrador prepara e envia contratos de associação.');
+      return Promise.all([
+        db.collection('users').get().then(function(s){ usuarios = {}; s.forEach(function(x){ usuarios[x.id] = x.data(); }); }),
+        db.collection('perfis').get().then(function(s){ perfis = {}; s.forEach(function(x){ perfis[x.id] = x.data(); }); }).catch(function(){}),
+        carregarConfig(),
+        carregarContratos()
+      ]).then(function(){
+        $('bloqueio').style.display = 'none'; $('conteudo').style.display = 'block';
+        renderConfig(); renderLista();
+      });
+    }).catch(function(e){ bloquear('Não foi possível carregar: ' + e.message); });
+  });
+  // para os testes automáticos
+  window.__contratoAssoc = { valorExtenso: valorExtenso, calcHabilitacao: calcHabilitacao, fmtOAB: fmtOAB, preencher: preencher };
+})();
+</script>
+</body>
+</html>

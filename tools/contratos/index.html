@@ -239,9 +239,44 @@
     }
     .doc-page:last-child{page-break-after:auto;break-after:auto;}
   }
+  /* sub-abas: Contratos e propostas | Contrato de associação (o portal pode abrir direto pela sub-aba: data-sub) */
+  .ctr-subnav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px 0;background:var(--panel);}
+  .ctr-subnav button{padding:8px 14px;border-radius:9px 9px 0 0;border:1px solid var(--line-strong);border-bottom:none;background:var(--panel-2);color:var(--muted);font-weight:600;font-size:.78rem;cursor:pointer;}
+  .ctr-subnav button.active{background:var(--red);color:#fff;border-color:var(--red);}
+  #ctr-assoc iframe{display:block;width:100%;height:calc(100vh - 46px);border:none;}
 </style>
 </head>
 <body>
+<nav class="ctr-subnav" id="ctr-subnav">
+  <button type="button" data-sub="gerador" class="active">Contratos e propostas</button>
+  <button type="button" data-sub="associacao">Contrato de associação</button>
+</nav>
+<div id="ctr-assoc" style="display:none;"><iframe id="ctr-assoc-frame" title="Contrato de associação"></iframe></div>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  var nav = document.getElementById("ctr-subnav"), assoc = document.getElementById("ctr-assoc");
+  var gerador = [document.querySelector("body > header"), document.querySelector("body > main")];
+  var perm = new URLSearchParams(location.search).get("_subtabs");
+  var botoes = Array.prototype.slice.call(nav.querySelectorAll("button"));
+  if (perm) { var ok = perm.split(","); botoes.forEach(function(b){ if (ok.indexOf(b.dataset.sub) === -1) b.remove(); }); botoes = botoes.filter(function(b){ return b.isConnected; }); }
+  function ir(sub){
+    botoes.forEach(function(b){ b.classList.toggle("active", b.dataset.sub === sub); });
+    var ehAssoc = sub === "associacao";
+    gerador.forEach(function(el){ if (el) el.style.display = ehAssoc ? "none" : ""; });
+    assoc.style.display = ehAssoc ? "block" : "none";
+    var fr = document.getElementById("ctr-assoc-frame");
+    if (ehAssoc && !fr.getAttribute("src")) fr.setAttribute("src", "associacao.html");
+  }
+  botoes.forEach(function(b){ b.addEventListener("click", function(){ ir(b.dataset.sub); }); });
+  // por enquanto a sub-aba de associação é só do administrador: o botão aparece quando o cadastro confirma o papel
+  var assocBtn = nav.querySelector('[data-sub="associacao"]');
+  function arrumarNav(){ var vis = botoes.filter(function(x){ return x.style.display !== "none"; }); nav.style.display = vis.length < 2 ? "none" : ""; return vis; }
+  if (assocBtn && !window.__ctrAdmin) assocBtn.style.display = "none";
+  window.__ctrLiberarAssociacao = function(){ if (assocBtn && assocBtn.isConnected) { assocBtn.style.display = ""; arrumarNav(); } };
+  var visiveis = arrumarNav();
+  ir(visiveis.length ? visiveis[0].dataset.sub : (botoes.length ? botoes[0].dataset.sub : "gerador"));
+});
+</script>
 <header>
   <h1>Contratos e Propostas</h1>
   <p class="sub">Gere contratos de honorários e propostas comerciais já com a identidade visual do escritório — preencha os dados e baixe em PDF.</p>
@@ -2249,6 +2284,7 @@ function carregarHistorico(){
     // Contratos é área restrita: só quem o administrador liberou (com senha) usa; as regras também conferem
     window.__db.collection('users').doc(user.uid).get().then(d=>{
       const eu = d.exists ? d.data() : {};
+      if (eu.role === 'admin') { window.__ctrAdmin = true; if (window.__ctrLiberarAssociacao) window.__ctrLiberarAssociacao(); }
       if (eu.role === 'admin' || (eu.tabs || []).indexOf('contratos-msmo451y') !== -1) return;
       const aviso = document.createElement('div');
       aviso.id = 'aviso-area-restrita';

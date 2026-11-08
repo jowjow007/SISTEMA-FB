@@ -1191,3 +1191,40 @@ Confere de hora em hora os e-mails recebidos na caixa `jonathan@fonsecaebraga.co
 **Textos e histórico (desde 29/10/2026):** o robô guarda o texto do e-mail recebido e o da resposta (até 3.000 caracteres cada, sem o histórico citado, sem anexos, senhas mascaradas) em `emailsConferenciaTextos/{id}` — **nunca é apagado** — e registra cada e-mail descartado (remetente, assunto, para, motivo) em `emailsConferenciaDescartes/{id}`. As duas coleções só são lidas pelo dono (`isDonoConferencia`, travado no e-mail do Jonathan). Quem marca "respondido" à mão pode deixar uma anotação ("Como foi respondido?"), gravada no mesmo documento de textos (campos `nota`/`notaPor`/`notaEm` — a regra só deixa o responsável gravar esses três). Se o robô depois achar a resposta no Gmail de um e-mail marcado à mão, ele guarda o texto também (sem mudar quem marcou).
 
 **Aba no portal:** registrar pelo Admin com a URL `tools/conferencia-emails/` e o rótulo **Conferência de E-mails** (o rótulo precisa ter "e-mail" e "confer" para a aba piscar quando a pessoa tiver e-mail pendente). Admin vê todos os e-mails dos últimos 30 dias, troca o responsável, ignora e reabre; cada responsável vê só os seus e pode marcar como respondido. O dono tem ainda as abas **Histórico** (todos os e-mails desde o início, busca no texto recebido/resposta/anotação, filtro por quem enviou, situação, caixa, quem respondeu, robô/manual e período, conversa lado a lado) e **Relatório** (por período: totais, tempo médio de resposta, % em até 24 h, tabela por remetente e planilha .xlsx com Remetentes, E-mails com textos, Pontos de atenção e Descartados pelo robô). O link "Abrir no Gmail" busca pelo Message-ID (`#search/rfc822msgid:`) na conta de quem clicou — funciona na caixa de qualquer um que tenha recebido a mensagem.
+
+## Contrato de associação (Contratos › Contrato de associação)
+
+**Para que serve:** o administrador prepara o contrato de associação de cada advogado associado com os dados do cadastro do Portal, assina pela sociedade e envia. O associado só volta a usar o Portal depois de ler e assinar.
+
+**Arquivos:**
+- `tools/contratos/associacao.html`: sub-aba de preparo, só para o admin.
+- `tools/contratos/associacao-documento.html`: o documento com timbrado, Poppins 9,3pt e A4, igual às procurações. Imprime e baixa PDF.
+- `contrato-associacao.js`: tela obrigatória no login, chamada por `entrarNoApp`.
+- A sub-aba aparece em `tools/contratos/index.html` (botões `data-sub="gerador"` e `data-sub="associacao"`). Para restringir por usuário, cadastre na aba Contratos as sub-abas `gerador:Contratos e propostas` e `associacao:Contrato de associação`.
+
+**Modelo:** o texto **não fica no repositório**, porque o site é público. Ele fica em `privado/contrato-associacao-modelo.txt`, que o git ignora.
+- O admin carrega esse arquivo na sub-aba, e ele vai para `contratosAssociacaoConfig/modelo` (leitura só do admin).
+- Campos: `{{ASSOCIADO_*}}`, `{{TITULAR_*}}`, `{{DIRETOR_*}}`, `{{VALOR_FIXO}}`, `{{VALOR_FIXO_EXTENSO}}`, `{{DATA_INICIO}}`, `{{PRAZO_HABILITACAO}}`, `{{NIVEL_INICIAL}}`, `{{DATA_HABILITACAO}}`, `{{PIX}}`, `{{DATA_ASSINATURA}}`.
+- `[[ASSINATURAS]]` marca onde entram os blocos de assinatura.
+- Para mudar o texto: edite o .txt, carregue de novo e salve. Os contratos já enviados não mudam, porque cada um guarda o próprio texto.
+
+**Fluxo:**
+1. Todo cadastro com `tipoColaborador: 'associado'` aparece na lista, inclusive os novos.
+2. O admin preenche valor fixo, início, prazo de habilitação (de 0 a 12 meses) e nível. A data de habilitação é calculada pelo A1.3 e pode ser editada.
+3. O admin abre a prévia e assina com a senha e a assinatura desenhada. Isso cria `contratosAssociacao/{id}` com `status: 'aguardando_associado'`, o `textoFinal` e o `hashTexto` (SHA-256).
+4. No login, o associado vê a tela cheia com o contrato. Ele só tem duas saídas: assinar (marca que leu, digita a senha e desenha a assinatura) ou sair do Portal. Ao assinar, o status vira `assinado`.
+5. O diretor interveniente, se houver, assina no próprio login e pode deixar para depois.
+
+Cada assinatura guarda o PNG, a data do servidor, o IP e a localização (quando autorizada). A tela recusa assinar se o texto não conferir com o hash.
+
+**Chave "Exigir contrato assinado"** (`contratosAssociacaoConfig/regras.exigirAssinatura`):
+- **Desligada (padrão):** só quem recebeu um contrato vê a tela, o que serve para testar.
+- **Ligada:** todo associado sem contrato assinado fica bloqueado até assinar. Admin nunca é bloqueado.
+
+**Regras** (em `firestore.rules`):
+- O admin cria o contrato só com a senha digitada há pouco (`senhaRecente`). Depois, só cancela (se ainda está aguardando) ou encerra (se já está assinado).
+- O associado só muda `status`/`associado`/`assinadoEm` de `aguardando_associado` para `assinado`, também com senha recente.
+- O diretor só acrescenta `interveniente`.
+- Ninguém apaga contratos.
+
+**Limitação conhecida:** o bloqueio é feito na tela. Um associado que mexa no navegador continua com o acesso que as regras já dão às abas dele. O contrato é a formalidade, e o controle de dados continua nas regras de cada coleção.
