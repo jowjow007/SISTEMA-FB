@@ -23,6 +23,8 @@
       get: function(){ window.__FAKE_LOG.push(['get', path]); return Promise.resolve(snap(id, path)); },
       set: function(data, opt){ window.__FAKE_LOG.push(['set', path, clone(data)]);
         store[path] = opt && opt.merge ? Object.assign({}, store[path] || {}, resolverTs(data)) : resolverTs(data); salvar(); return Promise.resolve(); },
+      onSnapshot: function(fn){ var self = this; setTimeout(function(){ self.get().then(fn); }, 0); return function(){}; },
+      delete: function(){ delete store[path]; return Promise.resolve(); },
       update: function(data){ window.__FAKE_LOG.push(['update', path, clone(data)]);
         if (!store[path]) return Promise.reject({ code: 'not-found', message: 'not found' });
         if (window.__FAKE_NEGAR_UPDATE) return Promise.reject({ code: 'permission-denied', message: 'negado' });
@@ -41,7 +43,7 @@
         }).filter(function(s){
           return filtros.every(function(f){ var v = s.data()[f[0]]; return f[1] === '==' ? v === f[2] : f[1] === 'in' ? f[2].indexOf(v) !== -1 : true; });
         });
-        return Promise.resolve({ docs: docs, forEach: function(fn){ docs.forEach(fn); }, size: docs.length });
+        return Promise.resolve({ docs: docs, forEach: function(fn){ docs.forEach(fn); }, size: docs.length, empty: !docs.length, docChanges: function(){ return []; } });
       }
     };
   }
@@ -68,6 +70,9 @@
   authFn.EmailAuthProvider = { credential: function(email, senha){ return { email: email, senha: senha }; } };
   var fsFn = function(){ return db; };
   fsFn.FieldValue = { serverTimestamp: function(){ return SERVER_TS; }, delete: function(){ return null; } };
-  fsFn.Timestamp = { now: function(){ return resolverTs(SERVER_TS); } };
+  function tsDe(ms){ return { seconds: Math.floor(ms / 1000), nanoseconds: 0, toDate: function(){ return new Date(ms); }, toMillis: function(){ return ms; } }; }
+  fsFn.Timestamp = { now: function(){ return tsDe(Date.now()); }, fromMillis: tsDe, fromDate: function(d){ return tsDe(d.getTime()); } };
+  fsFn.FieldValue.increment = function(n){ return n; }; fsFn.FieldValue.arrayUnion = function(){ return Array.prototype.slice.call(arguments); };
+  fsFn.FieldValue.arrayRemove = function(){ return []; };
   window.firebase = { initializeApp: function(){ return { auth: authFn }; }, auth: authFn, firestore: fsFn };
 })();
