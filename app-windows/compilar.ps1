@@ -42,6 +42,7 @@ $saida = Join-Path $dist 'PortalFB.exe'
   "/resource:$core,Microsoft.Web.WebView2.Core.dll" `
   "/resource:$winforms,Microsoft.Web.WebView2.WinForms.dll" `
   "/resource:$loader,WebView2Loader.dll" `
+  "/resource:$(Join-Path $aqui 'logo.png'),logo.png" `
   (Join-Path $aqui 'PortalFB.cs')
 if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar" }
 Write-Host "Pronto: $saida ($([math]::Round((Get-Item $saida).Length / 1MB, 1)) MB)"

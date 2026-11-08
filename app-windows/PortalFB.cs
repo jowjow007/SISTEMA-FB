@@ -7,6 +7,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -16,8 +17,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 
 namespace PortalFB
 {
@@ -26,7 +27,7 @@ namespace PortalFB
         public const string PORTAL = "https://portal.fonsecaebraga.com.br/";
         public const string HOST = "portal.fonsecaebraga.com.br";
         public const string NOME = "Portal FB";
-        public const string VERSAO = "1.0.0";
+        public const string VERSAO = "1.0.1";
         public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortalFB");
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
@@ -49,7 +50,7 @@ namespace PortalFB
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Não foi possível abrir o Portal FB.\n\n" + ex.Message, NOME, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Aviso.Mostrar("Não foi possível abrir o Portal FB", ex.Message, "Fechar", null);
             }
         }
 
@@ -88,8 +89,9 @@ namespace PortalFB
             try { versao = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { }
             if (string.IsNullOrEmpty(versao))
             {
-                if (MessageBox.Show("Este computador não tem o componente Microsoft Edge WebView2, que o Portal FB usa.\n\nAbrir a página oficial da Microsoft para instalar?",
-                    NOME, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                if (Aviso.Mostrar("Falta um componente do Windows",
+                    "Este computador não tem o Microsoft Edge WebView2, que o Portal FB usa. Abra a página oficial da Microsoft, instale e abra o Portal FB de novo.",
+                    "Abrir a página da Microsoft", "Agora não"))
                     AbrirFora("https://go.microsoft.com/fwlink/p/?LinkId=2124703");
                 return;
             }
@@ -125,9 +127,10 @@ namespace PortalFB
                 k.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 k.SetValue("EstimatedSize", (int)(new FileInfo(ExeInstalado).Length / 1024), RegistryValueKind.DWord);
             }
-            MessageBox.Show("Portal FB instalado.\n\nO atalho \"Portal FB\" está na área de trabalho e no menu Iniciar. O app vai abrir agora.",
-                NOME, MessageBoxButtons.OK, MessageBoxIcon.Information);
-            Process.Start(new ProcessStartInfo(ExeInstalado) { UseShellExecute = true });
+            if (Aviso.Mostrar("Portal FB instalado",
+                "O atalho \"Portal FB\" está na área de trabalho e no menu Iniciar. O app abre o portal do escritório numa janela própria e atualiza sozinho.",
+                "Abrir o Portal", "Fechar"))
+                Process.Start(new ProcessStartInfo(ExeInstalado) { UseShellExecute = true });
         }
 
         static void CriarAtalho(string caminho)
@@ -149,8 +152,9 @@ namespace PortalFB
 
         static void Desinstalar()
         {
-            if (MessageBox.Show("Desinstalar o Portal FB deste computador?\n\nOs dados guardados para uso sem internet também serão apagados. Nada muda no portal.",
-                NOME, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (!Aviso.Mostrar("Desinstalar o Portal FB?",
+                "O app sai deste computador, junto com os dados guardados para uso sem internet. Nada muda no portal, que continua no navegador.",
+                "Desinstalar", "Cancelar")) return;
             foreach (string atalho in new string[] {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), NOME + ".lnk"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NOME + ".lnk") })
@@ -161,7 +165,81 @@ namespace PortalFB
             // a pasta (com o próprio .exe) é apagada logo depois que este processo terminar
             Process.Start(new ProcessStartInfo("cmd.exe", "/c timeout /t 3 /nobreak >nul & rmdir /s /q \"" + Pasta + "\"")
                 { CreateNoWindow = true, UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden });
-            MessageBox.Show("Portal FB desinstalado.", NOME, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Aviso.Mostrar("Portal FB desinstalado", "Para instalar de novo, baixe o app em portal.fonsecaebraga.com.br/baixar/PortalFB.exe.", "Fechar", null);
+        }
+    }
+
+    // ---------- tela de aviso com a logo (instalação, desinstalação, erros) ----------
+    class Aviso : Form
+    {
+        static readonly Color Fundo = Color.FromArgb(22, 16, 16), Painel = Color.FromArgb(33, 25, 24),
+            Texto = Color.FromArgb(236, 230, 225), Suave = Color.FromArgb(176, 166, 161), Vinho = Color.FromArgb(184, 54, 46);
+
+        [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int valor, int tamanho);
+
+        // true = botão principal
+        public static bool Mostrar(string titulo, string texto, string principal, string secundario)
+        {
+            using (var f = new Aviso(titulo, texto, principal, secundario)) return f.ShowDialog() == DialogResult.OK;
+        }
+
+        Aviso(string titulo, string texto, string principal, string secundario)
+        {
+            Text = Programa.NOME;
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false; MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Fundo; ForeColor = Texto;
+            Font = new Font("Segoe UI", 10f);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(520, 300);
+            ShowInTaskbar = true;
+            TopMost = true;
+
+            var logo = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom, Location = new Point(32, 28), Size = new Size(250, 58), BackColor = Color.Transparent };
+            using (Stream st = Assembly.GetExecutingAssembly().GetManifestResourceStream("logo.png"))
+                if (st != null) logo.Image = Image.FromStream(st);
+            var linha = new Panel { Location = new Point(32, 102), Size = new Size(456, 1), BackColor = Color.FromArgb(70, 236, 230, 225) };
+            var lt = new Label { Text = titulo, Location = new Point(30, 118), Size = new Size(460, 32), Font = new Font("Segoe UI Semibold", 14f), ForeColor = Texto };
+            var lx = new Label { Text = texto, Location = new Point(32, 154), Size = new Size(456, 70), ForeColor = Suave };
+            Controls.AddRange(new Control[] { logo, linha, lt, lx });
+
+            var ok = Botao(principal, true);
+            ok.DialogResult = DialogResult.OK;
+            AcceptButton = ok;
+            int x = 488 - ok.Width;
+            ok.Location = new Point(x, 240);
+            Controls.Add(ok);
+            if (secundario != null)
+            {
+                var cancelar = Botao(secundario, false);
+                cancelar.DialogResult = DialogResult.Cancel;
+                CancelButton = cancelar;
+                cancelar.Location = new Point(x - 10 - cancelar.Width, 240);
+                Controls.Add(cancelar);
+            }
+            else CancelButton = ok;
+            Shown += delegate { TopMost = false; Activate(); ok.Focus(); };
+        }
+
+        Button Botao(string txt, bool principal)
+        {
+            var b = new Button { Text = txt, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(14, 6, 14, 6),
+                FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Font = new Font("Segoe UI Semibold", 10f),
+                BackColor = principal ? Vinho : Painel, ForeColor = principal ? Color.White : Texto };
+            b.FlatAppearance.BorderColor = principal ? Vinho : Color.FromArgb(90, 80, 78);
+            b.FlatAppearance.MouseOverBackColor = principal ? Color.FromArgb(201, 70, 60) : Color.FromArgb(51, 37, 36);
+            b.PerformLayout();
+            b.Size = b.GetPreferredSize(Size.Empty);
+            return b;
+        }
+
+        // barra de título escura no Windows 11 (combina com o portal)
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
         }
     }
 
@@ -285,6 +363,14 @@ namespace PortalFB
         {
             Uri u; Uri.TryCreate(e.Uri, UriKind.Absolute, out u);
             if (DoPortal(u)) e.State = Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow;
+        }
+
+        // barra de título escura no Windows 11, no tom do portal
+        [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int valor, int tamanho);
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
         }
 
         void RestaurarJanela()
