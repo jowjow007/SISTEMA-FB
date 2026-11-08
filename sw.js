@@ -8,6 +8,14 @@
 // cópias offline das páginas de Números e Condomínios com dados de clientes (versões anteriores do portal).
 const CACHE_NAME = 'portal-fb-cache-v5';
 const OFFLINE_FALLBACK = './index.html';
+const CACHE_CDN = 'portal-fb-cdn-v1';
+const CDN_FIXOS = [
+  'https://www.gstatic.com/firebasejs/',
+  'https://cdnjs.cloudflare.com/ajax/libs/',
+  'https://cdn.jsdelivr.net/npm/',
+  'https://fonts.googleapis.com/css',
+  'https://fonts.gstatic.com/s/'
+];
 
 self.addEventListener('install', () => {
   // Não ativa sozinho: fica "esperando" até o usuário clicar em "Atualizar"
@@ -15,14 +23,32 @@ self.addEventListener('install', () => {
   // o app debaixo do usuário no meio de uma tarefa.
 });
 
+// App para Windows: depois do login, o portal pede para guardar todas as ferramentas, para abrirem sem internet
+// mesmo as que a pessoa ainda não abriu. (Os dados não ficam aqui: ficam no cache do Firestore, ligado só no app.)
+const FERRAMENTAS = ['academia-teste', 'aniversariantes', 'assistente-ia', 'calculadoras', 'chat', 'cobrancas', 'condominios',
+  'conferencia-emails', 'contratos', 'documentos', 'gestao', 'gmail', 'matriz-demandas', 'minhas-anotacoes', 'noticias',
+  'numeros-escritorio', 'organograma', 'perfil', 'peticoes', 'pop', 'remuneracao', 'sessoes-julgamento', 'sistemas',
+  'sugestoes', 'treinamentos'];
+const PAGINAS_EXTRAS = ['./index.html', './', './firebase-config.js', './comunicados.js', './contrato-associacao.js', './manifest.json',
+  './tools/contratos/associacao.html', './tools/contratos/associacao-documento.html', './tools/documentos/historico.html',
+  './tools/gestao/termo-patrimonio.html', './tools/peticoes/historico.html', './assets/timbrado-bg.png'];
+function guardarParaOffline() {
+  const lista = PAGINAS_EXTRAS.slice();
+  FERRAMENTAS.forEach((f) => { lista.push('./tools/' + f + '/index.html', './tools/' + f + '/'); });
+  return caches.open(CACHE_NAME).then((cache) => Promise.all(lista.map((u) =>
+    fetch(new Request(u, { cache: 'reload' })).then((res) => { if (res && res.ok) return cache.put(u, res); }).catch(() => {})
+  )));
+}
+
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data && event.data.tipo === 'guardar-para-offline') event.waitUntil(guardarParaOffline());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== CACHE_CDN).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -32,6 +58,17 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  // Bibliotecas de CDN com versão fixa no endereço (Firebase, html2pdf, jsPDF, fontes): guardadas na primeira vez,
+  // para o portal abrir sem internet (app para Windows). O endereço muda quando a versão muda, então não envelhecem.
+  if (CDN_FIXOS.some((p) => req.url.indexOf(p) === 0)) {
+    event.respondWith(
+      caches.open(CACHE_CDN).then((cache) => cache.match(req).then((cached) => cached || fetch(req).then((res) => {
+        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+        return res;
+      })))
+    );
+    return;
+  }
   if (url.origin !== self.location.origin) return; // nao mexe em ferramentas/embeds de outros dominios
 
   // 'reload' ignora o cache HTTP do navegador e força ir buscar no servidor -
@@ -61,6 +98,8 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || (req.mode === 'navigate' ? caches.match(OFFLINE_FALLBACK) : undefined)))
+      // sem internet: a cópia guardada; as abas abrem com "?_v=…" e outros parâmetros que não mudam o arquivo
+      .catch(() => caches.match(req).then((cached) => cached || caches.match(req, { ignoreSearch: true }))
+        .then((cached) => cached || (req.mode === 'navigate' ? caches.match(OFFLINE_FALLBACK) : undefined)))
   );
 });

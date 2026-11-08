@@ -1228,3 +1228,29 @@ Cada assinatura guarda o PNG, a data do servidor, o IP e a localização (quando
 - Ninguém apaga contratos.
 
 **Limitação conhecida:** o bloqueio é feito na tela. Um associado que mexa no navegador continua com o acesso que as regras já dão às abas dele. O contrato é a formalidade, e o controle de dados continua nas regras de cada coleção.
+
+## App para Windows (`app-windows/`) e modo offline
+
+**O app:** `PortalFB.exe`, de cerca de 1 MB, abre o portal publicado numa janela própria, sem barra de navegador. Usa o motor do Edge que já vem no Windows (WebView2).
+- **Instalação:** na primeira execução ele se instala em `%LOCALAPPDATA%\PortalFB`, cria os atalhos "Portal FB" no menu Iniciar e na área de trabalho e aparece em "Aplicativos instalados", por onde também se desinstala.
+- **Links e janelas:** links para fora do portal (WhatsApp, Drive, Astrea) abrem no navegador padrão. O login do Google e as janelas que o portal abre (impressão, termos, PDF) ficam dentro do app.
+- **Permissões:** câmera, microfone, localização e notificações ficam liberadas só para o próprio portal.
+- **Compilar:** `powershell -ExecutionPolicy Bypass -File app-windows\compilar.ps1`.
+  - Baixa o WebView2 SDK do NuGet, confere a assinatura da Microsoft e usa o `csc.exe` do .NET Framework 4, que já vem no Windows.
+  - Saída: `app-windows\dist\PortalFB.exe`. As pastas `lib/` e `dist/` ficam fora do git.
+- **Aviso do Windows:** o .exe não tem assinatura digital, então o Windows mostra "O Windows protegeu o computador". É preciso clicar em **Mais informações › Executar assim mesmo**.
+
+**Modo offline (só no app):** o app se identifica com `PortalFBApp/x.y.z` no navegador.
+- **Dados:** `firebase-config.js` liga o cache local do Firestore (`enablePersistence`, sincronizado entre a casca e as abas). Os dados já abertos ficam disponíveis sem internet, e o que for gravado fica na fila e é enviado quando a conexão volta.
+- **Aviso:** a casca mostra a faixa "Sem internet…" e depois "✓ Tudo sincronizado" (`waitForPendingWrites`).
+- **Privacidade:** o cache local não passa pelas regras de acesso, por isso pertence a uma conta só (`localStorage['fb-offline-uid']`). Ao sair, ou se outra conta entrar no mesmo computador, o cache é apagado (`terminate` + `clearPersistence`) e a página recarrega. No navegador comum nada disso liga.
+- **Telas:** `sw.js` guarda as bibliotecas de CDN de versão fixa (cache `portal-fb-cdn-v1`). Depois do login, o app pede para guardar todas as ferramentas (mensagem `guardar-para-offline`). Sem internet, as abas abrem da cópia guardada, ignorando `?_v=`.
+- **O que não funciona sem internet:**
+  - entrar pela primeira vez;
+  - tudo que confere a senha de novo: assinaturas, contrato e áreas restritas;
+  - transações (números sequenciais, como o código de patrimônio);
+  - envio de arquivos para o Storage;
+  - Assistente IA, Gmail e Google Docs;
+  - dados que nunca foram abertos naquele computador.
+
+  Gravações que as regras recusarem quando a conexão voltar são descartadas pelo Firestore.

@@ -1,0 +1,317 @@
+// Portal FB para Windows — abre o Portal Fonseca e Braga numa janela própria, sem barra de navegador.
+// Usa o motor do Edge que já vem no Windows (WebView2). Um único .exe: as bibliotecas da Microsoft vão embutidas.
+// Primeira execução (fora da pasta de instalação): instala em %LOCALAPPDATA%\PortalFB, cria atalhos no menu
+// Iniciar e na área de trabalho e registra em "Aplicativos instalados" (desinstala por lá).
+// Compilar: app-windows/compilar.ps1
+using System;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Win32;
+
+[assembly: AssemblyTitle("Portal FB")]
+[assembly: AssemblyProduct("Portal Fonseca e Braga")]
+[assembly: AssemblyCompany("Fonseca e Braga")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+namespace PortalFB
+{
+    static class Programa
+    {
+        public const string PORTAL = "https://portal.fonsecaebraga.com.br/";
+        public const string HOST = "portal.fonsecaebraga.com.br";
+        public const string NOME = "Portal FB";
+        public const string VERSAO = "1.0.0";
+        public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortalFB");
+        public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
+
+        [STAThread]
+        static void Main(string[] args)
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            AppDomain.CurrentDomain.AssemblyResolve += ResolverBiblioteca;
+            try
+            {
+                if (args.Length > 0 && args[0] == "--desinstalar") { Desinstalar(); return; }
+                string eu = Assembly.GetExecutingAssembly().Location;
+                if (!string.Equals(Path.GetFullPath(eu), Path.GetFullPath(ExeInstalado), StringComparison.OrdinalIgnoreCase))
+                {
+                    Instalar(eu);
+                    return;
+                }
+                Iniciar();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Não foi possível abrir o Portal FB.\n\n" + ex.Message, NOME, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // as bibliotecas do WebView2 vêm embutidas no .exe
+        static Assembly ResolverBiblioteca(object s, ResolveEventArgs e)
+        {
+            string nome = new AssemblyName(e.Name).Name + ".dll";
+            using (Stream st = Assembly.GetExecutingAssembly().GetManifestResourceStream(nome))
+            {
+                if (st == null) return null;
+                byte[] b = new byte[st.Length];
+                st.Read(b, 0, b.Length);
+                return Assembly.Load(b);
+            }
+        }
+
+        static void ExtrairLoader()
+        {
+            string bin = Path.Combine(Pasta, "bin");
+            Directory.CreateDirectory(bin);
+            string destino = Path.Combine(bin, "WebView2Loader.dll");
+            using (Stream st = Assembly.GetExecutingAssembly().GetManifestResourceStream("WebView2Loader.dll"))
+            {
+                byte[] b = new byte[st.Length];
+                st.Read(b, 0, b.Length);
+                if (!File.Exists(destino) || new FileInfo(destino).Length != b.Length) File.WriteAllBytes(destino, b);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void Iniciar()
+        {
+            ExtrairLoader();
+            Microsoft.Web.WebView2.Core.CoreWebView2Environment.SetLoaderDllFolderPath(Path.Combine(Pasta, "bin"));
+            string versao = null;
+            try { versao = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { }
+            if (string.IsNullOrEmpty(versao))
+            {
+                if (MessageBox.Show("Este computador não tem o componente Microsoft Edge WebView2, que o Portal FB usa.\n\nAbrir a página oficial da Microsoft para instalar?",
+                    NOME, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                    AbrirFora("https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+                return;
+            }
+            Application.Run(new Janela(PORTAL, true));
+        }
+
+        public static void AbrirFora(string url)
+        {
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+        }
+
+        // ---------- instalação ----------
+        static void Instalar(string origem)
+        {
+            Directory.CreateDirectory(Pasta);
+            // se o app estiver aberto, fecha antes de trocar o arquivo
+            foreach (Process p in Process.GetProcessesByName("PortalFB"))
+            {
+                try { if (p.Id != Process.GetCurrentProcess().Id && string.Equals(p.MainModule.FileName, ExeInstalado, StringComparison.OrdinalIgnoreCase)) { p.CloseMainWindow(); p.WaitForExit(4000); } } catch { }
+            }
+            File.Copy(origem, ExeInstalado, true);
+            CriarAtalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), NOME + ".lnk"));
+            CriarAtalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NOME + ".lnk"));
+            using (RegistryKey k = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB"))
+            {
+                k.SetValue("DisplayName", "Portal Fonseca e Braga");
+                k.SetValue("DisplayVersion", VERSAO);
+                k.SetValue("Publisher", "Fonseca e Braga");
+                k.SetValue("DisplayIcon", ExeInstalado);
+                k.SetValue("InstallLocation", Pasta);
+                k.SetValue("UninstallString", "\"" + ExeInstalado + "\" --desinstalar");
+                k.SetValue("NoModify", 1, RegistryValueKind.DWord);
+                k.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+                k.SetValue("EstimatedSize", (int)(new FileInfo(ExeInstalado).Length / 1024), RegistryValueKind.DWord);
+            }
+            MessageBox.Show("Portal FB instalado.\n\nO atalho \"Portal FB\" está na área de trabalho e no menu Iniciar. O app vai abrir agora.",
+                NOME, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Process.Start(new ProcessStartInfo(ExeInstalado) { UseShellExecute = true });
+        }
+
+        static void CriarAtalho(string caminho)
+        {
+            try
+            {
+                Type t = Type.GetTypeFromProgID("WScript.Shell");
+                object shell = Activator.CreateInstance(t);
+                object lnk = t.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { caminho });
+                Type tl = lnk.GetType();
+                tl.InvokeMember("TargetPath", BindingFlags.SetProperty, null, lnk, new object[] { ExeInstalado });
+                tl.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, lnk, new object[] { Pasta });
+                tl.InvokeMember("IconLocation", BindingFlags.SetProperty, null, lnk, new object[] { ExeInstalado + ",0" });
+                tl.InvokeMember("Description", BindingFlags.SetProperty, null, lnk, new object[] { "Portal Fonseca e Braga" });
+                tl.InvokeMember("Save", BindingFlags.InvokeMethod, null, lnk, null);
+            }
+            catch { }
+        }
+
+        static void Desinstalar()
+        {
+            if (MessageBox.Show("Desinstalar o Portal FB deste computador?\n\nOs dados guardados para uso sem internet também serão apagados. Nada muda no portal.",
+                NOME, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            foreach (string atalho in new string[] {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), NOME + ".lnk"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NOME + ".lnk") })
+            {
+                try { if (File.Exists(atalho)) File.Delete(atalho); } catch { }
+            }
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB", false); } catch { }
+            // a pasta (com o próprio .exe) é apagada logo depois que este processo terminar
+            Process.Start(new ProcessStartInfo("cmd.exe", "/c timeout /t 3 /nobreak >nul & rmdir /s /q \"" + Pasta + "\"")
+                { CreateNoWindow = true, UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden });
+            MessageBox.Show("Portal FB desinstalado.", NOME, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    // ---------- janela do app ----------
+    class Janela : Form
+    {
+        static Microsoft.Web.WebView2.Core.CoreWebView2Environment ambiente;
+        readonly Microsoft.Web.WebView2.WinForms.WebView2 web = new Microsoft.Web.WebView2.WinForms.WebView2();
+        readonly bool principal;
+        readonly string inicial;
+        static readonly string ArqJanela = Path.Combine(Programa.Pasta, "janela.txt");
+
+        public Janela(string url, bool ehPrincipal)
+        {
+            principal = ehPrincipal;
+            inicial = url;
+            Text = "Portal Fonseca e Braga";
+            BackColor = Color.FromArgb(22, 16, 16);
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            StartPosition = FormStartPosition.CenterScreen;
+            Size = ehPrincipal ? new Size(1360, 860) : new Size(1000, 760);
+            MinimumSize = new Size(380, 480);
+            web.Dock = DockStyle.Fill;
+            web.DefaultBackgroundColor = Color.FromArgb(22, 16, 16);
+            Controls.Add(web);
+            if (principal) RestaurarJanela();
+            Load += async delegate { await Preparar(); };
+            FormClosing += delegate { if (principal) GuardarJanela(); };
+        }
+
+        // janela aberta pelo portal (impressão, termo, login do Google): o WebView2 entrega a nova janela já preparada
+        public Task<Microsoft.Web.WebView2.Core.CoreWebView2> PrepararComoFilha()
+        {
+            return MotorUmaVez().ContinueWith(t => web.CoreWebView2, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        Task motor;
+        Task MotorUmaVez() { if (motor == null) motor = PrepararMotor(); return motor; }
+
+        async Task PrepararMotor()
+        {
+            if (ambiente == null)
+            {
+                var opcoes = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions();
+                ambiente = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, Path.Combine(Programa.Pasta, "Dados"), opcoes);
+            }
+            await web.EnsureCoreWebView2Async(ambiente);
+            var s = web.CoreWebView2.Settings;
+            s.UserAgent = s.UserAgent + " PortalFBApp/" + Programa.VERSAO;   // o portal reconhece o app (modo offline)
+            s.AreDevToolsEnabled = false;
+            s.IsStatusBarEnabled = false;
+            s.IsGeneralAutofillEnabled = true;
+            s.IsPasswordAutosaveEnabled = true;
+            web.CoreWebView2.DocumentTitleChanged += delegate { Text = string.IsNullOrEmpty(web.CoreWebView2.DocumentTitle) ? "Portal Fonseca e Braga" : web.CoreWebView2.DocumentTitle; };
+            web.CoreWebView2.NewWindowRequested += NovaJanela;
+            web.CoreWebView2.NavigationStarting += Navegando;
+            web.CoreWebView2.PermissionRequested += Permissao;
+            web.CoreWebView2.WindowCloseRequested += delegate { if (!principal) Close(); };
+        }
+
+        async Task Preparar()
+        {
+            await MotorUmaVez();
+            if (inicial != null) web.CoreWebView2.Navigate(inicial);
+        }
+
+        static bool DoPortal(Uri u)
+        {
+            return u != null && (u.Host.Equals(Programa.HOST, StringComparison.OrdinalIgnoreCase) || u.Host.Equals("jowjow007.github.io", StringComparison.OrdinalIgnoreCase));
+        }
+        // login do Google e do Firebase precisam continuar dentro do app (a janelinha devolve o resultado ao portal)
+        static bool LoginDentro(Uri u)
+        {
+            return u != null && (u.Host.EndsWith("accounts.google.com", StringComparison.OrdinalIgnoreCase)
+                || u.Host.EndsWith(".firebaseapp.com", StringComparison.OrdinalIgnoreCase)
+                || u.Host.EndsWith("googleusercontent.com", StringComparison.OrdinalIgnoreCase));
+        }
+
+        void NovaJanela(object s, Microsoft.Web.WebView2.Core.CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            Uri u; Uri.TryCreate(e.Uri, UriKind.Absolute, out u);
+            bool emBranco = e.Uri == "about:blank" || e.Uri == "" || e.Uri == null;
+            bool janelinha = e.WindowFeatures != null && (e.WindowFeatures.HasSize || e.WindowFeatures.HasPosition);
+            if (!(emBranco || DoPortal(u) || LoginDentro(u) || janelinha))
+            {
+                // link comum para fora (WhatsApp, Drive, Astrea…): abre no navegador padrão
+                e.Handled = true;
+                Programa.AbrirFora(e.Uri);
+                return;
+            }
+            var adiamento = e.GetDeferral();
+            var filha = new Janela(null, false);
+            if (janelinha && e.WindowFeatures.HasSize)
+                filha.Size = new Size((int)Math.Max(420, e.WindowFeatures.Width + 16), (int)Math.Max(480, e.WindowFeatures.Height + 39));
+            filha.Show();
+            filha.PrepararComoFilha().ContinueWith(t =>
+            {
+                try { e.NewWindow = t.Result; e.Handled = true; } catch { }
+                adiamento.Complete();
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        void Navegando(object s, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+        {
+            Uri u;
+            if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out u)) return;
+            if (u.Scheme == "mailto" || u.Scheme == "tel" || u.Scheme == "whatsapp")
+            {
+                e.Cancel = true; Programa.AbrirFora(e.Uri); return;
+            }
+            // a janela principal só mostra o portal; o resto vai para o navegador
+            if (principal && (u.Scheme == "http" || u.Scheme == "https") && !DoPortal(u) && !LoginDentro(u))
+            {
+                e.Cancel = true; Programa.AbrirFora(e.Uri);
+            }
+        }
+
+        // câmera (foto do perfil), microfone, localização (registro da assinatura), notificações e área de
+        // transferência: liberados só para o próprio portal
+        void Permissao(object s, Microsoft.Web.WebView2.Core.CoreWebView2PermissionRequestedEventArgs e)
+        {
+            Uri u; Uri.TryCreate(e.Uri, UriKind.Absolute, out u);
+            if (DoPortal(u)) e.State = Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow;
+        }
+
+        void RestaurarJanela()
+        {
+            try
+            {
+                if (!File.Exists(ArqJanela)) return;
+                string[] p = File.ReadAllText(ArqJanela).Split(';');
+                var r = new Rectangle(int.Parse(p[0]), int.Parse(p[1]), int.Parse(p[2]), int.Parse(p[3]));
+                bool visivel = false;
+                foreach (Screen sc in Screen.AllScreens) if (sc.WorkingArea.IntersectsWith(r)) visivel = true;
+                if (!visivel) return;
+                StartPosition = FormStartPosition.Manual;
+                Bounds = r;
+                if (p.Length > 4 && p[4] == "max") WindowState = FormWindowState.Maximized;
+            }
+            catch { }
+        }
+
+        void GuardarJanela()
+        {
+            try
+            {
+                Rectangle r = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+                File.WriteAllText(ArqJanela, r.X + ";" + r.Y + ";" + r.Width + ";" + r.Height + ";" + (WindowState == FormWindowState.Maximized ? "max" : "normal"));
+            }
+            catch { }
+        }
+    }
+}

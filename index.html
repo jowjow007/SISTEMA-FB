@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v205</span>
+      <span class="version-tag">v206</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5676,6 +5676,46 @@
     btn.addEventListener('mouseenter',function(){speed=0.022;});
     btn.addEventListener('mouseleave',function(){speed=0.006;});
   }
+})();
+</script>
+<script>
+// App para Windows (app-windows/): aviso de conexão e de sincronização. O Firestore guarda o que for
+// gravado sem internet e envia quando a conexão volta (firebase-config.js liga isso só no app).
+(function(){
+  if (!window.__portalApp) return;
+  var el = document.createElement('div');
+  el.id = 'app-conexao';
+  el.setAttribute('role', 'status');
+  el.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8500;display:none;max-width:min(92vw,620px);' +
+    'padding:9px 16px;border-radius:12px;font:600 13px/1.4 "Segoe UI",system-ui,sans-serif;text-align:center;box-shadow:0 10px 26px rgba(0,0,0,.45);';
+  function mostrar(txt, tipo, segundos){
+    el.textContent = txt;
+    el.style.background = tipo === 'off' ? '#7a5a00' : '#1f6b45';
+    el.style.color = '#fff';
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    if (segundos) el._t = setTimeout(function(){ el.style.display = 'none'; }, segundos * 1000);
+  }
+  function semInternet(){
+    mostrar('Sem internet. Você pode continuar trabalhando: o que gravar fica guardado neste computador e é enviado quando a conexão voltar.', 'off');
+  }
+  function voltou(){
+    mostrar('Conexão de volta. Enviando o que foi feito sem internet…', 'on');
+    try {
+      firebase.firestore().waitForPendingWrites().then(function(){ mostrar('✓ Tudo sincronizado.', 'on', 5); })
+        .catch(function(){ mostrar('Conexão de volta.', 'on', 5); });
+    } catch (e) { mostrar('Conexão de volta.', 'on', 5); }
+  }
+  document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); if (!navigator.onLine) semInternet(); });
+  window.addEventListener('offline', semInternet);
+  window.addEventListener('online', voltou);
+  // guarda todas as ferramentas para abrirem sem internet (uma vez por abertura do app, depois de carregar)
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      if (!navigator.onLine || !navigator.serviceWorker) return;
+      navigator.serviceWorker.ready.then(function(r){ if (r.active) r.active.postMessage({ tipo: 'guardar-para-offline' }); }).catch(function(){});
+    }, 8000);
+  });
 })();
 </script>
 </body>
