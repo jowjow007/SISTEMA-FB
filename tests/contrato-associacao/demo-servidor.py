@@ -61,9 +61,9 @@ button{background:transparent;color:#ffb4ae;border:1px solid rgba(255,180,174,.4
 <body><main><h1>Demonstração: contrato de associação</h1>
 <p>Versão para ver o funcionamento <b>sem senha</b>, com pessoas e dados <b>fictícios</b>. Nada é gravado no portal de verdade. Tudo fica só neste navegador. Em qualquer pedido de senha, digite qualquer coisa.</p>
 <a class="c" href="/tools/contratos/index.html?__como=adm"><b>1. Sou o administrador (Jonathan)</b><span>Abre a aba Contratos. Vá na sub-aba <b>Contrato de associação</b>, clique em <b>Preparar contrato</b> da Fulana, preencha, pré-visualize e clique em <b>Assinar pela sociedade e enviar</b>. O modelo já vem carregado.</span></a>
-<a class="c" href="/__demo/portal.html?__como=assoc1"><b>2. Sou a associada (Fulana)</b><span>Simula o login dela. Se você já enviou o contrato no passo 1, aparece a tela obrigatória de assinatura. Se não, o "portal" abre livre.</span></a>
-<a class="c" href="/__demo/portal.html?__como=hecy"><b>3. Sou o Dr. Hecy (diretor interveniente)</b><span>Simula o login dele. Aparece a assinatura como interveniente, com a opção de assinar depois.</span></a>
-<a class="c" href="/__demo/portal.html?__como=novo"><b>4. Sou um associado novo, ainda sem contrato</b><span>Mostra o que acontece quando a chave "Exigir contrato assinado" está ligada (ligue na Configuração, no passo 1).</span></a>
+<a class="c" href="/__demo-portal.html?__como=assoc1"><b>2. Sou a associada (Fulana)</b><span>Simula o login dela. Se você já enviou o contrato no passo 1, aparece a tela obrigatória de assinatura. Se não, o "portal" abre livre.</span></a>
+<a class="c" href="/__demo-portal.html?__como=hecy"><b>3. Sou o Dr. Hecy (diretor interveniente)</b><span>Simula o login dele. Aparece a assinatura como interveniente, com a opção de assinar depois.</span></a>
+<a class="c" href="/__demo-portal.html?__como=novo"><b>4. Sou um associado novo, ainda sem contrato</b><span>Mostra o que acontece quando a chave "Exigir contrato assinado" está ligada (ligue na Configuração, no passo 1).</span></a>
 <a class="c" href="/tools/contratos/index.html?__como=adm"><b>5. Voltar ao administrador</b><span>Para ver o status "Assinado", abrir o documento final com as três assinaturas e baixar o PDF.</span></a>
 <button onclick="localStorage.removeItem('demoStore');localStorage.removeItem('demoComo');alert('Demonstração zerada.');">Recomeçar do zero</button>
 </main></body></html>'''
@@ -88,7 +88,7 @@ class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         caminho = self.path.split('?')[0]
         if caminho in ('/', '/__demo', '/__demo/'): return self.enviar(MENU, 'text/html')
-        if caminho == '/__demo/portal.html': return self.enviar(PORTAL, 'text/html')
+        if caminho == '/__demo-portal.html': return self.enviar(PORTAL, 'text/html')
         if caminho == '/__demo/fake.js':
             js = PRELUDIO % (json.dumps(USERS), json.dumps(semente())) + open(os.path.join(AQUI, 'fake-firebase.js'), encoding='utf8').read()
             return self.enviar(js, 'application/javascript')
