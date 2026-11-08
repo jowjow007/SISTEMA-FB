@@ -31,13 +31,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Portal FB">
 <script>
-  // Instalar o Portal como app (engrenagem › "Instalar o Portal no computador"): o navegador oferece a instalação
-  // uma vez por carregamento; guardamos o convite para usar quando a pessoa clicar no menu.
-  window.__convitePwa = null;
-  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__convitePwa = e; });
-  window.addEventListener('appinstalled', function(){ window.__convitePwa = null; window.__pwaInstalado = true; });
-</script>
-<script>
   // Registra o service worker e detecta quando ha uma versao nova baixada:
   // em vez de trocar o app sozinho no meio do uso, so avisa com um botao
   // ("Atualizar agora") e a troca so acontece quando o usuario clicar.
@@ -871,11 +864,6 @@
   .logo-download-card .nome{font-size:.8rem;font-weight:600;color:var(--paper);margin:0 0 2px;}
   .logo-download-card .del-btn{background:none;border:none;color:var(--muted);font-size:.72rem;text-decoration:underline;cursor:pointer;margin-top:6px;padding:0;}
   .logo-download-card .del-btn:hover{color:var(--red);}
-  #instalar-app-backdrop .modal-box{width:min(520px,94vw);max-height:88vh;overflow-y:auto;display:block;}
-  #instalar-app-backdrop ol{margin:8px 0 4px 18px;padding:0;font-size:.86rem;line-height:1.6;color:var(--paper);}
-  #instalar-app-backdrop .ia-ok{color:var(--ok,#4caf7d);font-weight:600;font-size:.9rem;}
-  #instalar-app-backdrop .ia-acoes{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px;}
-  #instalar-app-backdrop .ia-acoes .btn{width:auto;padding:10px 18px;}
   #download-logo-backdrop .modal-box{width:min(700px,94vw);max-height:85vh;overflow-y:auto;}
   .materiais-section-title{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 0 2px;}
   .materiais-empty{font-size:.8rem;color:var(--muted);margin:4px 0 0;}
@@ -1421,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v204</span>
+      <span class="version-tag">v205</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2316,63 +2304,6 @@
     if (!confirm('Excluir este material? Ele some do download para todo mundo.')) return;
     db.collection('materiaisMarca').doc(id).delete();
   };
-
-  // ---------- Instalar o Portal como app (PWA: manifest.json + sw.js) ----------
-  // Abre em janela própria, com ícone no menu Iniciar/área de trabalho, e atualiza sozinho (é sempre o portal publicado).
-  function appJaInstalado(){
-    return !!window.__pwaInstalado || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-  }
-  function passosInstalacao(){
-    const ua = navigator.userAgent || '';
-    const iOS = /iPhone|iPad|iPod/i.test(ua), android = /Android/i.test(ua);
-    if (iOS) return { nav: 'iPhone/iPad (Safari)', passos: ['Abra o portal no <b>Safari</b>.', 'Toque no botão <b>Compartilhar</b> (quadrado com seta para cima).', 'Escolha <b>Adicionar à Tela de Início</b> e toque em <b>Adicionar</b>.'] };
-    if (android) return { nav: 'Android (Chrome)', passos: ['Toque no menu <b>⋮</b> do Chrome.', 'Escolha <b>Instalar app</b> (ou <b>Adicionar à tela inicial</b>).', 'Confirme em <b>Instalar</b>.'] };
-    if (/Edg\//.test(ua)) return { nav: 'Microsoft Edge', passos: ['Clique no menu <b>…</b> (canto superior direito).', 'Vá em <b>Aplicativos › Instalar este site como aplicativo</b>.', 'Confirme em <b>Instalar</b>. O Portal FB aparece no menu Iniciar e você pode fixá-lo na barra de tarefas.'] };
-    if (/Firefox\//.test(ua)) return { nav: 'Firefox', passos: ['O Firefox não instala sites como app no computador.', 'Abra o portal no <b>Google Chrome</b> ou no <b>Microsoft Edge</b> e use esta mesma opção da engrenagem.'] };
-    if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return { nav: 'Safari (Mac)', passos: ['No menu <b>Arquivo</b>, escolha <b>Adicionar ao Dock</b>.', 'Confirme em <b>Adicionar</b>.'] };
-    return { nav: 'Google Chrome', passos: ['Clique no ícone de instalar na barra de endereço (um monitor com uma seta, à direita).', 'Se não aparecer: menu <b>⋮ › Transmitir, salvar e compartilhar › Instalar página como app</b>.', 'Confirme em <b>Instalar</b>. O Portal FB aparece no menu Iniciar e na área de trabalho.'] };
-  }
-  function abrirInstalarApp(){
-    let bd = document.getElementById('instalar-app-backdrop');
-    if (!bd) {
-      bd = document.createElement('div');
-      bd.className = 'modal-backdrop'; bd.id = 'instalar-app-backdrop';
-      bd.innerHTML = '<div class="modal-box" role="dialog" aria-modal="true"></div>';
-      document.body.appendChild(bd);
-      bd.addEventListener('click', function(e){ if (e.target === bd) bd.classList.remove('show'); });
-    }
-    const box = bd.querySelector('.modal-box');
-    const fechar = function(){ bd.classList.remove('show'); };
-    let h = '<h3>Instalar o Portal no computador</h3>' +
-      '<p class="sub">O Portal vira um aplicativo: abre em janela própria, sem a barra do navegador, com ícone no menu Iniciar e na barra de tarefas. Atualiza sozinho e usa o mesmo login.</p>';
-    if (appJaInstalado()) {
-      h += '<p class="ia-ok">✓ Você já está usando o Portal como aplicativo neste aparelho.</p>';
-    } else if (window.__convitePwa) {
-      h += '<p class="sub">Clique em <b>Instalar agora</b> e confirme na janela do navegador.</p><p class="sub" id="ia-st"></p>';
-    } else {
-      const p = passosInstalacao();
-      h += '<p class="sub" style="margin-bottom:2px;">Como instalar no <b>' + p.nav + '</b>:</p><ol>' + p.passos.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ol>' +
-        '<p class="sub" style="margin-top:10px;">Se já instalou antes, procure <b>Portal FB</b> no menu Iniciar.</p>';
-    }
-    h += '<div class="ia-acoes"><button type="button" class="btn secondary" id="ia-fechar">Fechar</button>' +
-      (!appJaInstalado() && window.__convitePwa ? '<button type="button" class="btn" id="ia-instalar">Instalar agora</button>' : '') + '</div>';
-    box.innerHTML = h;
-    document.getElementById('ia-fechar').onclick = fechar;
-    const inst = document.getElementById('ia-instalar');
-    if (inst) inst.onclick = function(){
-      const convite = window.__convitePwa;
-      if (!convite) return abrirInstalarApp();
-      inst.disabled = true;
-      convite.prompt();
-      convite.userChoice.then(function(r){
-        window.__convitePwa = null;
-        const st = document.getElementById('ia-st');
-        if (r && r.outcome === 'accepted') { window.__pwaInstalado = true; if (st) { st.className = 'ia-ok'; st.textContent = '✓ Instalado! Procure "Portal FB" no menu Iniciar ou na área de trabalho.'; } inst.remove(); }
-        else if (st) { st.textContent = 'Instalação cancelada. Você pode tentar de novo depois, por esta mesma opção.'; inst.remove(); }
-      }).catch(function(){ inst.disabled = false; });
-    };
-    bd.classList.add('show');
-  }
 
   function abrirDownloadLogo(){
     els.logoPreviewDark.src = LOGO_DARK;
@@ -4191,12 +4122,6 @@
       holBtn.addEventListener('click', function(){ closeUserMenu(); abrirMeusHolerites(); });
       els.userMenuDropdown.appendChild(holBtn);
     }
-
-    const appBtn = document.createElement('button');
-    appBtn.type = 'button';
-    appBtn.innerHTML = iconeSvg('download') + '<span>' + (appJaInstalado() ? 'Portal instalado como app ✓' : 'Instalar o Portal no computador') + '</span>';
-    appBtn.addEventListener('click', function(){ closeUserMenu(); abrirInstalarApp(); });
-    els.userMenuDropdown.appendChild(appBtn);
 
     const logoBtn = document.createElement('button');
     logoBtn.type = 'button';
