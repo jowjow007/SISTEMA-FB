@@ -1259,3 +1259,8 @@ Cada assinatura guarda o PNG, a data do servidor, o IP e a localização (quando
 - A cada mudança, sobe-se o `version-tag` do `index.html` e roda-se `app-windows\publicar.ps1`. Ele grava o número no app, compila e atualiza `baixar/PortalFB.exe` e `baixar/versao.json` (versão + SHA-256). Depois, commit.
 - O app confere o `versao.json` 6 s depois de abrir. Se houver versão maior, baixa o .exe, confere o SHA-256 e pergunta "Atualizar agora?". O .exe novo roda com `--atualizar`, se reinstala sem perguntar e reabre.
 - No app, a casca mostra "v207 · app v207". Os apps 1.0.x, de antes da versão única, não se atualizam sozinhos e precisam ser baixados de novo uma vez.
+- **Atualização silenciosa (desde v209):** o app confere o `versao.json` ao abrir e a cada 2 h.
+  - Se houver versão maior, baixa o .exe em `%LOCALAPPDATA%\PortalFB\atualizacao`, confere o SHA-256 e grava `pendente.txt`.
+  - **Ao fechar o app**, a versão nova se instala sozinha (`--atualizar-silencioso`, sem reabrir). Se o computador for desligado antes, ela é aplicada ao abrir (`--atualizar`, que reabre).
+  - Como o download é feito pelo próprio app, não passa pelo SmartScreen.
+  - Teste de ponta a ponta, isolado do app instalado (modo `TESTE`: pasta `%TEMP%\PortalFBTeste`, servidor local): `powershell -ExecutionPolicy Bypass -File tests\app-windows\teste-atualizacao.ps1`.
