@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("207.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("207.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("208.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("208.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -31,7 +31,7 @@ namespace PortalFB
         public const string PORTAL = "https://portal.fonsecaebraga.com.br/";
         public const string HOST = "portal.fonsecaebraga.com.br";
         public const string NOME = "Portal FB";
-        public const string VERSAO = "207";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "208";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortalFB");
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 

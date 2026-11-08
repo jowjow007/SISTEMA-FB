@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v207</span>
+      <span class="version-tag">v208</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5709,16 +5709,49 @@
   document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); if (!navigator.onLine) semInternet(); });
   window.addEventListener('offline', semInternet);
   window.addEventListener('online', voltou);
-  // versão única: portal e app têm o mesmo número (app-windows/publicar.ps1). No app, mostra as duas;
-  // se o app estiver atrás do portal, ele mesmo oferece a atualização ao abrir.
+  // versão única: portal e app têm o mesmo número (app-windows/publicar.ps1). No app, mostra as duas e, se o app
+  // estiver atrás do portal (ou for de antes da versão única, que não se atualiza sozinho), mostra o botão
+  // "Atualizar o app": baixa o instalador novo, que fecha o app, atualiza e reabre.
+  function atualizarApp(){
+    var a = document.createElement('a');
+    a.href = 'baixar/PortalFB.exe?t=' + Date.now();
+    a.download = 'Portal FB - Instalador.exe';
+    document.body.appendChild(a); a.click(); a.remove();
+    var bd = document.getElementById('app-atualizar-bd');
+    if (!bd) {
+      bd = document.createElement('div'); bd.id = 'app-atualizar-bd';
+      bd.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(10,6,6,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+      bd.innerHTML = '<div style="width:min(500px,100%);background:#211918;color:#ece6e1;border:1px solid rgba(236,230,225,.2);border-radius:14px;padding:22px;font:14px/1.55 Segoe UI,system-ui,sans-serif;">' +
+        '<h3 style="margin:0 0 8px;font-size:1.05rem;">Atualizando o app</h3>' +
+        '<p style="margin:0 0 6px;color:#c9bdb8;">O instalador novo está sendo baixado. Para concluir:</p>' +
+        '<ol style="margin:6px 0 10px 18px;padding:0;">' +
+        '<li>Clique no arquivo <b>Portal FB - Instalador</b> na lista de downloads, que aparece no canto superior direito.</li>' +
+        '<li>Se o Windows avisar, clique em <b>Mais informações › Executar assim mesmo</b>.</li>' +
+        '<li>O app fecha e atualiza. Na tela <b>Portal FB instalado</b>, clique em <b>Abrir o Portal</b>. O login continua.</li></ol>' +
+        '<p style="margin:0;color:#9c908b;font-size:12.5px;">Depois disso, as próximas versões se instalam sozinhas: o app avisa ao abrir.</p>' +
+        '<div style="text-align:right;margin-top:14px;"><button type="button" id="app-atualizar-ok" style="padding:9px 18px;border-radius:8px;border:none;background:#b8362e;color:#fff;font-weight:600;cursor:pointer;">Entendi</button></div></div>';
+      document.body.appendChild(bd);
+      document.getElementById('app-atualizar-ok').onclick = function(){ bd.remove(); };
+    }
+  }
   document.addEventListener('DOMContentLoaded', function(){
     var m = /PortalFBApp\/([\d.]+)/.exec(navigator.userAgent || '');
-    if (m && m[1].indexOf('.') !== -1) m = null;   // apps 1.0.x (antes da versão única)
+    var antigo = !!(m && m[1].indexOf('.') !== -1);   // apps 1.0.x (antes da versão única)
     document.querySelectorAll('.version-tag').forEach(function(tag){
       var portal = (tag.textContent.match(/\d+/) || [''])[0];
-      if (!m) { tag.textContent = 'v' + portal + ' · app (versão antiga)'; tag.title = 'Baixe o app de novo em portal.fonsecaebraga.com.br/baixar/PortalFB.exe'; return; }
-      tag.textContent = 'v' + portal + ' · app v' + m[1];
-      tag.title = m[1] === portal ? 'Portal e app na mesma versão' : 'O app está na v' + m[1] + ' e o portal na v' + portal + ': feche e abra o app para atualizar';
+      var app = antigo ? null : m[1];
+      var atrasado = antigo || (parseInt(app, 10) < parseInt(portal, 10));
+      tag.textContent = 'v' + portal + ' · app ' + (antigo ? '(versão antiga)' : 'v' + app);
+      tag.title = !atrasado ? 'Portal e app na mesma versão' : 'O app está desatualizado: clique em "Atualizar o app"';
+      if (!atrasado) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '⟳ Atualizar o app';
+      b.title = 'Baixa e instala a versão v' + portal + ' do app';
+      b.style.cssText = 'margin-left:8px;padding:4px 10px;border-radius:999px;border:1px solid #c9463c;background:#b8362e;color:#fff;' +
+        'font:600 11.5px/1.2 Segoe UI,system-ui,sans-serif;cursor:pointer;white-space:nowrap;vertical-align:middle;';
+      b.onclick = atualizarApp;
+      tag.insertAdjacentElement('afterend', b);
     });
   });
   // guarda todas as ferramentas para abrirem sem internet (uma vez por abertura do app, depois de carregar)
