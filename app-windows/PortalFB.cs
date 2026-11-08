@@ -10,6 +10,10 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -17,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("1.0.2.0")]
-[assembly: AssemblyFileVersion("1.0.2.0")]
+[assembly: AssemblyVersion("207.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("207.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -27,7 +31,7 @@ namespace PortalFB
         public const string PORTAL = "https://portal.fonsecaebraga.com.br/";
         public const string HOST = "portal.fonsecaebraga.com.br";
         public const string NOME = "Portal FB";
-        public const string VERSAO = "1.0.2";
+        public const string VERSAO = "207";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortalFB");
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
@@ -43,7 +47,7 @@ namespace PortalFB
                 string eu = Assembly.GetExecutingAssembly().Location;
                 if (!string.Equals(Path.GetFullPath(eu), Path.GetFullPath(ExeInstalado), StringComparison.OrdinalIgnoreCase))
                 {
-                    Instalar(eu);
+                    Instalar(eu, args.Length > 0 && args[0] == "--atualizar");
                     return;
                 }
                 Iniciar();
@@ -103,8 +107,52 @@ namespace PortalFB
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         }
 
+        // ---------- atualização automática ----------
+        // O portal publica baixar/versao.json ({"versao": 208, "sha256": "..."}) junto com o .exe. Se houver versão
+        // maior, o app baixa, confere o SHA-256 e pergunta; ao aceitar, o .exe novo se reinstala e reabre.
+        public static void VerificarAtualizacao(Form dono)
+        {
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+                    string json;
+                    using (var wc = new WebClient())
+                    {
+                        wc.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+                        json = wc.DownloadString(PORTAL + "baixar/versao.json?t=" + DateTime.UtcNow.Ticks);
+                    }
+                    Match mv = Regex.Match(json, "\"versao\"\\s*:\\s*(\\d+)"), mh = Regex.Match(json, "\"sha256\"\\s*:\\s*\"([0-9a-fA-F]{64})\"");
+                    int nova, minha;
+                    if (!mv.Success || !mh.Success || !int.TryParse(mv.Groups[1].Value, out nova) || !int.TryParse(VERSAO, out minha) || nova <= minha) return;
+                    string pasta = Path.Combine(Pasta, "atualizacao");
+                    Directory.CreateDirectory(pasta);
+                    string arq = Path.Combine(pasta, "PortalFB.exe");
+                    using (var wc = new WebClient())
+                    {
+                        wc.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+                        wc.DownloadFile(PORTAL + "baixar/PortalFB.exe?v=" + nova, arq);
+                    }
+                    string hash;
+                    using (var sha = SHA256.Create()) using (var st = File.OpenRead(arq))
+                        hash = BitConverter.ToString(sha.ComputeHash(st)).Replace("-", "").ToLowerInvariant();
+                    if (hash != mh.Groups[1].Value.ToLowerInvariant()) { File.Delete(arq); return; }   // arquivo corrompido ou trocado: não instala
+                    dono.BeginInvoke((MethodInvoker)delegate
+                    {
+                        if (!Aviso.Mostrar("Nova versão do Portal FB: v" + nova,
+                            "Você está na v" + VERSAO + ". A atualização leva poucos segundos: o app fecha, atualiza e abre de novo, sem perder o login.",
+                            "Atualizar agora", "Depois")) return;
+                        Process.Start(new ProcessStartInfo(arq, "--atualizar") { UseShellExecute = true });
+                        Application.Exit();
+                    });
+                }
+                catch { }   // sem internet ou portal fora do ar: tenta na próxima abertura
+            });
+        }
+
         // ---------- instalação ----------
-        static void Instalar(string origem)
+        static void Instalar(string origem, bool atualizando)
         {
             Directory.CreateDirectory(Pasta);
             // se o app estiver aberto, fecha antes de trocar o arquivo
@@ -112,13 +160,19 @@ namespace PortalFB
             {
                 try { if (p.Id != Process.GetCurrentProcess().Id && string.Equals(p.MainModule.FileName, ExeInstalado, StringComparison.OrdinalIgnoreCase)) { p.CloseMainWindow(); p.WaitForExit(4000); } } catch { }
             }
-            File.Copy(origem, ExeInstalado, true);
+            // o app antigo pode levar alguns segundos para soltar o arquivo
+            for (int i = 0; ; i++)
+            {
+                try { File.Copy(origem, ExeInstalado, true); break; }
+                catch (IOException) { if (i >= 30) throw; Thread.Sleep(500); }
+                catch (UnauthorizedAccessException) { if (i >= 30) throw; Thread.Sleep(500); }
+            }
             CriarAtalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), NOME + ".lnk"));
             CriarAtalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NOME + ".lnk"));
             using (RegistryKey k = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB"))
             {
                 k.SetValue("DisplayName", "Portal Fonseca e Braga");
-                k.SetValue("DisplayVersion", VERSAO);
+                k.SetValue("DisplayVersion", "v" + VERSAO);
                 k.SetValue("Publisher", "Fonseca e Braga");
                 k.SetValue("DisplayIcon", ExeInstalado);
                 k.SetValue("InstallLocation", Pasta);
@@ -127,6 +181,7 @@ namespace PortalFB
                 k.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 k.SetValue("EstimatedSize", (int)(new FileInfo(ExeInstalado).Length / 1024), RegistryValueKind.DWord);
             }
+            if (atualizando) { Process.Start(new ProcessStartInfo(ExeInstalado) { UseShellExecute = true }); return; }
             if (Aviso.Mostrar("Portal FB instalado",
                 "O atalho \"Portal FB\" está na área de trabalho e no menu Iniciar. O app abre o portal do escritório numa janela própria e atualiza sozinho.",
                 "Abrir o Portal", "Fechar"))
@@ -307,6 +362,12 @@ namespace PortalFB
         {
             await MotorUmaVez();
             if (inicial != null) web.CoreWebView2.Navigate(inicial);
+            if (principal)
+            {
+                var t = new System.Windows.Forms.Timer { Interval = 6000 };
+                t.Tick += delegate { t.Stop(); t.Dispose(); Programa.VerificarAtualizacao(this); };
+                t.Start();
+            }
         }
 
         static bool DoPortal(Uri u)

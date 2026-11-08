@@ -1254,3 +1254,8 @@ Cada assinatura guarda o PNG, a data do servidor, o IP e a localização (quando
   - dados que nunca foram abertos naquele computador.
 
   Gravações que as regras recusarem quando a conexão voltar são descartadas pelo Firestore.
+
+**Versão única (desde v207):** portal e app têm o mesmo número.
+- A cada mudança, sobe-se o `version-tag` do `index.html` e roda-se `app-windows\publicar.ps1`. Ele grava o número no app, compila e atualiza `baixar/PortalFB.exe` e `baixar/versao.json` (versão + SHA-256). Depois, commit.
+- O app confere o `versao.json` 6 s depois de abrir. Se houver versão maior, baixa o .exe, confere o SHA-256 e pergunta "Atualizar agora?". O .exe novo roda com `--atualizar`, se reinstala sem perguntar e reabre.
+- No app, a casca mostra "v207 · app v207". Os apps 1.0.x, de antes da versão única, não se atualizam sozinhos e precisam ser baixados de novo uma vez.

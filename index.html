@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v206</span>
+      <span class="version-tag">v207</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5709,6 +5709,18 @@
   document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); if (!navigator.onLine) semInternet(); });
   window.addEventListener('offline', semInternet);
   window.addEventListener('online', voltou);
+  // versão única: portal e app têm o mesmo número (app-windows/publicar.ps1). No app, mostra as duas;
+  // se o app estiver atrás do portal, ele mesmo oferece a atualização ao abrir.
+  document.addEventListener('DOMContentLoaded', function(){
+    var m = /PortalFBApp\/([\d.]+)/.exec(navigator.userAgent || '');
+    if (m && m[1].indexOf('.') !== -1) m = null;   // apps 1.0.x (antes da versão única)
+    document.querySelectorAll('.version-tag').forEach(function(tag){
+      var portal = (tag.textContent.match(/\d+/) || [''])[0];
+      if (!m) { tag.textContent = 'v' + portal + ' · app (versão antiga)'; tag.title = 'Baixe o app de novo em portal.fonsecaebraga.com.br/baixar/PortalFB.exe'; return; }
+      tag.textContent = 'v' + portal + ' · app v' + m[1];
+      tag.title = m[1] === portal ? 'Portal e app na mesma versão' : 'O app está na v' + m[1] + ' e o portal na v' + portal + ': feche e abra o app para atualizar';
+    });
+  });
   // guarda todas as ferramentas para abrirem sem internet (uma vez por abertura do app, depois de carregar)
   window.addEventListener('load', function(){
     setTimeout(function(){
