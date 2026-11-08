@@ -17,8 +17,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 
 namespace PortalFB
 {
@@ -27,7 +27,7 @@ namespace PortalFB
         public const string PORTAL = "https://portal.fonsecaebraga.com.br/";
         public const string HOST = "portal.fonsecaebraga.com.br";
         public const string NOME = "Portal FB";
-        public const string VERSAO = "1.0.1";
+        public const string VERSAO = "1.0.2";
         public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PortalFB");
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
@@ -240,6 +240,9 @@ namespace PortalFB
         {
             base.OnHandleCreated(e);
             try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
+            // Windows 11: barra na mesma cor do topo do portal (some visualmente), texto claro
+            try { int cor = 33 | (21 << 8) | (21 << 16), texto = 225 | (230 << 8) | (236 << 16);
+                  DwmSetWindowAttribute(Handle, 35, ref cor, 4); DwmSetWindowAttribute(Handle, 34, ref cor, 4); DwmSetWindowAttribute(Handle, 36, ref texto, 4); } catch { }
         }
     }
 
@@ -371,6 +374,9 @@ namespace PortalFB
         {
             base.OnHandleCreated(e);
             try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
+            // Windows 11: barra na mesma cor do topo do portal (some visualmente), texto claro
+            try { int cor = 33 | (21 << 8) | (21 << 16), texto = 225 | (230 << 8) | (236 << 16);
+                  DwmSetWindowAttribute(Handle, 35, ref cor, 4); DwmSetWindowAttribute(Handle, 34, ref cor, 4); DwmSetWindowAttribute(Handle, 36, ref texto, 4); } catch { }
         }
 
         void RestaurarJanela()
