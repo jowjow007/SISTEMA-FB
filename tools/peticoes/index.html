@@ -1973,10 +1973,26 @@ function parsearPeticao(raw){
 
   // ── 3. cabeçalho: processo, partes ("Embargante: ..."), qualificação, título ──
   var esperaTitulo = false, rotulos = [];
+  // linhas curtas de identificação antes da qualificação/título ("Processo de origem nº ...", "Vara do Trabalho de X/GO",
+  // "Distribuição por dependência"): só valem se a qualificação ou o título vierem logo depois
+  function cabecalhoAdiante(k){
+    for(var j = k+1, n = 0; j < fim && n < 5; j++){
+      var x = linhas[j]; if(!x) continue; n++;
+      if((x.length > 60 && QUALIF_RE.test(x)) || titulosColados[x] === 0) return true;
+      if(ehMaiusculas(x) && x.length < 160 && !SECAO_INICIO_RE.test(x) && !tituloDe(j)) return true;
+      if(x.length > 110 || /[.;:]$/.test(x)) return false;
+    }
+    return false;
+  }
   for(; i < fim; i++){
     var l = linhas[i];
     if(!l) continue;
+    var cabLivre = !resultado.requerentes.length && !resultado.titulo && l.length <= 110 && !/[.;:,]$/.test(l)
+      && !ehMaiusculas(l) && !QUALIF_RE.test(l) && !tituloDe(i) && cabecalhoAdiante(i);
+    // processo de origem (mandado de segurança, ação rescisória, reclamação): não é o número destes autos
+    if(cabLivre && PROC_RE.test(l) && /\bde\s+origem\b|origin[áa]ri/i.test(l)){ rotulos.push(l); continue; }
     if(!resultado.processo && PROC_RE.test(l) && l.length < 90){ resultado.processo = l.match(PROC_RE)[1]; continue; }
+    if(cabLivre){ rotulos.push(l); continue; }
     if((ROTULO_RE.test(l) || ROTULO_LIVRE_RE.test(l)) && l.length < 160 && !resultado.requerentes.length){ rotulos.push(l); continue; }
     var tt = tituloDe(i);
     if(PED_HEADER_RE.test(l) || (tt && (tt.num || tt.rom || tt.nivel === 2))) break;
