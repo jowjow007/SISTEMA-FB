@@ -61,23 +61,38 @@
 
   // ---------- tela de assinatura ----------
   function telaAssinar(ctx, c, papel, aoTerminar){
+    // papel: 'associado' (contrato), 'termo' (termo do associado) — obrigatórios; 'interveniente' e 'diretoria'
+    // (remuneração anual da Diretoria) — podem ficar para depois
     var interveniente = papel === 'interveniente';
+    var adiavel = interveniente || papel === 'diretoria';
+    var titulo, sub;
+    if (interveniente) {
+      titulo = 'Contrato de associação: sua assinatura como diretor interveniente';
+      sub = 'O contrato de <b>' + esc(c.associadoNome) + '</b> aguarda sua assinatura como diretor interveniente' +
+        (/coobrigado solid/i.test(c.textoFinal || '') ? ' e <b>coobrigado solidário</b>: pela cláusula 6.6, você responde pessoal, ilimitada e solidariamente com a sociedade pelas obrigações dela perante o associado' : '') +
+        '. Você pode assinar agora ou depois.';
+    } else if (papel === 'diretoria') {
+      titulo = esc(c.tituloDoc || 'Remuneração fixa da Diretoria');
+      sub = 'O documento de fixação da remuneração da Diretoria aguarda sua assinatura. Você pode assinar agora ou depois.';
+    } else if (papel === 'termo') {
+      titulo = esc(c.tituloDoc || 'Termo') + ': assinatura obrigatória';
+      sub = 'A Diretoria enviou este termo do seu contrato de associação. Para continuar usando o Portal, leia e assine. Se tiver dúvidas, fale com a Diretoria antes de assinar.';
+    } else {
+      titulo = 'Contrato de associação: assinatura obrigatória';
+      sub = 'Para continuar usando o Portal, leia o contrato e o Anexo I e assine. Se tiver dúvidas, fale com a Diretoria antes de assinar. Depois de assinado, a cópia fica disponível em PDF.';
+    }
     var box = overlay();
     box.innerHTML =
-      '<h2>' + (interveniente ? 'Contrato de associação: sua assinatura como diretor interveniente' : 'Contrato de associação: assinatura obrigatória') + '</h2>' +
-      '<p class="ca-sub">' + (interveniente
-        ? 'O contrato de <b>' + esc(c.associadoNome) + '</b> aguarda sua assinatura como diretor interveniente' +
-          (/coobrigado solid/i.test(c.textoFinal || '') ? ' e <b>coobrigado solidário</b>: pela cláusula 6.6, você responde pessoal, ilimitada e solidariamente com a sociedade pelas obrigações dela perante o associado' : '') +
-          '. Você pode assinar agora ou depois.'
-        : 'Para continuar usando o Portal, leia o contrato e o Anexo I e assine. Se tiver dúvidas, fale com a Diretoria antes de assinar. Depois de assinado, a cópia fica disponível em PDF.') + '</p>' +
+      '<h2>' + titulo + '</h2>' +
+      '<p class="ca-sub">' + sub + '</p>' +
       '<div class="ca-frame"><iframe id="ca-frame" title="Contrato de associação"></iframe></div>' +
-      '<label class="ca-check"><input type="checkbox" id="ca-li"><span>Li o contrato e o Anexo I, entendi as condições e concordo com seus termos.</span></label>' +
+      '<label class="ca-check"><input type="checkbox" id="ca-li"><span>' + (papel === 'associado' || interveniente ? 'Li o contrato e o Anexo I, entendi as condições e concordo com seus termos.' : 'Li o documento, entendi as condições e concordo com seus termos.') + '</span></label>' +
       '<label for="ca-senha">Sua senha do Portal</label><input type="password" id="ca-senha" autocomplete="current-password">' +
       '<label style="display:flex;justify-content:space-between;align-items:center;max-width:100%;">Assinatura (dedo ou mouse) <button type="button" class="sec mini" id="ca-limpar">Limpar</button></label>' +
       '<canvas id="ca-canvas"></canvas>' +
       '<div class="ca-err" id="ca-err"></div>' +
-      '<div class="ca-acoes">' + (interveniente ? '<button type="button" class="sec" id="ca-depois">Assinar depois</button>' : '<button type="button" class="sec" id="ca-sair">Sair do Portal</button>') +
-      '<button type="button" id="ca-assinar">✍ Assinar contrato</button></div>';
+      '<div class="ca-acoes">' + (adiavel ? '<button type="button" class="sec" id="ca-depois">Assinar depois</button>' : '<button type="button" class="sec" id="ca-sair">Sair do Portal</button>') +
+      '<button type="button" id="ca-assinar">✍ Assinar</button></div>';
 
     var frame = box.querySelector('#ca-frame');
     frame.onload = function(){ try { frame.contentWindow.mostrarContrato(c); } catch (e) {} };
@@ -128,8 +143,8 @@
         var patch = interveniente ? { interveniente: ass } : { status: 'assinado', associado: ass, assinadoEm: ts, assinadoEmISO: ass.assinadoEmISO };
         return ctx.db.collection('contratosAssociacao').doc(c.id).update(patch);
       }).then(function(){
-        box.innerHTML = '<h2>✓ Contrato assinado</h2><p class="ca-ok">Sua assinatura foi registrada. Você pode baixar a cópia do contrato em PDF agora ou mais tarde, pelo link abaixo.</p>' +
-          '<div class="ca-acoes" style="justify-content:flex-start;"><button type="button" class="sec" id="ca-pdf">Abrir o contrato (PDF)</button><button type="button" id="ca-continuar">Continuar para o Portal</button></div>';
+        box.innerHTML = '<h2>✓ Assinado</h2><p class="ca-ok">Sua assinatura foi registrada. Você pode baixar a cópia em PDF agora ou mais tarde, pelo link abaixo.</p>' +
+          '<div class="ca-acoes" style="justify-content:flex-start;"><button type="button" class="sec" id="ca-pdf">Abrir o documento (PDF)</button><button type="button" id="ca-continuar">Continuar para o Portal</button></div>';
         box.querySelector('#ca-pdf').onclick = function(){ window.open('tools/contratos/associacao-documento.html?id=' + encodeURIComponent(c.id), '_blank', 'noopener'); };
         box.querySelector('#ca-continuar').onclick = function(){ fechar(); if (aoTerminar) aoTerminar(); };
       }).catch(function(e){
@@ -139,7 +154,7 @@
         else if (code === 'auth/too-many-requests') err.textContent = 'Muitas tentativas com senha errada. Aguarde alguns minutos.';
         else if (code === 'permission-denied') err.textContent = 'Sem permissão para registrar a assinatura. Avise a Diretoria (as regras novas do Firestore precisam ser publicadas).';
         else err.textContent = 'Não foi possível assinar: ' + (e && e.message ? e.message : e);
-      }).then(function(){ if (btn.isConnected) { btn.disabled = false; btn.textContent = '✍ Assinar contrato'; } });
+      }).then(function(){ if (btn.isConnected) { btn.disabled = false; btn.textContent = '✍ Assinar'; } });
     };
   }
 
@@ -151,6 +166,15 @@
       '<div class="ca-acoes"><button type="button" class="sec" id="ca-recarregar">Verificar de novo</button><button type="button" id="ca-sair">Sair do Portal</button></div>';
     box.querySelector('#ca-sair').onclick = function(){ ctx.auth.signOut().catch(function(){}).then(function(){ location.reload(); }); };
     box.querySelector('#ca-recarregar').onclick = function(){ location.reload(); };
+  }
+
+  function telaLembreteDiretoria(ano){
+    var box = overlay();
+    box.innerHTML = '<h2>Remuneração fixa da Diretoria de ' + esc(ano) + '</h2>' +
+      '<p class="ca-ok">Até 25 de janeiro de cada ano, a remuneração fixa (pró-labore) da Diretoria precisa ser fixada e assinada, conforme o item A2.4 dos contratos de associação. A de ' + esc(ano) + ' ainda não foi feita.</p>' +
+      '<p class="ca-sub">Abra <b>Contratos › Contrato de associação › Remuneração fixa da Diretoria</b> e clique em <b>Fixar valores</b>. O documento é gerado e guardado com as assinaturas.</p>' +
+      '<div class="ca-acoes"><button type="button" id="ca-ok-lembrete">Entendi</button></div>';
+    box.querySelector('#ca-ok-lembrete').onclick = fechar;
   }
 
   function porData(a, b){ return String(b.criadoEmISO || '').localeCompare(String(a.criadoEmISO || '')); }
@@ -165,18 +189,28 @@
         .then(function(s){ return s.docs.map(function(d){ var x = d.data(); x.id = d.id; return x; }); }).catch(function(){ return []; });
       var regras = ctx.db.collection('contratosAssociacaoConfig').doc('regras').get()
         .then(function(d){ return d.exists ? d.data() : {}; }).catch(function(){ return {}; });
-      return Promise.all([meus, comoDiretor, regras]).then(function(r){
-        var lista = r[0].sort(porData), dir = r[1].sort(porData), cfg = r[2];
-        function pendenciasDiretor(){
-          var p = dir.filter(function(c){ return !c.interveniente && (c.status === 'aguardando_associado' || c.status === 'assinado'); });
-          (function proximo(i){ if (i < p.length) telaAssinar(ctx, p[i], 'interveniente', function(){ proximo(i + 1); }); })(0);
-        }
-        var aguardando = lista.filter(function(c){ return c.status === 'aguardando_associado'; })[0];
-        if (aguardando) { telaAssinar(ctx, aguardando, 'associado', pendenciasDiretor); return 'assinar'; }
-        var assinado = lista.some(function(c){ return c.status === 'assinado'; });
-        if (cfg.exigirAssinatura && perfil.tipoColaborador === 'associado' && perfil.role !== 'admin' && !assinado) { telaAguardando(ctx); return 'aguardando'; }
-        pendenciasDiretor();
-        return 'livre';
+      // administrador: a partir de 25 de janeiro, lembra de fixar a remuneração da Diretoria do ano (item A2.4)
+      var hoje = new Date(), ano = String(hoje.getFullYear());
+      var diretoria = (perfil.role === 'admin' && hoje >= new Date(hoje.getFullYear(), 0, 25))
+        ? ctx.db.collection('contratosAssociacao').where('tipo', '==', 'prolabore').get()
+            .then(function(s){ return s.docs.some(function(d){ var x = d.data(); return String(x.ano) === ano && x.status !== 'cancelado'; }); }).catch(function(){ return true; })
+        : Promise.resolve(true);
+      return Promise.all([meus, comoDiretor, regras, diretoria]).then(function(r){
+        var lista = r[0].sort(porData), dir = r[1].sort(porData), cfg = r[2], diretoriaOk = r[3];
+        function ehContrato(c){ return !c.tipo || c.tipo === 'contrato'; }
+        // fila: primeiro o que é obrigatório (contrato, termos), depois o que pode esperar
+        var fila = [];
+        lista.filter(function(c){ return c.status === 'aguardando_associado' && ehContrato(c); }).slice(0, 1).forEach(function(c){ fila.push([c, 'associado']); });
+        lista.filter(function(c){ return c.status === 'aguardando_associado' && c.tipo === 'termo'; }).reverse().forEach(function(c){ fila.push([c, 'termo']); });
+        var obrigatorios = fila.length;
+        lista.filter(function(c){ return c.status === 'aguardando_associado' && c.tipo === 'prolabore'; }).forEach(function(c){ fila.push([c, 'diretoria']); });
+        dir.filter(function(c){ return !c.interveniente && (c.status === 'aguardando_associado' || c.status === 'assinado'); }).forEach(function(c){ fila.push([c, 'interveniente']); });
+        function lembrarDiretoria(){ if (!diretoriaOk) telaLembreteDiretoria(ano); }
+        function proximo(i){ if (i < fila.length) telaAssinar(ctx, fila[i][0], fila[i][1], function(){ proximo(i + 1); }); else lembrarDiretoria(); }
+        var assinado = lista.some(function(c){ return c.status === 'assinado' && ehContrato(c); });
+        if (!obrigatorios && cfg.exigirAssinatura && perfil.tipoColaborador === 'associado' && perfil.role !== 'admin' && !assinado) { telaAguardando(ctx); return 'aguardando'; }
+        proximo(0);
+        return obrigatorios ? 'assinar' : (fila.length ? 'pendente' : (diretoriaOk ? 'livre' : 'lembrete'));
       });
     }
   };

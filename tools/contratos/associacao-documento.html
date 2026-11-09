@@ -127,7 +127,7 @@
   function blocoAssinaturas(d, comVerificacao){
     let h = '<div><div class="sig-grid">' +
       assinante(d.sociedade, d.titularNome, 'pela SOCIEDADE (titular)', d.titularOab) +
-      assinante(d.associado, d.associadoNome, 'ASSOCIADO', d.associadoOab);
+      assinante(d.associado, d.associadoNome, d.rotuloSignatario || 'ASSOCIADO', d.associadoOab);
     if (d.diretorNome) h += assinante(d.interveniente, d.diretorNome, /coobrigado solid/i.test(d.textoFinal || '') ? 'DIRETOR INTERVENIENTE E COOBRIGADO SOLIDÁRIO' : 'DIRETOR INTERVENIENTE', d.diretorOab);
     h += '</div>';
     if (comVerificacao) {
@@ -143,7 +143,7 @@
     let h = esc(l);
     let m = l.match(/^(A?\d+(?:\.\d+)*\.)\s/);
     if (m) return { html: '<div class="blk"><b>' + esc(m[1]) + '</b>' + esc(l.slice(m[1].length)) + '</div>' };
-    m = l.match(/^(SOCIEDADE|ASSOCIADO|DIRETOR INTERVENIENTE):/);
+    m = l.match(/^(SOCIEDADE|ASSOCIADO|DIRETOR INTERVENIENTE|DIRETOR):/);
     if (m) return { html: '<div class="blk"><b>' + esc(m[0]) + '</b>' + esc(l.slice(m[0].length)) + '</div>' };
     if (/^[IVX]+ – /.test(l)) return { html: '<div class="blk item">' + h + '</div>' };
     return { html: '<div class="blk">' + h + '</div>' };
@@ -307,7 +307,8 @@
     const data = String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0') + '.' + String(dt.getFullYear()).slice(2);
     const criador = (String(d.titularNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
     // prévia ainda sem a assinatura da sociedade: o nome deixa claro que é minuta
-    const peca = quando(d.sociedade) ? 'CONTRATO DE ASSOCIAÇÃO' : 'MINUTA DO CONTRATO DE ASSOCIAÇÃO';
+    const base = d.nomePeca || 'CONTRATO DE ASSOCIAÇÃO';
+    const peca = quando(d.sociedade) ? base : (d.nomePeca ? 'MINUTA — ' + base : 'MINUTA DO CONTRATO DE ASSOCIAÇÃO');
     return ['(' + String(d.associadoNome || 'ASSOCIADO').toUpperCase() + ')', peca, criador, data]
       .join(' – ').replace(/[\\\/:*?"<>|]/g, '-') + '.pdf';
   }

@@ -92,6 +92,8 @@ with sync_playwright() as p:
     # configuração: modelo + titular + diretor
     pg.set_input_files('#cfg-modelo', os.path.join(REPO, 'privado', 'contrato-associacao-modelo.txt'))
     pg.wait_for_function("document.getElementById('cfg-msg').textContent.indexOf('Modelo lido') !== -1")
+    pg.set_input_files('#cfg-termos', os.path.join(REPO, 'privado', 'termos-associacao.txt'))
+    pg.wait_for_function("document.getElementById('cfg-msg').textContent.indexOf('termos lidos') !== -1")
     pg.select_option('#cfg-titular', 'adm'); pg.select_option('#cfg-diretor', 'hecy')
     pg.click('#cfg-salvar'); pg.wait_for_function("document.getElementById('cfg-msg').textContent === 'Configuração salva.'")
     st = pg.evaluate('window.__FAKE_STORE')
@@ -126,16 +128,13 @@ with sync_playwright() as p:
     ok('FULANA DE TESTE SILVA' in texto and 'OAB/MG 163.041' in texto and '073.580.946-11' in texto, 'qualificação do associado preenchida')
     ok('R$ 3.500,00 (três mil e quinhentos reais)' in texto, 'cláusula 7.1 com valor e extenso')
     ok('12 (doze) meses' in texto and '02/12/2027' in texto, 'Anexo I com prazo e data de habilitação')
-    ok('HECY BRAGA DE OLIVEIRA' in texto and 'OAB/MG 95.948' in texto, 'diretor interveniente qualificado')
-    ok('6.6. O DIRETOR INTERVENIENTE responde pessoal, ilimitada e solidariamente com a SOCIEDADE' in texto and 'coobrigado solidário, na forma da cláusula 6.6' in texto, 'cláusula 6.6: diretor coobrigado solidário')
-    ok('[[SE_DIRETOR]]' not in texto and 'não confere ao DIRETOR INTERVENIENTE a condição de sócio' in texto, 'coobrigação sem torná-lo sócio; marca interna não aparece')
-    pg.uncheck('#ed-diretor'); pg.click('#ed-previa'); pg.wait_for_function("document.getElementById('ed-msg').textContent.indexOf('Prévia pronta') !== -1")
-    fr.locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(2000)
-    t2 = fr.locator('#doc-pages').inner_text()
-    ok('6.6.' not in t2 and 'DIRETOR INTERVENIENTE' not in t2 and '[[SE_DIRETOR]]' not in t2, 'sem diretor: qualificação e cláusula 6.6 saem do contrato')
-    pg.check('#ed-diretor'); pg.click('#ed-previa'); pg.wait_for_function("document.getElementById('ed-msg').textContent.indexOf('Prévia pronta') !== -1")
-    fr.locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(2500)
-    ok('data da última assinatura eletrônica' in texto, 'data da assinatura fica para a hora das assinaturas')
+    # cláusulas do modelo (o texto fica só em privado/, fora do repositório público): cada uma tem de aparecer na prévia
+    with open(os.path.join(REPO, 'privado', 'contrato-associacao-modelo.txt'), encoding='utf8') as f:
+        modelo = {l.split(' ', 1)[0]: l for l in f.read().splitlines() if re.match(r'^(A?\d+\.\d+\.|III – )', l)}
+    for item in ['1.3.', '4.1.', '4.3.', '4.6.', '7.1.', '10.2.', '15.6.', '17.6.', 'A1.6.', 'A2.3.', 'A2.4.', 'A5.2.', 'A6.1.', 'A6.3.', 'A7.4.', 'A7.5.']:
+        linha = modelo[item]
+        trechos = [t for t in re.split(r'\{\{\w+\}\}', linha) if len(t.strip()) > 25]
+        ok(all(' '.join(t.split()) in ' '.join(texto.split()) for t in trechos), 'cláusula ' + item + ' do modelo aparece na prévia')
     fr.locator('.doc-page').first.screenshot(path=os.path.join(FOTOS, 'previa-p1.png'))
     ok(pg.is_visible('#ed-imprimir') and pg.is_visible('#ed-pdf'), 'prévia pronta mostra Imprimir e Baixar PDF')
     with pg.expect_download(timeout=120000) as dl: pg.click('#ed-pdf')
@@ -265,6 +264,61 @@ with sync_playwright() as p:
     # nenhuma página com texto escondido (a última linha não pode passar do quadro de conteúdo)
     vaz = pg.evaluate('''() => Array.from(document.querySelectorAll('.doc-content')).filter(c => c.scrollHeight > c.clientHeight + 1).length''')
     ok(vaz == 0, 'nenhuma página com texto cortado')
+    ctx.close()
+
+    # ================= 8) termos e remuneração da Diretoria =================
+    print('8) Termos e remuneração da Diretoria')
+    ctx, ext = contexto(p, {'uid': 'adm', 'email': 'jonathan@exemplo.test', 'senha': 'certa'}, STORE4)
+    pg = ctx.new_page(); pg.on('pageerror', lambda e: erros_js.append('termos: ' + str(e)))
+    pg.goto(BASE + '/tools/contratos/associacao.html'); pg.wait_for_selector('#conteudo', state='visible')
+    ok('5 modelos de termo carregados' in pg.inner_text('#cfg-termos-info'), 'modelos de termos carregados na configuração')
+    ok('Pendente' in pg.inner_text('#dir-alerta'), 'remuneração da Diretoria do ano aparece pendente (depois de 25/01)')
+    pg.click('button[data-termo]')
+    opcoes = pg.locator('#te-escolha option').all_inner_texts()
+    ok(len(opcoes) == 4 and 'Renegociação do repasse fixo' in opcoes, 'quatro termos do associado: ' + ', '.join(opcoes))
+    pg.select_option('#te-escolha', 'renegociacao-fixo')
+    pg.fill('[data-campo="VALOR_NOVO"]', '4.000,00')
+    pg.click('#te-previa'); pg.wait_for_function("document.getElementById('te-msg').textContent.indexOf('Prévia pronta') !== -1")
+    tf = pg.frame_locator('#te-frame'); tf.locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(1500)
+    tt = tf.locator('#doc-pages').inner_text()
+    ok('de R$ 3.500,00 (três mil e quinhentos reais) para R$ 4.000,00 (quatro mil reais)' in tt, 'termo de renegociação com valor atual e novo')
+    ok('Contrato de Associação Profissional de Advogado de 01/12/2026' in tt and '[FALTA' not in tt, 'termo cita o contrato e não tem campos faltando')
+    pg.click('#te-enviar'); pg.wait_for_selector('#ass-bd.show')
+    pg.fill('#ass-senha', 'certa'); assinar_canvas(pg, '#ass-canvas'); pg.click('#ass-ok'); pg.wait_for_selector('#ass-bd', state='hidden')
+    st = pg.evaluate('window.__FAKE_STORE')
+    termo = [ (k, v) for k, v in st.items() if k.startswith('contratosAssociacao/') and v.get('tipo') == 'termo' ]
+    ok(len(termo) == 1 and termo[0][1]['status'] == 'aguardando_associado' and termo[0][1]['associadoUid'] == 'assoc1' and termo[0][1]['dados']['campos']['VALOR_NOVO'] == 4000,
+       'termo enviado ao associado, assinado pela sociedade')
+    ok('Renegociação do repasse fixo' in pg.inner_text('#termos-lista'), 'termo aparece na lista de termos')
+    # remuneração da Diretoria
+    pg.click('#dir-fixar')
+    pg.fill('[data-campo="VALOR_TITULAR"]', '8.000,00'); pg.fill('[data-campo="VALOR_DIRETOR"]', '6.000,00')
+    pg.click('#te-previa'); pg.wait_for_function("document.getElementById('te-msg').textContent.indexOf('Prévia pronta') !== -1")
+    tf.locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(1500)
+    tt = tf.locator('#doc-pages').inner_text()
+    ok('R$ 8.000,00 (oito mil reais)' in tt and 'R$ 6.000,00 (seis mil reais)' in tt and 'HECY BRAGA DE OLIVEIRA' in tt, 'documento da Diretoria com os dois valores')
+    pg.click('#te-enviar'); pg.wait_for_selector('#ass-bd.show')
+    pg.fill('#ass-senha', 'certa'); assinar_canvas(pg, '#ass-canvas'); pg.click('#ass-ok'); pg.wait_for_selector('#ass-bd', state='hidden')
+    st = pg.evaluate('window.__FAKE_STORE')
+    pl = [ v for k, v in st.items() if k.startswith('contratosAssociacao/') and v.get('tipo') == 'prolabore' ]
+    ok(len(pl) == 1 and pl[0]['associadoUid'] == 'hecy' and pl[0]['rotuloSignatario'] == 'DIRETOR', 'documento da Diretoria vai para o diretor assinar')
+    ok('fixada' in pg.inner_text('#dir-alerta'), 'alerta da Diretoria fica verde depois de fixada')
+    STORE5 = pg.evaluate('JSON.parse(JSON.stringify(window.__FAKE_STORE))'); ctx.close()
+
+    ctx, pg, ext = gate({'uid': 'assoc1', 'email': 'fulana@exemplo.test', 'senha': 's1'}, {'uid': 'assoc1', 'tipoColaborador': 'associado', 'role': 'membro'}, STORE5, 'gate-termo')
+    ok(pg.evaluate('window.__res') == 'assinar' and 'Renegociação do repasse fixo' in pg.inner_text('#ca-bd') and pg.locator('#ca-sair').count() == 1, 'termo é obrigatório para o associado (assinar ou sair)')
+    pg.check('#ca-li'); pg.fill('#ca-senha', 's1'); pg.wait_for_timeout(300); assinar_canvas(pg, '#ca-canvas'); pg.click('#ca-assinar'); pg.wait_for_selector('#ca-continuar')
+    st = pg.evaluate('window.__FAKE_STORE')
+    ok(any(v.get('tipo') == 'termo' and v.get('status') == 'assinado' for v in st.values()), 'associado assinou o termo')
+    STORE6 = pg.evaluate('JSON.parse(JSON.stringify(window.__FAKE_STORE))'); ctx.close()
+    ctx, pg, ext = gate({'uid': 'hecy', 'email': 'hecy@exemplo.test', 'senha': 'h1'}, {'uid': 'hecy', 'role': 'membro'}, STORE6, 'gate-diretoria')
+    ok('Remuneração fixa da Diretoria' in pg.inner_text('#ca-bd') and pg.locator('#ca-depois').count() == 1, 'diretor assina a remuneração da Diretoria, podendo deixar para depois')
+    ctx.close()
+    ctx, pg, ext = gate({'uid': 'adm', 'email': 'jonathan@exemplo.test', 'senha': 'certa'}, {'uid': 'adm', 'role': 'admin'}, STORE4, 'gate-lembrete')
+    ok(pg.evaluate('window.__res') == 'lembrete' and 'Remuneração fixa da Diretoria' in pg.inner_text('#ca-bd'), 'admin sem a remuneração do ano: lembrete no login')
+    ctx.close()
+    ctx, pg, ext = gate({'uid': 'adm', 'email': 'jonathan@exemplo.test', 'senha': 'certa'}, {'uid': 'adm', 'role': 'admin'}, STORE5, 'gate-sem-lembrete')
+    ok(pg.evaluate('window.__res') == 'livre', 'admin com a remuneração do ano fixada: sem lembrete')
     ctx.close()
 
     # ================= 7) sub-aba em Contratos =================

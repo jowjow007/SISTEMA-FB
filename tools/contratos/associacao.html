@@ -98,12 +98,17 @@
   <div id="conteudo" style="display:none;">
     <div class="card" id="card-config">
       <h2>Configuração</h2>
-      <p class="desc">O texto do contrato não fica no site, que é público. Carregue o arquivo <code>privado/contrato-associacao-modelo.txt</code> do computador. Ele vai para o Firestore com leitura restrita ao administrador.</p>
+      <p class="desc">O texto do contrato e dos termos não fica no site, que é público. Carregue os arquivos <code>privado/contrato-associacao-modelo.txt</code> e <code>privado/termos-associacao.txt</code> do computador. Ele vai para o Firestore com leitura restrita ao administrador.</p>
       <div class="grid">
         <div class="field">
           <label>Modelo do contrato (.txt)</label>
           <input type="file" id="cfg-modelo" accept=".txt,text/plain">
           <div class="hint" id="cfg-modelo-info">Nenhum modelo carregado.</div>
+        </div>
+        <div class="field">
+          <label>Modelos de termos (.txt)</label>
+          <input type="file" id="cfg-termos" accept=".txt,text/plain">
+          <div class="hint" id="cfg-termos-info">Nenhum modelo de termo carregado.</div>
         </div>
         <div class="field">
           <label>Titular que assina pela sociedade</label>
@@ -131,6 +136,35 @@
         <label>Preparar para outro cadastro (ex.: conta de teste)</label>
         <select id="outro-usuario"><option value="">— escolher —</option></select>
       </div>
+    </div>
+
+    <div class="card" id="card-diretoria">
+      <h2>Remuneração fixa da Diretoria</h2>
+      <p class="desc">Até 25 de janeiro de cada ano, fixe o pró-labore da Diretoria (item A2.4 do Anexo I). O documento é assinado pela sociedade e pelo diretor e fica guardado aqui, com acesso restrito. Nos demonstrativos dos associados, esses valores aparecem somados na linha "pacote de pessoal".</p>
+      <div class="msg" id="dir-alerta"></div>
+      <table><thead><tr><th>Ano</th><th>Documento</th><th></th></tr></thead><tbody id="dir-lista"></tbody></table>
+      <div class="acoes" style="margin-top:12px;"><button class="btn" id="dir-fixar">Fixar valores</button></div>
+    </div>
+
+    <div class="card" id="card-termos">
+      <h2>Termos enviados</h2>
+      <p class="desc">Renegociação do repasse fixo, progressão de nível, registro de indicação e encerramento. Para criar, use o botão "+ Termo" na linha do associado (precisa ter contrato assinado).</p>
+      <table><thead><tr><th>Termo</th><th>Pessoa</th><th>Situação</th><th></th></tr></thead><tbody id="termos-lista"></tbody></table>
+    </div>
+
+    <div class="card" id="termo" style="display:none;">
+      <h2 id="te-titulo">Novo termo</h2>
+      <div class="field" id="te-escolha-wrap" style="max-width:460px;"><label>Termo</label><select id="te-escolha"></select></div>
+      <div class="grid" id="te-campos"></div>
+      <div class="acoes" style="margin-top:12px;">
+        <button class="btn secondary" id="te-previa">Pré-visualizar</button>
+        <button class="btn secondary" id="te-imprimir" style="display:none;">🖨 Imprimir</button>
+        <button class="btn secondary" id="te-pdf" style="display:none;">⬇ Baixar PDF</button>
+        <button class="btn" id="te-enviar">✍ Assinar pela sociedade e enviar</button>
+        <button class="btn secondary" id="te-fechar">Fechar</button>
+      </div>
+      <div class="msg" id="te-msg"></div>
+      <div class="frame-wrap" id="te-frame-wrap" style="display:none;"><iframe id="te-frame" title="Prévia do termo"></iframe></div>
     </div>
 
     <div class="card" id="editor" style="display:none;">
@@ -357,13 +391,14 @@
     return Object.keys(usuarios).filter(function(uid){ return usuarios[uid].tipoColaborador === 'associado'; })
       .sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b)); });
   }
+  function ehContrato(c){ return !c.tipo || c.tipo === 'contrato'; }
   function contratosDe(uid){
-    return contratos.filter(function(c){ return c.associadoUid === uid; })
+    return contratos.filter(function(c){ return c.associadoUid === uid && ehContrato(c); })
       .sort(function(a, b){ return (b.criadoEmISO || '').localeCompare(a.criadoEmISO || ''); });
   }
   function renderLista(){
     const lista = associados();
-    const extras = contratos.map(function(c){ return c.associadoUid; }).filter(function(uid, i, a){ return a.indexOf(uid) === i && lista.indexOf(uid) === -1; });
+    const extras = contratos.filter(ehContrato).map(function(c){ return c.associadoUid; }).filter(function(uid, i, a){ return a.indexOf(uid) === i && lista.indexOf(uid) === -1; });
     const todos = lista.concat(extras);
     $('lista').innerHTML = todos.length ? todos.map(function(uid){
       const cs = contratosDe(uid), c = cs[0];
@@ -376,6 +411,7 @@
       if (c) btns.push('<button class="btn secondary small" data-ver="' + esc(c.id) + '">Abrir</button>');
       if (!c || c.status === 'cancelado' || c.status === 'encerrado') btns.push('<button class="btn small" data-preparar="' + esc(uid) + '">Preparar contrato</button>');
       if (c && c.status === 'aguardando_associado') btns.push('<button class="btn ghost small" data-cancelar="' + esc(c.id) + '">Cancelar envio</button>');
+      if (c && c.status === 'assinado') btns.push('<button class="btn secondary small" data-termo="' + esc(c.id) + '">+ Termo</button>');
       if (c && c.status === 'assinado') btns.push('<button class="btn ghost small" data-encerrar="' + esc(c.id) + '">Encerrar</button>');
       const naoAssoc = usuarios[uid] && usuarios[uid].tipoColaborador !== 'associado' ? ' <span class="pill none">não marcado como associado</span>' : '';
       return '<tr><td><b>' + esc(nomeDe(uid)) + '</b>' + naoAssoc + '</td><td>' + esc(isoParaBR((usuarios[uid] || {}).dataIngresso)) + '</td>' +
@@ -394,6 +430,8 @@
       .sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b)); })
       .map(function(uid){ return '<option value="' + esc(uid) + '">' + esc(nomeDe(uid)) + '</option>'; }).join('');
     $('cfg-exigir').checked = !!regras.exigirAssinatura;
+    const nt = parseTermos(config.termos || '').length;
+    $('cfg-termos-info').textContent = nt ? nt + ' modelos de termo carregados.' : 'Nenhum modelo de termo carregado.';
     $('cfg-modelo-info').textContent = config.texto
       ? 'Modelo carregado: versão ' + (config.versao || '?') + ' (' + config.texto.length.toLocaleString('pt-BR') + ' caracteres).'
       : 'Nenhum modelo carregado.';
@@ -414,6 +452,18 @@
     };
     r.readAsText(f, 'utf-8');
   });
+  let termosNovo = null;
+  $('cfg-termos').addEventListener('change', function(){
+    const f = this.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = function(){
+      const t = String(r.result || '');
+      if (!parseTermos(t).length) { termosNovo = null; $('cfg-msg').className = 'msg err'; $('cfg-msg').textContent = 'Esse arquivo não parece o de modelos de termos (falta "=== id | título | destino").'; return; }
+      termosNovo = t;
+      $('cfg-msg').className = 'msg warn'; $('cfg-msg').textContent = 'Modelos de termos lidos. Clique em "Salvar configuração" para gravar.';
+    };
+    r.readAsText(f, 'utf-8');
+  });
   $('cfg-salvar').addEventListener('click', async function(){
     const btn = this; btn.disabled = true;
     try {
@@ -422,9 +472,10 @@
         patch.texto = modeloNovo;
         patch.versao = new Date().toISOString().slice(0, 10) + '-' + (await sha256(modeloNovo)).slice(0, 8);
       }
+      if (termosNovo) patch.termos = termosNovo;
       await db.collection('contratosAssociacaoConfig').doc('modelo').set(patch, { merge: true });
       await db.collection('contratosAssociacaoConfig').doc('regras').set({ exigirAssinatura: $('cfg-exigir').checked, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-      modeloNovo = null; $('cfg-modelo').value = '';
+      modeloNovo = null; $('cfg-modelo').value = ''; termosNovo = null; $('cfg-termos').value = '';
       $('cfg-msg').className = 'msg ok'; $('cfg-msg').textContent = 'Configuração salva.';
       await carregarConfig(); renderConfig();
     } catch (e) {
@@ -569,8 +620,8 @@
       });
       await db.collection('contratosAssociacao').add(m);
       $('ass-bd').classList.remove('show');
-      $('editor').style.display = 'none'; editando = null; prontoParaEnviar = null;
-      await carregarContratos(); renderLista();
+      $('editor').style.display = 'none'; $('termo').style.display = 'none'; editando = null; prontoParaEnviar = null; termoAtual = null;
+      await carregarContratos(); renderLista(); renderTermos(); renderDiretoria();
     } catch (e) {
       const c = e && e.code;
       if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') erro('Senha incorreta.');
@@ -580,30 +631,214 @@
   });
 
   /* ---------- ações da lista ---------- */
-  $('lista').addEventListener('click', async function(e){
-    const b = e.target.closest('button'); if (!b) return;
+  $('lista').addEventListener('acao', function(e){ acaoLista({ dataset: e.detail }); });
+  $('lista').addEventListener('click', function(e){ const b = e.target.closest('button'); if (b) acaoLista(b); });
+  async function acaoLista(b){
     if (b.dataset.preparar) return abrirEditor(b.dataset.preparar);
+    if (b.dataset.termo) return abrirTermo(b.dataset.termo, null);
     if (b.dataset.ver) {
       const c = contratos.find(function(x){ return x.id === b.dataset.ver; }); if (!c) return;
-      $('editor').style.display = 'none'; $('visor').style.display = 'block';
-      $('vi-titulo').textContent = 'Contrato de ' + (c.associadoNome || '') + ' — ' + ((STATUS[c.status] || [0, c.status])[1]);
+      $('editor').style.display = 'none'; $('termo').style.display = 'none'; $('visor').style.display = 'block';
+      $('vi-titulo').textContent = (c.tituloDoc || 'Contrato') + ' — ' + (c.associadoNome || '') + ' — ' + ((STATUS[c.status] || [0, c.status])[1]);
       const fr = $('vi-frame'); fr.onload = null; fr.src = 'associacao-documento.html?id=' + encodeURIComponent(c.id);
       $('visor').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     const id = b.dataset.cancelar || b.dataset.encerrar; if (!id) return;
     const cancelar = !!b.dataset.cancelar;
-    if (!confirm(cancelar ? 'Cancelar o envio? O associado deixa de ver a tela de assinatura.' : 'Encerrar este contrato (desligamento)? O documento assinado continua guardado.')) return;
+    if (!confirm(cancelar ? 'Cancelar o envio? A pessoa deixa de ver a tela de assinatura.' : 'Encerrar este contrato (desligamento)? O documento assinado continua guardado. Se quiser registrar a transição, use "+ Termo › Encerramento" antes.')) return;
     const ts = firebase.firestore.FieldValue.serverTimestamp();
     try {
       await db.collection('contratosAssociacao').doc(id).update(cancelar
         ? { status: 'cancelado', canceladoEm: ts, canceladoPorUid: auth.currentUser.uid }
         : { status: 'encerrado', encerradoEm: ts, encerradoPorUid: auth.currentUser.uid });
-      await carregarContratos(); renderLista();
+      await carregarContratos(); renderLista(); renderTermos(); renderDiretoria();
     } catch (er) { alert('Não foi possível: ' + er.message); }
-  });
+  }
   $('vi-fechar').addEventListener('click', function(){ $('visor').style.display = 'none'; $('vi-frame').src = 'about:blank'; });
   $('outro-usuario').addEventListener('change', function(){ if (this.value) { abrirEditor(this.value); this.value = ''; } });
+
+
+  /* ---------- termos (renegociação, progressão, indicação, encerramento) e remuneração da Diretoria ----------
+     Modelos em privado/termos-associacao.txt (carregados em Configuração). Formato de cada um:
+       === id | Título | associado|diretoria
+       campos: NOME|tipo|Rótulo; ...      (tipos: moeda, data, texto, longo, nivel)
+       # TÍTULO DO DOCUMENTO ... [[ASSINATURAS]]                                                        */
+  function parseTermos(texto){
+    const out = [];
+    String(texto || '').split(/^=== /m).slice(1).forEach(function(bloco){
+      const linhas = bloco.split(/\r?\n/);
+      const cab = linhas.shift().split('|').map(function(x){ return x.trim(); });
+      if (cab.length < 3) return;
+      let campos = [];
+      if (/^campos:/.test(linhas[0] || '')) {
+        campos = linhas.shift().replace(/^campos:\s*/, '').split(';').map(function(c){
+          const p = c.split('|').map(function(x){ return x.trim(); });
+          return { nome: p[0], tipo: p[1] || 'texto', rotulo: p[2] || p[0] };
+        }).filter(function(c){ return c.nome; });
+      }
+      out.push({ id: cab[0], titulo: cab[1], destino: cab[2], campos: campos, texto: linhas.join('\n').trim() + '\n' });
+    });
+    return out;
+  }
+  const NIVEIS = ['Júnior', 'Pleno', 'Sênior', 'Líder/Gestor'];
+  let termoAtual = null;   // { modelo, contrato (ou null na Diretoria), destinoUid }
+  function termosAssinados(contratoId, termoId){
+    return contratos.filter(function(x){ return x.contratoId === contratoId && x.termoId === termoId && x.status === 'assinado'; })
+      .sort(function(a, b){ return (b.assinadoEmISO || '').localeCompare(a.assinadoEmISO || ''); });
+  }
+  function valorAtual(c){
+    const r = termosAssinados(c.id, 'renegociacao-fixo')[0];
+    return r ? r.dados.campos.VALOR_NOVO : (c.dados || {}).valorFixo;
+  }
+  function nivelAtual(c){
+    const r = termosAssinados(c.id, 'progressao-nivel')[0];
+    return r ? r.dados.campos.NIVEL_NOVO : (c.dados || {}).nivel;
+  }
+  function abrirTermo(contratoId, termoIdFixo){
+    const modelos = parseTermos(config.termos || '');
+    if (!modelos.length) { alert('Carregue os modelos de termos em Configuração (privado/termos-associacao.txt).'); return; }
+    const c = contratoId ? contratos.find(function(x){ return x.id === contratoId; }) : null;
+    const lista = modelos.filter(function(m){ return termoIdFixo ? m.id === termoIdFixo : m.destino === 'associado'; });
+    if (!lista.length) { alert('Modelo de termo não encontrado.'); return; }
+    $('te-escolha').innerHTML = lista.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.titulo) + '</option>'; }).join('');
+    $('te-escolha-wrap').style.display = lista.length > 1 ? '' : 'none';
+    termoAtual = { contrato: c, modelos: lista };
+    $('editor').style.display = 'none'; $('visor').style.display = 'none'; $('termo').style.display = 'block';
+    $('te-titulo').textContent = c ? 'Termo para ' + (c.associadoNome || nomeDe(c.associadoUid)) : lista[0].titulo;
+    montarCamposTermo();
+    $('termo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function modeloTermo(){ return termoAtual.modelos.find(function(m){ return m.id === $('te-escolha').value; }) || termoAtual.modelos[0]; }
+  function montarCamposTermo(){
+    const m = modeloTermo(), hoje = new Date().toISOString().slice(0, 10), ano = String(new Date().getFullYear());
+    $('te-campos').innerHTML = m.campos.map(function(cp){
+      let input;
+      if (cp.tipo === 'data') input = '<input type="date" data-campo="' + cp.nome + '" value="' + (m.id === 'prolabore' ? ano + '-01-01' : hoje) + '">';
+      else if (cp.tipo === 'moeda') input = '<input data-campo="' + cp.nome + '" inputmode="decimal" placeholder="0,00">';
+      else if (cp.tipo === 'nivel') input = '<select data-campo="' + cp.nome + '">' + NIVEIS.map(function(n){ return '<option>' + n + '</option>'; }).join('') + '</select>';
+      else if (cp.tipo === 'longo') input = '<textarea data-campo="' + cp.nome + '" rows="3" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel);color:var(--paper);font:inherit;"></textarea>';
+      else input = '<input data-campo="' + cp.nome + '" value="' + (cp.nome === 'ANO' ? ano : '') + '">';
+      return '<div class="field"' + (cp.tipo === 'longo' ? ' style="grid-column:1/-1;"' : '') + '><label>' + esc(cp.rotulo) + '</label>' + input + '</div>';
+    }).join('');
+    termoVelho(); $('te-msg').textContent = ''; $('te-frame-wrap').style.display = 'none';
+  }
+  function termoVelho(){ prontoParaEnviar = null; $('te-imprimir').style.display = 'none'; $('te-pdf').style.display = 'none'; }
+  $('te-escolha').addEventListener('change', montarCamposTermo);
+  $('te-campos').addEventListener('input', termoVelho);
+  $('te-campos').addEventListener('change', termoVelho);
+  $('te-fechar').addEventListener('click', function(){ $('termo').style.display = 'none'; termoAtual = null; prontoParaEnviar = null; });
+
+  async function montarTermo(){
+    if (!config.titularUid) throw new Error('Escolha o titular que assina pela sociedade em Configuração.');
+    const m = modeloTermo(), c = termoAtual.contrato;
+    const diretoria = m.destino === 'diretoria';
+    if (diretoria && !config.diretorUid) throw new Error('Escolha o diretor em Configuração: ele assina o documento da Diretoria.');
+    const destinoUid = diretoria ? config.diretorUid : c.associadoUid;
+    const a = qualificacao(destinoUid), t = qualificacao(config.titularUid), d = config.diretorUid ? qualificacao(config.diretorUid) : {};
+    const v = {};
+    Object.keys(a).forEach(function(k){ if (k !== 'PIX') v['ASSOCIADO_' + k] = a[k]; });
+    ['NOME','NACIONALIDADE','ESTADO_CIVIL','OAB','CPF','EMAIL'].forEach(function(k){ v['TITULAR_' + k] = t[k]; v['DIRETOR_' + k] = d[k] || ''; });
+    if (c) {
+      const va = valorAtual(c);
+      v.CONTRATO_INICIO = isoParaBR((c.dados || {}).dataInicio);
+      v.VALOR_ATUAL = isFinite(va) ? fmtValor(va) : ''; v.VALOR_ATUAL_EXTENSO = isFinite(va) ? valorExtenso(va) : '';
+      v.NIVEL_ATUAL = nivelAtual(c) || '';
+    }
+    const campos = {};
+    let erro = '';
+    $('te-campos').querySelectorAll('[data-campo]').forEach(function(el){
+      const cp = m.campos.find(function(x){ return x.nome === el.dataset.campo; }), val = el.value.trim();
+      if (cp.tipo === 'moeda') {
+        const n = parseValor(val);
+        if (!(isFinite(n) && n > 0)) { erro = erro || 'Preencha "' + cp.rotulo + '".'; return; }
+        campos[cp.nome] = n; v[cp.nome] = fmtValor(n); v[cp.nome + '_EXTENSO'] = valorExtenso(n);
+      } else if (cp.tipo === 'data') { campos[cp.nome] = val; v[cp.nome] = isoParaBR(val); }
+      else { campos[cp.nome] = val; v[cp.nome] = val; }
+    });
+    if (erro) throw new Error(erro);
+    const r = preencher(m.texto, { v: v, incluiDir: false });
+    const ano = diretoria ? String(campos.ANO || new Date().getFullYear()) : '';
+    return {
+      tipo: diretoria ? 'prolabore' : 'termo', termoId: m.id, tituloDoc: m.titulo + (ano ? ' — ' + ano : ''), ano: ano,
+      nomePeca: (m.titulo + (ano ? ' ' + ano : '')).toUpperCase(), rotuloSignatario: diretoria ? 'DIRETOR' : 'ASSOCIADO',
+      contratoId: c ? c.id : '',
+      textoFinal: r.texto, faltando: r.faltando, hashTexto: await sha256(r.texto),
+      associadoUid: destinoUid, associadoNome: a.NOME, associadoOab: a.OAB, associadoEmail: a.EMAIL,
+      titularUid: config.titularUid, titularNome: t.NOME, titularOab: t.OAB,
+      diretorUid: '', diretorNome: '', diretorOab: '',
+      modeloVersao: config.versao || '',
+      dados: { campos: campos }
+    };
+  }
+  $('te-previa').addEventListener('click', async function(){
+    try {
+      const m = await montarTermo();
+      $('te-frame-wrap').style.display = 'block';
+      mostrarEm($('te-frame'), m);
+      $('te-imprimir').style.display = ''; $('te-pdf').style.display = '';
+      $('te-msg').className = m.faltando.length ? 'msg err' : 'msg ok';
+      $('te-msg').textContent = m.faltando.length ? 'Faltam dados: ' + m.faltando.join(', ').toLowerCase().replace(/_/g, ' ') + '.' : 'Prévia pronta. Confira o texto antes de assinar.';
+      prontoParaEnviar = m.faltando.length ? null : m;
+    } catch (e) { $('te-msg').className = 'msg err'; $('te-msg').textContent = e.message; }
+  });
+  $('te-imprimir').addEventListener('click', function(){ try { $('te-frame').contentWindow.imprimirContrato(); } catch (e) {} });
+  $('te-pdf').addEventListener('click', function(){
+    const btn = this, w = $('te-frame').contentWindow;
+    if (!w || !w.baixarPdfContrato) return;
+    btn.disabled = true; btn.textContent = 'Gerando PDF…';
+    Promise.resolve(w.baixarPdfContrato()).then(function(){ $('te-msg').className = 'msg ok'; $('te-msg').textContent = 'PDF da minuta baixado.'; })
+      .catch(function(e){ $('te-msg').className = 'msg err'; $('te-msg').textContent = 'Não foi possível gerar o PDF: ' + e.message; })
+      .then(function(){ btn.disabled = false; btn.textContent = '⬇ Baixar PDF'; });
+  });
+  $('te-enviar').addEventListener('click', function(){
+    if (!prontoParaEnviar) { $('te-msg').className = 'msg err'; $('te-msg').textContent = 'Clique em "Pré-visualizar" e confira o texto antes de assinar.'; return; }
+    if (prontoParaEnviar.tipo === 'prolabore') {
+      const ja = contratos.find(function(x){ return x.tipo === 'prolabore' && x.ano === prontoParaEnviar.ano && x.status !== 'cancelado'; });
+      if (ja && !confirm('Já existe um documento da Diretoria para ' + prontoParaEnviar.ano + '. Enviar outro mesmo assim?')) return;
+    }
+    $('ass-senha').value = ''; $('ass-err').textContent = '';
+    $('ass-bd').classList.add('show'); prepCanvas(); registro = coletarRegistro();
+  });
+
+  function renderTermos(){
+    const docs = contratos.filter(function(x){ return x.tipo === 'termo'; })
+      .sort(function(a, b){ return (b.criadoEmISO || '').localeCompare(a.criadoEmISO || ''); });
+    $('termos-lista').innerHTML = docs.length ? docs.map(function(x){
+      const st = STATUS[x.status] || ['none', x.status];
+      const btns = '<button class="btn secondary small" data-ver="' + esc(x.id) + '">Abrir</button>' +
+        (x.status === 'aguardando_associado' ? '<button class="btn ghost small" data-cancelar="' + esc(x.id) + '">Cancelar envio</button>' : '');
+      return '<tr><td><b>' + esc(x.tituloDoc || x.termoId) + '</b><br><span style="font-size:.72rem;color:var(--muted);">' + esc(isoParaBR((x.criadoEmISO || '').slice(0, 10))) + '</span></td>' +
+        '<td>' + esc(x.associadoNome || '') + '</td><td><span class="pill ' + st[0] + '">' + esc(st[1]) + '</span></td>' +
+        '<td><div class="acoes" style="justify-content:flex-end;">' + btns + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="4" style="color:var(--muted);">Nenhum termo enviado ainda.</td></tr>';
+  }
+  // obrigação anual: a partir de 25 de janeiro, sem documento do ano, o alerta fica vermelho (e o portal lembra no login)
+  function renderDiretoria(){
+    const docs = contratos.filter(function(x){ return x.tipo === 'prolabore'; })
+      .sort(function(a, b){ return String(b.ano).localeCompare(String(a.ano)) || (b.criadoEmISO || '').localeCompare(a.criadoEmISO || ''); });
+    const hoje = new Date(), ano = String(hoje.getFullYear());
+    const doAno = docs.find(function(x){ return x.ano === ano && x.status !== 'cancelado'; });
+    const vencido = hoje >= new Date(hoje.getFullYear(), 0, 25);
+    $('dir-alerta').className = doAno ? 'msg ok' : (vencido ? 'msg err' : 'msg warn');
+    $('dir-alerta').textContent = doAno ? '✓ Remuneração da Diretoria de ' + ano + ' fixada (' + ((STATUS[doAno.status] || [0, doAno.status])[1]).toLowerCase() + ').'
+      : (vencido ? 'Pendente: a remuneração da Diretoria de ' + ano + ' deveria ter sido fixada até 25/01/' + ano + '.' : 'A remuneração da Diretoria de ' + ano + ' deve ser fixada até 25/01/' + ano + '.');
+    $('dir-lista').innerHTML = docs.length ? docs.map(function(x){
+      const st = STATUS[x.status] || ['none', x.status];
+      return '<tr><td><b>' + esc(x.ano) + '</b></td><td><span class="pill ' + st[0] + '">' + esc(st[1] === 'Aguardando o associado' ? 'Aguardando o diretor' : st[1]) + '</span></td>' +
+        '<td><div class="acoes" style="justify-content:flex-end;"><button class="btn secondary small" data-ver="' + esc(x.id) + '">Abrir</button>' +
+        (x.status === 'aguardando_associado' ? '<button class="btn ghost small" data-cancelar="' + esc(x.id) + '">Cancelar</button>' : '') + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="3" style="color:var(--muted);">Nenhum documento ainda.</td></tr>';
+  }
+  $('dir-fixar').addEventListener('click', function(){ abrirTermo(null, 'prolabore'); });
+  // Abrir/Cancelar das listas de termos e da Diretoria usam as mesmas ações da lista de associados
+  ['termos-lista', 'dir-lista'].forEach(function(id){
+    $(id).addEventListener('click', function(e){
+      const b = e.target.closest('button'); if (!b) return;
+      e.stopPropagation();
+      $('lista').dispatchEvent(new CustomEvent('acao', { detail: b.dataset }));
+    });
+  });
 
   /* ---------- dados ---------- */
   function carregarConfig(){
@@ -632,12 +867,12 @@
         carregarContratos()
       ]).then(function(){
         $('bloqueio').style.display = 'none'; $('conteudo').style.display = 'block';
-        renderConfig(); renderLista();
+        renderConfig(); renderLista(); renderTermos(); renderDiretoria();
       });
     }).catch(function(e){ bloquear('Não foi possível carregar: ' + e.message); });
   });
   // para os testes automáticos
-  window.__contratoAssoc = { valorExtenso: valorExtenso, calcHabilitacao: calcHabilitacao, fmtOAB: fmtOAB, preencher: preencher };
+  window.__contratoAssoc = { valorExtenso: valorExtenso, calcHabilitacao: calcHabilitacao, fmtOAB: fmtOAB, preencher: preencher, parseTermos: parseTermos };
 })();
 </script>
 </body>

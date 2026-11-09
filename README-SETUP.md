@@ -1264,3 +1264,21 @@ Cada assinatura guarda o PNG, a data do servidor, o IP e a localização (quando
   - **Ao fechar o app**, a versão nova se instala sozinha (`--atualizar-silencioso`, sem reabrir). Se o computador for desligado antes, ela é aplicada ao abrir (`--atualizar`, que reabre).
   - Como o download é feito pelo próprio app, não passa pelo SmartScreen.
   - Teste de ponta a ponta, isolado do app instalado (modo `TESTE`: pasta `%TEMP%\PortalFBTeste`, servidor local): `powershell -ExecutionPolicy Bypass -File tests\app-windows\teste-atualizacao.ps1`.
+
+### Termos e remuneração da Diretoria (desde v213)
+
+**Modelos:** ficam em `privado/termos-associacao.txt`, fora do git, e são carregados em Configuração (campo `termos` de `contratosAssociacaoConfig/modelo`). Formato de cada um: `=== id | Título | associado|diretoria`, depois `campos: NOME|tipo|Rótulo; …`, com os tipos moeda, data, texto, longo e nivel.
+
+**Termos do associado** (botão "+ Termo" na linha de quem tem contrato assinado):
+- renegociação do repasse fixo (usa o último valor assinado como "atual");
+- progressão de nível (Termo de Habilitação e Enquadramento, A3.9);
+- registro de indicação (A6);
+- encerramento.
+
+Ficam em `contratosAssociacao` com `tipo: 'termo'`, `termoId` e `contratoId`. A assinatura do associado no login é obrigatória, como no contrato.
+
+**Remuneração fixa da Diretoria:**
+- Fixada até 25/01 de cada ano, com `tipo: 'prolabore'` e `ano`.
+- Quem assina é a sociedade (titular) e, depois, o diretor (`associadoUid` = diretor, `rotuloSignatario` "DIRETOR"). O diretor pode assinar depois.
+- A partir de 25/01, sem documento do ano, o admin vê um lembrete no login e um alerta vermelho na sub-aba.
+- Ninguém além do admin e do diretor lê esse documento (regras de `contratosAssociacao`).
