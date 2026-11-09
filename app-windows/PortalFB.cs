@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("209.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("209.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("210.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("210.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "209";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "210";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         [STAThread]
@@ -71,6 +71,8 @@ namespace PortalFB
         }
 
         // as bibliotecas do WebView2 vêm embutidas no .exe
+        // Elas são gravadas em %LOCALAPPDATA%\PortalFB\bin e carregadas DE LÁ, do jeito normal. Carregar direto da
+        // memória (Assembly.Load de bytes) fazia o Windows Defender bloquear o app ("Contebrew.A!ml", 08/11/2026).
         static Assembly ResolverBiblioteca(object s, ResolveEventArgs e)
         {
             string nome = new AssemblyName(e.Name).Name + ".dll";
@@ -79,7 +81,11 @@ namespace PortalFB
                 if (st == null) return null;
                 byte[] b = new byte[st.Length];
                 st.Read(b, 0, b.Length);
-                return Assembly.Load(b);
+                string bin = Path.Combine(Pasta, "bin");
+                Directory.CreateDirectory(bin);
+                string destino = Path.Combine(bin, nome);
+                if (!File.Exists(destino) || new FileInfo(destino).Length != b.Length) File.WriteAllBytes(destino, b);
+                return Assembly.LoadFrom(destino);
             }
         }
 

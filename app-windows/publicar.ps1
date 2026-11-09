@@ -18,6 +18,14 @@ $fonte = [regex]::Replace($fonte, 'Assembly(File)?Version\("\d+\.0\.0\.0"\)', { 
 
 & (Join-Path $aqui 'compilar.ps1')
 $exe = Join-Path $aqui 'dist\PortalFB.exe'
+# antes de publicar, o Windows Defender examina o .exe: se acusar qualquer coisa, NÃO publica
+# (em 08/11/2026 a versão que carregava as bibliotecas da memória era bloqueada como "Contebrew.A!ml")
+$mp = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+if (Test-Path $mp) {
+  $exame = & $mp -Scan -ScanType 3 -File $exe -DisableRemediation 2>&1 | Out-String
+  if ($exame -match 'Threat\s+:\s+(\S+)') { throw "O Windows Defender acusou o app ($($Matches[1])). Não publicado." }
+  Write-Host 'Windows Defender: limpo.'
+} else { Write-Warning 'Windows Defender não encontrado: o .exe não foi examinado.' }
 $baixar = Join-Path $raiz 'baixar'
 New-Item -ItemType Directory -Force $baixar | Out-Null
 Copy-Item $exe (Join-Path $baixar 'PortalFB.exe') -Force

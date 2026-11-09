@@ -58,6 +58,8 @@ try {
   Ok ((Test-Path $inst) -and (Get-Item $inst).VersionInfo.FileVersion -eq '208.0.0.0') 'v208 instalada na pasta de teste'
   Ok ((Get-ItemProperty $chave).DisplayVersion -eq 'v208') 'registro mostra v208'
   Ok ([bool](ProcessosTeste)) 'app v208 aberto'
+  for ($i = 0; $i -lt 30 -and -not (ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' }); $i++) { Start-Sleep 1 }
+  Ok ([bool](ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' })) 'a página carregou dentro do app (WebView2 funcionando)'
   $info = Join-Path $pastaTeste 'atualizacao\pendente.txt'
   for ($i = 0; $i -lt 40 -and -not (Test-Path $info); $i++) { Start-Sleep 1 }
   Ok ((Test-Path $info) -and ((Get-Content $info) -eq "209;$sha209")) 'v209 baixada em segundo plano e conferida (SHA-256)'
@@ -79,6 +81,8 @@ try {
   Ok ((Get-Item $inst).VersionInfo.FileVersion -eq '210.0.0.0') 'ao abrir, aplicou a v210 pendente'
   for ($i = 0; $i -lt 20 -and -not (ProcessosTeste | Where-Object { $_.Path -eq $inst -and $_.MainWindowHandle -ne 0 }); $i++) { Start-Sleep 1 }
   Ok ([bool](ProcessosTeste | Where-Object { $_.Path -eq $inst })) 'reabriu já na v210'
+  for ($i = 0; $i -lt 30 -and -not (ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' }); $i++) { Start-Sleep 1 }
+  Ok ([bool](ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' })) 'v210 carregou a página'
 
   Write-Host "3) Arquivo adulterado não é instalado"
   ProcessosTeste | Stop-Process -Force; Start-Sleep 2
