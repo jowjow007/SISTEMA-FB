@@ -37,7 +37,7 @@ STORE['perfis/assoc1'] = {'displayName': 'Fulana de Teste Silva', 'birthDate': '
 STORE['perfis/adm'] = {'displayName': 'Jonathan Silva Fonseca'}
 
 def contexto(p, user, store):
-    ctx = p.chromium.launch().new_context(viewport={'width': 1300, 'height': 950}, geolocation={'latitude': -18.9186, 'longitude': -48.2772},
+    ctx = p.chromium.launch().new_context(viewport={'width': 1300, 'height': 950}, accept_downloads=True, geolocation={'latitude': -18.9186, 'longitude': -48.2772},
                                          permissions=['geolocation'])
     externos = []
     def rota(route):
@@ -129,6 +129,21 @@ with sync_playwright() as p:
     ok('HECY BRAGA DE OLIVEIRA' in texto and 'OAB/MG 95.948' in texto, 'diretor interveniente qualificado')
     ok('data da última assinatura eletrônica' in texto, 'data da assinatura fica para a hora das assinaturas')
     fr.locator('.doc-page').first.screenshot(path=os.path.join(FOTOS, 'previa-p1.png'))
+    ok(pg.is_visible('#ed-imprimir') and pg.is_visible('#ed-pdf'), 'prévia pronta mostra Imprimir e Baixar PDF')
+    with pg.expect_download(timeout=120000) as dl: pg.click('#ed-pdf')
+    nomepdf = dl.value.suggested_filename
+    ok(nomepdf.startswith('(FULANA DE TESTE SILVA) – MINUTA DO CONTRATO DE ASSOCIAÇÃO') and nomepdf.endswith('.pdf'), 'PDF da prévia baixado como minuta: ' + nomepdf)
+    caminho = os.path.join(FOTOS, 'minuta.pdf'); dl.value.save_as(caminho)
+    ok(os.path.getsize(caminho) > 200000 and open(caminho, 'rb').read(4) == b'%PDF', f'PDF válido ({os.path.getsize(caminho)//1024} KB)')
+    pg.wait_for_function("document.getElementById('ed-msg').textContent.indexOf('PDF da minuta baixado') !== -1")
+    pg.evaluate("() => { document.getElementById('ed-frame').contentWindow.print = function(){ window.__imprimiu = true; }; }")
+    pg.click('#ed-imprimir')
+    ok(pg.evaluate("window.__imprimiu === true"), 'Imprimir chama a impressão da prévia (timbrado)')   # a função falsa foi criada nesta página
+    pg.fill('#ed-prazo', '6'); pg.dispatch_event('#ed-prazo', 'input')
+    ok(not pg.is_visible('#ed-pdf'), 'mudou um campo: botões somem até nova prévia')
+    pg.fill('#ed-prazo', '12'); pg.dispatch_event('#ed-prazo', 'input')
+    pg.click('#ed-previa'); pg.wait_for_function("document.getElementById('ed-msg').textContent.indexOf('Prévia pronta') !== -1")
+    fr.locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(2500)
 
     # assinar pela sociedade
     pg.click('#ed-enviar'); pg.wait_for_selector('#ass-bd.show')

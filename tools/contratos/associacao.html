@@ -149,6 +149,8 @@
       <label class="toggle" id="ed-dir-wrap"><input type="checkbox" id="ed-diretor" checked><span>Incluir o diretor interveniente</span></label>
       <div class="acoes" style="margin-top:12px;">
         <button class="btn secondary" id="ed-previa">Pré-visualizar</button>
+        <button class="btn secondary" id="ed-imprimir" style="display:none;">🖨 Imprimir</button>
+        <button class="btn secondary" id="ed-pdf" style="display:none;">⬇ Baixar PDF</button>
         <button class="btn" id="ed-enviar">✍ Assinar pela sociedade e enviar</button>
         <button class="btn secondary" id="ed-fechar">Fechar</button>
       </div>
@@ -447,6 +449,7 @@
     $('ed-diretor').checked = !!config.diretorUid;
     recalcular();
     $('ed-msg').textContent = ''; $('ed-frame-wrap').style.display = 'none';
+    $('ed-imprimir').style.display = 'none'; $('ed-pdf').style.display = 'none';
     $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function recalcular(){
@@ -457,10 +460,25 @@
     if (p < 0) { p = 0; $('ed-prazo').value = 0; }
     $('ed-habilitacao').value = calcHabilitacao($('ed-inicio').value, isFinite(p) ? p : 0);
     prontoParaEnviar = null;
+    previaVelha();
   }
+  // mudou um campo depois da prévia: imprimir/baixar só depois de pré-visualizar de novo
+  function previaVelha(){ $('ed-imprimir').style.display = 'none'; $('ed-pdf').style.display = 'none'; }
   ['ed-valor', 'ed-inicio', 'ed-prazo'].forEach(function(id){ $(id).addEventListener('input', recalcular); });
-  ['ed-nivel', 'ed-habilitacao', 'ed-diretor'].forEach(function(id){ $(id).addEventListener('change', function(){ prontoParaEnviar = null; }); });
+  ['ed-nivel', 'ed-habilitacao', 'ed-diretor'].forEach(function(id){ $(id).addEventListener('change', function(){ prontoParaEnviar = null; previaVelha(); }); });
   $('ed-fechar').addEventListener('click', function(){ $('editor').style.display = 'none'; editando = null; });
+  // imprimir / baixar a prévia (minuta, ainda sem assinaturas) com o timbrado
+  $('ed-imprimir').addEventListener('click', function(){
+    try { $('ed-frame').contentWindow.imprimirContrato(); } catch (e) { $('ed-msg').className = 'msg err'; $('ed-msg').textContent = 'Aguarde a prévia carregar.'; }
+  });
+  $('ed-pdf').addEventListener('click', function(){
+    var btn = this, w = $('ed-frame').contentWindow;
+    if (!w || !w.baixarPdfContrato) { $('ed-msg').className = 'msg err'; $('ed-msg').textContent = 'Aguarde a prévia carregar.'; return; }
+    btn.disabled = true; btn.textContent = 'Gerando PDF…';
+    Promise.resolve(w.baixarPdfContrato()).then(function(){ $('ed-msg').className = 'msg ok'; $('ed-msg').textContent = 'PDF da minuta baixado.'; })
+      .catch(function(e){ $('ed-msg').className = 'msg err'; $('ed-msg').textContent = 'Não foi possível gerar o PDF: ' + e.message; })
+      .then(function(){ btn.disabled = false; btn.textContent = '⬇ Baixar PDF'; });
+  });
 
   async function montar(){
     if (!config.texto) throw new Error('Carregue o modelo do contrato em Configuração.');
@@ -488,6 +506,7 @@
       const m = await montar();
       $('ed-frame-wrap').style.display = 'block';
       mostrarEm($('ed-frame'), m);
+      $('ed-imprimir').style.display = ''; $('ed-pdf').style.display = '';
       const nomes = m.faltando.map(function(k){ return k.replace(/_/g, ' ').toLowerCase(); });
       $('ed-msg').className = m.faltando.length ? 'msg err' : 'msg ok';
       $('ed-msg').textContent = m.faltando.length ? 'Faltam dados: ' + nomes.join(', ') + '. Eles aparecem como [FALTA] na prévia, e o envio fica bloqueado até corrigir.' : 'Prévia pronta. Confira o texto antes de assinar.';

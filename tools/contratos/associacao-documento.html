@@ -306,9 +306,14 @@
     const dt = quando(d.associado) || quando(d.sociedade) || new Date();
     const data = String(dt.getDate()).padStart(2,'0') + '.' + String(dt.getMonth()+1).padStart(2,'0') + '.' + String(dt.getFullYear()).slice(2);
     const criador = (String(d.titularNome || '').trim().split(/\s+/)[0] || 'ESCRITÓRIO').toUpperCase();
-    return ['(' + String(d.associadoNome || 'ASSOCIADO').toUpperCase() + ')', 'CONTRATO DE ASSOCIAÇÃO', criador, data]
+    // prévia ainda sem a assinatura da sociedade: o nome deixa claro que é minuta
+    const peca = quando(d.sociedade) ? 'CONTRATO DE ASSOCIAÇÃO' : 'MINUTA DO CONTRATO DE ASSOCIAÇÃO';
+    return ['(' + String(d.associadoNome || 'ASSOCIADO').toUpperCase() + ')', peca, criador, data]
       .join(' – ').replace(/[\\\/:*?"<>|]/g, '-') + '.pdf';
   }
+  // a sub-aba de preparo (associacao.html) imprime e baixa a prévia por estas funções
+  window.imprimirContrato = function(){ window.focus(); window.print(); };
+  window.baixarPdfContrato = function(){ return gerarPdf(); };
   document.getElementById('btn-pdf').addEventListener('click', function(){
     const btn = this, st = document.getElementById('st');
     btn.disabled = true; st.textContent = 'Gerando PDF…';
