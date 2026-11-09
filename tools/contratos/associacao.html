@@ -335,7 +335,9 @@
   // sem diretor: tira o parágrafo do interveniente da qualificação
   function preencher(texto, x){
     let linhas = texto.split(/\r?\n/);
-    if (!x.incluiDir) linhas = linhas.filter(function(l){ return l.indexOf('DIRETOR INTERVENIENTE:') !== 0; });
+    // linhas marcadas com [[SE_DIRETOR]] (ex.: a coobrigação solidária, 6.6) só entram quando há diretor interveniente
+    if (!x.incluiDir) linhas = linhas.filter(function(l){ return l.indexOf('DIRETOR INTERVENIENTE:') !== 0 && l.indexOf('[[SE_DIRETOR]]') !== 0; });
+    linhas = linhas.map(function(l){ return l.indexOf('[[SE_DIRETOR]]') === 0 ? l.slice('[[SE_DIRETOR]]'.length) : l; });
     const faltando = [];
     const out = linhas.join('\n').replace(/\{\{(\w+)\}\}/g, function(m, k){
       if (k === 'DATA_ASSINATURA') return m;   // entra na hora de mostrar, com a data das assinaturas

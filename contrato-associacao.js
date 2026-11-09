@@ -66,7 +66,9 @@
     box.innerHTML =
       '<h2>' + (interveniente ? 'Contrato de associação: sua assinatura como diretor interveniente' : 'Contrato de associação: assinatura obrigatória') + '</h2>' +
       '<p class="ca-sub">' + (interveniente
-        ? 'O contrato de <b>' + esc(c.associadoNome) + '</b> aguarda sua assinatura como diretor interveniente. Você pode assinar agora ou depois.'
+        ? 'O contrato de <b>' + esc(c.associadoNome) + '</b> aguarda sua assinatura como diretor interveniente' +
+          (/coobrigado solid/i.test(c.textoFinal || '') ? ' e <b>coobrigado solidário</b>: pela cláusula 6.6, você responde pessoal, ilimitada e solidariamente com a sociedade pelas obrigações dela perante o associado' : '') +
+          '. Você pode assinar agora ou depois.'
         : 'Para continuar usando o Portal, leia o contrato e o Anexo I e assine. Se tiver dúvidas, fale com a Diretoria antes de assinar. Depois de assinado, a cópia fica disponível em PDF.') + '</p>' +
       '<div class="ca-frame"><iframe id="ca-frame" title="Contrato de associação"></iframe></div>' +
       '<label class="ca-check"><input type="checkbox" id="ca-li"><span>Li o contrato e o Anexo I, entendi as condições e concordo com seus termos.</span></label>' +
