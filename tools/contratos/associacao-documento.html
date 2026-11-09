@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <!--
   Contrato de associação profissional de advogado — mesmo papel do Criador de Documentos e das procurações:
   timbrado de fundo (assets/timbrado-bg.png), Poppins 9,3pt, A4.
@@ -275,7 +276,92 @@
       return new Promise(function(res){ img.addEventListener('load', res, {once:true}); img.addEventListener('error', res, {once:true}); });
     }));
   }
-  async function gerarPdf(){
+  /* PDF de TEXTO (desde v214): cada palavra vai para o PDF na mesma posição em que está na tela, com a Poppins
+     embutida (assets/fonts, licença OFL) e o timbrado de fundo. O texto pode ser copiado e pesquisado, e o arquivo
+     fica leve para a impressora. O método antigo (cada página como imagem) fica de reserva se algo falhar. */
+  let fontesPdf = null, fundoPdf = null;
+  function base64(buf){
+    const b = new Uint8Array(buf); let s = '';
+    for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function carregarFontesPdf(){
+    if (!fontesPdf) fontesPdf = Promise.all(['Poppins-Regular.ttf', 'Poppins-Bold.ttf'].map(function(f){
+      return fetch('../../assets/fonts/' + f).then(function(r){ if (!r.ok) throw new Error('fonte ' + f); return r.arrayBuffer(); }).then(base64);
+    }));
+    return fontesPdf;
+  }
+  // timbrado em JPEG a 300 dpi (o original tem 600 dpi): entra uma vez no PDF e é reaproveitado em todas as páginas
+  function fundoDoPdf(img){
+    if (fundoPdf || !img || !img.naturalWidth) return fundoPdf;
+    const c = document.createElement('canvas');
+    c.width = 2480; c.height = Math.round(2480 * img.naturalHeight / img.naturalWidth);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    fundoPdf = c.toDataURL('image/jpeg', 0.9);
+    return fundoPdf;
+  }
+  async function gerarPdfTexto(){
+    if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('jsPDF indisponível');
+    const fontes = await carregarFontesPdf();
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    pdf.addFileToVFS('Poppins-Regular.ttf', fontes[0]); pdf.addFont('Poppins-Regular.ttf', 'Poppins', 'normal');
+    pdf.addFileToVFS('Poppins-Bold.ttf', fontes[1]); pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold');
+    pdf.setProperties({ title: nomeArquivo(atual).replace(/\.pdf$/, ''), author: 'Fonseca e Braga', creator: 'Portal Fonseca e Braga' });
+    const wrap = document.getElementById('doc-pages');
+    const pageEls = Array.prototype.slice.call(wrap.querySelectorAll('.doc-page'));
+    wrap.style.zoom = 1;   // a medição precisa da folha no tamanho real
+    try {
+      await aguardarFundos(pageEls);
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      const MM = 25.4 / 96, BASE = 0.75;   // px → mm; linha de base da Poppins = 1050/(1050+350) da altura da caixa do texto
+      const range = document.createRange();
+      pageEls.forEach(function(pg, i){
+        if (i) pdf.addPage();
+        const o = pg.getBoundingClientRect();
+        const X = function(v){ return (v - o.left) * MM; }, Y = function(v){ return (v - o.top) * MM; };
+        const fundo = fundoDoPdf(pg.querySelector('.doc-bg'));
+        if (fundo) pdf.addImage(fundo, 'JPEG', 0, 0, 210, 297, 'timbrado', 'FAST');
+        const pn = pg.querySelector('.doc-pagenum');
+        if (pn) { const r = pn.getBoundingClientRect(); pdf.setFillColor(255, 255, 255); pdf.rect(X(r.left), Y(r.top), r.width * MM, r.height * MM, 'F'); }
+        pg.querySelectorAll('.sig-img img').forEach(function(im){
+          const r = im.getBoundingClientRect();
+          if (r.width && im.src.indexOf('data:image/') === 0) pdf.addImage(im.src, im.src.indexOf('image/jpeg') !== -1 ? 'JPEG' : 'PNG', X(r.left), Y(r.top), r.width * MM, r.height * MM);
+        });
+        pg.querySelectorAll('.sig-line .rule').forEach(function(el){
+          const r = el.getBoundingClientRect();
+          pdf.setDrawColor(26, 26, 26); pdf.setLineWidth(0.35); pdf.line(X(r.left), Y(r.top), X(r.right), Y(r.top));
+        });
+        const andar = document.createTreeWalker(pg, NodeFilter.SHOW_TEXT);
+        while (andar.nextNode()) {
+          const t = andar.currentNode, el = t.parentElement;
+          if (!el || !/\S/.test(t.nodeValue)) continue;
+          const cs = getComputedStyle(el);
+          if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+          const fs = parseFloat(cs.fontSize), cor = (cs.color.match(/\d+(\.\d+)?/g) || [26, 26, 26]).map(Number);
+          const ls = parseFloat(cs.letterSpacing); const esp = isFinite(ls) ? ls * MM : 0;
+          pdf.setFont('Poppins', parseInt(cs.fontWeight, 10) >= 600 ? 'bold' : 'normal');
+          pdf.setFontSize(fs * 0.75);
+          pdf.setTextColor(cor[0], cor[1], cor[2]);
+          const caixa = cs.textTransform === 'uppercase';
+          const re = /\S+/g; let m;
+          while ((m = re.exec(t.nodeValue))) {
+            range.setStart(t, m.index); range.setEnd(t, m.index + m[0].length);
+            const rs = range.getClientRects();
+            for (let k = 0; k < rs.length; k++) {
+              const r = rs[k]; if (!r.width) continue;
+              // palavra partida em duas linhas (raro): divide pelos retângulos
+              let palavra = m[0];
+              if (rs.length > 1) { const n = Math.round(palavra.length * r.width / Array.prototype.reduce.call(rs, function(a, x){ return a + x.width; }, 0)); palavra = k === 0 ? palavra.slice(0, n) : palavra.slice(n); }
+              pdf.text(caixa ? palavra.toUpperCase() : palavra, X(r.left), Y(r.top + r.height * BASE), esp ? { charSpace: esp } : undefined);
+            }
+          }
+        }
+      });
+      pdf.save(nomeArquivo(atual));
+    } finally { ajustarZoom(); }
+  }
+
+  async function gerarPdfImagem(){
     const wrap = document.getElementById('doc-pages');
     const pageEls = Array.prototype.slice.call(wrap.querySelectorAll('.doc-page'));
     wrap.style.zoom = 1;
@@ -315,6 +401,12 @@
   // a sub-aba de preparo (associacao.html) imprime e baixa a prévia por estas funções
   window.imprimirContrato = function(){ window.focus(); window.print(); };
   window.baixarPdfContrato = function(){ return gerarPdf(); };
+  function gerarPdf(){
+    return gerarPdfTexto().catch(function(e){
+      console.warn('PDF de texto falhou, usando imagem:', e);
+      return gerarPdfImagem();
+    });
+  }
   document.getElementById('btn-pdf').addEventListener('click', function(){
     const btn = this, st = document.getElementById('st');
     btn.disabled = true; st.textContent = 'Gerando PDF…';

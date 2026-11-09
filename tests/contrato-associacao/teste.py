@@ -251,7 +251,7 @@ with sync_playwright() as p:
     # ================= 6) documento assinado =================
     print('6) Documento final assinado')
     ctx, ext = contexto(p, {'uid': 'assoc1', 'email': 'fulana@exemplo.test', 'senha': 's1'}, STORE4)
-    pg = ctx.new_page(); pg.on('pageerror', lambda e: erros_js.append('doc: ' + str(e)))
+    pg = ctx.new_page(); pg.on('pageerror', lambda e: erros_js.append('doc: ' + str(e)))  # downloads aceitos no contexto
     pg.goto(BASE + '/tools/contratos/associacao-documento.html?id=' + cid.split('/')[1]); pg.wait_for_selector('.doc-page', timeout=60000); pg.wait_for_timeout(2500)
     t = pg.inner_text('#doc-pages'); n = pg.locator('.doc-page').count()
     ok('Código de verificação' in t and 'SHA-256' in t, 'rodapé com código de verificação e SHA-256')
@@ -262,6 +262,11 @@ with sync_playwright() as p:
     for i in [0, n // 2, n - 1]:
         pg.locator('.doc-page').nth(i).screenshot(path=os.path.join(FOTOS, f'assinado-p{i+1}.png'))
     # nenhuma página com texto escondido (a última linha não pode passar do quadro de conteúdo)
+    with pg.expect_download(timeout=120000) as dl: pg.click('#btn-pdf')
+    caminho = os.path.join(FOTOS, 'assinado.pdf'); dl.value.save_as(caminho)
+    tam = os.path.getsize(caminho)
+    ok(open(caminho, 'rb').read(4) == b'%PDF' and tam < 2 * 1024 * 1024, f'PDF do contrato assinado em texto, leve ({tam // 1024} KB)')
+    ok(b'/FontFile2' in open(caminho, 'rb').read() and b'Poppins' in open(caminho, 'rb').read(), 'PDF com a fonte Poppins embutida (texto, não imagem)')
     vaz = pg.evaluate('''() => Array.from(document.querySelectorAll('.doc-content')).filter(c => c.scrollHeight > c.clientHeight + 1).length''')
     ok(vaz == 0, 'nenhuma página com texto cortado')
     ctx.close()
