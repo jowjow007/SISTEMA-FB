@@ -276,13 +276,13 @@
   .msg-time{font-size:.63rem;color:var(--muted);margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:3px;justify-content:flex-end;}
   .tick{font-size:.72rem;line-height:1;color:var(--muted);}
   .tick.lido{color:#4fc3f7;}
-  .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn{
+  .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn,.msg-task-btn{
     background:none;border:none;color:var(--muted);cursor:pointer;opacity:0;transition:opacity .12s;
     padding:2px 4px;display:inline-flex;align-items:center;overflow:visible;
   }
-  .msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg,.msg-copy-btn svg{overflow:visible;display:block;}
-  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn{opacity:1;}
-  .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover,.msg-copy-btn:hover{color:var(--paper);}
+  .msg-fwd-btn svg,.msg-reply-btn svg,.msg-react-btn svg,.msg-copy-btn svg,.msg-task-btn svg{overflow:visible;display:block;}
+  .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn,.msg-row:hover .msg-task-btn{opacity:1;}
+  .msg-fwd-btn:hover,.msg-reply-btn:hover,.msg-react-btn:hover,.msg-copy-btn:hover,.msg-task-btn:hover{color:var(--paper);}
   .msg-copy-btn.ok{color:#4caf6e;opacity:1;}
   .msg-react-btn{font-size:.85rem;line-height:1;}
   .react-picker{
@@ -415,6 +415,14 @@
   .picker-item .sub{font-size:.68rem;color:var(--muted);}
   .picker-item input[type=checkbox]{flex:0 0 auto;}
   .modal-foot{display:flex;justify-content:flex-end;gap:8px;}
+  .tarefa-modal{max-width:480px;}
+  .tarefa-modal .tarefa-lbl{display:block;font-size:.72rem;color:var(--muted);margin:2px 0 4px;}
+  .tarefa-modal textarea{width:100%;min-height:120px;resize:vertical;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.85rem;padding:8px 10px;margin-bottom:10px;box-sizing:border-box;}
+  .tarefa-modal .tarefa-linha{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .tarefa-modal .tarefa-linha > div{flex:1 1 160px;}
+  .tarefa-modal select,.tarefa-modal input[type=date]{width:100%;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.84rem;padding:7px 9px;color-scheme:dark;}
+  :root[data-theme="light"] .tarefa-modal select,:root[data-theme="light"] .tarefa-modal input[type=date]{color-scheme:light;}
+  .msg-task-btn.ok{color:#4caf6e;opacity:1;}
   .modal .err{color:#ffb4ae;font-size:.75rem;min-height:1.1em;margin:0 0 8px;}
   .btn{
     border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
@@ -462,9 +470,9 @@
     .msg-row{max-width:90%;}
     .msg-bubble-wrap{flex-wrap:wrap;}
     .msg-bubble{min-width:0;max-width:100%;flex:0 1 auto;}
-    .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn{display:none;}
-    .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn,
-    .msg-row:focus-within .msg-fwd-btn,.msg-row:focus-within .msg-reply-btn,.msg-row:focus-within .msg-react-btn,.msg-row:focus-within .msg-copy-btn{display:inline-flex;opacity:1;}
+    .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn,.msg-task-btn{display:none;}
+    .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn,.msg-row:hover .msg-task-btn,
+    .msg-row:focus-within .msg-fwd-btn,.msg-row:focus-within .msg-reply-btn,.msg-row:focus-within .msg-react-btn,.msg-row:focus-within .msg-copy-btn,.msg-row:focus-within .msg-task-btn{display:inline-flex;opacity:1;}
   }
 </style>
 </head>
@@ -634,6 +642,25 @@
     <div class="modal-foot">
       <button class="btn ghost" id="grupo-fechar">Cancelar</button>
       <button class="btn" id="grupo-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal: mensagem do chat → tarefa em Minhas anotações (só para quem envia; ninguém mais vê) -->
+<div class="modal-backdrop" id="tarefa-backdrop">
+  <div class="modal tarefa-modal">
+    <h3>Enviar para Minhas anotações</h3>
+    <p class="hint">Vira uma tarefa na lista que você escolher, para acompanhar e dar check por lá. Só você vê.</p>
+    <label class="tarefa-lbl" for="tarefa-texto">Tarefa (pode ajustar o texto)</label>
+    <textarea id="tarefa-texto" maxlength="2000"></textarea>
+    <div class="tarefa-linha">
+      <div><label class="tarefa-lbl" for="tarefa-lista">Lista</label><select id="tarefa-lista"></select></div>
+      <div><label class="tarefa-lbl" for="tarefa-prazo">Prazo (opcional)</label><input type="date" id="tarefa-prazo"></div>
+    </div>
+    <div class="err" id="tarefa-err"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="tarefa-cancelar">Cancelar</button>
+      <button class="btn" id="tarefa-salvar">Criar tarefa</button>
     </div>
   </div>
 </div>
@@ -992,6 +1019,7 @@
     starOutline: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3"></polygon>',
     starFilled: '<polygon points="12 3 14.8 9 21.3 9.7 16.5 14.1 17.8 20.5 12 17.2 6.2 20.5 7.5 14.1 2.7 9.7 9.2 9 12 3" fill="currentColor"></polygon>',
     forward: '<polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path>',
+    taskAdd: '<rect x="4" y="4" width="16" height="16" rx="3"></rect><polyline points="8 12 11 15 16 9"></polyline>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>',
     reply: '<polyline points="10 8 6 12 10 16"></polyline><path d="M20 5v4a3 3 0 0 1-3 3H6"></path>',
     group: '<circle cx="9" cy="8" r="3"></circle><path d="M2.6 20c0-3.6 2.9-6.5 6.4-6.5s6.4 2.9 6.4 6.5"></path><circle cx="17" cy="8" r="2.6"></circle><path d="M15.5 13.8c2.9.4 5 2.9 5 6.2"></path>',
@@ -1057,6 +1085,76 @@
       return escapeHtml(p);
     }).join('');
   }
+
+  // ---------- mensagem → tarefa em Minhas anotações (coleções pendGrupos/pendTarefas do próprio usuário) ----------
+  var tarefaEls = {
+    bd: document.getElementById('tarefa-backdrop'), texto: document.getElementById('tarefa-texto'),
+    lista: document.getElementById('tarefa-lista'), prazo: document.getElementById('tarefa-prazo'),
+    err: document.getElementById('tarefa-err'), salvar: document.getElementById('tarefa-salvar'),
+    cancelar: document.getElementById('tarefa-cancelar')
+  };
+  var tarefaBtnOrigem = null;
+  var LISTA_CHAT = '__chat__';
+  function idListaChat(){ return 'doChat_' + myUid; }
+  function fecharTarefa(){ tarefaEls.bd.classList.remove('open'); tarefaBtnOrigem = null; }
+  function dataHoraBR(ts){
+    var d = ts && ts.toDate ? ts.toDate() : (ts ? new Date(ts) : null);
+    return d && !isNaN(d) ? d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+  }
+  function abrirTarefaDaMensagem(m, btn){
+    tarefaBtnOrigem = btn;
+    var conv = conversas.filter(function(c){ return c.id === activeId; })[0];
+    var corpo = (m.texto || ('Documento: ' + (m.documentoNome || ''))).trim();
+    var origem = '— ' + (m.autorUid === myUid ? 'eu' : nomeDe(m.autorUid)) + (conv ? ', no chat "' + tituloConversa(conv) + '"' : ', no chat') +
+      (dataHoraBR(m.criadoEm) ? ', ' + dataHoraBR(m.criadoEm) : '');
+    tarefaEls.texto.value = (corpo + '\n\n' + origem).slice(0, 2000);
+    tarefaEls.prazo.value = ''; tarefaEls.err.textContent = ''; tarefaEls.salvar.disabled = false;
+    tarefaEls.lista.innerHTML = '<option>Carregando suas listas…</option>'; tarefaEls.lista.disabled = true;
+    tarefaEls.bd.classList.add('open');
+    setTimeout(function(){ tarefaEls.texto.focus(); tarefaEls.texto.setSelectionRange(0, 0); tarefaEls.texto.scrollTop = 0; }, 30);
+    db.collection('pendGrupos').where('ownerUid', '==', myUid).get().then(function(snap){
+      var listas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); })
+        .sort(function(a, b){ return (a.criadoEm && a.criadoEm.seconds || 0) - (b.criadoEm && b.criadoEm.seconds || 0); });
+      var temChat = listas.some(function(l){ return l.id === idListaChat(); });
+      var ultima = ''; try { ultima = localStorage.getItem('chatTarefaLista_' + myUid) || ''; } catch (e) {}
+      var html = temChat ? '' : '<option value="' + LISTA_CHAT + '">💬 Do chat (lista nova)</option>';
+      listas.forEach(function(l){ html += '<option value="' + escapeHtml(l.id) + '">' + escapeHtml((l.emoji ? l.emoji + ' ' : '') + (l.nome || 'Lista')) + '</option>'; });
+      tarefaEls.lista.innerHTML = html; tarefaEls.lista.disabled = false;
+      var alvo = listas.some(function(l){ return l.id === ultima; }) ? ultima : (temChat ? idListaChat() : LISTA_CHAT);
+      tarefaEls.lista.value = alvo;
+    }).catch(function(e){
+      tarefaEls.lista.innerHTML = '<option value="' + LISTA_CHAT + '">💬 Do chat</option>'; tarefaEls.lista.disabled = false;
+      console.warn('listas de Minhas anotações:', e);
+    });
+  }
+  tarefaEls.cancelar.addEventListener('click', fecharTarefa);
+  tarefaEls.bd.addEventListener('click', function(e){ if (e.target === tarefaEls.bd) fecharTarefa(); });
+  tarefaEls.salvar.addEventListener('click', function(){
+    var texto = tarefaEls.texto.value.trim();
+    if (!texto){ tarefaEls.err.textContent = 'Escreva o texto da tarefa.'; return; }
+    var escolhida = tarefaEls.lista.value, ts = firebase.firestore.FieldValue.serverTimestamp();
+    tarefaEls.salvar.disabled = true; tarefaEls.err.textContent = '';
+    var prepara = escolhida === LISTA_CHAT
+      ? db.collection('pendGrupos').doc(idListaChat()).set({ ownerUid: myUid, nome: 'Do chat', emoji: '💬', criadoEm: ts }, { merge: true }).then(function(){ return idListaChat(); })
+      : Promise.resolve(escolhida);
+    var btn = tarefaBtnOrigem;
+    prepara.then(function(listaId){
+      try { localStorage.setItem('chatTarefaLista_' + myUid, listaId); } catch (e) {}
+      return db.collection('pendTarefas').add({
+        ownerUid: myUid, grupoId: listaId, texto: texto.slice(0, 2000), concluida: false, concluidaEm: null,
+        dataVencimento: tarefaEls.prazo.value || null, origem: 'chat', criadoEm: ts
+      });
+    }).then(function(){
+      fecharTarefa();
+      if (btn && btn.isConnected){
+        btn.classList.add('ok'); btn.innerHTML = icoSvg('check', 28); btn.title = 'Tarefa criada em Minhas anotações';
+        setTimeout(function(){ if (btn.isConnected){ btn.classList.remove('ok'); btn.innerHTML = icoSvg('taskAdd', 28); btn.title = 'Enviar para Minhas anotações (vira tarefa)'; } }, 2000);
+      }
+    }).catch(function(e){
+      tarefaEls.salvar.disabled = false;
+      tarefaEls.err.textContent = 'Não foi possível criar a tarefa: ' + (e && e.message || e);
+    });
+  });
 
   // Copia o texto da mensagem exatamente como foi escrito (links inteiros, quebras de linha)
   function copiarTexto(texto, btn){
@@ -1554,6 +1652,7 @@
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 28) + '</button>';
       if (m.texto) out += '<button class="msg-copy-btn" data-copy="' + m.id + '" title="Copiar mensagem">' + icoSvg('copy', 28) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 28) + '</button>';
+      if (m.texto || m.documentoNome) out += '<button class="msg-task-btn" data-task="' + m.id + '" title="Enviar para Minhas anotações (vira tarefa)">' + icoSvg('taskAdd', 28) + '</button>';
       out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">' + icoSvg('smiley', 28) + '</button>';
       out += '</div>';
       var reacoes = m.reacoes || {};
@@ -1616,6 +1715,13 @@
         var id = btn.getAttribute('data-copy');
         var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
         if (msg && msg.texto) copiarTexto(msg.texto, btn);
+      });
+    });
+    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-task]'), function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-task');
+        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
+        if (msg) abrirTarefaDaMensagem(msg, btn);
       });
     });
     Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-reply]'), function(btn){

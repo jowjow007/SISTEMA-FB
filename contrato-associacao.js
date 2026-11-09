@@ -13,6 +13,8 @@
     '#ca-bd .ca-box{width:min(920px,100%);background:var(--panel,#211918);color:var(--paper,#ece6e1);border:1px solid var(--line-strong,rgba(236,230,225,.2));border-radius:16px;padding:20px;font-family:inherit;}' +
     '#ca-bd h2{margin:0 0 6px;font-size:1.15rem;}' +
     '#ca-bd .ca-sub{font-size:.84rem;color:var(--muted,#9c908b);line-height:1.5;margin:0 0 12px;}' +
+    '#ca-bd .ca-baixar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted,#9c908b);margin:0 0 10px;}' +
+    '#ca-bd .ca-baixar .ca-st{font-size:.76rem;}' +
     '#ca-bd .ca-frame{border:1px solid var(--line-strong,rgba(236,230,225,.2));border-radius:10px;overflow:hidden;background:#0e0b0b;}' +
     '#ca-bd .ca-frame iframe{display:block;width:100%;height:58vh;border:none;}' +
     '#ca-bd label{display:block;font-size:.76rem;color:var(--muted,#9c908b);margin:12px 0 5px;}' +
@@ -85,6 +87,9 @@
     box.innerHTML =
       '<h2>' + titulo + '</h2>' +
       '<p class="ca-sub">' + sub + '</p>' +
+      '<div class="ca-baixar"><span>Prefere ler com calma antes de assinar? Baixe ou imprima uma cópia.</span>' +
+      '<button type="button" class="sec mini" id="ca-pdf" disabled>⬇ Baixar PDF</button>' +
+      '<button type="button" class="sec mini" id="ca-imprimir" disabled>🖨 Imprimir</button><span class="ca-st" id="ca-st"></span></div>' +
       '<div class="ca-frame"><iframe id="ca-frame" title="Contrato de associação"></iframe></div>' +
       '<label class="ca-check"><input type="checkbox" id="ca-li"><span>' + (papel === 'associado' || interveniente ? 'Li o contrato e o Anexo I, entendi as condições e concordo com seus termos.' : 'Li o documento, entendi as condições e concordo com seus termos.') + '</span></label>' +
       '<label for="ca-senha">Sua senha do Portal</label><input type="password" id="ca-senha" autocomplete="current-password">' +
@@ -95,7 +100,18 @@
       '<button type="button" id="ca-assinar">✍ Assinar</button></div>';
 
     var frame = box.querySelector('#ca-frame');
-    frame.onload = function(){ try { frame.contentWindow.mostrarContrato(c); } catch (e) {} };
+    var bPdf = box.querySelector('#ca-pdf'), bImp = box.querySelector('#ca-imprimir'), st = box.querySelector('#ca-st');
+    frame.onload = function(){
+      try { frame.contentWindow.mostrarContrato(c); bPdf.disabled = false; bImp.disabled = false; } catch (e) {}
+    };
+    bPdf.onclick = function(){
+      bPdf.disabled = true; st.textContent = 'Gerando PDF…';
+      Promise.resolve().then(function(){ return frame.contentWindow.baixarPdfContrato(); })
+        .then(function(){ st.textContent = 'PDF baixado. Confira na pasta de downloads.'; })
+        .catch(function(e){ st.textContent = 'Não foi possível gerar o PDF: ' + (e && e.message || e); })
+        .then(function(){ bPdf.disabled = false; });
+    };
+    bImp.onclick = function(){ try { frame.contentWindow.imprimirContrato(); } catch (e) { st.textContent = 'Não foi possível imprimir.'; } };
     frame.src = 'tools/contratos/associacao-documento.html?preview=1&t=' + Date.now();
 
     var registro = coletarRegistro();

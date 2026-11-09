@@ -57,6 +57,7 @@ def contexto(p, user, store):
     return ctx, externos
 
 def assinar_canvas(page, sel):
+    page.locator(sel).scroll_into_view_if_needed(); page.wait_for_timeout(150)
     box = page.locator(sel).bounding_box()
     page.mouse.move(box['x'] + 30, box['y'] + 100); page.mouse.down()
     for i in range(12): page.mouse.move(box['x'] + 40 + i * 25, box['y'] + 60 + (i % 3) * 25)
@@ -194,6 +195,11 @@ with sync_playwright() as p:
     pg.frame_locator('#ca-frame').locator('.doc-page').first.wait_for(timeout=60000); pg.wait_for_timeout(2500)
     ok(pg.frame_locator('#ca-frame').locator('.doc-page').count() >= 8, 'contrato aparece com o timbrado na tela')
     pg.screenshot(path=os.path.join(FOTOS, 'gate-associado.png'))
+    ok(pg.is_enabled('#ca-pdf') and pg.is_enabled('#ca-imprimir'), 'botões Baixar PDF e Imprimir liberados antes de assinar')
+    with pg.expect_download(timeout=90000) as dl: pg.click('#ca-pdf')
+    nome_pdf = dl.value.suggested_filename; caminho_pdf = dl.value.path()
+    ok(nome_pdf.endswith('.pdf') and open(caminho_pdf, 'rb').read(5) == b'%PDF-', 'associado baixa o PDF para ler antes de assinar (' + nome_pdf + ')')
+    ok('baixado' in pg.inner_text('#ca-st'), 'aviso de PDF baixado')
     pg.click('#ca-assinar'); ok('Marque' in pg.inner_text('#ca-err'), 'exige marcar que leu')
     pg.check('#ca-li'); pg.click('#ca-assinar'); ok('senha' in pg.inner_text('#ca-err'), 'exige senha')
     pg.fill('#ca-senha', 'x'); pg.click('#ca-assinar'); ok('assinatura' in pg.inner_text('#ca-err'), 'exige desenhar a assinatura')
