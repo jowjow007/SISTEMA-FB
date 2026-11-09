@@ -1908,6 +1908,9 @@ function parsearPeticao(raw){
     if(m && !continua && !/[.,:]$/.test(l) && !/\.\s+[A-ZÀ-Ý]/.test(m[2])) return {nivel:1, texto:m[2].trim(), num:m[1]};
     var s = ehSubsecao(l);
     if(s && !continua) return {nivel:2, texto:s[2].trim(), num:s[1]};
+    // "II-A - GRUPO ECONÔMICO": tópico intercalado depois do II → subtítulo dele (não desloca a numeração)
+    var ra = l.match(/^(?:I{1,3}|IV|V|VI{0,3}|IX|X{1,2})-[A-Z]\s*[—\-–.]\s+(.+)$/);
+    if(ra && ehMaiusculas(ra[1]) && !continua) return {nivel:2, texto:ra[1].trim(), num:''};
     var r = l.match(ROM_RE);
     if(r && (ehMaiusculas(r[2]) || (!continua && /^[A-ZÀ-Ý]/.test(r[2]) && r[2].length <= 140 && !/[.,:;]$/.test(r[2]) && !/\.\s+[A-ZÀ-Ý]/.test(r[2]))))
       return {nivel:1, texto:r[2].trim(), num:'', rom:true};
@@ -2040,6 +2043,21 @@ function parsearPeticao(raw){
         var nx = linhas[j];
         if(!(/,$/.test(q) || /^[a-zà-ÿ]/.test(nx)) || ehMaiusculas(nx) || tituloDe(j) || titulosColados[nx] === 0) break;
         q += ' ' + nx; i = j;
+      }
+      // qualificação em parágrafos curtos ("... com sede em X." / "Seu endereço é ..." / "... e vêm impetrar")
+      // seguidos do título em maiúsculas: a última linha sem ponto final emenda no título, então tudo é qualificação
+      if(/[.;]$/.test(q)){
+        var qs = [], achou = false;
+        for(var j2 = i+1, n2 = 0; j2 < fim && n2 < 6; j2++){
+          var y = linhas[j2]; if(!y) continue; n2++;
+          var ty = tituloDe(j2);
+          if(ehMaiusculas(y) && y.length < 160 && !SECAO_INICIO_RE.test(y) && !(ty && (ty.num || ty.rom))){
+            achou = qs.length && !/[.;:!?]$/.test(qs[qs.length-1]); break;
+          }
+          if(ty || y.length > 300 || /^\d+[.)]\s/.test(y)) break;
+          qs.push(y);
+        }
+        if(achou){ q += ' ' + qs.join(' '); while(qs.length){ i++; if(linhas[i]) qs.shift(); } }
       }
       resultado.requerentes.push({nome:'', qual:q});
       esperaTitulo = !/[.;!?]$/.test(q);   // "... vem propor a presente" → a próxima linha é o título
