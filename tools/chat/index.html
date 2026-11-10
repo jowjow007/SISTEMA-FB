@@ -423,6 +423,8 @@
   .tarefa-modal select,.tarefa-modal input[type=date]{width:100%;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font-family:inherit;font-size:.84rem;padding:7px 9px;color-scheme:dark;}
   :root[data-theme="light"] .tarefa-modal select,:root[data-theme="light"] .tarefa-modal input[type=date]{color-scheme:light;}
   .msg-task-btn.ok{color:#4caf6e;opacity:1;}
+  .msg-doc-falhou{opacity:.8;cursor:default;}
+  .msg-doc-falhou .tamanho{color:#ffb4ae;}
   .modal .err{color:#ffb4ae;font-size:.75rem;min-height:1.1em;margin:0 0 8px;}
   .btn{
     border:1px solid var(--red);background:var(--red-deep);color:#fff;border-radius:20px;
@@ -800,6 +802,10 @@
   var unsubMensagens = null;
   var novaFotoUrl = null;       // URL do Storage após upload (ou null)
   var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
+  // anexo ainda subindo para o Storage: o Enter (que não respeita o botão desligado) espera em vez de mandar a
+  // mensagem sem o arquivo — era isso que gerava 'PDF' que baixava a própria página do chat (10/11/2026)
+  var subindoAnexo = false, enviarAoTerminar = false, enviandoMsg = false;
+  function anexoTerminou(ok){ subindoAnexo = false; var depois = enviarAoTerminar; enviarAoTerminar = false; if (ok && depois) enviarMensagem(); }
   var pickerMode = null;      // 'nova' | 'encaminhar'
   var pickerSelected = {};    // uid -> true (modo nova)
   var forwardMsg = null;      // mensagem sendo encaminhada
@@ -1639,8 +1645,14 @@
         if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '">';
       }
       if (m.tipo === 'documento'){
-        var docHref = urlDeMidia(m.documentoUrl || m.documentoBase64 || '') || '#';
+        var docHref = urlDeMidia(m.documentoUrl || m.documentoBase64 || '');
         var docAttr = m.documentoUrl ? 'target="_blank" rel="noopener"' : ('download="' + escapeHtml(m.documentoNome || 'documento') + '"');
+        if (!docHref){   // a mensagem foi gravada sem o arquivo (enviada antes de o anexo terminar de subir)
+          out += '<div class="msg-doc msg-doc-falhou" title="Este arquivo não chegou ao servidor. Peça para enviar de novo.">' +
+            '<span class="icone">' + icoSvg('document', 22) + '</span><span class="info">' +
+            '<div class="nome">' + escapeHtml(m.documentoNome || 'Documento') + '</div>' +
+            '<div class="tamanho">não chegou ao servidor — peça para enviar de novo</div></span></div>';
+        } else
         out += '<a class="msg-doc" href="' + docHref + '" ' + docAttr + '>' +
           '<span class="icone">' + icoSvg('document', 22) + '</span><span class="info">' +
           '<div class="nome">' + escapeHtml(m.documentoNome || 'Documento') + '</div>' +
@@ -1864,15 +1876,18 @@
     els.photoPreviewRow.classList.add('show');
     els.btnEnviar.disabled = true;
     els.btnEnviar.title = 'Enviando imagem…';
+    subindoAnexo = true;
     comprimirFoto(file).then(function(url){
       novaFotoUrl = url;
       els.photoPreviewImg.src = url;
       els.btnEnviar.disabled = false;
       els.btnEnviar.title = '';
+      anexoTerminou(true);
     }).catch(function(err){
       limparComposerFoto();
       els.btnEnviar.disabled = false;
       els.btnEnviar.title = '';
+      anexoTerminou(false);
       alert(err.message || 'Não foi possível enviar a imagem.');
     });
   }
@@ -1932,15 +1947,18 @@
     els.docPreviewRow.classList.add('show');
     els.btnEnviar.disabled = true;
     els.btnEnviar.title = 'Enviando arquivo…';
+    subindoAnexo = true;
     fazerUploadDocumento(file).then(function(doc){
       novoDocumento = doc;
       els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
       els.btnEnviar.disabled = false;
       els.btnEnviar.title = '';
+      anexoTerminou(true);
     }).catch(function(err){
       limparComposerDoc();
       els.btnEnviar.disabled = false;
       els.btnEnviar.title = '';
+      anexoTerminou(false);
       alert(err.message || 'Não foi possível enviar o arquivo.');
     });
     els.docInput.value = '';
@@ -2076,9 +2094,16 @@
   }
 
   function enviarMensagem(){
-    if (!activeId) return;
+    if (!activeId || enviandoMsg) return;
+    if (subindoAnexo){
+      enviarAoTerminar = true;
+      if (novoDocumento) els.docPreviewTamanho.textContent = formatBytes(novoDocumento.tamanho) + ' — enviando… a mensagem sai assim que o arquivo terminar de subir';
+      return;
+    }
+    if (novoDocumento && !novoDocumento.storageUrl && !novoDocumento.dataUrl){ limparComposerDoc(); alert('O arquivo não terminou de subir. Anexe de novo, por favor.'); return; }
     var texto = els.composerInput.value.trim();
     if (!texto && !novaFotoUrl && !novoDocumento) return;
+    enviandoMsg = true;
     els.btnEnviar.disabled = true;
     var tipo = novoDocumento ? 'documento' : (novaFotoUrl ? 'foto' : 'texto');
     var msgData = {
@@ -2112,6 +2137,7 @@
     }).catch(function(e){
       alert('Não foi possível enviar: ' + e.message);
     }).finally(function(){
+      enviandoMsg = false;
       els.btnEnviar.disabled = false;
     });
   }
