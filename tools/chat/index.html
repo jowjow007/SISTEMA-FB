@@ -252,6 +252,8 @@
     flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:4px;
     background:linear-gradient(rgba(22,16,16,.90),rgba(22,16,16,.90)),url('assets/fundo-chat.jpg') center/cover no-repeat;
   }
+  .msg-list{overflow-anchor:none;}
+  .msg-antigas{align-self:center;font-size:.72rem;color:var(--muted);padding:6px 0 2px;}
   .day-sep{align-self:center;font-size:.68rem;color:var(--muted);background:var(--panel-2);padding:3px 12px;border-radius:20px;margin:10px 0;}
   .msg-sistema{align-self:center;font-size:.74rem;color:var(--muted);text-align:center;margin:2px 0 12px;}
   .msg-row{display:flex;gap:10px;max-width:74%;margin:8px 0;align-items:flex-start;}
@@ -800,6 +802,16 @@
   var mensagensCache = [];
   var primeiraRenderConversa = false;
   var unsubMensagens = null;
+  // desempenho (10/11/2026): conversa longa abria com milhares de mensagens no DOM e redesenhava tudo a cada
+  // confirmação de leitura. Agora: só as últimas PASSO_MSGS (as antigas carregam ao rolar para cima), a lista
+  // atualiza só as mensagens que mudaram e as confirmações de leitura vão num lote só.
+  var PASSO_MSGS = 80;
+  var limiteMsgs = PASSO_MSGS;
+  var temMaisAntigas = false, carregandoAntigas = false;
+  var lendoIds = {};            // confirmações de leitura já enviadas (não repetir a cada atualização)
+  var pularPara = null;         // citação de mensagem antiga ainda não carregada
+  var grudadoNoFim = true;      // a pessoa está no fim da conversa (fotos que terminam de carregar não a tiram de lá)
+  var renderPendente = false;
   var novaFotoUrl = null;       // URL do Storage após upload (ou null)
   var novoDocumento = null;   // {dataUrl, nome, tipo, tamanho}
   // anexo ainda subindo para o Storage: o Enter (que não respeita o botão desligado) espera em vez de mandar a
@@ -1558,6 +1570,10 @@
   function selecionarConversa(id){
     activeId = id;
     primeiraRenderConversa = true;
+    els.msgList.innerHTML = '';
+    mensagensCache = [];
+    limiteMsgs = PASSO_MSGS; temMaisAntigas = false; carregandoAntigas = false;
+    lendoIds = {}; pularPara = null; grudadoNoFim = true;
     cancelarResposta();
     var prefsAtual = tagsPorConversa[id];
     if (prefsAtual && prefsAtual.excluidaAte){
@@ -1584,14 +1600,41 @@
 
     db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
 
+    ouvirMensagens(id);
+  }
+
+  // só as últimas limiteMsgs mensagens (as mais novas); subir até o topo da lista aumenta o limite
+  function ouvirMensagens(id){
     if (unsubMensagens) { unsubMensagens(); unsubMensagens = null; }
+    var limite = limiteMsgs;
     unsubMensagens = db.collection('conversas').doc(id).collection('mensagens')
-      .orderBy('criadoEm', 'asc')
-      .onSnapshot(function(snap){
-        mensagensCache = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
-        renderMensagens();
+      .orderBy('criadoEm', 'desc').limit(limite)
+      .onSnapshot({ includeMetadataChanges: true }, function(snap){
+        if (id !== activeId) return;
+        // a primeira resposta pode vir do cache local, com menos mensagens: só conclui "não há anteriores"
+        // quando o servidor confirmar
+        if (snap.size >= limite || !snap.metadata.fromCache){
+          temMaisAntigas = snap.size >= limite;
+          carregandoAntigas = false;
+        }
+        mensagensCache = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }).reverse();
+        agendarRender();
         marcarComoLidas();
-      });
+      }, function(){ carregandoAntigas = false; });
+  }
+
+  function carregarAntigas(){
+    if (!activeId || !temMaisAntigas || carregandoAntigas) return;
+    carregandoAntigas = true;
+    limiteMsgs += PASSO_MSGS;
+    ouvirMensagens(activeId);
+  }
+
+  // várias atualizações seguidas (envio, leitura, reação) viram um desenho só
+  function agendarRender(){
+    if (renderPendente) return;
+    renderPendente = true;
+    requestAnimationFrame(function(){ renderPendente = false; if (activeId) renderMensagens(); });
   }
 
   function fecharThreadMobile(){
@@ -1599,27 +1642,43 @@
   }
 
   function marcarComoLidas(){
+    var refs = [];
     mensagensCache.forEach(function(m){
       var lidaPor = m.lidaPor || [];
-      if (m.autorUid !== myUid && lidaPor.indexOf(myUid) === -1){
-        db.collection('conversas').doc(activeId).collection('mensagens').doc(m.id)
-          .update({ lidaPor: FV.arrayUnion(myUid) }).catch(function(){});
+      if (m.autorUid !== myUid && lidaPor.indexOf(myUid) === -1 && !lendoIds[m.id]){
+        lendoIds[m.id] = true;
+        refs.push(db.collection('conversas').doc(activeId).collection('mensagens').doc(m.id));
       }
     });
+    // um lote só (uma atualização da tela) em vez de uma gravação, e um redesenho, por mensagem
+    for (var i = 0; i < refs.length; i += 400){
+      (function(parte){
+        var lote = db.batch();
+        parte.forEach(function(r){ lote.update(r, { lidaPor: FV.arrayUnion(myUid) }); });
+        lote.commit().catch(function(){
+          // se uma falhar, o lote inteiro volta: tenta uma a uma
+          parte.forEach(function(r){ r.update({ lidaPor: FV.arrayUnion(myUid) }).catch(function(){}); });
+        });
+      })(refs.slice(i, i + 400));
+    }
   }
 
   function renderMensagens(){
-    var out = '';
+    var itens = [];   // {k: chave estável, h: HTML de um elemento só}
     var ultimoDia = null;
+    var convAtiva = conversas.filter(function(x){ return x.id === activeId; })[0];
+    var outrosConv = convAtiva ? (convAtiva.participantes || []).filter(function(u){ return u !== myUid; }) : [];
+    if (temMaisAntigas) itens.push({ k: 'antigas', h: '<div class="msg-antigas">' + (carregandoAntigas ? 'Carregando mensagens anteriores…' : 'Role para cima para ver as mensagens anteriores') + '</div>' });
     mensagensCache.forEach(function(m){
+      var out = '';
       var data = m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : new Date();
       var chaveDia = data.toDateString();
       if (chaveDia !== ultimoDia){
-        out += '<div class="day-sep">' + formatDiaLongo(data) + '</div>';
+        itens.push({ k: 'd' + chaveDia, h: '<div class="day-sep">' + formatDiaLongo(data) + '</div>' });
         ultimoDia = chaveDia;
       }
       if (m.tipo === 'sistema'){
-        out += '<div class="msg-sistema">' + escapeHtml(m.texto || '') + '</div>';
+        itens.push({ k: 'm' + m.id, h: '<div class="msg-sistema">' + escapeHtml(m.texto || '') + '</div>' });
         return;
       }
 
@@ -1642,7 +1701,7 @@
       }
       if (m.tipo === 'foto'){
         var fotoSrc = urlDeMidia(m.fotoUrl || m.fotoBase64 || '');
-        if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '">';
+        if (fotoSrc) out += '<img class="msg-photo" src="' + fotoSrc + '" data-full="' + fotoSrc + '" decoding="async">';
       }
       if (m.tipo === 'documento'){
         var docHref = urlDeMidia(m.documentoUrl || m.documentoBase64 || '');
@@ -1679,8 +1738,7 @@
       });
       if (pillsHtml) out += '<div class="msg-reacoes">' + pillsHtml + '</div>';
       if (own){
-        var conv = conversas.filter(function(x){ return x.id === activeId; })[0];
-        var outros = conv ? (conv.participantes || []).filter(function(u){ return u !== myUid; }) : [];
+        var outros = outrosConv;
         var lidaPor = m.lidaPor || [];
         var todosLeram = outros.length > 0 && outros.every(function(u){ return lidaPor.indexOf(u) !== -1; });
         var tick = todosLeram
@@ -1690,61 +1748,90 @@
       }
       out += '</div>';
       out += '</div>';
+      itens.push({ k: 'm' + m.id, h: out });
     });
     var listEl = els.msgList;
-    // Na primeira carga da conversa, vai sempre ao fim
-    // Nas atualizações seguintes (nova msg, reação, leitura), preserva posição se o
-    // usuário estiver lendo mensagens antigas (mais de 120px acima do fim)
-    var deveIrAoFim = primeiraRenderConversa ||
-      (listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120);
-    var scrollAntes = listEl.scrollTop;
-    var alturaAntes = listEl.scrollHeight;
+    // Na primeira carga da conversa, vai sempre ao fim. Nas atualizações seguintes (nova msg, reação, leitura,
+    // mensagens antigas carregadas em cima), mantém parada a mensagem que a pessoa está lendo.
+    var noFim = primeiraRenderConversa || (listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120);
     primeiraRenderConversa = false;
-
-    listEl.innerHTML = out;
-
-    if (deveIrAoFim) {
-      listEl.scrollTop = listEl.scrollHeight;
-    } else {
-      listEl.scrollTop = scrollAntes + (listEl.scrollHeight - alturaAntes);
+    var topoLista = listEl.getBoundingClientRect().top, ancora = null;
+    if (!noFim){
+      for (var c = listEl.firstElementChild; c; c = c.nextElementSibling){
+        var r = c.getBoundingClientRect();
+        if (c.__k && r.bottom > topoLista){ ancora = { k: c.__k, d: r.top - topoLista }; break; }
+      }
     }
+    // só troca no DOM o que mudou (antes, a lista inteira era recriada a cada atualização)
+    var mapa = {};
+    for (var e = listEl.firstElementChild; e; e = e.nextElementSibling) if (e.__k) mapa[e.__k] = e;
+    var cursor = listEl.firstChild, tpl = document.createElement('template'), porChave = {};
+    itens.forEach(function(it){
+      var el = mapa[it.k];
+      if (!el || el.__h !== it.h){
+        tpl.innerHTML = it.h;
+        var novo = tpl.content.firstElementChild;
+        novo.__k = it.k; novo.__h = it.h;
+        if (el){ if (el === cursor) cursor = cursor.nextSibling; el.remove(); }
+        el = novo;
+      }
+      delete mapa[it.k];
+      porChave[it.k] = el;
+      if (el === cursor) cursor = cursor.nextSibling;
+      else listEl.insertBefore(el, cursor);
+    });
+    while (cursor){ var prox = cursor.nextSibling; listEl.removeChild(cursor); cursor = prox; }
 
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('.msg-photo'), function(img){
-      img.addEventListener('click', function(){
-        els.lightboxImg.src = img.getAttribute('data-full');
-        els.lightbox.classList.add('open');
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-fwd]'), function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-fwd');
-        forwardMsg = mensagensCache.filter(function(m){ return m.id === id; })[0];
-        if (forwardMsg) abrirPicker('encaminhar');
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-copy]'), function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-copy');
-        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
-        if (msg && msg.texto) copiarTexto(msg.texto, btn);
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-task]'), function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-task');
-        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
-        if (msg) abrirTarefaDaMensagem(msg, btn);
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-reply]'), function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-reply');
-        var msg = mensagensCache.filter(function(m){ return m.id === id; })[0];
-        if (msg) iniciarResposta(msg);
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react]'), function(btn){
-      btn.addEventListener('click', function(ev){
+    if (noFim) {
+      listEl.scrollTop = listEl.scrollHeight;
+    } else if (ancora && porChave[ancora.k]) {
+      listEl.scrollTop += (porChave[ancora.k].getBoundingClientRect().top - listEl.getBoundingClientRect().top) - ancora.d;
+    }
+    grudadoNoFim = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120;
+    if (pularPara && !carregandoAntigas){ var alvoId = pularPara; pularPara = null; pularParaMensagem(alvoId); }
+    // a lista ainda não enche a tela: busca as anteriores
+    if (temMaisAntigas && !carregandoAntigas && listEl.scrollHeight <= listEl.clientHeight + 300) carregarAntigas();
+  }
+
+  function msgPorId(id){
+    for (var i = 0; i < mensagensCache.length; i++) if (mensagensCache[i].id === id) return mensagensCache[i];
+    return null;
+  }
+
+  function pularParaMensagem(id){
+    var alvo = els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (!alvo){
+      // mensagem citada ainda não carregada: carrega mais e tenta de novo
+      if (temMaisAntigas && activeId){ pularPara = id; carregandoAntigas = true; limiteMsgs += 200; ouvirMensagens(activeId); }
+      return;
+    }
+    alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    alvo.classList.add('highlight');
+    setTimeout(function(){ alvo.classList.remove('highlight'); }, 1200);
+  }
+
+  // um só ouvinte de clique para a lista toda (antes eram seis por mensagem, recriados a cada atualização)
+  els.msgList.addEventListener('click', function(ev){
+    var t = ev.target && ev.target.closest ? ev.target.closest('.msg-photo,[data-fwd],[data-copy],[data-task],[data-reply],[data-react],[data-react-pill],[data-jump]') : null;
+    if (!t || !els.msgList.contains(t)) return;
+    var msg;
+    if (t.classList.contains('msg-photo')){
+      els.lightboxImg.src = t.getAttribute('data-full');
+      els.lightbox.classList.add('open');
+    } else if (t.hasAttribute('data-fwd')){
+      forwardMsg = msgPorId(t.getAttribute('data-fwd'));
+      if (forwardMsg) abrirPicker('encaminhar');
+    } else if (t.hasAttribute('data-copy')){
+      msg = msgPorId(t.getAttribute('data-copy'));
+      if (msg && msg.texto) copiarTexto(msg.texto, t);
+    } else if (t.hasAttribute('data-task')){
+      msg = msgPorId(t.getAttribute('data-task'));
+      if (msg) abrirTarefaDaMensagem(msg, t);
+    } else if (t.hasAttribute('data-reply')){
+      msg = msgPorId(t.getAttribute('data-reply'));
+      if (msg) iniciarResposta(msg);
+    } else if (t.hasAttribute('data-react')){
+      var btn = t;
         ev.stopPropagation();
         var id = btn.getAttribute('data-react');
         if (reactTargetId === id && els.reactPicker.classList.contains('open')){
@@ -1767,26 +1854,22 @@
         document.getElementById('react-search').value = '';
         atualizarPicker();
         els.reactPicker.classList.add('open');
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-react-pill]'), function(pill){
-      pill.addEventListener('click', function(){
-        var id = pill.getAttribute('data-react-pill');
-        var emoji = pill.getAttribute('data-emoji');
-        if (activeId) toggleReacao(activeId, id, emoji);
-      });
-    });
-    Array.prototype.forEach.call(els.msgList.querySelectorAll('[data-jump]'), function(el){
-      el.addEventListener('click', function(){
-        var id = el.getAttribute('data-jump');
-        var alvo = els.msgList.querySelector('[data-msg-id="' + id + '"]');
-        if (!alvo) return;
-        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        alvo.classList.add('highlight');
-        setTimeout(function(){ alvo.classList.remove('highlight'); }, 1200);
-      });
-    });
-  }
+    } else if (t.hasAttribute('data-react-pill')){
+      if (activeId) toggleReacao(activeId, t.getAttribute('data-react-pill'), t.getAttribute('data-emoji'));
+    } else if (t.hasAttribute('data-jump')){
+      pularParaMensagem(t.getAttribute('data-jump'));
+    }
+  });
+
+  // rolar até o topo carrega as anteriores; foto que termina de carregar não tira do fim quem está no fim
+  els.msgList.addEventListener('scroll', function(){
+    var l = els.msgList;
+    grudadoNoFim = l.scrollHeight - l.scrollTop - l.clientHeight < 120;
+    if (l.scrollTop < 400) carregarAntigas();
+  }, { passive: true });
+  els.msgList.addEventListener('load', function(ev){
+    if (ev.target && ev.target.tagName === 'IMG' && grudadoNoFim) els.msgList.scrollTop = els.msgList.scrollHeight;
+  }, true);
 
   els.lightbox.addEventListener('click', function(){ els.lightbox.classList.remove('open'); });
   // picker fecha só pelo X ou ao escolher emoji — não fecha com clique fora
@@ -2720,7 +2803,7 @@
       perfis = {};
       snap.docs.forEach(function(d){ perfis[d.id] = d.data(); });
       renderConvList();
-      if (activeId) renderMensagens();
+      if (activeId) agendarRender();
     });
 
     db.collection('conversas').where('participantes', 'array-contains', myUid).onSnapshot(function(snap){
