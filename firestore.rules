@@ -114,6 +114,31 @@ service cloud.firestore {
       return isAdmin() || (isEquipe() && meuCadastro().get('tabs', []).hasAny([aba])
                            && meuCadastro().get('subtabs', {}).get(aba, []).hasAny([sub]));
     }
+    // Agenda (teste, 09/11/2026): aba restrita 'agenda-teste' (tools/agenda-teste). Coleções próprias agTeste_*, que podem
+    // ser apagadas ao fim do teste. Só quem tem a aba (ou o admin) lê e grava; cliente/processo/publicação só o admin apaga.
+    // As permissões finas (advogado, assistente, estagiário) ficam na tela durante o teste.
+    function agendaTeste() { return temAbaRestrita('agenda-teste'); }
+    match /agTeste_clientes/{id} {
+      allow read, create, update: if agendaTeste();
+      allow delete: if isAdmin();
+    }
+    match /agTeste_casos/{id} {
+      allow read, create, update: if agendaTeste();
+      allow delete: if isAdmin();
+    }
+    match /agTeste_atividades/{id} {
+      allow read, create, update, delete: if agendaTeste();
+    }
+    match /agTeste_publicacoes/{id} {
+      allow read, create, update: if agendaTeste();
+      allow delete: if isAdmin();
+    }
+    match /agTeste_config/{id} {
+      allow read: if agendaTeste();
+      allow write: if isAdmin()
+                   || (agendaTeste() && resource != null
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['etiquetas', 'djenAtualizadoEm']));
+    }
     // Dados que antes ficavam no HTML público (painel de Números, clientes de Condomínios e relatórios em PDF).
     // Números › Clientes, Juízo & Ação e Efetividade ficam em documentos próprios (áreas restritas).
     match /dadosPrivados/{chave} {
