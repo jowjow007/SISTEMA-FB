@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("219.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("219.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("220.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("220.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "219";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "220";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         [STAThread]
@@ -167,8 +167,15 @@ namespace PortalFB
 
         public static void VerificarAtualizacao()
         {
-            ThreadPool.QueueUserWorkItem(delegate
-            {
+            ThreadPool.QueueUserWorkItem(delegate { BaixarAtualizacao(); });
+        }
+
+        // fechando para instalar a versão nova (botão "Atualizar o app"): não tentar aplicar de novo ao fechar a janela
+        public static bool Saindo;
+
+        // "pronto" = versão nova baixada e conferida (pendente.txt gravado); "nada" = já está na última; "erro" = sem internet etc.
+        public static string BaixarAtualizacao()
+        {
                 try
                 {
                     ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -180,9 +187,10 @@ namespace PortalFB
                     }
                     Match mv = Regex.Match(json, "\"versao\"\\s*:\\s*(\\d+)"), mh = Regex.Match(json, "\"sha256\"\\s*:\\s*\"([0-9a-fA-F]{64})\"");
                     int nova, minha;
-                    if (!mv.Success || !mh.Success || !int.TryParse(mv.Groups[1].Value, out nova) || !int.TryParse(VERSAO, out minha) || nova <= minha) return;
+                    if (!mv.Success || !mh.Success || !int.TryParse(mv.Groups[1].Value, out nova) || !int.TryParse(VERSAO, out minha)) return "erro";
+                    if (nova <= minha) return "nada";
                     string sha = mh.Groups[1].Value.ToLowerInvariant();
-                    if (File.Exists(ArqInfo) && File.ReadAllText(ArqInfo).Trim() == nova + ";" + sha) return;   // já baixada
+                    if (File.Exists(ArqInfo) && File.ReadAllText(ArqInfo).Trim() == nova + ";" + sha) return "pronto";   // já baixada
                     Directory.CreateDirectory(PastaAtualizacao);
                     string tmp = ArqPendente + ".baixando";
                     using (var wc = new WebClient())
@@ -190,13 +198,13 @@ namespace PortalFB
                         wc.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
                         wc.DownloadFile(PORTAL + "baixar/PortalFB.exe?v=" + nova, tmp);
                     }
-                    if (Sha256(tmp) != sha) { File.Delete(tmp); return; }   // arquivo corrompido ou trocado: não instala
+                    if (Sha256(tmp) != sha) { File.Delete(tmp); return "erro"; }   // arquivo corrompido ou trocado: não instala
                     if (File.Exists(ArqPendente)) File.Delete(ArqPendente);
                     File.Move(tmp, ArqPendente);
                     File.WriteAllText(ArqInfo, nova + ";" + sha);
+                    return "pronto";
                 }
-                catch { }   // sem internet ou portal fora do ar: tenta de novo mais tarde
-            });
+                catch { return "erro"; }   // sem internet ou portal fora do ar: tenta de novo mais tarde
         }
 
         // ---------- instalação ----------
@@ -380,7 +388,7 @@ namespace PortalFB
             if (principal) RestaurarJanela();
             Load += async delegate { await Preparar(); };
             FormClosing += delegate { if (principal) GuardarJanela(); };
-            FormClosed += delegate { if (principal) Programa.AplicarPendente(false); };
+            FormClosed += delegate { if (principal && !Programa.Saindo) Programa.AplicarPendente(false); };
         }
 
         // janela aberta pelo portal (impressão, termo, login do Google): o WebView2 entrega a nova janela já preparada
@@ -411,6 +419,32 @@ namespace PortalFB
             web.CoreWebView2.NavigationStarting += Navegando;
             web.CoreWebView2.PermissionRequested += Permissao;
             web.CoreWebView2.WindowCloseRequested += delegate { if (!principal) Close(); };
+            web.CoreWebView2.WebMessageReceived += MensagemDaPagina;
+        }
+
+        // botão "Atualizar o app" do portal: o próprio app baixa a versão nova (confere o SHA-256), fecha e reabre já
+        // atualizado. Sem instalador na pasta Downloads e sem aviso do Windows. Só aceita pedido de página do portal.
+        void MensagemDaPagina(object s, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            Uri u;
+            if (!Uri.TryCreate(e.Source, UriKind.Absolute, out u) || !DoPortal(u)) return;
+            string msg;
+            try { msg = e.TryGetWebMessageAsString(); } catch { return; }
+            if (msg != "atualizar-agora") return;
+            var wv = web.CoreWebView2;
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                string r = Programa.BaixarAtualizacao();
+                try
+                {
+                    BeginInvoke((Action)delegate
+                    {
+                        if (r == "pronto" && Programa.AplicarPendente(true)) { Programa.Saindo = true; Application.Exit(); return; }
+                        try { wv.PostWebMessageAsString(r == "nada" ? "atualizar-nada" : "atualizar-erro"); } catch { }
+                    });
+                }
+                catch { }
+            });
         }
 
         async Task Preparar()

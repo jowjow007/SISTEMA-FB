@@ -2,7 +2,9 @@
 # Compila o app em modo TESTE (pasta %TEMP%\PortalFBTeste, registro ...\Uninstall\PortalFBTeste, servidor local
 # http://127.0.0.1:8770/ no lugar do portal), em três versões, e confere:
 #  1) instalar a v208; o app aberto baixa a v209 em segundo plano; ao FECHAR, a v209 se instala sozinha (sem reabrir);
-#  2) atualização pendente (v210) é aplicada ao ABRIR o app, que reabre já na versão nova.
+#  2) atualização pendente (v210) é aplicada ao ABRIR o app, que reabre já na versão nova;
+#  3) arquivo adulterado não é instalado;
+#  4) botão "Atualizar o app" (a página pede ao app): baixa a v211, fecha e reabre já na v211, sem instalador em Downloads.
 # Uso:  powershell -ExecutionPolicy Bypass -File tests\app-windows\teste-atualizacao.ps1
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
@@ -38,8 +40,8 @@ function Compilar($v) {
   if ($LASTEXITCODE -ne 0) { throw "falha ao compilar v$v" }
   return $out
 }
-$e208 = Compilar 208; $e209 = Compilar 209; $e210 = Compilar 210
-Write-Host "Compilado: v208, v209, v210 (modo TESTE)"
+$e208 = Compilar 208; $e209 = Compilar 209; $e210 = Compilar 210; $e211 = Compilar 211
+Write-Host "Compilado: v208, v209, v210, v211 (modo TESTE)"
 
 # servidor local que faz o papel do portal: publica a v209
 [IO.File]::WriteAllText((Join-Path $site 'index.html'), '<!doctype html><meta charset="utf-8"><title>Portal teste</title><body style="background:#161010;color:#eee;font-family:Segoe UI"><h1>Portal de teste</h1>')
@@ -92,6 +94,24 @@ try {
   Start-Process $inst | Out-Null; Start-Sleep 8
   Ok ((Get-Item $inst).VersionInfo.FileVersion -eq '210.0.0.0') 'SHA-256 não confere: continua na v210'
   Ok (-not (Test-Path (Join-Path $pend 'pendente.txt'))) 'pendência inválida descartada'
+
+  Write-Host "4) Botão 'Atualizar o app': um clique, fecha e reabre na versão nova"
+  ProcessosTeste | Stop-Process -Force; Start-Sleep 2
+  Remove-Item -Recurse -Force $pend -ErrorAction SilentlyContinue
+  Copy-Item $e211 (Join-Path $site 'baixar\PortalFB.exe') -Force
+  $sha211 = (Get-FileHash $e211 -Algorithm SHA256).Hash.ToLowerInvariant()
+  [IO.File]::WriteAllText((Join-Path $site 'baixar\versao.json'), "{`"versao`": 211, `"sha256`": `"$sha211`"}")
+  # a página faz o que o botão faz (só na v210, para a v211 reaberta não pedir de novo)
+  [IO.File]::WriteAllText((Join-Path $site 'index.html'), '<!doctype html><meta charset="utf-8"><title>Portal teste</title><body><h1>Portal de teste</h1><script>if (navigator.userAgent.indexOf("PortalFBApp/210") >= 0) chrome.webview.postMessage("atualizar-agora");</script>')
+  $antes = @(Get-ChildItem "$env:USERPROFILE\Downloads" -Filter '*Instalador*' -ErrorAction SilentlyContinue).Count
+  Start-Process $inst | Out-Null
+  for ($i = 0; $i -lt 40 -and (Get-Item $inst).VersionInfo.FileVersion -ne '211.0.0.0'; $i++) { Start-Sleep 1 }
+  Ok ((Get-Item $inst).VersionInfo.FileVersion -eq '211.0.0.0') 'pedido da página: v211 baixada e instalada'
+  Ok ((Get-ItemProperty $chave).DisplayVersion -eq 'v211') 'registro mostra v211'
+  for ($i = 0; $i -lt 30 -and -not (ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' }); $i++) { Start-Sleep 1 }
+  Ok ([bool](ProcessosTeste | Where-Object { $_.Path -eq $inst -and $_.MainWindowTitle -eq 'Portal teste' })) 'reabriu sozinho já na v211, com a página carregada'
+  Ok (@(ProcessosTeste | Where-Object { $_.MainWindowHandle -ne 0 }).Count -eq 1) 'uma janela só (a antiga fechou)'
+  Ok (@(Get-ChildItem "$env:USERPROFILE\Downloads" -Filter '*Instalador*' -ErrorAction SilentlyContinue).Count -eq $antes) 'nenhum instalador foi parar em Downloads'
 }
 finally {
   Limpar

@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v219</span>
+      <span class="version-tag">v220</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5712,6 +5712,30 @@
   // versão única: portal e app têm o mesmo número (app-windows/publicar.ps1). No app, mostra as duas e, se o app
   // estiver atrás do portal (ou for de antes da versão única, que não se atualiza sozinho), mostra o botão
   // "Atualizar o app": baixa o instalador novo, que fecha o app, atualiza e reabre.
+  // app v220 em diante: um clique só. O próprio app baixa a versão nova, confere, fecha e reabre já atualizado.
+  var appUmClique = false;
+  function atualizarAgora(b){
+    if (!confirm('O app vai baixar a versão nova, fechar e abrir de novo sozinho (alguns segundos; o login continua).\n\nSe estiver escrevendo algo, salve antes. Atualizar agora?')) return;
+    b.disabled = true; b.textContent = '⟳ Atualizando…';
+    mostrar('Baixando a versão nova… o app fecha e abre de novo sozinho.', 'on');
+    try { window.chrome.webview.postMessage('atualizar-agora'); }
+    catch (e) { b.disabled = false; b.textContent = '⟳ Atualizar o app'; mostrar('Não foi possível atualizar agora. Feche e abra o app: ele se atualiza sozinho.', 'off', 10); }
+  }
+  if (window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message', function(ev){
+    var b = document.getElementById('app-atualizar-btn');
+    if (b) { b.disabled = false; b.textContent = '⟳ Atualizar o app'; }
+    if (ev.data === 'atualizar-nada') mostrar('O app já está na versão mais nova. Recarregue a página (Ctrl+Shift+R).', 'on', 8);
+    else if (ev.data === 'atualizar-erro') mostrar('Não deu para baixar a versão nova agora (internet?). Tente de novo daqui a pouco.', 'off', 10);
+  });
+  // apps de antes do v220: não sabem atualizar com um clique. Os de v207 a v219 já baixam a versão nova sozinhos e
+  // instalam ao fechar; os 1.0.x (antes da versão única) precisam do instalador uma última vez.
+  function atualizarAppAntigo(antigo){
+    if (!antigo) {
+      alert('Para atualizar desta vez: feche o app (no X da janela) e abra de novo pelo atalho "Portal FB".\n\nEle já baixou a versão nova sozinho e se instala ao fechar. Das próximas vezes, basta clicar em "Atualizar o app" que ele faz tudo sozinho.');
+      return;
+    }
+    atualizarApp();
+  }
   function atualizarApp(){
     var a = document.createElement('a');
     a.href = 'baixar/PortalFB.exe?t=' + Date.now();
@@ -5741,16 +5765,18 @@
       var portal = (tag.textContent.match(/\d+/) || [''])[0];
       var app = antigo ? null : m[1];
       var atrasado = antigo || (parseInt(app, 10) < parseInt(portal, 10));
+      appUmClique = !antigo && parseInt(app, 10) >= 220 && !!(window.chrome && window.chrome.webview);
       tag.textContent = 'v' + portal + ' · app ' + (antigo ? '(versão antiga)' : 'v' + app);
       tag.title = !atrasado ? 'Portal e app na mesma versão' : 'O app está desatualizado: ele se atualiza sozinho quando for fechado, ou clique em "Atualizar o app"';
       if (!atrasado) return;
       var b = document.createElement('button');
       b.type = 'button';
+      b.id = 'app-atualizar-btn';
       b.textContent = '⟳ Atualizar o app';
-      b.title = 'Baixa e instala a versão v' + portal + ' do app';
+      b.title = 'Atualiza o app para a versão v' + portal + ' (fecha e abre de novo sozinho)';
       b.style.cssText = 'margin-left:8px;padding:4px 10px;border-radius:999px;border:1px solid #c9463c;background:#b8362e;color:#fff;' +
         'font:600 11.5px/1.2 Segoe UI,system-ui,sans-serif;cursor:pointer;white-space:nowrap;vertical-align:middle;';
-      b.onclick = atualizarApp;
+      b.onclick = function(){ if (appUmClique) atualizarAgora(b); else atualizarAppAntigo(antigo); };
       tag.insertAdjacentElement('afterend', b);
     });
   });
