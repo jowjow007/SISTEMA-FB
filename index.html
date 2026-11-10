@@ -1045,7 +1045,7 @@
   .com-video.ok .com-video-st{color:var(--ok);font-weight:600;}
   .com-video-top .btn{width:auto;padding:7px 14px;font-size:.78rem;}
   .com-video-player{position:relative;padding-top:56.25%;margin-top:10px;border-radius:8px;overflow:hidden;background:#000;}
-  .com-video-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+  .com-video-player iframe,.com-video-player video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;}
   .com-lista-ciencia{margin:10px 0 0;padding:0;list-style:none;font-size:.82rem;}
   .com-lista-ciencia li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);}
   .com-lista-ciencia .quando{color:var(--muted);white-space:nowrap;}
@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v222</span>
+      <span class="version-tag">v223</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3006,9 +3006,9 @@
     box.style.width = videos.length ? 'min(760px,100%)' : '';
     let h = '<div class="com-head"><div class="com-ic">' + MEGAFONE_SVG + '</div><div>' +
       '<p class="com-rot">Comunicado à equipe · ' + taDataBR(c.data) + '</p><h3>' + escapeHtml(c.titulo) + '</h3>' +
-      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : videos.length ? 'Assista aos vídeos e registre sua ciência para continuar.' : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
+      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : videos.length ? (videos.length > 1 ? 'Assista aos vídeos e registre sua ciência para continuar.' : 'Assista ao vídeo e registre sua ciência para continuar.') : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
       '<div class="com-corpo">' + c.html + '</div>';
-    // vídeos do Google Drive (c.videos = [{titulo, drive: id do arquivo, minutos: tempo mínimo com o vídeo aberto}])
+    // vídeos (c.videos = [{titulo, drive: id do arquivo no Google Drive | arquivo: .mp4 do portal, minutos: tempo mínimo}])
     if (videos.length){
       h += '<div class="com-videos">' + videos.map(function(v, i){
         return '<div class="com-video" id="com-v' + i + '"><div class="com-video-top"><span class="com-video-tit">🎬 ' + escapeHtml(v.titulo) + '</span>' +
@@ -3023,7 +3023,7 @@
     } else {
       h += '<div class="com-aceite">' +
         '<label class="com-check" id="com-l1"><input type="checkbox" id="com-c1"><span>' +
-          (videos.length ? 'Assisti aos vídeos e concordo com os termos deste comunicado.' : 'Li e concordo com os termos deste comunicado.') + '</span></label>' +
+          (videos.length ? (videos.length > 1 ? 'Assisti aos vídeos e concordo com os termos deste comunicado.' : 'Assisti ao vídeo e concordo com os termos deste comunicado.') : 'Li e concordo com os termos deste comunicado.') + '</span></label>' +
         '<label class="com-check off" id="com-l2"><input type="checkbox" id="com-c2" disabled><span>Confirmo que estou dando ciência deste comunicado e que o registro ficará gravado com meu nome, data e hora.</span></label>' +
         '</div><div class="com-erro" id="com-erro"></div>' +
         '<div class="com-acoes"><button type="button" class="btn" id="com-registrar" disabled>Registrar ciência e fechar</button></div>';
@@ -3051,13 +3051,19 @@
         box.querySelectorAll('[data-video]').forEach(function(x){ x.textContent = '▶ Assistir'; });
         const pl = document.createElement('div');
         pl.className = 'com-video-player';
-        pl.innerHTML = '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(videos[i].drive) + '/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>';
+        const arq = /^tools\/treinamentos\/videos\/[\w.-]+\.mp4$/.test(videos[i].arquivo || '') ? videos[i].arquivo : '';
+        pl.innerHTML = arq
+          ? '<video controls autoplay playsinline preload="auto" src="' + arq + '"' + (videos[i].capa ? ' poster="' + escapeHtml(videos[i].capa) + '"' : '') + '></video>'
+          : '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(videos[i].drive) + '/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>';
         document.getElementById('com-v' + i).appendChild(pl);
         b.textContent = 'Assistindo…';
+        const vel = pl.querySelector('video');
         if (ciencia) return;
+        // vídeo do portal: conta só o tempo tocando de verdade (pular para o fim não vale)
         comPararVideos();
         comVideoTick = setInterval(function(){
           if (document.visibilityState !== 'visible' || !pl.isConnected) return;
+          if (vel && (vel.paused || vel.ended || vel.seeking)) return;
           visto[i]++;
           try { localStorage.setItem(chaveVideo(i), visto[i]); } catch(e) {}
           pintaVideos();

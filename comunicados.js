@@ -5,6 +5,20 @@
 // "data" (AAAA-MM-DD) é o dia a partir do qual o comunicado aparece.
 window.COMUNICADOS_FB = [
   {
+    id: '2026-11-10-video-chat-minhas-anotacoes',
+    data: '2026-11-10',
+    titulo: 'Novidade: mensagens do chat viram tarefas em Minhas Anotações',
+    html:
+      '<p>Agora qualquer mensagem do <b>Chat</b> pode virar uma <b>tarefa</b> nas suas <b>Minhas Anotações</b>, com lista e prazo, para nada do que foi combinado ficar esquecido.</p>' +
+      '<p>📌 Clique em <b>▶ Assistir</b> e assista ao vídeo <b>até o final</b> (1min36). A confirmação de ciência é liberada depois que o vídeo for assistido.</p>' +
+      '<p>O vídeo também fica disponível a qualquer momento na aba <b>Treinamentos › Vídeos</b>.</p>',
+    // "arquivo": vídeo hospedado no próprio portal; "minutos" = tempo mínimo tocando (duração 1:36)
+    videos: [
+      { titulo: 'Chat: como enviar uma mensagem para Minhas Anotações', arquivo: 'tools/treinamentos/videos/chat-minhas-anotacoes.mp4',
+        capa: 'tools/treinamentos/videos/chat-minhas-anotacoes.jpg', minutos: 92 / 60 }
+    ]
+  },
+  {
     id: '2026-10-29-videos-organizacao-aprovacao',
     data: '2026-10-29',
     titulo: 'Treinamento obrigatório: organização de pastas e tarefas para aprovação',

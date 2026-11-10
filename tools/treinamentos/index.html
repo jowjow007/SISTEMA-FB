@@ -136,7 +136,7 @@
     border-radius:8px;padding:7px 12px;font-size:.85rem;cursor:pointer;
   }
   .video-modal-frame{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;}
-  .video-modal-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+  .video-modal-frame iframe,.video-modal-frame video{position:absolute;inset:0;width:100%;height:100%;border:none;background:#000;}
 
   /* ---- documentos ---- */
   .docs-view{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;}
@@ -352,7 +352,7 @@
 <div class="video-modal" id="video-modal">
   <div class="video-modal-inner">
     <button class="video-modal-close" id="video-modal-close" type="button">✕ Fechar</button>
-    <div class="video-modal-frame"><iframe id="video-modal-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+    <div class="video-modal-frame"><iframe id="video-modal-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><video id="video-modal-video" controls playsinline preload="metadata" style="display:none;"></video></div>
   </div>
 </div>
 
@@ -360,10 +360,14 @@
 (function(){
   "use strict";
 
-  // Para adicionar um vídeo: cole o link do YouTube ou Google Drive em "url".
+  // Para adicionar um vídeo: cole o link do YouTube ou Google Drive em "url" — ou, para vídeo hospedado no próprio
+  // portal, o caminho do .mp4 na pasta videos/ (com "capa" = imagem .jpg da mesma pasta).
   // Para adicionar um documento: copie o arquivo para a pasta docs/ e referencie o nome em "arquivo".
   // Veja ROTINA-ATUALIZACAO-TREINAMENTOS.md para o passo a passo completo.
   var VIDEOS = [
+    { titulo:'Chat: como enviar uma mensagem para Minhas Anotações', categoria:'Portal',
+      descricao:'Transforme uma mensagem do chat em tarefa, com lista e prazo, e dê o check quando terminar (1min36).',
+      url:'videos/chat-minhas-anotacoes.mp4', capa:'videos/chat-minhas-anotacoes.jpg' },
     { titulo:'Organização de pastas e tarefas para aprovação (parte 1)', categoria:'Rotinas do escritório',
       url:'https://drive.google.com/file/d/12fTsL1PZwQQlIeI3iYW_kp97eEzaRnNL/view' },
     { titulo:'Organização de pastas e tarefas para aprovação (parte 2)', categoria:'Rotinas do escritório',
@@ -422,7 +426,9 @@
     if (dr) return 'https://drive.google.com/file/d/' + dr + '/preview';
     return null;
   }
-  function videoThumbSrc(url){
+  function videoLocal(url){ return /^videos\/[\w.-]+\.mp4$/i.test(url); }
+  function videoThumbSrc(url, capa){
+    if (capa) return capa;
     var yt = parseYoutubeId(url);
     if (yt) return 'https://img.youtube.com/vi/' + yt + '/hqdefault.jpg';
     return null;
@@ -434,7 +440,7 @@
   }
 
   function renderVideoCard(v, idx){
-    var thumb = videoThumbSrc(v.url);
+    var thumb = videoThumbSrc(v.url, v.capa);
     var thumbHtml = thumb ? '<img src="' + thumb + '" alt="">' : '<div class="video-thumb-fallback">🎬</div>';
     return '<div class="video-card" data-video-idx="' + idx + '">' +
       '<div class="video-thumb">' + thumbHtml + '<span class="play-badge">▶</span></div>' +
@@ -465,6 +471,16 @@
   }
 
   function openVideoModal(v){
+    var vid = document.getElementById('video-modal-video'), ifr = document.getElementById('video-modal-iframe');
+    if (videoLocal(v.url)) {
+      ifr.style.display = 'none'; vid.style.display = '';
+      if (v.capa) vid.poster = v.capa;
+      vid.src = v.url;
+      document.getElementById('video-modal').classList.add('open');
+      var p = vid.play(); if (p && p.catch) p.catch(function(){});
+      return;
+    }
+    vid.style.display = 'none'; ifr.style.display = '';
     var src = videoEmbedSrc(v.url);
     if (!src) { window.open(v.url, '_blank', 'noopener'); return; }
     document.getElementById('video-modal-iframe').src = src;
@@ -473,6 +489,7 @@
   function closeVideoModal(){
     document.getElementById('video-modal').classList.remove('open');
     document.getElementById('video-modal-iframe').src = '';
+    var vid = document.getElementById('video-modal-video'); vid.pause(); vid.removeAttribute('src'); vid.load();
   }
   document.getElementById('video-modal-close').addEventListener('click', closeVideoModal);
   document.getElementById('video-modal').addEventListener('click', function(e){

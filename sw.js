@@ -70,6 +70,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return; // nao mexe em ferramentas/embeds de outros dominios
+  // vídeos (Treinamentos e comunicados) vão direto à rede: são grandes e chegam em pedaços (Range/206)
+  if (req.destination === 'video' || req.destination === 'audio' || /\.(mp4|webm|m4v)$/i.test(url.pathname)) return;
 
   // 'reload' ignora o cache HTTP do navegador e força ir buscar no servidor -
   // sem isso, o fetch() abaixo podia ser satisfeito por uma cópia guardada
