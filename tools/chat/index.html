@@ -476,7 +476,8 @@
     .msg-bubble{min-width:0;max-width:100%;flex:0 1 auto;}
     .msg-fwd-btn,.msg-reply-btn,.msg-react-btn,.msg-copy-btn,.msg-task-btn{display:none;}
     .msg-row:hover .msg-fwd-btn,.msg-row:hover .msg-reply-btn,.msg-row:hover .msg-react-btn,.msg-row:hover .msg-copy-btn,.msg-row:hover .msg-task-btn,
-    .msg-row:focus-within .msg-fwd-btn,.msg-row:focus-within .msg-reply-btn,.msg-row:focus-within .msg-react-btn,.msg-row:focus-within .msg-copy-btn,.msg-row:focus-within .msg-task-btn{display:inline-flex;opacity:1;}
+    .msg-row:focus-within .msg-fwd-btn,.msg-row:focus-within .msg-reply-btn,.msg-row:focus-within .msg-react-btn,.msg-row:focus-within .msg-copy-btn,.msg-row:focus-within .msg-task-btn,
+    .msg-row.acoes .msg-fwd-btn,.msg-row.acoes .msg-reply-btn,.msg-row.acoes .msg-react-btn,.msg-row.acoes .msg-copy-btn,.msg-row.acoes .msg-task-btn{display:inline-flex;opacity:1;}
   }
 </style>
 </head>
@@ -1813,6 +1814,17 @@
   // um só ouvinte de clique para a lista toda (antes eram seis por mensagem, recriados a cada atualização)
   els.msgList.addEventListener('click', function(ev){
     var t = ev.target && ev.target.closest ? ev.target.closest('.msg-photo,[data-fwd],[data-copy],[data-task],[data-reply],[data-react],[data-react-pill],[data-jump]') : null;
+    // celular (10/11/2026): tocar na mensagem mostra os botões dela (responder, copiar, encaminhar, tarefa, reagir) sem
+    // depender do "hover" do navegador, que nem todo celular aplica; tocar em outra troca, tocar de novo esconde
+    if (!t && window.matchMedia && window.matchMedia('(max-width:720px)').matches && ev.target.closest && !ev.target.closest('a,button,input,textarea')){
+      var linhaToque = ev.target.closest('.msg-row');
+      if (linhaToque && els.msgList.contains(linhaToque)){
+        var abrir = !linhaToque.classList.contains('acoes');
+        els.msgList.querySelectorAll('.msg-row.acoes').forEach(function(r){ r.classList.remove('acoes'); });
+        if (abrir) linhaToque.classList.add('acoes');
+      }
+      return;
+    }
     if (!t || !els.msgList.contains(t)) return;
     var msg;
     if (t.classList.contains('msg-photo')){

@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("223.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("223.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("224.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("224.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "223";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "224";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         [STAThread]
