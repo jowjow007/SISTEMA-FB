@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Petições — Fonseca e Braga</title>
+<title>Formatador — Fonseca e Braga</title>
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,7 +65,9 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .view-tabs button:hover{color:var(--paper);}
   .view-tabs button.active{background:var(--red);color:#fff;}
   /* aba "Formatar parecer": mesmo formulário, sem os campos próprios de petição */
-  body:not(.modo-parecer) .so-parecer, body.modo-parecer .so-peticao{display:none !important;}
+  body:not(.modo-parecer) .so-parecer, body:not(.modo-notificacao) .so-notificacao,
+  body.modo-parecer .so-peticao, body.modo-notificacao .so-peticao, body.modo-parecer .so-pet-not{display:none !important;}
+  /* aba "Formatar notificação" (10/11/2026): título, destinatário, rótulos (ASSUNTO/NOTIFICANTE/NOTIFICADO), abertura e protocolo */
 
   /* gerador de nomenclatura (POP nº 008/2023) — antes ficava em Sistemas */
   .nomenclatura-view{max-width:1100px;margin:0 auto;padding:28px 20px 70px;}
@@ -238,6 +240,13 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-assinatura .nome{font-weight:bold;font-size:11.5pt;}
   .dc-assinatura .oab{font-weight:bold;font-size:11.5pt;}
   .dc-empty{color:#aaa;font-size:9pt;font-style:italic;text-align:center;margin-top:30mm;}
+  .dc-destinatario{font-size:11.5pt;line-height:1.35;margin-bottom:5mm;text-align:left;}
+  .dc-destinatario .l1{font-weight:bold;}
+  .dc-rotulo.bloco{text-align:justify;margin-bottom:3mm;line-height:1.45;}
+  .dc-assinatura .funcao{font-size:11.5pt;}
+  .dc-protocolo{border:0.75pt solid #1a1a1a;padding:4mm 6mm 2mm;margin:8mm 0 0;font-size:11pt;break-inside:avoid;}
+  .dc-protocolo .tit{text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:4mm;}
+  .dc-protocolo .lin{margin-bottom:4mm;}
 
   @media print{
     @page{size:A4;margin:0;}
@@ -261,12 +270,13 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 <body>
 <header>
   <div>
-    <h1>Petições</h1>
+    <h1>Formatador</h1>
     <p class="sub" id="header-sub">Preencha os campos, veja o preview em A4 e exporte para o Google Docs ou em PDF.</p>
   </div>
   <div class="view-tabs" role="tablist">
     <button type="button" class="active" data-view="formatar">Formatar petição</button>
     <button type="button" data-view="parecer">Formatar parecer</button>
+    <button type="button" data-view="notificacao">Formatar notificação</button>
     <button type="button" data-view="nomenclatura">Nomenclatura</button>
   </div>
 </header>
@@ -281,7 +291,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- histórico -->
     <div class="card" id="card-hist">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-        <h2 style="margin:0 0 12px;"><span class="so-peticao">Minhas últimas petições</span><span class="so-parecer">Meus últimos pareceres</span></h2>
+        <h2 style="margin:0 0 12px;"><span class="so-peticao">Minhas últimas petições</span><span class="so-parecer">Meus últimos pareceres</span><span class="so-notificacao">Minhas últimas notificações</span></h2>
         <a id="hist-todas" href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todas →</a>
       </div>
       <p class="desc" id="hist-msg">Faça login no Portal para ver o histórico.</p>
@@ -297,6 +307,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <h2>Importar do Word / Docs</h2>
       <p class="desc so-peticao">Cole aqui o texto da petição — o sistema detecta endereçamento, processo, tópicos e pedidos automaticamente.</p>
       <p class="desc so-parecer">Cole aqui o texto do parecer — o sistema detecta o título, a identificação (Interessado, Assunto…), os tópicos, as listas e a conclusão.</p>
+      <p class="desc so-notificacao">Cole aqui o texto da notificação — o sistema detecta o título, o destinatário, ASSUNTO / NOTIFICANTE / NOTIFICADO, a abertura, os tópicos, a assinatura, os anexos e o protocolo de recebimento.</p>
       <div class="field">
         <textarea id="import-txt" rows="7" placeholder="Cole aqui (Ctrl+V) o texto completo da petição..."></textarea>
       </div>
@@ -306,7 +317,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
     <!-- tipo -->
     <div class="card">
-      <h2><span class="so-peticao">Tipo de peça</span><span class="so-parecer">Título</span></h2>
+      <h2><span class="so-peticao">Tipo de peça</span><span class="so-parecer">Título</span><span class="so-notificacao">Título</span></h2>
       <div class="field so-peticao">
         <select id="tipo-peca">
           <option value="PETIÇÃO INICIAL">Petição Inicial</option>
@@ -323,24 +334,24 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         </select>
       </div>
       <div class="field" id="f-livre" style="display:none;">
-        <label class="so-peticao">Título da peça</label><label class="so-parecer">Título do parecer</label>
+        <label class="so-peticao">Título da peça</label><label class="so-parecer">Título do parecer</label><label class="so-notificacao">Título da notificação</label>
         <input id="titulo-livre" placeholder="TÍTULO EM MAIÚSCULAS">
       </div>
       <div class="field"><label>Subtítulo (opcional)</label><input id="subtitulo" placeholder="COM PEDIDO DE EFEITO SUSPENSIVO..."></div>
-      <div class="field so-peticao"><label>Texto após o título (opcional)</label><textarea id="apos-titulo" rows="2" placeholder="em face de BANCO DO BRASIL S.A., pelos fundamentos a seguir."></textarea></div>
+      <div class="field so-pet-not"><label><span class="so-peticao">Texto após o título (opcional)</span><span class="so-notificacao">Abertura (vocativo e parágrafo inicial)</span></label><textarea id="apos-titulo" rows="2" placeholder="em face de BANCO DO BRASIL S.A., pelos fundamentos a seguir."></textarea></div>
     </div>
 
     <!-- processo -->
     <div class="card">
-      <h2><span class="so-peticao">Processo</span><span class="so-parecer">Identificação</span></h2>
+      <h2><span class="so-peticao">Processo</span><span class="so-parecer">Identificação</span><span class="so-notificacao">Identificação</span></h2>
       <div class="field so-peticao"><label>Número dos autos</label><input id="num-autos" placeholder="0000000-00.0000.8.13.0702"></div>
       <div class="field so-peticao"><label>Vara / Tribunal</label><input id="vara" placeholder="4ª Vara das Famílias da Comarca de Uberlândia/MG"></div>
-      <div class="field"><label><span class="so-peticao">Partes abaixo do nº dos autos (opcional)</span><span class="so-parecer">Abaixo do título — um por linha (Interessado, Assunto…)</span></label><textarea id="partes-rotulo" rows="2" placeholder="Embargante: NOME&#10;Embargado: NOME"></textarea></div>
+      <div class="field"><label><span class="so-peticao">Partes abaixo do nº dos autos (opcional)</span><span class="so-parecer">Abaixo do título — um por linha (Interessado, Assunto…)</span><span class="so-notificacao">Abaixo do destinatário — um por linha (ASSUNTO:, NOTIFICANTE:, NOTIFICADO:)</span></label><textarea id="partes-rotulo" rows="2" placeholder="Embargante: NOME&#10;Embargado: NOME"></textarea></div>
     </div>
 
     <!-- endereçamento -->
-    <div class="card so-peticao">
-      <h2>Endereçamento</h2>
+    <div class="card so-pet-not">
+      <h2><span class="so-peticao">Endereçamento</span><span class="so-notificacao">Destinatário</span></h2>
       <div class="field">
         <textarea id="enderecamento" rows="2" placeholder="AO JUÍZO DE DIREITO DA 4ª VARA DAS FAMÍLIAS DA COMARCA DE UBERLÂNDIA/MG"></textarea>
       </div>
@@ -398,8 +409,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <p class="desc">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais. O PDF usa a impressão do navegador.</p>
       <p class="section-lbl">Nome do arquivo (POP 008/2023)</p>
       <div class="grid2">
-        <div class="field"><label><span class="so-peticao">Autor</span><span class="so-parecer">Interessado</span></label><input id="nom-autor" class="nom-in"></div>
-        <div class="field so-peticao"><label>Réu</label><input id="nom-reu" class="nom-in"></div>
+        <div class="field"><label><span class="so-peticao">Autor</span><span class="so-parecer">Interessado</span><span class="so-notificacao">Notificante</span></label><input id="nom-autor" class="nom-in"></div>
+        <div class="field so-pet-not"><label><span class="so-peticao">Réu</span><span class="so-notificacao">Notificado</span></label><input id="nom-reu" class="nom-in"></div>
         <div class="field"><label>Valor (opcional)</label><input id="nom-valor" class="nom-in"></div>
         <div class="field"><label>Criador</label><input id="nom-criador" class="nom-in"></div>
       </div>
@@ -542,24 +553,41 @@ document.getElementById('tipo-peca').addEventListener('change', function(){
 });
 document.getElementById('titulo-livre').addEventListener('input', render);
 
-// aba "Formatar parecer": título livre "PARECER JURÍDICO" e só os campos que um parecer usa
-function definirModo(parecer){
-  document.body.classList.toggle('modo-parecer', parecer);
+// abas "Formatar parecer" e "Formatar notificação": título próprio e só os campos que cada uma usa
+// modo: 'peticao' | 'parecer' | 'notificacao' (o tipo do documento sai do título — tipoDoTitulo)
+function tipoDoTitulo(t){
+  t = String(t||'').trim();
+  if(/^PARECER\b/i.test(t)) return 'parecer';
+  if(/^(CONTRA[\s-]?)?NOTIFICA/i.test(t)) return 'notificacao';
+  return 'peticao';
+}
+function modoAtual(){ return document.body.classList.contains('modo-parecer') ? 'parecer' : document.body.classList.contains('modo-notificacao') ? 'notificacao' : 'peticao'; }
+var TITULO_PADRAO = { parecer:'PARECER JURÍDICO', notificacao:'NOTIFICAÇÃO EXTRAJUDICIAL' };
+var NOME_DOC = { peticao:'petição', parecer:'parecer', notificacao:'notificação' };
+function definirModo(modo){
+  if(modo === true) modo = 'parecer'; else if(!modo) modo = 'peticao';
+  document.body.classList.toggle('modo-parecer', modo === 'parecer');
+  document.body.classList.toggle('modo-notificacao', modo === 'notificacao');
   var sel = document.getElementById('tipo-peca'), livre = document.getElementById('titulo-livre');
-  var tituloParecer = sel.value === 'outro' && /^PARECER\b/i.test(livre.value.trim());
-  if(parecer && !tituloParecer){ sel.value = 'outro'; livre.value = 'PARECER JURÍDICO'; sel.dispatchEvent(new Event('change')); }
-  if(!parecer && tituloParecer){ sel.value = 'PETIÇÃO INICIAL'; livre.value = ''; sel.dispatchEvent(new Event('change')); }
-  document.getElementById('import-txt').placeholder = parecer ? 'Cole aqui (Ctrl+V) o texto completo do parecer...' : 'Cole aqui (Ctrl+V) o texto completo da petição...';
-  document.getElementById('partes-rotulo').placeholder = parecer ? 'Interessado: NOME\nAssunto: ...' : 'Embargante: NOME\nEmbargado: NOME';
-  document.getElementById('subtitulo').placeholder = parecer ? 'MINUTA PARA REVISÃO...' : 'COM PEDIDO DE EFEITO SUSPENSIVO...';
+  var atual = sel.value === 'outro' ? tipoDoTitulo(livre.value) : 'peticao';
+  if(modo !== 'peticao' && atual !== modo){ sel.value = 'outro'; livre.value = TITULO_PADRAO[modo]; sel.dispatchEvent(new Event('change')); }
+  if(modo === 'peticao' && atual !== 'peticao'){ sel.value = 'PETIÇÃO INICIAL'; livre.value = ''; sel.dispatchEvent(new Event('change')); }
+  document.getElementById('import-txt').placeholder = 'Cole aqui (Ctrl+V) o texto completo d' + (modo === 'parecer' ? 'o parecer...' : modo === 'notificacao' ? 'a notificação...' : 'a petição...');
+  document.getElementById('partes-rotulo').placeholder = modo === 'parecer' ? 'Interessado: NOME\nAssunto: ...'
+    : modo === 'notificacao' ? 'ASSUNTO: ...\nNOTIFICANTE: NOME, qualificação...\nNOTIFICADO: NOME...' : 'Embargante: NOME\nEmbargado: NOME';
+  document.getElementById('subtitulo').placeholder = modo === 'parecer' ? 'MINUTA PARA REVISÃO...' : modo === 'notificacao' ? '(opcional)' : 'COM PEDIDO DE EFEITO SUSPENSIVO...';
+  document.getElementById('enderecamento').placeholder = modo === 'notificacao'
+    ? 'À SENHORA FULANA, SÍNDICA DO CONDOMÍNIO X\nCNPJ: ...\nEndereço\nCidade/UF — CEP' : 'AO JUÍZO DE DIREITO DA 4ª VARA DAS FAMÍLIAS DA COMARCA DE UBERLÂNDIA/MG';
+  document.getElementById('apos-titulo').placeholder = modo === 'notificacao'
+    ? 'Prezada Senhora,\n\nA NOTIFICANTE, por seu procurador, vem NOTIFICAR...' : 'em face de BANCO DO BRASIL S.A., pelos fundamentos a seguir.';
   desenharHistorico();
   render();
 }
 // texto importado ou rascunho aberto de outro tipo: muda para a aba certa
 function abaDoDocumento(titulo){
-  var parecer = /^PARECER\b/i.test(String(titulo||'').trim());
-  if(parecer === document.body.classList.contains('modo-parecer')) return;
-  var b = document.querySelector('.view-tabs [data-view="' + (parecer ? 'parecer' : 'formatar') + '"]');
+  var modo = tipoDoTitulo(titulo);
+  if(modo === modoAtual()) return;
+  var b = document.querySelector('.view-tabs [data-view="' + (modo === 'peticao' ? 'formatar' : modo) + '"]');
   if(b) b.click();
 }
 
@@ -705,12 +733,14 @@ function addSig(s, focar){
   row.innerHTML = '<div class="sig-n"></div><div class="sig-campos">'
     + '<input class="s-nome" placeholder="NOME COMPLETO">'
     + '<div class="sig-doc'+(temCpf?' cpf':'')+'"><select class="s-tipo"><option value="oab">OAB</option><option value="cpf">CPF</option></select>'
-    + '<input class="s-uf" maxlength="2" placeholder="UF"><input class="s-num" placeholder="nº"></div></div>'
+    + '<input class="s-uf" maxlength="2" placeholder="UF"><input class="s-num" placeholder="nº"></div>'
+    + '<input class="s-funcao" placeholder="Linha abaixo (opcional) — ex.: Procurador de Fulana"></div>'
     + '<div class="sig-acoes"><button type="button" class="btn-rem s-sobe" title="Subir">▲</button><button type="button" class="btn-rem s-desce" title="Descer">▼</button><button type="button" class="btn-rem s-rem" title="Tirar">✕</button></div>';
   row.querySelector('.s-nome').value = s.nome || '';
   row.querySelector('.s-tipo').value = temCpf ? 'cpf' : 'oab';
   row.querySelector('.s-uf').value = s.uf || 'MG';
   row.querySelector('.s-num').value = temCpf ? s.cpf : (s.oab || '');
+  row.querySelector('.s-funcao').value = s.funcao || '';
   row.querySelector('.s-tipo').addEventListener('change', function(){ row.querySelector('.sig-doc').classList.toggle('cpf', this.value === 'cpf'); render(); });
   row.querySelectorAll('input').forEach(function(i){ i.addEventListener('input', render); });
   row.querySelector('.s-nome').addEventListener('change', montarSelectAssinantes);
@@ -733,7 +763,7 @@ function renumSigs(){
 function lerSigs(){
   return Array.from(document.querySelectorAll('#sigs-list .sig-row')).map(function(r){
     var tipo = r.querySelector('.s-tipo').value, num = r.querySelector('.s-num').value.trim();
-    var s = { nome: r.querySelector('.s-nome').value.trim(), oab:'', uf:'', cpf:'' };
+    var s = { nome: r.querySelector('.s-nome').value.trim(), oab:'', uf:'', cpf:'', funcao: r.querySelector('.s-funcao').value.trim() };
     if(tipo === 'cpf') s.cpf = num;
     else { s.oab = num.replace(/OAB\/?[A-Z]{0,2}\s*n?[º°o]?\.?/i,'').trim(); s.uf = (r.querySelector('.s-uf').value.trim() || 'MG').toUpperCase(); }
     return s;
@@ -762,6 +792,8 @@ function excluirPeticoes(itens){
   var lista = itens.slice(0, 8).map(function(it){ return '• ' + nomePeticao(it.data); }).join('\n');
   if(itens.length > 8) lista += '\n… e mais ' + (itens.length - 8);
   var parecer = itens.every(function(it){ return ehParecer(it.data); });
+  var notif = itens.every(function(it){ return ehNotificacao(it.data); });
+  if(notif) return excluirNotificacoes(itens, lista);
   var msg = (itens.length === 1 ? (parecer ? 'Excluir este parecer do histórico?' : 'Excluir esta petição do histórico?')
       : (parecer ? 'Excluir estes ' + itens.length + ' pareceres do histórico?' : 'Excluir estas ' + itens.length + ' petições do histórico?'))
     + '\n\n' + lista + '\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
@@ -788,13 +820,25 @@ function carregarHistorico(){
       document.getElementById('hist-list').innerHTML = '<p style="font-size:.76rem;color:var(--err);">Erro ao carregar histórico: '+esc(e.message)+'</p>';
     });
 }
-// históricos separados: a aba "Formatar parecer" mostra só os pareceres; a de petição, o resto
+function excluirNotificacoes(itens, lista){
+  var msg = (itens.length === 1 ? 'Excluir esta notificação do histórico?' : 'Excluir estas ' + itens.length + ' notificações do histórico?')
+    + '\n\n' + lista + '\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
+  if(!confirm(msg)) return Promise.resolve(false);
+  var lotes = [];
+  for(var i = 0; i < itens.length; i += 450){
+    var b = db.batch();
+    itens.slice(i, i + 450).forEach(function(it){ b.delete(db.collection('peticoes_historico').doc(it.id)); });
+    lotes.push(b.commit());
+  }
+  return Promise.all(lotes).then(function(){ return true; });
+}
+// históricos separados: cada aba (petição, parecer, notificação) mostra só os seus
 var histTodos = null;
 function desenharHistorico(){
   if(!histTodos) return;
-  var parecer = document.body.classList.contains('modo-parecer');
-  document.getElementById('hist-todas').href = parecer ? 'historico.html?tipo=parecer' : 'historico.html';
-  histItens = histTodos.filter(function(it){ return ehParecer(it.data) === parecer; }).slice(0, 3);
+  var modo = modoAtual(), parecer = modo === 'parecer';
+  document.getElementById('hist-todas').href = modo === 'peticao' ? 'historico.html' : 'historico.html?tipo=' + modo;
+  histItens = histTodos.filter(function(it){ return tipoDoTitulo(it.data.titulo) === modo; }).slice(0, 3);
   var list = document.getElementById('hist-list');
   var tools = document.getElementById('hist-tools');
   list.innerHTML = '';
@@ -929,6 +973,7 @@ function coletar(){
     sigOab:  (lerSigs()[0]||{}).oab || '',
     sigUf:   (lerSigs()[0]||{}).uf || '',
     sigCpf:  (lerSigs()[0]||{}).cpf || '',
+    sigFuncao: (lerSigs()[0]||{}).funcao || '',
     sigExtra: lerSigs().slice(1),
     subtitulo: document.getElementById('subtitulo').value.trim(),
     aposTitulo: document.getElementById('apos-titulo').value.trim(),
@@ -1007,6 +1052,7 @@ var ENDER_KW = /^(AO\s|AOS\s|À\s|ÀS\s|EXCELENT|EXMO|ILUSTR|MERIT|EGR[ÉE]GI|CO
 var PROC_RE = /(\d{7}-\d{2}\.\d{4}\.\d\.\d{2,3}\.\d{4}|\d{4,7}[\/-]\d{2,4}[\/-]\d{2,4}[\/-]\d[\/-]\d{2,4})/;
 // parecer (aba "Formatar parecer"): título "PARECER ...", identificação abaixo do título e fecho "É o parecer"
 function ehParecer(d){ return /^PARECER\b/.test(String(d.titulo||'').trim().toUpperCase()); }
+function ehNotificacao(d){ return tipoDoTitulo(d.titulo) === 'notificacao'; }
 var BULLET_RE = /^[-–•]\s+/;
 // vocativo logo abaixo do título das razões: "Colenda Turma...", "Egrégio Tribunal..." (sem número)
 var VOCATIVO_RE = /^(Colend[ao]s?|Egr[ée]gi[ao]s?|Eminentes?|[ÍI]nclit[ao]s?|Excelent[íi]ssim[ao]s?|Senhor(es)?\s+Ministr|Nobres?)\b/;
@@ -1132,33 +1178,43 @@ function restoParagrafo(s){
 function ehCitacao(s){ return /^[“"«]/.test(s); }
 function assinaturas(d){
   var l = [];
-  if(d.sigNome) l.push({nome:d.sigNome, oab:d.sigOab||'', uf:d.sigUf||'', cpf:d.sigCpf||''});
+  if(d.sigNome) l.push({nome:d.sigNome, oab:d.sigOab||'', uf:d.sigUf||'', cpf:d.sigCpf||'', funcao:d.sigFuncao||''});
   (d.sigExtra||[]).forEach(function(s){ if(s.nome) l.push(s); });
   return l;
 }
 
 // estrutura única do documento: alimenta o preview/PDF e o Word/Docs
 function montarBlocos(d){
-  var B = [], parecer = ehParecer(d);
+  var B = [], parecer = ehParecer(d), notif = ehNotificacao(d);
   function blocoTitulo(){
     if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
     if(d.aposTitulo) paragrafos(d.aposTitulo).forEach(function(s){ B.push({t:'p', texto:s, negrito:reuEmFace(s)}); });
   }
   // parecer: título no topo e a identificação (Interessado, Assunto…) logo abaixo; sem endereçamento, processo e partes
   if(parecer) blocoTitulo();
-  if(d.enderecamento && !parecer) B.push({t:'ender', linhas: paragrafos(d.enderecamento).map(function(l){ return l.toUpperCase(); })});
-  if(d.processo && !parecer) B.push({t:'processo', texto:d.processo});
-  var rotulos = (d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  // notificação: título, destinatário, ASSUNTO/NOTIFICANTE/NOTIFICADO e a abertura ("Prezada Senhora, ... vem NOTIFICAR")
+  if(notif){
+    if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
+    var dest = String(d.enderecamento||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    if(dest.length) B.push({t:'dest', linhas:dest});
+    String(d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(l){
+      var r = partirRotulo(l); B.push({t:'rotulo', rot:r[0], texto:r[1], bloco:true});
+    });
+    paragrafos(d.aposTitulo).forEach(function(s){ B.push({t:'p', texto:s}); });
+  }
+  if(d.enderecamento && !parecer && !notif) B.push({t:'ender', linhas: paragrafos(d.enderecamento).map(function(l){ return l.toUpperCase(); })});
+  if(d.processo && !parecer && !notif) B.push({t:'processo', texto:d.processo});
+  var rotulos = notif ? [] : (d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
   rotulos.forEach(function(l){
     var r = partirRotulo(l);
     B.push({t:'rotulo', rot:r[0], texto:r[1]});
   });
   if(rotulos.length) B.push({t:'espaco'});
-  if(!parecer) d.requerentes.forEach(function(p){
+  if(!parecer && !notif) d.requerentes.forEach(function(p){
     var q = qualifParts(p);
     if(q.nome || q.resto) B.push({t:'qualif', q:q});
   });
-  if(!parecer) blocoTitulo();
+  if(!parecer && !notif) blocoTitulo();
   var numerar = d.numerar !== false, romanos = d.romanos !== false;
   var cont = 0, lista = 1, rom = 0, sub = [];
   function corpo(s){
@@ -1215,6 +1271,14 @@ function montarBlocos(d){
         i--;
         continue;
       }
+      if(modo === 'aposAssinatura' && /^PROTOCOLO\b/i.test(s) && ehMaiusculas(s)){
+        B.push({t:'protocolo', titulo:s, linhas:ps.slice(i+1)}); break;
+      }
+      if(modo === 'aposAssinatura' && /:$/.test(s) && i+1 < ps.length && /^\d{1,2}[.)]\s+/.test(ps[i+1])){
+        B.push({t:'p', texto:s, semRecuo:true});
+        while(i+1 < ps.length && /^\d{1,2}[.)]\s+/.test(ps[i+1])){ var mN = ps[++i].match(/^(\d{1,2})[.)]\s+(.*)$/); B.push({t:'alinea', letra:mN[1]+'.', texto:mN[2]}); }
+        continue;
+      }
       var mS = ehSubsecao(s);
       if(mS){ subsecao(mS); continue; }
       if(ehMarcaImagem(s)){ B.push({t:'imagem', n:numMarcaImagem(s)}); continue; }
@@ -1238,7 +1302,7 @@ function montarBlocos(d){
     }
   }
   function fechamento(){
-    B.push({t:'fech', parecer:parecer});
+    if(!notif) B.push({t:'fech', parecer:parecer});
     if(d.local||d.data) B.push({t:'local', texto:(d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.'});
     var sigs = assinaturas(d);
     if(sigs.length) B.push({t:'sig', lista:sigs});
@@ -1331,6 +1395,10 @@ function sugerirNomenclatura(d){
   var reu = d.requeridos.length ? (d.requeridos[0].nome || '') : '';
   if(!reu && d.requerentes.length) reu = reuDaQualificacao(d.requerentes[0].qual);
   if(!reu) reu = reuDaQualificacao(d.aposTitulo);
+  if(ehNotificacao(d)){
+    var nome1 = function(rot){ var m = (d.rotulos||'').match(new RegExp('^\\s*' + rot + '\\s*:\\s*(.+)$', 'im')); return m ? m[1].replace(/\*\*/g, '').split(/,|\s+[—–-]\s+/)[0].trim() : ''; };
+    autor = nome1('NOTIFICANTES?'); reu = nome1('NOTIFICAD[OA]S?');
+  }
   if(ehParecer(d)){
     var mi = (d.rotulos||'').match(/^\s*(?:Interessad[oa]s?|Consulente)\s*:\s*(.+)$/im);
     autor = mi ? mi[1].replace(/\*\*/g, '').trim() : ''; reu = '';
@@ -1381,16 +1449,19 @@ function buildBody(d){
       case 'abertura': return '<div class="dc-titulo-box'+(b.semQuebra?'':' dc-quebra')+'">'+esc(b.texto)+'</div>';
       case 'secao':    return '<div class="dc-secao">'+esc(b.texto)+'</div>';
       case 'centro':   return '<div class="dc-centro">'+esc(b.texto)+'</div>';
-      case 'rotulo':   return '<div class="dc-rotulo"><strong>'+esc(b.rot)+'</strong>'+rico(b.texto)+'</div>';
+      case 'rotulo':   return '<div class="dc-rotulo'+(b.bloco?' bloco':'')+'"><strong>'+esc(b.rot)+'</strong>'+rico(b.texto)+'</div>';
+      case 'dest':     return '<div class="dc-destinatario">'+b.linhas.map(function(l, k){ return k ? esc(l) : '<span class="l1">'+esc(l)+'</span>'; }).join('<br>')+'</div>';
+      case 'protocolo': return '<div class="dc-protocolo"><div class="tit">'+esc(b.titulo)+'</div>'+b.linhas.map(function(l){ return '<div class="lin">'+esc(l)+'</div>'; }).join('')+'</div>';
       case 'cit':      return '<div class="dc-p">'+rico(b.texto)+'</div>';
       case 'p':        return b.n ? '<div class="dc-p dc-num"><strong class="dc-n">'+b.n+'.</strong>'+rico(b.texto)+'</div>'
-                              : '<div class="dc-p">'+rico(b.texto, b.negrito)+'</div>';
+                              : '<div class="dc-p'+(b.semRecuo?' no-indent':'')+'">'+rico(b.texto, b.negrito)+'</div>';
       case 'pedido':   return '<div class="dc-item"><span class="dc-item-num">'+b.letra+'</span><span class="dc-item-body">'+rico(b.texto)+'</span></div>';
       case 'fech':     return '<div class="dc-fechamento">'+(b.parecer ? 'É o parecer,<br>salvo melhor juízo.' : 'Nestes Termos,<br>Pede Deferimento.')+'</div>';
       case 'local':    return '<div class="dc-local">'+esc(b.texto)+'</div>';
       case 'sig':      return '<div class="dc-sigs">'+b.lista.map(function(s){
                          return '<div class="dc-assinatura"><div class="nome">'+esc(s.nome.toUpperCase())+'</div>'
-                           +(rotuloDoc(s)?'<div class="oab">'+esc(rotuloDoc(s))+'</div>':'')+'</div>';
+                           +(rotuloDoc(s)?'<div class="oab">'+esc(rotuloDoc(s))+'</div>':'')
+                           +(s.funcao?'<div class="funcao">'+esc(s.funcao)+'</div>':'')+'</div>';
                        }).join('')+'</div>';
     }
     return '';
@@ -1602,9 +1673,18 @@ function docxBody(d){
       case 'abertura': x += wP(wRun(b.texto,{b:1, sz:26}), {jc:'center', box:1, before:0, after:240, quebra:!b.semQuebra}); break;
       case 'secao':    x += wP(wRun(b.texto,{b:1}), {jc:'left', before:240, after:120, junto:1}); break;
       case 'centro':   x += wP(wRun(b.texto,{b:1}), {jc:'center', after:120, line:276}); break;
-      case 'rotulo':   x += wP(wRun(b.rot,{b:1}) + wRico(b.texto), {jc:'left', after:0, line:276}); break;
+      case 'rotulo':   x += b.bloco ? wP(wRun(b.rot,{b:1}) + wRico(b.texto), {jc:'both', after:160, line:300})
+                                   : wP(wRun(b.rot,{b:1}) + wRico(b.texto), {jc:'left', after:0, line:276}); break;
+      case 'dest':
+        b.linhas.forEach(function(l, k){ x += wP(wRun(l, k ? {} : {b:1}), {jc:'left', after:0, line:276}); });
+        x += wVazio(); break;
+      case 'protocolo':
+        x += wVazio();
+        x += wP(wRun(b.titulo,{b:1}), {jc:'center', box:1, before:120, after:200, line:276, junto:1});
+        b.linhas.forEach(function(l, k){ x += wP(wRun(l), {jc:'left', box:1, after:k === b.linhas.length-1 ? 120 : 200, line:276, junto:k < b.linhas.length-1}); });
+        break;
       case 'cit':      x += wP(wRico(b.texto), {ind:RECUO}); break;
-      case 'p':        x += b.n ? wP(wRico(b.texto), {num:b.lista}) : wP(wRico(b.texto, null, b.negrito), {ind:RECUO}); break;
+      case 'p':        x += b.n ? wP(wRico(b.texto), {num:b.lista}) : wP(wRico(b.texto, null, b.negrito), b.semRecuo ? {jc:'left'} : {ind:RECUO}); break;
       case 'pedido':   x += wP(wRico(b.texto), {num:2}); break;
       case 'fech':
         x += wVazio();
@@ -1616,6 +1696,7 @@ function docxBody(d){
           x += wVazio() + wVazio();
           x += wP(wRun(s.nome.toUpperCase(),{b:1}), {jc:'center', after:0, line:276});
           if(rotuloDoc(s)) x += wP(wRun(rotuloDoc(s),{b:1}), {jc:'center', after:0, line:276});
+          if(s.funcao) x += wP(wRun(s.funcao), {jc:'center', after:0, line:276});
         });
         break;
     }
@@ -1700,7 +1781,7 @@ document.getElementById('docs-notif-close').addEventListener('click', function()
 document.getElementById('btn-importar').addEventListener('click', function(){
   var raw = document.getElementById('import-txt').value;
   if(!raw.trim()){ alert('Cole o texto da petição antes de importar.'); return; }
-  var resultado = parsearPeticao(raw);
+  var resultado = (modoAtual() === 'notificacao' || /^\s*(?:\*\*)?\s*(CONTRA[\s-]?)?NOTIFICA/i.test(raw)) ? parsearNotificacao(raw) : parsearPeticao(raw);
   preencherFormulario(resultado);
   var st = document.getElementById('import-status');
   st.style.display = 'block';
@@ -1971,7 +2052,69 @@ function partirRotulo(l){
   return m ? [m[0], l.slice(m[0].length)] : ['', l];
 }
 
-function parsearPeticao(raw){
+// ══ NOTIFICAÇÃO (aba "Formatar notificação", 10/11/2026) ══════
+// cabeçalho próprio (título, destinatário, ASSUNTO / NOTIFICANTE / NOTIFICADO, vocativo e abertura); o corpo, o
+// fechamento, a assinatura e o que vem depois (anexos, protocolo de recebimento) usam o mesmo leitor das petições
+var ROT_NOTIF_RE = /^(?:ASSUNTO|NOTIFICANTES?|NOTIFICAD[OA]S?|CONTRANOTIFICANTES?|CONTRANOTIFICAD[OA]S?|REFER[ÊE]NCIA|REF\.|OBJETO|DESTINAT[ÁA]RI[OA]S?|REMETENTES?|INTERESSAD[OA]S?)\s*:/i;
+var VOCATIVO_NOTIF_RE = /^(?:Prezad[oa]s?|Ilustr[ií]ssim[oa]s?|Senhor(?:a|es|as)?\b|Sr[as]?\.|Car[oa]s?\b|Excelent[ií]ssim[oa]s?|A\s+quem\s+interessar)/i;
+function ehTituloNumerado(l){
+  var m = String(l||'').match(/^(?:\d{1,2}[.)]?|[IVXL]{1,5}\s*[—–.-])\s*([A-ZÀ-Ý].*)$/);
+  return !!m && ehMaiusculas(m[1]) && l.length <= 180 && !/[.;:,]$/.test(l);
+}
+function parsearNotificacao(raw){
+  var linhas = desmarkdown(String(raw||'').replace(/\r\n?/g,'\n')).replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
+  var i = 0, titulo = '', dest = [], rots = [], intro = [];
+  while(i < linhas.length && !linhas[i]) i++;
+  if(i < linhas.length && /^(CONTRA[\s-]?)?NOTIFICA/i.test(linhas[i]) && linhas[i].length <= 120){ titulo = linhas[i].replace(/[.:]$/, ''); i++; }
+  // destinatário: linhas até o 1º rótulo, o vocativo ou o 1º tópico
+  for(; i < linhas.length; i++){
+    var l = linhas[i];
+    if(!l) continue;
+    if(ROT_NOTIF_RE.test(l) || VOCATIVO_NOTIF_RE.test(l) || ehTituloNumerado(l) || l.length > 200) break;
+    dest.push(l);
+  }
+  // ASSUNTO / NOTIFICANTE / NOTIFICADO: cada rótulo é um parágrafo (pode continuar na linha seguinte)
+  for(; i < linhas.length; i++){
+    var r = linhas[i];
+    if(!r) continue;
+    if(ROT_NOTIF_RE.test(r)){ rots.push(r); continue; }
+    if(rots.length && !VOCATIVO_NOTIF_RE.test(r) && !ehTituloNumerado(r) && !/[.;]$/.test(rots[rots.length-1]) && /^[a-zà-ÿ0-9]/.test(r)){
+      rots[rots.length-1] += ' ' + r; continue;
+    }
+    break;
+  }
+  // abertura: vocativo e parágrafo(s) até o 1º tópico numerado (sem tópicos: só o vocativo e o parágrafo seguinte)
+  var kHead = -1;
+  for(var k = i; k < linhas.length; k++){ if(linhas[k] && ehTituloNumerado(linhas[k])){ kHead = k; break; } }
+  if(kHead < 0){
+    var vistos = 0;
+    for(kHead = i; kHead < linhas.length; kHead++){
+      if(!linhas[kHead]) continue;
+      vistos++;
+      if(vistos > (VOCATIVO_NOTIF_RE.test(linhas[i] || '') ? 2 : 1)) break;
+    }
+  }
+  intro = linhas.slice(i, kHead);
+  var corpo = linhas.slice(kHead).join('\n');
+  var res = parsearPeticao(corpo, {semEnder:true});
+  res.titulo = titulo || 'NOTIFICAÇÃO EXTRAJUDICIAL';
+  res.enderecamento = dest.join('\n');
+  res.rotulos = rots.join('\n');
+  res.aposTitulo = intro.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  res.requerentes = []; res.requeridos = []; res.pedidos = []; res.processo = '';
+  // linha logo abaixo da OAB ("Procurador de Fulana") é a qualidade de quem assina, não o texto depois da assinatura
+  var cauda = String(res.aposAssinatura || '').split('\n');
+  var j0 = 0; while(j0 < cauda.length && !cauda[j0].trim()) j0++;
+  var f = (cauda[j0] || '').trim();
+  if(res.sigNome && f && f.length <= 100 && !/:$/.test(f) && !/^anexo/i.test(f) && !ehMaiusculas(f) && !/^\d/.test(f)){
+    res.sigFuncao = f;
+    res.aposAssinatura = cauda.slice(j0 + 1).join('\n').replace(/^\s+/, '');
+  }
+  return res;
+}
+
+function parsearPeticao(raw, opts){
+  opts = opts || {};
   var linhas = desmarkdown(raw.replace(/\r\n?/g,'\n')).replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
 
   var resultado = {
@@ -2034,7 +2177,7 @@ function parsearPeticao(raw){
   var i = 0;
   while(i < linhas.length && !linhas[i]) i++;
   var ender = [];
-  while(i < linhas.length){
+  while(i < linhas.length && !opts.semEnder){
     var le = linhas[i];
     if(!le){
       var pe = proxima(i);
@@ -2068,7 +2211,7 @@ function parsearPeticao(raw){
   var topico = null, modoPedidos = false, pedLinhas = [], fim = linhas.length;
   for(var k = i; k < linhas.length; k++){ if(FECH_RE.test(linhas[k])){ fim = k; break; } }
   if(fim === linhas.length){
-    for(var k2 = Math.max(i+1, linhas.length-25); k2 < linhas.length; k2++){
+    for(var k2 = Math.max(i+1, linhas.length-(opts.semEnder ? 45 : 25)); k2 < linhas.length; k2++){
       if(OAB_RE.test(linhas[k2]) && linhas[k2].length < 45){
         var f = k2 - 1;
         while(f > i && !linhas[f]) f--;
@@ -2531,7 +2674,7 @@ render();
       document.querySelectorAll('.view-tabs [data-view]').forEach(function(bb){ bb.classList.toggle('active', bb === b); });
       viewFormatar.hidden = nom;
       viewNom.hidden = !nom;
-      if(!nom) definirModo(b.dataset.view === 'parecer');
+      if(!nom) definirModo(b.dataset.view === 'formatar' ? 'peticao' : b.dataset.view);
       document.getElementById('header-sub').textContent = nom ? SUB_NOMENCLATURA : SUB_FORMATAR;
       window.scrollTo(0, 0);
     });

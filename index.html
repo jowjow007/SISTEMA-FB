@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v224</span>
+      <span class="version-tag">v225</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5487,6 +5487,10 @@
   ];
   function corrigirNomesDeAbas(){
     tabsCatalog.forEach(function(t){
+      // 10/11/2026: "Petições" passou a ser "Formatador" (petição, parecer e notificação)
+      if (/tools\/peticoes\//.test(t.url || '') && /^\s*(formatador de\s+)?peti[cç][õo]es\s*$/i.test(t.label || '')) {
+        db.collection('tabs').doc(t.id).update({ label: 'Formatador' }).catch(function(){});
+      }
       CORRECOES_NOME_ABA.forEach(function(c){
         if (c[0].test(t.label || '') && t.label !== c[1]) {
           db.collection('tabs').doc(t.id).update({ label: c[1] }).catch(function(){});
