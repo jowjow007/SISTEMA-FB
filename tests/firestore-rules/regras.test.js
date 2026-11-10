@@ -72,6 +72,7 @@ async function semear() {
     await d.doc('patrimonio/p1').set({ nome: 'Notebook', responsavelUid: 'u-outro' });
     await d.doc('patrimonio/p2').set({ nome: 'Monitor', responsavelUid: 'u-membro' });
     await d.doc('patrimonio/p3').set({ nome: 'Cadeira', responsavelUid: 'u-deslig' });
+    await d.doc('assinantes/u-membro').set({ nome: 'PESSOA FICTÍCIA', oab: '', uf: '', cpf: '000.000.000-00', ordem: 5 });
     await d.doc('peticoes_historico/ph1').set({ criadoPor: 'u-outro', nomeArquivo: 'x', docsUrl: 'x' });
     await d.doc('peticoes_historico/ph-deslig').set({ criadoPor: 'u-deslig', nomeArquivo: 'x', docsUrl: 'x' });
     await d.doc('dadosPrivados/numerosStats').set({ json: '{"ficticio":true}' });
@@ -489,6 +490,19 @@ async function main() {
     await env.withSecurityRulesDisabled(async (ctx) => { await ctx.firestore().doc('users/u-ttipo').set({ email: 'ttipo@exemplo.test', role: 'visitante', tabs: ['agenda'], acesso: 'ativo' }); });
     await assertFails(db({ uid: 'u-ttipo', email: 'ttipo@exemplo.test' }).doc('astreaDiario/2026-01-01').get());
   });
+
+  G = '16. Assinantes do Formatador de petições (nome + OAB/CPF da equipe)';
+  await caso(G, 'membro lê a lista de assinantes', () => assertSucceeds(db(P.membro).collection('assinantes').get()));
+  await caso(G, 'gestor lê a lista de assinantes', () => assertSucceeds(db({ uid: 'u-gestor', email: 'gestor@exemplo.test' }).doc('assinantes/u-membro').get()));
+  await caso(G, 'cliente NÃO lê assinantes (CPF da equipe)', () => assertFails(db(P.cliente).collection('assinantes').get()));
+  await caso(G, 'pendente NÃO lê assinantes', () => assertFails(db(P.pendente).doc('assinantes/u-membro').get()));
+  await caso(G, 'bloqueado NÃO lê assinantes', () => assertFails(db(P.bloqueado).doc('assinantes/u-membro').get()));
+  await caso(G, 'anônimo NÃO lê assinantes', () => assertFails(anon().doc('assinantes/u-membro').get()));
+  await caso(G, 'membro NÃO grava assinante (nem o próprio)', () => assertFails(db(P.membro).doc('assinantes/u-membro').set({ nome: 'OUTRO NOME', oab: '1', uf: 'MG', cpf: '', ordem: 1 })));
+  await caso(G, 'membro NÃO apaga assinante', () => assertFails(db(P.membro).doc('assinantes/u-membro').delete()));
+  await caso(G, 'admin grava assinante', () => assertSucceeds(db(P.admin).doc('assinantes/u-x').set({ nome: 'FICTÍCIO', oab: '1.234', uf: 'MG', cpf: '', ordem: 9 })));
+  await caso(G, 'admin NÃO grava campo fora da lista (ex.: e-mail)', () => assertFails(db(P.admin).doc('assinantes/u-x').set({ nome: 'FICTÍCIO', email: 'x@exemplo.test' })));
+  await caso(G, 'admin apaga assinante', () => assertSucceeds(db(P.admin).doc('assinantes/u-x').delete()));
 
   await env.cleanup();
   let falhas = 0, grupoAtual = '';

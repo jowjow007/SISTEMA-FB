@@ -146,6 +146,16 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .btn-add:hover{background:var(--panel-2);color:var(--paper);border-color:var(--red);}
   .btn-rem{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:.82rem;}
   .btn-rem:hover{color:var(--err);}
+  .sig-row{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:7px;}
+  .sig-row .sig-n{font-size:.75rem;color:var(--muted);padding-top:8px;text-align:center;}
+  .sig-row .sig-campos{display:grid;grid-template-columns:1fr;gap:6px;min-width:0;}
+  .sig-row .sig-doc{display:grid;grid-template-columns:78px 54px 1fr;gap:6px;}
+  .sig-row .sig-doc.cpf{grid-template-columns:78px 1fr;}
+  .sig-row .sig-doc.cpf .s-uf{display:none;}
+  .sig-row input,.sig-row select{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line-strong);background:var(--panel);color:var(--paper);font-size:.8rem;outline:none;min-width:0;}
+  .sig-row input:focus,.sig-row select:focus{border-color:var(--red);}
+  .sig-row .sig-acoes{display:flex;flex-direction:column;gap:2px;}
+  .sig-vazio{font-size:.75rem;color:var(--muted);padding:6px 2px 8px;}
 
   .hist-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);}
   .hist-row:last-child{border-bottom:none;}
@@ -374,12 +384,11 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <div class="field"><label>Data</label><input id="data-f" type="date"></div>
       </div>
       <div class="field">
-        <label>Advogado(a) signatário</label>
-        <select id="sig-sel"><option value="">— selecionar —</option></select>
+        <label>Assinantes (na ordem em que assinam)</label>
+        <div id="sigs-list"></div>
+        <select id="sig-add" class="btn-add" style="text-align:center;"><option value="">+ Adicionar assinante…</option></select>
+        <div class="hint" style="font-size:.68rem;color:var(--muted);margin-top:5px;">Escolha os usuários: vem o nome completo e a OAB (quem não tem OAB sai com o CPF). Dá para ajustar o texto de cada um.</div>
       </div>
-      <div class="field"><label>Nome completo</label><input id="sig-nome"></div>
-      <div class="field"><label>OAB/MG nº</label><input id="sig-oab"></div>
-      <div class="field"><label>Outros signatários (um por linha: NOME | OAB)</label><textarea id="sig-extra" rows="2" placeholder="HECY BRAGA DE OLIVEIRA | 95.948"></textarea></div>
       <div class="field"><label>Depois da assinatura (opcional)</label><textarea id="apos-assinatura" rows="2" placeholder="RELAÇÃO DOS DOCUMENTOS&#10;Doc. 01 — Procuração."></textarea></div>
     </div>
 
@@ -522,8 +531,7 @@ auth.onAuthStateChanged(function(user){
       isAdmin = u.role === 'admin';
       meuNome = u.displayName || u.nome || user.displayName || '';
       render();
-    }).catch(function(){}).then(function(){ carregarHistorico(); carregarDaUrl(); });
-    carregarUsuarios();
+    }).catch(function(){}).then(function(){ carregarHistorico(); carregarDaUrl(); carregarUsuarios(); });
   }
 });
 
@@ -609,34 +617,138 @@ function renumPeds(){
 }
 document.getElementById('btn-ped').onclick = function(){ addPedido(''); };
 
-// ══ USUÁRIOS ══════════════════════════════════════════════════
-function carregarUsuarios(){
-  db.collection('users').get().then(function(snap){
-    var sel = document.getElementById('sig-sel');
-    snap.docs.forEach(function(d){
-      var data = d.data();
-      var nome = data.displayName || data.nome;
-      if(!nome) return;
-      var opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = nome;
-      opt.dataset.nome = nome;
-      opt.dataset.oab = data.oab || '';
-      sel.appendChild(opt);
-    });
-  }).catch(function(){});
+// ══ ASSINANTES ════════════════════════════════════════════════
+// Catálogo: o admin lê users (só ele pode) e mantém a coleção "assinantes" (nome + OAB, ou CPF de quem não
+// tem OAB), que o resto da equipe lê. Sócios: o mesmo nome que já sai nas petições.
+var SOCIOS = { '163443': {nome:'JONATHAN SILVA FONSECA', ordem:1}, '95948': {nome:'HECY BRAGA DE OLIVEIRA', ordem:2} };
+var catalogoAssinantes = [];
+function digitosSig(v){ return String(v||'').replace(/\D/g,''); }
+function milharSig(d){ d = digitosSig(d).replace(/^0+(?=\d)/,''); return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+function fmtCpfSig(v){ var d = digitosSig(v); return d.length === 11 ? d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9) : String(v||'').trim(); }
+function oabDeCadastro(v){
+  var s = String(v||'').trim(); if(!s) return null;
+  var d = digitosSig(s); if(!d) return null;
+  var uf = (s.replace(/OAB/ig,'').match(/[A-Za-z]{2}/) || ['MG'])[0].toUpperCase();
+  return { oab: milharSig(d), uf: uf };
 }
-document.getElementById('sig-sel').addEventListener('change', function(){
-  var opt = this.options[this.selectedIndex];
-  if(opt && opt.value){
-    document.getElementById('sig-nome').value = opt.dataset.nome || '';
-    document.getElementById('sig-oab').value  = opt.dataset.oab  || '';
-  }
+function assinanteDeUsuario(id, u){
+  var nome = String(u.displayName || u.nome || '').trim(); if(!nome) return null;
+  var o = oabDeCadastro(u.oab), a = { id:id, nome:nome.toUpperCase(), oab:'', uf:'', cpf:'', ordem:50 };
+  if(o){ a.oab = o.oab; a.uf = o.uf; var soc = SOCIOS[digitosSig(o.oab)]; if(soc){ a.nome = soc.nome; a.ordem = soc.ordem; } }
+  else if(digitosSig(u.cpf).length === 11) a.cpf = fmtCpfSig(u.cpf);
+  return a;
+}
+function ordenarCatalogo(l){
+  return l.sort(function(a,b){ return (a.ordem||50)-(b.ordem||50) || a.nome.localeCompare(b.nome,'pt-BR'); });
+}
+function carregarUsuarios(){
+  if(isAdmin){
+    db.collection('users').get().then(function(snap){
+      var lista = [];
+      snap.docs.forEach(function(d){
+        var u = d.data();
+        if(u.acesso !== 'ativo' || ['admin','gestor','membro'].indexOf(u.role) < 0) return;
+        var a = assinanteDeUsuario(d.id, u); if(a) lista.push(a);
+      });
+      catalogoAssinantes = ordenarCatalogo(lista); montarSelectAssinantes();
+      sincronizarAssinantes(lista);
+    }).catch(function(){ lerAssinantes(); });
+  } else lerAssinantes();
+}
+function lerAssinantes(){
+  db.collection('assinantes').get().then(function(snap){
+    catalogoAssinantes = ordenarCatalogo(snap.docs.map(function(d){ var x = d.data(); return { id:d.id, nome:x.nome||'', oab:x.oab||'', uf:x.uf||'', cpf:x.cpf||'', ordem:x.ordem||50 }; }).filter(function(a){ return a.nome; }));
+    montarSelectAssinantes();
+  }).catch(function(){ montarSelectAssinantes(); });   // regras ainda não publicadas: só "outra pessoa"
+}
+// mantém a coleção espelho igual ao cadastro (só grava o que mudou; tira quem saiu da equipe)
+function sincronizarAssinantes(lista){
+  db.collection('assinantes').get().then(function(snap){
+    var atuais = {}; snap.docs.forEach(function(d){ atuais[d.id] = d.data(); });
+    var b = db.batch(), n = 0;
+    lista.forEach(function(a){
+      var novo = { nome:a.nome, oab:a.oab, uf:a.uf, cpf:a.cpf, ordem:a.ordem }, v = atuais[a.id];
+      if(!v || v.nome !== novo.nome || (v.oab||'') !== novo.oab || (v.uf||'') !== novo.uf || (v.cpf||'') !== novo.cpf || v.ordem !== novo.ordem){
+        novo.atualizadoEm = firebase.firestore.FieldValue.serverTimestamp(); b.set(db.collection('assinantes').doc(a.id), novo); n++;
+      }
+      delete atuais[a.id];
+    });
+    Object.keys(atuais).forEach(function(id){ b.delete(db.collection('assinantes').doc(id)); n++; });
+    if(n) return b.commit();
+  }).catch(function(e){ console.warn('assinantes: sincronização não feita (regras publicadas?)', e && e.code); });
+}
+function rotuloDoc(s){ return s.oab ? 'OAB/'+(s.uf||'MG')+' nº '+s.oab : (s.cpf ? 'CPF nº '+s.cpf : ''); }
+function montarSelectAssinantes(){
+  var sel = document.getElementById('sig-add');
+  sel.innerHTML = '<option value="">+ Adicionar assinante…</option>';
+  var ja = lerSigs().map(function(s){ return s.nome.toUpperCase(); });
+  catalogoAssinantes.forEach(function(a, i){
+    if(ja.indexOf(a.nome.toUpperCase()) >= 0) return;
+    var o = document.createElement('option'); o.value = 'c' + i;
+    var doc = rotuloDoc(a); o.textContent = a.nome + (doc ? ' — ' + doc : ' (sem OAB/CPF no cadastro)');
+    sel.appendChild(o);
+  });
+  var outro = document.createElement('option'); outro.value = 'outro'; outro.textContent = 'Outra pessoa (digitar)…';
+  sel.appendChild(outro);
+}
+document.getElementById('sig-add').addEventListener('change', function(){
+  var v = this.value; this.value = '';
+  if(!v) return;
+  if(v === 'outro') addSig({nome:'', oab:'', uf:'MG', cpf:''}, true);
+  else { var a = catalogoAssinantes[parseInt(v.slice(1),10)]; if(a) addSig(a); }
   render();
 });
+function addSig(s, focar){
+  s = s || {};
+  var row = document.createElement('div'); row.className = 'sig-row';
+  var temCpf = !s.oab && !!s.cpf;
+  row.innerHTML = '<div class="sig-n"></div><div class="sig-campos">'
+    + '<input class="s-nome" placeholder="NOME COMPLETO">'
+    + '<div class="sig-doc'+(temCpf?' cpf':'')+'"><select class="s-tipo"><option value="oab">OAB</option><option value="cpf">CPF</option></select>'
+    + '<input class="s-uf" maxlength="2" placeholder="UF"><input class="s-num" placeholder="nº"></div></div>'
+    + '<div class="sig-acoes"><button type="button" class="btn-rem s-sobe" title="Subir">▲</button><button type="button" class="btn-rem s-desce" title="Descer">▼</button><button type="button" class="btn-rem s-rem" title="Tirar">✕</button></div>';
+  row.querySelector('.s-nome').value = s.nome || '';
+  row.querySelector('.s-tipo').value = temCpf ? 'cpf' : 'oab';
+  row.querySelector('.s-uf').value = s.uf || 'MG';
+  row.querySelector('.s-num').value = temCpf ? s.cpf : (s.oab || '');
+  row.querySelector('.s-tipo').addEventListener('change', function(){ row.querySelector('.sig-doc').classList.toggle('cpf', this.value === 'cpf'); render(); });
+  row.querySelectorAll('input').forEach(function(i){ i.addEventListener('input', render); });
+  row.querySelector('.s-nome').addEventListener('change', montarSelectAssinantes);
+  row.querySelector('.s-rem').onclick = function(){ row.remove(); renumSigs(); render(); };
+  row.querySelector('.s-sobe').onclick = function(){ if(row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling); renumSigs(); render(); };
+  row.querySelector('.s-desce').onclick = function(){ if(row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row); renumSigs(); render(); };
+  document.getElementById('sigs-list').appendChild(row);
+  renumSigs();
+  if(focar) row.querySelector('.s-nome').focus();
+}
+function renumSigs(){
+  var lst = document.getElementById('sigs-list');
+  var rows = lst.querySelectorAll('.sig-row');
+  rows.forEach(function(r, i){ r.querySelector('.sig-n').textContent = (i+1) + '.'; });
+  var vazio = lst.querySelector('.sig-vazio');
+  if(!rows.length && !vazio){ vazio = document.createElement('div'); vazio.className = 'sig-vazio'; vazio.textContent = 'Nenhum assinante ainda.'; lst.appendChild(vazio); }
+  else if(rows.length && vazio) vazio.remove();
+  montarSelectAssinantes();
+}
+function lerSigs(){
+  return Array.from(document.querySelectorAll('#sigs-list .sig-row')).map(function(r){
+    var tipo = r.querySelector('.s-tipo').value, num = r.querySelector('.s-num').value.trim();
+    var s = { nome: r.querySelector('.s-nome').value.trim(), oab:'', uf:'', cpf:'' };
+    if(tipo === 'cpf') s.cpf = num;
+    else { s.oab = num.replace(/OAB\/?[A-Z]{0,2}\s*n?[º°o]?\.?/i,'').trim(); s.uf = (r.querySelector('.s-uf').value.trim() || 'MG').toUpperCase(); }
+    return s;
+  }).filter(function(s){ return s.nome; });
+}
+function setSigs(lista){
+  document.getElementById('sigs-list').innerHTML = '';
+  (lista||[]).forEach(function(s){ addSig(s); });
+  renumSigs();
+}
+
+setSigs([]);
 
 // ══ LIVE LISTENERS ════════════════════════════════════════════
-['num-autos','vara','enderecamento','local','data-f','sig-nome','sig-oab','sig-extra','opt-num','opt-rom','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){
+['num-autos','vara','enderecamento','local','data-f','opt-num','opt-rom','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){
   var el2 = document.getElementById(id); if(el2) el2.addEventListener('change', render);
   var el = document.getElementById(id); if(el) el.addEventListener('input', render);
 });
@@ -777,20 +889,12 @@ function carregarRascunho(data){
   (data.pedidos||[]).forEach(function(p){ addPedido(p); });
   document.getElementById('local').value    = data.local||'Uberlândia/MG';
   document.getElementById('data-f').value   = data.data||'';
-  document.getElementById('sig-nome').value = data.sigNome||'';
-  document.getElementById('sig-oab').value  = data.sigOab||'';
+  setSigs(assinaturas(data));
   aplicarOpcoes(data);
   render();
 }
 
-// "NOME | OAB" por linha ↔ lista de signatários adicionais
-function lerSigExtra(){
-  return document.getElementById('sig-extra').value.split('\n').map(function(l){
-    var p = l.split('|'); return {nome:(p[0]||'').trim(), oab:(p[1]||'').replace(/OAB\/?[A-Z]{0,2}\s*n?[º°o]?/i,'').trim()};
-  }).filter(function(s){ return s.nome; });
-}
 function aplicarOpcoes(d){
-  document.getElementById('sig-extra').value = (d.sigExtra||[]).map(function(s){ return s.nome+(s.oab?' | '+s.oab:''); }).join('\n');
   document.getElementById('opt-num').checked = d.numerar !== false;
   document.getElementById('opt-rom').checked = d.romanos !== false;
   document.getElementById('subtitulo').value = d.subtitulo || '';
@@ -821,9 +925,11 @@ function coletar(){
     pedidos: Array.from(document.querySelectorAll('.ped-row textarea')).map(function(ta){ return ta.value.trim(); }).filter(Boolean),
     local:   document.getElementById('local').value.trim(),
     data:    (dataEditadaManualmente ? null : (document.getElementById('data-f').value = hojeISOPet()), document.getElementById('data-f').value),
-    sigNome: document.getElementById('sig-nome').value.trim(),
-    sigOab:  document.getElementById('sig-oab').value.trim(),
-    sigExtra: lerSigExtra(),
+    sigNome: (lerSigs()[0]||{}).nome || '',
+    sigOab:  (lerSigs()[0]||{}).oab || '',
+    sigUf:   (lerSigs()[0]||{}).uf || '',
+    sigCpf:  (lerSigs()[0]||{}).cpf || '',
+    sigExtra: lerSigs().slice(1),
     subtitulo: document.getElementById('subtitulo').value.trim(),
     aposTitulo: document.getElementById('apos-titulo').value.trim(),
     aposPedidos: document.getElementById('apos-pedidos').value.trim(),
@@ -1026,7 +1132,7 @@ function restoParagrafo(s){
 function ehCitacao(s){ return /^[“"«]/.test(s); }
 function assinaturas(d){
   var l = [];
-  if(d.sigNome) l.push({nome:d.sigNome, oab:d.sigOab});
+  if(d.sigNome) l.push({nome:d.sigNome, oab:d.sigOab||'', uf:d.sigUf||'', cpf:d.sigCpf||''});
   (d.sigExtra||[]).forEach(function(s){ if(s.nome) l.push(s); });
   return l;
 }
@@ -1284,7 +1390,7 @@ function buildBody(d){
       case 'local':    return '<div class="dc-local">'+esc(b.texto)+'</div>';
       case 'sig':      return '<div class="dc-sigs">'+b.lista.map(function(s){
                          return '<div class="dc-assinatura"><div class="nome">'+esc(s.nome.toUpperCase())+'</div>'
-                           +(s.oab?'<div class="oab">OAB/MG nº '+esc(s.oab)+'</div>':'')+'</div>';
+                           +(rotuloDoc(s)?'<div class="oab">'+esc(rotuloDoc(s))+'</div>':'')+'</div>';
                        }).join('')+'</div>';
     }
     return '';
@@ -1509,7 +1615,7 @@ function docxBody(d){
         b.lista.forEach(function(s){
           x += wVazio() + wVazio();
           x += wP(wRun(s.nome.toUpperCase(),{b:1}), {jc:'center', after:0, line:276});
-          if(s.oab) x += wP(wRun('OAB/MG nº '+s.oab,{b:1}), {jc:'center', after:0, line:276});
+          if(rotuloDoc(s)) x += wP(wRun(rotuloDoc(s),{b:1}), {jc:'center', after:0, line:276});
         });
         break;
     }
@@ -1576,7 +1682,8 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   document.getElementById('tipo-peca').value='PETIÇÃO INICIAL';
   document.getElementById('titulo-livre').value='';
   document.getElementById('f-livre').style.display='none';
-  ['num-autos','vara','enderecamento','sig-nome','sig-oab','sig-extra','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){ document.getElementById(id).value=''; });
+  setSigs([]);
+  ['num-autos','vara','enderecamento','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('opt-num').checked = true; document.getElementById('opt-rom').checked = true;
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
@@ -2271,8 +2378,7 @@ function preencherFormulario(d){
   if(d.enderecamento) document.getElementById('enderecamento').value = d.enderecamento;
   if(d.local)         document.getElementById('local').value = d.local;
   if(d.data)          document.getElementById('data-f').value = d.data;
-  if(d.sigNome)       document.getElementById('sig-nome').value = d.sigNome;
-  if(d.sigOab)        document.getElementById('sig-oab').value = d.sigOab;
+  if(assinaturas(d).length) setSigs(assinaturas(d));
   aplicarOpcoes(d);
 
   d.requerentes.forEach(function(p){

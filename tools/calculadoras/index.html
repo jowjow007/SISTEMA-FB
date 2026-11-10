@@ -79,9 +79,9 @@
   main{max-width:960px;margin:0 auto;padding:24px 20px 70px;}
 
   /* ---- segmented control ---- */
-  .segmented{display:flex;gap:8px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:6px;margin-bottom:24px;}
+  .segmented{display:flex;flex-wrap:wrap;gap:8px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:6px;margin-bottom:24px;}
   .segmented button{
-    flex:1;padding:12px 14px;border:none;border-radius:9px;background:transparent;color:var(--muted);
+    flex:1 1 130px;padding:12px 14px;border:none;border-radius:9px;background:transparent;color:var(--muted);
     font-weight:600;font-size:.85rem;cursor:pointer;transition:background .15s,color .15s;
   }
   .segmented button.active{background:var(--red);color:#fff;}
@@ -222,14 +222,18 @@
 
 <header>
   <h1>Calculadoras</h1>
-  <p class="sub">Juros e parcelas fixas (Tabela Price) · Calculadora com histórico e valores guardados</p>
+  <p class="sub">Parcelas · Descobrir os juros cobrados · Débito em atraso · Juros simples e compostos · Converter taxa · Calculadora</p>
 </header>
 
 <main>
 
   <div class="segmented">
-    <button id="tab-price" class="active">Juros e Parcelas</button>
-    <button id="tab-atual">Calculadora</button>
+    <button data-painel="panel-price" class="active">Parcelas (Price)</button>
+    <button data-painel="panel-taxa">Descobrir os juros</button>
+    <button data-painel="panel-atraso">Débito em atraso</button>
+    <button data-painel="panel-js">Simples × compostos</button>
+    <button data-painel="panel-conv">Converter taxa</button>
+    <button data-painel="panel-atual">Calculadora</button>
   </div>
 
   <!-- ===================== PAINEL 1 — PRICE ===================== -->
@@ -285,6 +289,7 @@
           <div class="stat hi"><div class="k">Parcela mensal</div><div class="v" id="price-out-pmt">—</div></div>
           <div class="stat"><div class="k">Valor financiado</div><div class="v" id="price-out-pv">—</div></div>
           <div class="stat"><div class="k">Taxa ao mês</div><div class="v" id="price-out-i">—</div></div>
+          <div class="stat"><div class="k">Equivale ao ano</div><div class="v" id="price-out-ia">—</div></div>
           <div class="stat"><div class="k">Nº de parcelas</div><div class="v" id="price-out-n">—</div></div>
           <div class="stat"><div class="k">Total pago</div><div class="v" id="price-out-total">—</div></div>
           <div class="stat"><div class="k">Total de juros</div><div class="v" id="price-out-juros">—</div></div>
@@ -298,6 +303,165 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ===================== DESCOBRIR OS JUROS ===================== -->
+  <div id="panel-taxa" class="panel">
+    <div class="card">
+      <h2>Descobrir os juros que estão sendo cobrados</h2>
+      <p class="desc">Informe o que está sendo cobrado e a calculadora encontra a taxa de juros por trás (ao mês e ao ano). Opcionalmente, compare com a taxa que deveria ser aplicada (a do contrato, por exemplo) para ver quanto está sendo cobrado a mais.</p>
+
+      <div class="field">
+        <label>Qual é a situação?</label>
+        <select id="tx-modo">
+          <option value="parc">Compra ou empréstimo parcelado (parcelas iguais)</option>
+          <option value="div">Dívida que cresceu (valor original → valor cobrado)</option>
+        </select>
+      </div>
+
+      <div id="tx-parc">
+        <div class="grid">
+          <div class="field"><label>Preço à vista ou valor recebido (R$)</label><input type="text" id="tx-pv" inputmode="decimal" placeholder="Ex: 5000"><p class="hint">No empréstimo, o valor que realmente caiu na conta.</p></div>
+          <div class="field"><label>Entrada (R$, opcional)</label><input type="text" id="tx-ent" inputmode="decimal" placeholder="0"></div>
+          <div class="field"><label>Número de parcelas</label><input type="text" id="tx-n" inputmode="numeric" placeholder="Ex: 12"></div>
+          <div class="field"><label>Valor de cada parcela (R$)</label><input type="text" id="tx-pmt" inputmode="decimal" placeholder="Ex: 520"></div>
+        </div>
+        <div class="field">
+          <label>A 1ª parcela vence</label>
+          <select id="tx-quando">
+            <option value="30">30 dias depois (o mais comum)</option>
+            <option value="0">no ato da compra (1ª parcela = entrada)</option>
+            <option value="dias">depois de outro prazo (carência)…</option>
+          </select>
+        </div>
+        <div class="field" id="tx-dias-box" style="display:none;"><label>Dias até a 1ª parcela</label><input type="text" id="tx-dias" inputmode="numeric" placeholder="Ex: 60"></div>
+      </div>
+
+      <div id="tx-div" style="display:none;">
+        <div class="grid">
+          <div class="field"><label>Valor original da dívida (R$)</label><input type="text" id="dv-orig" inputmode="decimal" placeholder="Ex: 1000"></div>
+          <div class="field"><label>Valor que está sendo cobrado (R$)</label><input type="text" id="dv-cob" inputmode="decimal" placeholder="Ex: 1450"></div>
+          <div class="field"><label>Data de vencimento original</label><input type="date" id="dv-d1"></div>
+          <div class="field"><label>Data da cobrança</label><input type="date" id="dv-d2"><p class="hint">Em branco = hoje.</p></div>
+        </div>
+        <details>
+          <summary>O valor cobrado já inclui multa ou honorários? (tirar antes de calcular os juros)</summary>
+          <div class="grid" style="margin-top:10px;">
+            <div class="field"><label>Multa embutida (% sobre o valor original)</label><input type="text" id="dv-multa" inputmode="decimal" placeholder="Ex: 2"></div>
+            <div class="field"><label>Honorários embutidos (% sobre o total)</label><input type="text" id="dv-hon" inputmode="decimal" placeholder="Ex: 10"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="grid" style="margin-top:6px;">
+        <div class="field"><label>Comparar com a taxa de (% ao mês, opcional)</label><input type="text" id="tx-ref" inputmode="decimal" placeholder="Ex: 1"><p class="hint">A taxa do contrato ou a que você entende correta.</p></div>
+        <div class="field" id="tx-reftipo-box" style="display:none;"><label>Essa taxa de comparação é</label>
+          <select id="tx-reftipo"><option value="simples">juros simples</option><option value="comp">juros compostos (juros sobre juros)</option></select></div>
+      </div>
+
+      <div class="btn-row"><button class="btn" id="tx-calc-btn">Descobrir a taxa</button></div>
+      <div class="msg-err" id="tx-err"></div>
+
+      <div class="result-box" id="tx-result">
+        <div class="result-grid">
+          <div class="stat hi"><div class="k">Taxa cobrada ao mês</div><div class="v" id="tx-out-im">—</div></div>
+          <div class="stat"><div class="k">Equivale ao ano</div><div class="v" id="tx-out-ia">—</div></div>
+          <div class="stat"><div class="k" id="tx-out-k3">Total pago</div><div class="v" id="tx-out-v3">—</div></div>
+          <div class="stat"><div class="k" id="tx-out-k4">Total de juros</div><div class="v" id="tx-out-v4">—</div></div>
+          <div class="stat" id="tx-out-c5" style="display:none;"><div class="k" id="tx-out-k5"></div><div class="v" id="tx-out-v5">—</div></div>
+          <div class="stat" id="tx-out-c6" style="display:none;"><div class="k" id="tx-out-k6"></div><div class="v" id="tx-out-v6">—</div></div>
+        </div>
+        <textarea class="memoria" id="tx-memoria" readonly></textarea>
+        <div class="btn-row" style="margin-top:8px;"><button class="btn secondary" id="tx-copiar">Copiar a memória de cálculo</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DÉBITO EM ATRASO ===================== -->
+  <div id="panel-atraso" class="panel">
+    <div class="card">
+      <h2>Débito em atraso — juros, multa e honorários</h2>
+      <p class="desc">Atualiza uma ou várias parcelas vencidas até a data do cálculo, com a taxa de juros e a multa que você informar (as do contrato, por exemplo). Juros contados dia a dia (mês de 30 dias).</p>
+      <div class="field">
+        <label>Parcelas em atraso</label>
+        <div id="at-lista"></div>
+        <button class="btn secondary" id="at-add" type="button" style="margin-top:4px;padding:7px 14px;font-size:.78rem;">+ Adicionar parcela</button>
+      </div>
+      <div class="grid">
+        <div class="field"><label>Data do cálculo</label><input type="date" id="at-data"><p class="hint">Em branco = hoje.</p></div>
+        <div class="field"><label>Juros de mora (% ao mês)</label><input type="text" id="at-juros" inputmode="decimal" value="1"></div>
+        <div class="field"><label>Forma dos juros</label><select id="at-tipo"><option value="simples">Simples (pro rata dia)</option><option value="comp">Compostos (juros sobre juros)</option></select></div>
+        <div class="field"><label>Multa (%)</label><input type="text" id="at-multa" inputmode="decimal" value="2"></div>
+        <div class="field"><label>Correção monetária acumulada (% opcional)</label><input type="text" id="at-corr" inputmode="decimal" placeholder="Ex: 4,5"><p class="hint">Percentual do índice no período (IPCA, INPC…), aplicado igual a todas as parcelas.</p></div>
+        <div class="field"><label>Honorários (% sobre o total, opcional)</label><input type="text" id="at-hon" inputmode="decimal" placeholder="Ex: 10"></div>
+      </div>
+      <div class="btn-row"><button class="btn" id="at-calc-btn">Calcular débito</button><button class="btn secondary" id="at-csv-btn" style="display:none;">Baixar tabela (CSV)</button></div>
+      <div class="msg-err" id="at-err"></div>
+      <div class="result-box" id="at-result">
+        <div class="result-grid">
+          <div class="stat hi"><div class="k">Total devido</div><div class="v" id="at-out-total">—</div></div>
+          <div class="stat"><div class="k">Valor original</div><div class="v" id="at-out-orig">—</div></div>
+          <div class="stat"><div class="k">Correção</div><div class="v" id="at-out-corr">—</div></div>
+          <div class="stat"><div class="k">Multa</div><div class="v" id="at-out-multa">—</div></div>
+          <div class="stat"><div class="k">Juros</div><div class="v" id="at-out-juros">—</div></div>
+          <div class="stat"><div class="k">Honorários</div><div class="v" id="at-out-hon">—</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Vencimento</th><th>Dias</th><th>Original</th><th>Corrigido</th><th>Multa</th><th>Juros</th><th>Total</th></tr></thead>
+            <tbody id="at-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== JUROS SIMPLES × COMPOSTOS ===================== -->
+  <div id="panel-js" class="panel">
+    <div class="card">
+      <h2>Juros simples × compostos</h2>
+      <p class="desc">Quanto um valor vira depois de um tempo, com juros simples (só sobre o valor inicial) e com juros compostos (juros sobre juros) — lado a lado.</p>
+      <div class="grid">
+        <div class="field"><label>Valor inicial (R$)</label><input type="text" id="js-c" inputmode="decimal" placeholder="Ex: 10000"></div>
+        <div class="field"><label>Taxa de juros (%)</label><input type="text" id="js-i" inputmode="decimal" placeholder="Ex: 1"></div>
+        <div class="field"><label>A taxa é</label><select id="js-per"><option value="m">ao mês</option><option value="a">ao ano</option><option value="d">ao dia</option></select></div>
+        <div class="field"><label>Prazo</label><div style="display:flex;gap:8px;"><input type="text" id="js-t" inputmode="decimal" placeholder="Ex: 24" style="flex:1;"><select id="js-tu" style="width:110px;"><option value="m">meses</option><option value="a">anos</option><option value="d">dias</option></select></div></div>
+      </div>
+      <div class="btn-row"><button class="btn" id="js-calc-btn">Calcular</button></div>
+      <div class="msg-err" id="js-err"></div>
+      <div class="result-box" id="js-result">
+        <div class="result-grid">
+          <div class="stat hi"><div class="k">Montante — compostos</div><div class="v" id="js-out-mc">—</div></div>
+          <div class="stat"><div class="k">Juros — compostos</div><div class="v" id="js-out-jc">—</div></div>
+          <div class="stat"><div class="k">Montante — simples</div><div class="v" id="js-out-ms">—</div></div>
+          <div class="stat"><div class="k">Juros — simples</div><div class="v" id="js-out-js">—</div></div>
+          <div class="stat"><div class="k">Diferença (juros sobre juros)</div><div class="v" id="js-out-dif">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONVERTER TAXA ===================== -->
+  <div id="panel-conv" class="panel">
+    <div class="card">
+      <h2>Converter taxa de juros</h2>
+      <p class="desc">Transforma uma taxa ao dia, ao mês ou ao ano nas outras. "Equivalente" considera juros compostos (é o que bancos e financeiras usam); "proporcional" é a conta simples (multiplica ou divide).</p>
+      <div class="grid">
+        <div class="field"><label>Taxa (%)</label><input type="text" id="cv-i" inputmode="decimal" placeholder="Ex: 2,5"></div>
+        <div class="field"><label>A taxa é</label><select id="cv-per"><option value="m">ao mês</option><option value="a">ao ano</option><option value="d">ao dia</option></select></div>
+      </div>
+      <div class="btn-row"><button class="btn" id="cv-calc-btn">Converter</button></div>
+      <div class="msg-err" id="cv-err"></div>
+      <div class="result-box" id="cv-result">
+        <div class="table-wrap" style="max-height:none;">
+          <table>
+            <thead><tr><th>Período</th><th>Equivalente (compostos)</th><th>Proporcional (simples)</th></tr></thead>
+            <tbody id="cv-tbody"></tbody>
+          </table>
+        </div>
+        <p class="hint" style="font-size:.7rem;color:var(--muted);margin-top:8px;">Mês de 30 dias e ano de 12 meses (360 dias).</p>
+      </div>
+    </div>
   </div>
 
   <!-- ===================== PAINEL 2 — CALCULADORA ===================== -->
@@ -360,7 +524,7 @@
 </main>
 
 <footer class="note">
-  A tabela de amortização Price segue o mesmo princípio da "Calculadora do Cidadão" do Banco Central. A calculadora simples guarda histórico e valores salvos apenas neste navegador (não sincroniza entre computadores).
+  As taxas descobertas são aproximações para conferência (não incluem IOF, tarifas ou seguros cobrados à parte). A tabela de amortização Price segue o mesmo princípio da "Calculadora do Cidadão" do Banco Central. A calculadora simples guarda histórico e valores salvos apenas neste navegador (não sincroniza entre computadores).
 </footer>
 
 <script>
@@ -395,18 +559,14 @@
   }
 
   // ---------- tabs ----------
-  var tabPrice = document.getElementById('tab-price');
-  var tabAtual = document.getElementById('tab-atual');
-  var panelPrice = document.getElementById('panel-price');
-  var panelAtual = document.getElementById('panel-atual');
-  tabPrice.addEventListener('click', function(){
-    tabPrice.classList.add('active'); tabAtual.classList.remove('active');
-    panelPrice.classList.add('active'); panelAtual.classList.remove('active');
-  });
-  tabAtual.addEventListener('click', function(){
-    tabAtual.classList.add('active'); tabPrice.classList.remove('active');
-    panelAtual.classList.add('active'); panelPrice.classList.remove('active');
-  });
+  var abas = Array.prototype.slice.call(document.querySelectorAll('.segmented button[data-painel]'));
+  function abrirPainel(id){
+    abas.forEach(function(b){ b.classList.toggle('active', b.dataset.painel === id); });
+    document.querySelectorAll('main > .panel').forEach(function(p){ p.classList.toggle('active', p.id === id); });
+    try { localStorage.setItem('fbcalc_aba', id); } catch (e) {}
+  }
+  abas.forEach(function(b){ b.addEventListener('click', function(){ abrirPainel(b.dataset.painel); }); });
+  try { var abaSalva = localStorage.getItem('fbcalc_aba'); if (abaSalva && document.getElementById(abaSalva)) abrirPainel(abaSalva); } catch (e) {}
 
   // ======================================================
   // PAINEL 1 — SISTEMA PRICE
@@ -497,6 +657,7 @@
       document.getElementById('price-out-pmt').textContent = fmtBRL(pmtFinal);
       document.getElementById('price-out-pv').textContent = fmtBRL(pv);
       document.getElementById('price-out-i').textContent = fmtPct(iPct, 4);
+      document.getElementById('price-out-ia').textContent = fmtPct((Math.pow(1 + iPct / 100, 12) - 1) * 100, 2);
       document.getElementById('price-out-n').textContent = n;
       document.getElementById('price-out-total').textContent = fmtBRL(totalPago);
       document.getElementById('price-out-juros').textContent = fmtBRL(totalJuros);
@@ -540,6 +701,221 @@
     a.href = URL.createObjectURL(blob);
     a.download = 'tabela-price.csv';
     a.click();
+  });
+
+  // ======================================================
+  // DESCOBRIR OS JUROS · DÉBITO EM ATRASO · SIMPLES × COMPOSTOS · CONVERTER TAXA
+  // ======================================================
+  function $(id){ return document.getElementById(id); }
+  function hojeISO(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function diasEntre(a, b){
+    var pa = a.split('-').map(Number), pb = b.split('-').map(Number);
+    return Math.round((Date.UTC(pb[0], pb[1]-1, pb[2]) - Date.UTC(pa[0], pa[1]-1, pa[2])) / 86400000);
+  }
+  function anual(i){ return Math.pow(1 + i, 12) - 1; }
+  function pctOuZero(el){ var v = parseNumBR(el.value); return isFinite(v) ? v / 100 : 0; }
+  function erro(box, msg){ box.textContent = msg; box.style.display = 'block'; }
+  function stat(n, k, v){ var c = $('tx-out-c' + n); c.style.display = k ? '' : 'none'; if (k){ $('tx-out-k' + n).textContent = k; $('tx-out-v' + n).textContent = v; } }
+  // procura a taxa i (por período) em que f(i) = 0, com f decrescente em i
+  function resolverTaxa(f){
+    var lo = 0, hi = 1;
+    while (f(hi) > 0 && hi < 1e4) hi *= 2;
+    for (var k = 0; k < 300; k++){ var mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+
+  // ---------- Descobrir os juros ----------
+  $('tx-modo').addEventListener('change', function(){
+    var div = this.value === 'div';
+    $('tx-parc').style.display = div ? 'none' : '';
+    $('tx-div').style.display = div ? '' : 'none';
+    $('tx-reftipo-box').style.display = div ? '' : 'none';
+    $('tx-result').style.display = 'none'; $('tx-err').style.display = 'none';
+  });
+  $('tx-quando').addEventListener('change', function(){ $('tx-dias-box').style.display = this.value === 'dias' ? '' : 'none'; });
+
+  $('tx-calc-btn').addEventListener('click', function(){
+    var err = $('tx-err'); err.style.display = 'none'; $('tx-result').style.display = 'none';
+    var ref = parseNumBR($('tx-ref').value), temRef = isFinite(ref) && ref >= 0 && $('tx-ref').value.trim() !== '';
+    var r = temRef ? ref / 100 : 0, mem = [];
+    try {
+      if ($('tx-modo').value === 'parc'){
+        var pv = parseNumBR($('tx-pv').value), ent = parseNumBR($('tx-ent').value) || 0;
+        var n = Math.round(parseNumBR($('tx-n').value)), pmt = parseNumBR($('tx-pmt').value);
+        var q = $('tx-quando').value, dias = q === 'dias' ? parseNumBR($('tx-dias').value) : Number(q);
+        if (!(pv > 0) || !(n > 0) || !(pmt > 0)) throw 'Informe o preço à vista (ou valor recebido), o número de parcelas e o valor da parcela.';
+        if (!(ent >= 0) || ent >= pv) throw 'A entrada precisa ser menor que o preço à vista.';
+        if (!(dias >= 0)) throw 'Informe em quantos dias vence a 1ª parcela.';
+        var fin = pv - ent, t0 = dias / 30;
+        var vp = function(i){ var s = 0; for (var k = 0; k < n; k++) s += pmt * Math.pow(1 + i, -(t0 + k)); return s; };
+        if (pmt * n <= fin + 1e-9) throw 'A soma das parcelas (' + fmtBRL(pmt * n) + ') não passa do valor financiado (' + fmtBRL(fin) + '): não há juros nessa conta' + (pmt * n < fin ? ' — na verdade, há desconto.' : '.');
+        var i = resolverTaxa(function(x){ return vp(x) - fin; });
+        var total = ent + pmt * n, juros = total - pv;
+        $('tx-out-im').textContent = fmtPct(i * 100, 2);
+        $('tx-out-ia').textContent = fmtPct(anual(i) * 100, 2);
+        $('tx-out-k3').textContent = 'Total pago'; $('tx-out-v3').textContent = fmtBRL(total);
+        $('tx-out-k4').textContent = 'Total de juros'; $('tx-out-v4').textContent = fmtBRL(juros) + ' (' + fmtPct(juros / pv * 100, 1) + ')';
+        mem.push('DESCOBRIR A TAXA — PARCELADO (parcelas iguais)');
+        mem.push('Preço à vista / valor recebido: ' + fmtBRL(pv));
+        if (ent) mem.push('Entrada: ' + fmtBRL(ent) + ' → valor financiado: ' + fmtBRL(fin));
+        mem.push(n + ' parcelas de ' + fmtBRL(pmt) + ', a 1ª ' + (dias === 0 ? 'no ato' : 'em ' + dias + ' dias') + ' e as demais de 30 em 30 dias');
+        mem.push('Total pago: ' + fmtBRL(total) + ' — juros embutidos: ' + fmtBRL(juros));
+        mem.push('');
+        mem.push('Taxa que iguala as parcelas ao valor financiado (juros compostos, como em financiamentos):');
+        mem.push('  ' + fmtPct(i * 100, 4) + ' ao mês  =  ' + fmtPct(anual(i) * 100, 2) + ' ao ano');
+        stat(5, ''); stat(6, '');
+        if (temRef){
+          var fat = 0; for (var k = 0; k < n; k++) fat += Math.pow(1 + r, -(t0 + k));
+          var pmtRef = fin / fat, amais = (pmt - pmtRef) * n;
+          stat(5, 'Parcela com ' + fmtPct(ref, 2) + ' a.m.', fmtBRL(pmtRef));
+          stat(6, amais >= 0 ? 'Cobrado a mais no total' : 'Cobrado a menos no total', fmtBRL(Math.abs(amais)));
+          mem.push('');
+          mem.push('Comparação com ' + fmtPct(ref, 2) + ' ao mês: a parcela seria ' + fmtBRL(pmtRef) + ' (total ' + fmtBRL(ent + pmtRef * n) + ').');
+          mem.push((amais >= 0 ? 'Cobrado a mais: ' : 'Cobrado a menos: ') + fmtBRL(Math.abs(amais)) + ' (' + fmtBRL(Math.abs(pmt - pmtRef)) + ' por parcela).');
+        }
+      } else {
+        var orig = parseNumBR($('dv-orig').value), cob = parseNumBR($('dv-cob').value);
+        var d1 = $('dv-d1').value, d2 = $('dv-d2').value || hojeISO();
+        if (!(orig > 0) || !(cob > 0)) throw 'Informe o valor original e o valor cobrado.';
+        if (!d1) throw 'Informe a data de vencimento original.';
+        var dd = diasEntre(d1, d2);
+        if (!(dd > 0)) throw 'A data da cobrança precisa ser depois do vencimento.';
+        var multa = pctOuZero($('dv-multa')), hon = pctOuZero($('dv-hon')), t = dd / 30;
+        var semHon = cob / (1 + hon), base = semHon - orig * multa;
+        if (!(base > orig)) throw 'Tirando ' + (multa ? 'a multa' : '') + (multa && hon ? ' e ' : '') + (hon ? 'os honorários' : '') + (multa || hon ? ', ' : '') + 'o valor cobrado não passa do valor original: não sobram juros.';
+        var ic = Math.pow(base / orig, 1 / t) - 1, is = (base / orig - 1) / t;
+        $('tx-out-im').textContent = fmtPct(ic * 100, 2);
+        $('tx-out-ia').textContent = fmtPct(anual(ic) * 100, 2);
+        $('tx-out-k3').textContent = 'Prazo'; $('tx-out-v3').textContent = dd + ' dias (' + t.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' meses)';
+        $('tx-out-k4').textContent = 'Juros cobrados'; $('tx-out-v4').textContent = fmtBRL(base - orig) + ' (' + fmtPct((base / orig - 1) * 100, 1) + ')';
+        stat(5, 'Se forem juros simples', fmtPct(is * 100, 2) + ' a.m.'); stat(6, '');
+        mem.push('DESCOBRIR A TAXA — DÍVIDA QUE CRESCEU');
+        mem.push('Valor original: ' + fmtBRL(orig) + ' — vencimento ' + fmtDataISO(d1));
+        mem.push('Valor cobrado: ' + fmtBRL(cob) + ' — em ' + fmtDataISO(d2) + ' (' + dd + ' dias = ' + t.toLocaleString('pt-BR', {maximumFractionDigits: 2}) + ' meses de 30 dias)');
+        if (hon) mem.push('Tirando honorários de ' + fmtPct(hon * 100, 2) + ': ' + fmtBRL(cob) + ' ÷ ' + (1 + hon).toLocaleString('pt-BR') + ' = ' + fmtBRL(semHon));
+        if (multa) mem.push('Tirando multa de ' + fmtPct(multa * 100, 2) + ' sobre o original: − ' + fmtBRL(orig * multa) + ' = ' + fmtBRL(base));
+        mem.push('Juros embutidos: ' + fmtBRL(base - orig));
+        mem.push('');
+        mem.push('Taxa equivalente:');
+        mem.push('  juros compostos: ' + fmtPct(ic * 100, 4) + ' ao mês  =  ' + fmtPct(anual(ic) * 100, 2) + ' ao ano');
+        mem.push('  juros simples:   ' + fmtPct(is * 100, 4) + ' ao mês  =  ' + fmtPct(is * 1200, 2) + ' ao ano');
+        if (temRef){
+          var comp = $('tx-reftipo').value === 'comp';
+          var corrigido = comp ? orig * Math.pow(1 + r, t) : orig * (1 + r * t);
+          var esperado = (corrigido + orig * multa) * (1 + hon), amais2 = cob - esperado;
+          stat(6, amais2 >= 0 ? 'Cobrado a mais' : 'Cobrado a menos', fmtBRL(Math.abs(amais2)));
+          mem.push('');
+          mem.push('Comparação com ' + fmtPct(ref, 2) + ' ao mês (' + (comp ? 'compostos' : 'simples') + ')' + (multa ? ', mesma multa' : '') + (hon ? ', mesmos honorários' : '') + ':');
+          mem.push('  valor correto: ' + fmtBRL(esperado) + ' — ' + (amais2 >= 0 ? 'cobrado a mais: ' : 'cobrado a menos: ') + fmtBRL(Math.abs(amais2)));
+        }
+      }
+      mem.push('');
+      mem.push('Cálculo aproximado, para conferência. Não inclui IOF, tarifas ou seguros cobrados à parte, a menos que estejam nos valores informados.');
+      $('tx-memoria').value = mem.join('\n');
+      $('tx-result').style.display = 'block';
+    } catch (e) {
+      erro(err, typeof e === 'string' ? e : 'Erro ao calcular. Confira os valores informados.');
+    }
+  });
+  $('tx-copiar').addEventListener('click', function(){
+    var t = $('tx-memoria').value, b = this;
+    function ok(){ b.textContent = '✓ Copiado'; setTimeout(function(){ b.textContent = 'Copiar a memória de cálculo'; }, 1500); }
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, function(){ $('tx-memoria').select(); document.execCommand('copy'); ok(); });
+    else { $('tx-memoria').select(); document.execCommand('copy'); ok(); }
+  });
+
+  // ---------- Débito em atraso ----------
+  function addParcelaAtraso(venc, valor){
+    var row = document.createElement('div'); row.className = 'at-row';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;margin-bottom:8px;';
+    row.innerHTML = '<input type="date" class="at-venc" title="Vencimento"><input type="text" class="at-valor" inputmode="decimal" placeholder="Valor (R$)">'
+      + '<button type="button" class="btn secondary at-rem" title="Tirar" style="padding:0;">✕</button>';
+    row.querySelectorAll('input').forEach(function(i){ i.style.cssText = 'width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.92rem;outline:none;'; });
+    row.querySelector('.at-venc').value = venc || '';
+    row.querySelector('.at-valor').value = valor || '';
+    row.querySelector('.at-rem').onclick = function(){ if ($('at-lista').children.length > 1) row.remove(); };
+    $('at-lista').appendChild(row);
+  }
+  addParcelaAtraso();
+  $('at-add').addEventListener('click', function(){
+    var ult = $('at-lista').lastElementChild, v = ult && ult.querySelector('.at-venc').value;
+    addParcelaAtraso(v ? addMonthsISO(v, 1) : '', ult ? ult.querySelector('.at-valor').value : '');
+  });
+  var ultimaTabelaAtraso = null;
+  $('at-calc-btn').addEventListener('click', function(){
+    var err = $('at-err'); err.style.display = 'none'; $('at-result').style.display = 'none'; $('at-csv-btn').style.display = 'none';
+    var data = $('at-data').value || hojeISO();
+    var j = pctOuZero($('at-juros')), m = pctOuZero($('at-multa')), c = pctOuZero($('at-corr')), h = pctOuZero($('at-hon'));
+    var comp = $('at-tipo').value === 'comp';
+    var rows = Array.from(document.querySelectorAll('#at-lista .at-row')).map(function(r){ return { venc: r.querySelector('.at-venc').value, valor: parseNumBR(r.querySelector('.at-valor').value) }; })
+      .filter(function(x){ return x.venc || isFinite(x.valor); });
+    if (!rows.length) return erro(err, 'Informe ao menos uma parcela (vencimento e valor).');
+    if (rows.some(function(x){ return !x.venc || !(x.valor > 0); })) return erro(err, 'Cada parcela precisa de vencimento e valor.');
+    var T = { orig: 0, corr: 0, multa: 0, juros: 0, total: 0 }, linhas = [], tb = $('at-tbody'); tb.innerHTML = '';
+    rows.sort(function(a, b){ return a.venc < b.venc ? -1 : 1; }).forEach(function(x){
+      var dias = Math.max(0, diasEntre(x.venc, data)), vc = x.valor * (1 + c);
+      var multa = dias > 0 ? vc * m : 0;
+      var juros = dias > 0 ? (comp ? vc * (Math.pow(1 + j, dias / 30) - 1) : vc * j * dias / 30) : 0;
+      var tot = vc + multa + juros;
+      T.orig += x.valor; T.corr += vc - x.valor; T.multa += multa; T.juros += juros; T.total += tot;
+      linhas.push([fmtDataISO(x.venc), dias, x.valor, vc, multa, juros, tot]);
+    });
+    var hon = T.total * h;
+    linhas.push(['TOTAL', '', T.orig, T.orig + T.corr, T.multa, T.juros, T.total]);
+    linhas.forEach(function(l){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + l[0] + '</td><td>' + l[1] + '</td>' + l.slice(2).map(function(v){ return '<td>' + fmtBRL(v) + '</td>'; }).join('');
+      tb.appendChild(tr);
+    });
+    $('at-out-total').textContent = fmtBRL(T.total + hon);
+    $('at-out-orig').textContent = fmtBRL(T.orig);
+    $('at-out-corr').textContent = fmtBRL(T.corr);
+    $('at-out-multa').textContent = fmtBRL(T.multa);
+    $('at-out-juros').textContent = fmtBRL(T.juros);
+    $('at-out-hon').textContent = fmtBRL(hon);
+    ultimaTabelaAtraso = { linhas: linhas, hon: hon, total: T.total + hon, data: data };
+    $('at-result').style.display = 'block'; $('at-csv-btn').style.display = 'inline-block';
+  });
+  $('at-csv-btn').addEventListener('click', function(){
+    if (!ultimaTabelaAtraso) return;
+    var n2 = function(v){ return typeof v === 'number' ? v.toFixed(2).replace('.', ',') : v; };
+    var out = ['Debito atualizado ate ' + fmtDataISO(ultimaTabelaAtraso.data), 'Vencimento;Dias;Original;Corrigido;Multa;Juros;Total'];
+    ultimaTabelaAtraso.linhas.forEach(function(l){ out.push([l[0], l[1]].concat(l.slice(2).map(n2)).join(';')); });
+    out.push('Honorarios;;;;;;' + n2(ultimaTabelaAtraso.hon));
+    out.push('TOTAL DEVIDO;;;;;;' + n2(ultimaTabelaAtraso.total));
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'debito-atualizado.csv'; a.click();
+  });
+
+  // ---------- Juros simples × compostos ----------
+  var EM_MESES = { m: 1, a: 12, d: 1 / 30 };
+  $('js-calc-btn').addEventListener('click', function(){
+    var err = $('js-err'); err.style.display = 'none'; $('js-result').style.display = 'none';
+    var C = parseNumBR($('js-c').value), i = parseNumBR($('js-i').value) / 100, t = parseNumBR($('js-t').value);
+    if (!(C > 0) || !(i >= 0) || !(t > 0)) return erro(err, 'Informe valor inicial, taxa e prazo.');
+    var n = t * EM_MESES[$('js-tu').value] / EM_MESES[$('js-per').value];   // prazo na unidade da taxa
+    var mc = C * Math.pow(1 + i, n), ms = C * (1 + i * n);
+    $('js-out-mc').textContent = fmtBRL(mc); $('js-out-jc').textContent = fmtBRL(mc - C);
+    $('js-out-ms').textContent = fmtBRL(ms); $('js-out-js').textContent = fmtBRL(ms - C);
+    $('js-out-dif').textContent = fmtBRL(mc - ms);
+    $('js-result').style.display = 'block';
+  });
+
+  // ---------- Converter taxa ----------
+  $('cv-calc-btn').addEventListener('click', function(){
+    var err = $('cv-err'); err.style.display = 'none'; $('cv-result').style.display = 'none';
+    var i = parseNumBR($('cv-i').value) / 100, per = $('cv-per').value;
+    if (!(i >= 0)) return erro(err, 'Informe a taxa.');
+    var meses = EM_MESES[per], tb = $('cv-tbody'); tb.innerHTML = '';
+    [['Ao dia', 'd'], ['Ao mês', 'm'], ['Ao ano', 'a']].forEach(function(p){
+      var f = EM_MESES[p[1]] / meses;
+      var eq = Math.pow(1 + i, f) - 1, pr = i * f;
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + p[0] + '</td><td>' + fmtPct(eq * 100, 4) + '</td><td>' + fmtPct(pr * 100, 4) + '</td>';
+      tb.appendChild(tr);
+    });
+    $('cv-result').style.display = 'block';
   });
 
   // ======================================================

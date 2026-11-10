@@ -466,6 +466,15 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAtivo() && (resource.data.criadoPor == request.auth.uid || isAdmin());
     }
+    // Assinantes do Formatador de petições (10/11/2026): só nome + OAB (ou CPF de quem não tem OAB) da equipe.
+    // O admin mantém (o formatador sincroniza a partir de users, que só ele lê); equipe lê; cliente não.
+    match /assinantes/{uid} {
+      allow read: if isEquipe();
+      allow write: if isAdmin()
+                   && (request.resource == null
+                       || (request.resource.data.keys().hasOnly(['nome', 'oab', 'uf', 'cpf', 'ordem', 'atualizadoEm'])
+                           && request.resource.data.nome is string));
+    }
     // Espelho do diretório de colegas: só nome, e-mail, departamento, ingresso e cargo.
     // Remuneração e custos NÃO podem mais ser gravados aqui (ficam só em users, legível pelo admin).
     match /organograma/{uid} {
