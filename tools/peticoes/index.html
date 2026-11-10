@@ -1192,11 +1192,11 @@ function montarBlocos(d){
   }
   // parecer: título no topo e a identificação (Interessado, Assunto…) logo abaixo; sem endereçamento, processo e partes
   if(parecer) blocoTitulo();
-  // notificação: título, destinatário, ASSUNTO/NOTIFICANTE/NOTIFICADO e a abertura ("Prezada Senhora, ... vem NOTIFICAR")
+  // notificação: destinatário, quadro do título, ASSUNTO/NOTIFICANTE/NOTIFICADO e a abertura ("Prezada Senhora, ... vem NOTIFICAR")
   if(notif){
-    if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
     var dest = String(d.enderecamento||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
     if(dest.length) B.push({t:'dest', linhas:dest});
+    if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
     String(d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(l){
       var r = partirRotulo(l); B.push({t:'rotulo', rot:r[0], texto:r[1], bloco:true});
     });
@@ -1677,7 +1677,7 @@ function docxBody(d){
                                    : wP(wRun(b.rot,{b:1}) + wRico(b.texto), {jc:'left', after:0, line:276}); break;
       case 'dest':
         b.linhas.forEach(function(l, k){ x += wP(wRun(l, k ? {} : {b:1}), {jc:'left', after:0, line:276}); });
-        x += wVazio(); break;
+        break;   // o quadro do título vem logo depois, com o próprio espaço antes
       case 'protocolo':
         x += wVazio();
         x += wP(wRun(b.titulo,{b:1}), {jc:'center', box:1, before:120, after:200, line:276, junto:1});
