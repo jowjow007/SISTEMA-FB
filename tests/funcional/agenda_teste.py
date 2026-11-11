@@ -76,7 +76,7 @@ with sync_playwright() as p:
     ok(len([x for x in F.listar('agTeste_atividades') if x[1].get('tipo') == 'tarefa']) == 1, 'Ana cria tarefa encadeada')
     # admin vê ao vivo
     a.click('#subnav button[data-sub="agenda"]'); a.wait_for_timeout(300)
-    a.click('#f-resp'); a.click('.menu button[data-v="todos"]'); a.wait_for_timeout(1500)
+    a.click('#f-resp'); a.click('#pp-todas'); a.click('#pp-ok'); a.wait_for_timeout(1500)
     a.locator('.linha', has_text='Manifesta').filter(has=a.locator('.tipo.prazo')).first.click(); a.wait_for_timeout(500)
     a.click('[data-aba="comentarios"]'); a.wait_for_timeout(300)
     ok('Comentário da Ana' in a.inner_text('#fundo-det'), 'admin vê o comentário da Ana em tempo real')

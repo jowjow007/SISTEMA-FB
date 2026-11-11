@@ -204,6 +204,39 @@
   .barra-teste button{background:var(--red-deep);color:#fff;border:none;border-radius:6px;padding:5px 10px;}
   .barra-teste .perm{color:#b9aca6;}
   .toast{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);background:var(--paper);color:var(--panel);padding:10px 16px;border-radius:8px;z-index:90;font-size:.87rem;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:90vw;}
+  .chips-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-12px 0 16px;}
+  .chips-f .tag .x{cursor:pointer;margin-left:4px;}
+  .chips-f button{background:none;border:none;color:var(--muted);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .chips-f button:hover{color:var(--paper);}
+  .menu.larga{min-width:min(520px,94vw);}
+  .pp{display:grid;grid-template-columns:170px minmax(0,1fr);}
+  .pp-col h5{margin:8px 16px 4px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+  .pp-col h5 a{color:var(--red-bright);text-transform:none;letter-spacing:0;font-weight:600;margin-left:8px;}
+  .pp-col label{padding:5px 16px;}
+  .pp-acoes{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px 6px;border-top:1px solid var(--line-strong);margin-top:6px;position:sticky;bottom:-6px;background:var(--panel);}
+  .periodo .cal-hoje{border:1px solid var(--line-strong);border-radius:8px;padding:5px 12px;font-size:.8rem;font-weight:700;}
+  #cal-ant,#cal-prox{font-size:1.5rem;line-height:1;padding:0 6px;}
+  .cal-tit{font-size:1rem;}
+  .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
+  .cal-h{padding:9px 4px;font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;border-bottom:1px solid var(--line-strong);}
+  .cal-d{min-height:118px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px;overflow:hidden;}
+  .cal-d:nth-child(7n){border-right:none;}
+  .cal.sem .cal-d{min-height:380px;}
+  .cal-d.fora{opacity:.4;}
+  .cal-n{background:none;border:none;font-size:.8rem;font-weight:700;min-width:26px;height:26px;border-radius:13px;padding:0 6px;color:var(--paper);}
+  .cal-n:hover{background:var(--panel-2);}
+  .cal-d.hoje .cal-n{background:var(--red);color:#fff;}
+  .cal-it{font-size:.72rem;padding:3px 6px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:var(--panel-2);border-left:3px solid var(--red);}
+  .cal-it:hover{background:var(--panel-3);}
+  .cal-it.tarefa{border-left-color:var(--azul);} .cal-it.audiencia{border-left-color:var(--roxo);} .cal-it.compromisso{border-left-color:var(--laranja);}
+  .cal-it.feita{text-decoration:line-through;opacity:.6;}
+  .cal.sem .cal-it{white-space:normal;}
+  .cal-mais{background:none;border:none;color:var(--red-bright);font-size:.72rem;font-weight:700;padding:3px 4px;}
+  @media (max-width:900px){
+    .pp{grid-template-columns:1fr;}
+    .cal-d{min-height:66px;padding:3px;} .cal-it{font-size:.6rem;padding:2px 3px;} .cal-it b{display:none;}
+    .cal.sem{grid-template-columns:1fr;} .cal.sem .cal-d{min-height:0;border-right:none;}
+  }
   @media (max-width:900px){
     .grade{grid-template-columns:1fr;}
     .linha{grid-template-columns:15px 70px 20px minmax(0,1fr) 30px;padding:12px;gap:0 9px;}
@@ -291,7 +324,7 @@ var ETIQ_PADRAO = [{id:'e1', nome:'Condomínio - Geral', cor:'#1a2a9c'}, {id:'e2
   {id:'e4', nome:'Urgente', cor:'#c62828'}, {id:'e5', nome:'Trabalhista', cor:'#2e7d32'}, {id:'e6', nome:'Cível', cor:'#7b1fa2'}];
 var D = {clientes:[], casos:[], atividades:[], publicacoes:[], etiquetas:ETIQ_PADRAO.slice()};
 var BASE = {clientes:{}, casos:{}, atividades:{}, publicacoes:{}, etiquetas:JSON.stringify(ETIQ_PADRAO)};   // o que já está no servidor
-var EU = null, MEU_ROLE = '', NOMES = {}, MEMBROS = {}, USUARIOS = [], PRONTO = false;
+var EQUIPE = [], EU = null, MEU_ROLE = '', NOMES = {}, MEMBROS = {}, USUARIOS = [], PRONTO = false;
 function semId(o){ var c = {}; Object.keys(o).forEach(function(k){ if (k !== 'id') c[k] = o[k]; }); return c; }
 // grava só o que mudou desde a última leitura do servidor (cada documento é um cliente, processo, atividade ou publicação)
 function salvar(){
@@ -512,42 +545,126 @@ function render(){
 function rerender(){ render(); if (aberto && atv(aberto)) desenharDetalhe(); }
 
 // ================= AGENDA =================
-var F = {visao:'lista', resp:'meu', status:'abertas', tags:[], busca:'', ini:'2026-01-01', fim:'2026-12-31', escopo:'escritorio'};
+var TODOS_TIPOS = ['prazo', 'tarefa', 'audiencia', 'compromisso'];
+var F = {visao:'lista', pessoas:['__eu'], atrib:{resp:true, env:false, criou:false}, tipos:TODOS_TIPOS.slice(), status:'abertas', tags:[], busca:'', ini:'2026-01-01', fim:'2026-12-31', escopo:'escritorio', ref:''};
 try { Object.assign(F, JSON.parse(localStorage.getItem(CHAVE + '_filtros')) || {}); } catch (e) {}
+if (F.resp !== undefined){ F.pessoas = F.resp === 'todos' ? [] : F.resp && F.resp !== 'meu' ? [F.resp] : ['__eu']; delete F.resp; }   // filtro antigo (uma pessoa só)
+if (!Array.isArray(F.pessoas)) F.pessoas = ['__eu'];
+if (!Array.isArray(F.tipos) || !F.tipos.length) F.tipos = TODOS_TIPOS.slice();
+if (!F.atrib || !(F.atrib.resp || F.atrib.env || F.atrib.criou)) F.atrib = {resp:true, env:false, criou:false};
 function salvarFiltros(){ try { localStorage.setItem(CHAVE + '_filtros', JSON.stringify(F)); } catch (e) {} }
-function passa(a, semStatus){
-  if (F.resp === 'meu' && a.responsavel !== EU) return false;
-  if (F.resp !== 'meu' && F.resp !== 'todos' && a.responsavel !== F.resp) return false;
-  if (!semStatus){ if (F.status === 'abertas' && a.concluida) return false; if (F.status === 'feitas' && !a.concluida) return false;
-    if (F.status === 'atrasadas' && (a.concluida || !a.data || a.data >= HOJE)) return false; }
-  if (!a.data || a.data < F.ini || a.data > F.fim) return false;
+function pessoasSel(){ return F.pessoas.map(function(p){ return p === '__eu' ? EU : p; }); }
+var PS = [];
+function ehCancelada(a){ if (a.cancelada) return true; if (!a.concluida || !a.astrea) return false;
+  return (a.historico || []).some(function(h){ return /cancelada no Astrea/i.test(h.txt || ''); }); }
+function statusDe(a){ return !a.concluida ? 'abertas' : ehCancelada(a) ? 'canceladas' : 'feitas'; }
+function passaPessoa(a, ps){
+  if (!ps.length) return true;
+  var at = F.atrib;
+  if (at.resp && ps.indexOf(a.responsavel) >= 0) return true;
+  if (at.criou && ps.indexOf(a.criadoPor) >= 0) return true;
+  if (at.env){
+    if (filhas(a).some(function(f){ return ps.indexOf(f.responsavel) >= 0; })) return true;
+    var p = a.paiId && atv(a.paiId); if (p && ps.indexOf(p.responsavel) >= 0) return true;
+    if (a.envolvidos){ var en = norm(a.envolvidos); if (ps.some(function(u){ var n = norm(usuario(u).nome); return n.length > 3 && en.indexOf(n) >= 0; })) return true; }
+  }
+  return false;
+}
+function passa(a, semStatus, ini, fim){
+  if (F.tipos.indexOf(a.tipo) < 0) return false;
+  if (!passaPessoa(a, PS)) return false;
+  if (!semStatus){ var s = statusDe(a);
+    if (F.status === 'atrasadas'){ if (s !== 'abertas' || !a.data || a.data >= HOJE) return false; }
+    else if (F.status !== 'todas' && s !== F.status) return false; }
+  if (!a.data || a.data < (ini || F.ini) || a.data > (fim || F.fim)) return false;
   if (F.tags.length && !F.tags.some(function(t){ return a.etiquetas.indexOf(t) >= 0; })) return false;
   if (F.busca){ var k = casoDe(a), pai = a.paiId ? atv(a.paiId) : null;
     if (norm(a.titulo + ' ' + (k ? rotuloCaso(k) + ' ' + k.numero + ' ' + soDig(k.numero) : '') + ' ' + (pai ? pai.titulo : '')).indexOf(norm(F.busca)) < 0) return false; }
   return true;
 }
-function visiveis(){ return D.atividades.filter(function(a){ return passa(a); }).sort(function(x, y){ return (x.data + (x.hora || '99')).localeCompare(y.data + (y.hora || '99')); }); }
+function ordemAt(x, y){ return (x.data + (x.hora || '99')).localeCompare(y.data + (y.hora || '99')); }
+function visiveis(ini, fim){ PS = pessoasSel(); return D.atividades.filter(function(a){ return passa(a, false, ini, fim); }).sort(ordemAt); }
+var CAL = {dia:1, semana:1, mes:1};
+var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+var DSEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+function dataObj(s){ return new Date(s + 'T12:00:00'); }
+function somaDias(s, n){ var d = dataObj(s); d.setDate(d.getDate() + n); return iso(d); }
+function faixaVisao(){
+  var r = F.ref || HOJE, d = dataObj(r);
+  if (F.visao === 'dia') return [r, r];
+  if (F.visao === 'semana'){ var i = somaDias(r, -d.getDay()); return [i, somaDias(i, 6)]; }
+  var p = new Date(d.getFullYear(), d.getMonth(), 1), u = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return [somaDias(iso(p), -p.getDay()), somaDias(iso(u), 6 - u.getDay())];
+}
+function tituloVisao(fx){
+  var d = dataObj(F.ref || HOJE);
+  if (F.visao === 'dia') return DSEM[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear();
+  if (F.visao === 'semana'){ var a = dataObj(fx[0]), b = dataObj(fx[1]); return a.getDate() + ' de ' + MESES[a.getMonth()] + ' a ' + b.getDate() + ' de ' + MESES[b.getMonth()] + ' de ' + b.getFullYear(); }
+  return MESES[d.getMonth()].charAt(0).toUpperCase() + MESES[d.getMonth()].slice(1) + ' de ' + d.getFullYear();
+}
+function moverRef(n){ var d = dataObj(F.ref || HOJE);
+  if (F.visao === 'dia') d.setDate(d.getDate() + n); else if (F.visao === 'semana') d.setDate(d.getDate() + 7 * n); else { d.setDate(1); d.setMonth(d.getMonth() + n); }
+  F.ref = iso(d); salvarFiltros(); render(); }
+function rotuloPessoas(){ var ps = F.pessoas; if (!ps.length) return 'Todos responsáveis';
+  if (ps.length === 1) return ps[0] === '__eu' || ps[0] === EU ? 'Minha responsabilidade' : usuario(ps[0]).nome; return ps.length + ' pessoas'; }
+var ROT_STATUS = {abertas:'ativ. a concluir', feitas:'concluídas', canceladas:'canceladas', todas:'atividades', atrasadas:'atrasadas'};
 var selecionadas = [];
 function renderAgenda(){
-  var nAb = D.atividades.filter(function(a){ return passa(a, true) && !a.concluida; }).length;
+  PS = pessoasSel();
+  var cal = CAL[F.visao], fx = cal ? faixaVisao() : [F.ini, F.fim];
+  var precisaHist = F.status !== 'abertas' && F.status !== 'atrasadas';
+  var hist = precisaHist && fx[0] && fx[1] ? historico('p:' + fx[0] + '|' + fx[1], function(){ return db.collection(COLS.atividades).where('data', '>=', fx[0]).where('data', '<=', fx[1]); }) : null;
+  var lista = visiveis(fx[0], fx[1]);
+  var tipoParcial = F.tipos.length < TODOS_TIPOS.length;
+  var chips = F.tags.map(function(id){ var e = etiqueta(id); return e ? '<span class="tag" style="background:' + e.cor + '">' + esc(e.nome) + ' <span class="x" data-tira-tag="' + id + '">✖</span></span>' : ''; }).join('') +
+    (F.busca ? '<span class="tag" style="background:#4a4f55">“' + esc(F.busca) + '” <span class="x" id="tira-busca">✖</span></span>' : '');
   $('#pag').innerHTML =
     '<div class="topo"><div><h1>Agenda <span class="pill nova" style="vertical-align:middle;">TESTE</span></h1><p class="subt">Prazos, tarefas, audiências e compromissos do escritório.</p></div><div class="acoes">' +
       '<button class="ico-btn" id="b-atualizar" title="Atualizar">' + ic('refresh', 18, 2.4) + '</button><button class="ico-btn" id="b-mais" title="Mais opções">' + ic('dots', 18) + '</button>' +
       '<button class="ico-btn prim" id="b-novo" title="Nova atividade">' + ic('plus', 20, 3) + '</button></div></div>' +
-    '<div class="filtros"><button class="dd" id="f-visao">' + (F.visao === 'lista' ? 'Em lista' : 'Kanban') + ' <i class="car"></i></button>' +
-      '<button class="dd" id="f-resp">' + (F.resp === 'meu' ? 'Minha responsabilidade' : F.resp === 'todos' ? 'Todos os responsáveis' : esc(usuario(F.resp).nome)) + ' <i class="car"></i></button>' +
-      '<button class="dd" id="f-status">' + (F.status === 'abertas' ? nAb + ' ativ. a concluir' : F.status === 'feitas' ? 'Concluídas' : F.status === 'atrasadas' ? 'Atrasadas' : 'Todas') + ' <i class="car"></i></button>' +
+    '<div class="filtros"><button class="dd" id="f-visao">' + ({lista:'Em lista', dia:'Por dia', semana:'Por semana', mes:'Por mês', kanban:'Kanban'})[F.visao] + ' <i class="car"></i></button>' +
+      '<button class="dd' + (F.pessoas.length > 1 || (F.atrib.env || F.atrib.criou) ? ' ativo' : '') + '" id="f-resp">' + esc(rotuloPessoas()) + ' <i class="car"></i></button>' +
+      '<button class="dd' + (tipoParcial ? ' ativo' : '') + '" id="f-status">' + lista.length.toLocaleString('pt-BR') + ' ' + ROT_STATUS[F.status] + ' <i class="car"></i></button>' +
       '<button class="dd quad' + (F.tags.length ? ' ativo' : '') + '" id="f-tags" title="Etiquetas">' + ic('tag', 18) + '</button>' +
       '<button class="dd quad' + (F.busca ? ' ativo' : '') + '" id="f-busca" title="Pesquisar">' + ic('busca', 18, 2.6) + '</button></div>' +
-    '<div class="periodo"><button id="f-periodo">Período <i class="car"></i></button><button id="f-datas">' + dataBR(F.ini) + ' a ' + dataBR(F.fim) + ' <i class="car"></i></button></div>' +
+    (chips ? '<div class="chips-f">' + chips + '<button id="f-limpar">Limpar filtros</button></div>' : '') +
+    (cal ? '<div class="periodo"><button id="cal-ant" title="Anterior">‹</button><button id="cal-hoje" class="cal-hoje">Hoje</button><button id="cal-prox" title="Próximo">›</button><b class="cal-tit">' + tituloVisao(fx) + '</b></div>'
+      : '<div class="periodo"><button id="f-periodo">Período <i class="car"></i></button><button id="f-datas">' + dataBR(F.ini) + ' a ' + dataBR(F.fim) + ' <i class="car"></i></button></div>') +
     '<div class="grade"><div class="card" id="principal"></div><aside><div class="card"><div class="est-cab"><button id="f-escopo">' + (F.escopo === 'escritorio' ? 'Atividades do escritório' : 'Minhas atividades') + ' <i class="car"></i></button><span class="sutil">»</span></div><div class="est" id="estat"></div></div>' +
       '<div class="card"><div class="sd-cab">Tarefas sem data e a concluir <span class="sutil">' + ic('funil', 15) + '</span></div><div class="sd-lista" id="sem-data"></div></div></aside></div>';
-  var hist = (F.status === 'feitas' || F.status === 'todas') && F.ini && F.fim ? historico('p:' + F.ini + '|' + F.fim, function(){ return db.collection(COLS.atividades).where('data', '>=', F.ini).where('data', '<=', F.fim); }) : null;
-  var lista = visiveis(), el = $('#principal');
+  var el = $('#principal');
   selecionadas = selecionadas.filter(function(id){ return lista.some(function(a){ return a.id === id; }); });
-  if (F.visao === 'kanban') renderKanban(el, lista); else renderLista(el, lista);
+  if (F.visao === 'kanban') renderKanban(el, lista);
+  else if (F.visao === 'mes') renderMes(el, lista, fx);
+  else if (F.visao === 'semana') renderSemana(el, lista, fx);
+  else renderLista(el, lista);
   if (hist && !hist.pronto) el.insertAdjacentHTML('afterbegin', '<div class="aviso" style="padding:8px 14px;">Carregando as atividades concluídas do período… ' + (hist.n ? hist.n.toLocaleString('pt-BR') + ' até agora' : '') + '</div>');
   renderLateral(); ligarFiltros();
+}
+function itemCal(a){ return '<div class="cal-it ' + a.tipo + (a.concluida ? ' feita' : '') + '" data-id="' + a.id + '" title="' + esc(TIPOS[a.tipo] + ': ' + a.titulo + ' — ' + usuario(a.responsavel).nome) + '">' +
+  (a.hora ? '<b>' + a.hora + '</b> ' : '') + esc(a.titulo) + '</div>'; }
+function porDia(lista){ var m = {}; lista.forEach(function(a){ (m[a.data] = m[a.data] || []).push(a); }); return m; }
+function ligarCal(el){
+  $$('.cal-it', el).forEach(function(x){ x.onclick = function(e){ e.stopPropagation(); abrirDetalhe(x.getAttribute('data-id')); }; });
+  $$('[data-ir-dia]', el).forEach(function(x){ x.onclick = function(e){ e.stopPropagation(); F.ref = x.getAttribute('data-ir-dia'); F.visao = 'dia'; salvarFiltros(); render(); }; });
+}
+function renderMes(el, lista, fx){
+  var m = porDia(lista), mesRef = dataObj(F.ref || HOJE).getMonth(), h = '<div class="cal">' + DSEM.map(function(d){ return '<div class="cal-h">' + d + '</div>'; }).join('');
+  for (var d = fx[0]; d <= fx[1]; d = somaDias(d, 1)){
+    var its = m[d] || [], o = dataObj(d);
+    h += '<div class="cal-d' + (o.getMonth() !== mesRef ? ' fora' : '') + (d === HOJE ? ' hoje' : '') + '"><button class="cal-n" data-ir-dia="' + d + '">' + o.getDate() + '</button>' +
+      its.slice(0, 4).map(itemCal).join('') + (its.length > 4 ? '<button class="cal-mais" data-ir-dia="' + d + '">+' + (its.length - 4) + ' mais</button>' : '') + '</div>';
+  }
+  el.innerHTML = h + '</div>'; ligarCal(el);
+}
+function renderSemana(el, lista, fx){
+  var m = porDia(lista), h = '<div class="cal sem">';
+  for (var d = fx[0]; d <= fx[1]; d = somaDias(d, 1)){
+    var its = m[d] || [], o = dataObj(d);
+    h += '<div class="cal-d' + (d === HOJE ? ' hoje' : '') + '"><button class="cal-n larga" data-ir-dia="' + d + '">' + DSEM[o.getDay()] + ' ' + o.getDate() + '</button>' +
+      its.slice(0, 40).map(itemCal).join('') + (its.length > 40 ? '<button class="cal-mais" data-ir-dia="' + d + '">+' + (its.length - 40) + ' mais</button>' : '') + '</div>';
+  }
+  el.innerHTML = h + '</div>'; ligarCal(el);
 }
 function nComent(a){ return a.comentarios.length + filhas(a).reduce(function(s, f){ return s + f.comentarios.length; }, 0); }
 function renderLista(el, lista){
@@ -601,31 +718,90 @@ function renderLateral(){
   function n(x){ return x > 99 ? '99+' : x; }
   $('#estat').innerHTML = '<div data-est="feitas"><b>' + n(conc) + '</b><span>Concluídas<br>(data de hoje)</span></div><div data-est="hoje"><b>' + n(aConc) + '</b><span>A concluir<br>(data de hoje)</span></div>' +
     '<div data-est="atrasadas"><b class="verm">' + n(atras) + '</b><span>Atrasadas<br>(30 dias)</span></div>';
-  $$('[data-est]').forEach(function(d){ d.onclick = function(){ var t = d.getAttribute('data-est'); F.resp = F.escopo === 'escritorio' ? 'todos' : 'meu';
+  $$('[data-est]').forEach(function(d){ d.onclick = function(){ var t = d.getAttribute('data-est'); F.pessoas = F.escopo === 'escritorio' ? [] : ['__eu']; F.atrib = {resp:true, env:false, criou:false}; if (CAL[F.visao]) F.visao = 'lista';
     if (t === 'feitas'){ F.status = 'feitas'; F.ini = F.fim = HOJE; } else if (t === 'hoje'){ F.status = 'abertas'; F.ini = F.fim = HOJE; } else { F.status = 'atrasadas'; F.ini = mais(-30); F.fim = mais(-1); } salvarFiltros(); render(); }; });
-  var sd = D.atividades.filter(function(a){ return !a.data && !a.concluida && (F.resp === 'todos' || a.responsavel === (F.resp === 'meu' ? EU : F.resp)); });
+  var sd = D.atividades.filter(function(a){ return !a.data && !a.concluida && passaPessoa(a, PS); });
   $('#sem-data').innerHTML = sd.length ? sd.slice(0, 100).map(function(a){ return '<div class="sd-item" data-id="' + a.id + '">' + esc(a.titulo) + '<small>' + esc(usuario(a.responsavel).nome) + '</small></div>'; }).join('') : 'Nenhuma atividade encontrada. Verifique os filtros selecionados.';
   $$('#sem-data [data-id]').forEach(function(d){ d.onclick = function(){ abrirDetalhe(d.getAttribute('data-id')); }; });
 }
-function presets(){ var d = new Date(), y = d.getFullYear(), seg = new Date(d); seg.setDate(d.getDate() - ((d.getDay() + 6) % 7)); var dom = new Date(seg); dom.setDate(seg.getDate() + 6);
-  return {hoje:[HOJE, HOJE], semana:[iso(seg), iso(dom)], mes:[iso(new Date(y, d.getMonth(), 1)), iso(new Date(y, d.getMonth() + 1, 0))], prox30:[HOJE, mais(30)], ano:[y + '-01-01', y + '-12-31']}; }
+function presets(){
+  var d = dataObj(HOJE), y = d.getFullYear(), mes = d.getMonth(), seg = somaDias(HOJE, -((d.getDay() + 6) % 7));
+  return {hoje:[HOJE, HOJE], amanha:[mais(1), mais(1)], semana:[seg, somaDias(seg, 6)], mes:[iso(new Date(y, mes, 1)), iso(new Date(y, mes + 1, 0))], prox3:[HOJE, mais(3)],
+    proxsemana:[somaDias(seg, 7), somaDias(seg, 13)], proxmes:[iso(new Date(y, mes + 1, 1)), iso(new Date(y, mes + 2, 0))],
+    ontem:[mais(-1), mais(-1)], ult7:[mais(-7), HOJE], ult30:[mais(-30), HOJE], ano:[y + '-01-01', y + '-12-31']};
+}
+function listaPessoas(){
+  var ids = {}; USUARIOS.forEach(function(u){ ids[u.id] = 1; }); EQUIPE.forEach(function(u){ ids[u] = 1; });
+  D.atividades.forEach(function(a){ if (a.responsavel) ids[a.responsavel] = 1; });
+  delete ids[EU];
+  return Object.keys(ids).map(function(id){ return {id:id, nome:usuario(id).nome}; }).filter(function(p){ return p.nome && p.nome !== '—'; })
+    .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
+}
+function menuPessoas(anc){
+  var lista = listaPessoas(), sel = pessoasSel(), todos = !sel.length, at = F.atrib;
+  function ck(id, nome){ return '<label><input type="checkbox" class="ck" data-pessoa="' + id + '"' + (todos || sel.indexOf(id) >= 0 ? ' checked' : '') + '> ' + esc(nome) + '</label>'; }
+  abrirMenu(anc, '<div class="pp"><div class="pp-col"><h5>Atribuição</h5>' +
+      '<label><input type="checkbox" class="ck" data-atrib="resp"' + (at.resp ? ' checked' : '') + '> Responsáveis</label>' +
+      '<label><input type="checkbox" class="ck" data-atrib="env"' + (at.env ? ' checked' : '') + '> Envolvidos</label>' +
+      '<label><input type="checkbox" class="ck" data-atrib="criou"' + (at.criou ? ' checked' : '') + '> Quem criou</label></div>' +
+    '<div class="pp-col"><h5>Pessoas <a href="#" id="pp-todas">marcar todas</a> <a href="#" id="pp-so-eu">desmarcar as outras</a></h5>' +
+      ck(EU, usuario(EU).nome || 'Eu') + '<hr>' + lista.map(function(p){ return ck(p.id, p.nome); }).join('') + '</div></div>' +
+    '<div class="pp-acoes"><button class="btn sec mini" id="pp-c">Cancelar</button><button class="btn mini" id="pp-ok">Aplicar</button></div>', function(m){
+      m.classList.add('larga');
+      $('#pp-todas', m).onclick = function(e){ e.preventDefault(); $$('[data-pessoa]', m).forEach(function(c){ c.checked = true; }); };
+      $('#pp-so-eu', m).onclick = function(e){ e.preventDefault(); $$('[data-pessoa]', m).forEach(function(c){ c.checked = c.getAttribute('data-pessoa') === EU; }); };
+      $('#pp-c', m).onclick = fecharMenu;
+      $('#pp-ok', m).onclick = function(){
+        var cs = $$('[data-pessoa]', m), mar = cs.filter(function(c){ return c.checked; }).map(function(c){ return c.getAttribute('data-pessoa'); });
+        var nat = {}; $$('[data-atrib]', m).forEach(function(c){ nat[c.getAttribute('data-atrib')] = c.checked; });
+        if (!mar.length) return toast('Marque ao menos uma pessoa.');
+        if (!nat.resp && !nat.env && !nat.criou) return toast('Marque ao menos uma atribuição.');
+        F.pessoas = mar.length === cs.length ? [] : mar.map(function(id){ return id === EU ? '__eu' : id; }); F.atrib = nat;
+        salvarFiltros(); fecharMenu(); render(); };
+    });
+}
+function menuStatus(anc){
+  abrirMenu(anc, '<div class="pp-col um"><h5>Exibir</h5>' + [['tarefa', 'Tarefas'], ['compromisso', 'Eventos / compromissos'], ['prazo', 'Prazos'], ['audiencia', 'Audiências']].map(function(o){
+      return '<label><input type="checkbox" class="ck" data-tipo-f="' + o[0] + '"' + (F.tipos.indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') +
+    '<h5 style="margin-top:10px;">Status</h5>' + [['abertas', 'A concluir'], ['feitas', 'Concluídas'], ['canceladas', 'Canceladas'], ['todas', 'Todas'], ['atrasadas', 'Atrasadas (a concluir, data vencida)']].map(function(o){
+      return '<label><input type="radio" name="st-f" value="' + o[0] + '"' + (F.status === o[0] ? ' checked' : '') + '> ' + o[1] + '</label>'; }).join('') + '</div>' +
+    '<div class="pp-acoes"><button class="btn sec mini" id="st-c">Cancelar</button><button class="btn mini" id="st-ok">Aplicar</button></div>', function(m){
+      $('#st-c', m).onclick = fecharMenu;
+      $('#st-ok', m).onclick = function(){
+        var ts = $$('[data-tipo-f]', m).filter(function(c){ return c.checked; }).map(function(c){ return c.getAttribute('data-tipo-f'); });
+        if (!ts.length) return toast('Marque ao menos um tipo.');
+        F.tipos = ts; F.status = ($$('[name="st-f"]', m).filter(function(r){ return r.checked; })[0] || {}).value || 'abertas';
+        salvarFiltros(); fecharMenu(); render(); };
+    });
+}
+function filtrosPadrao(){ return {visao:F.visao, pessoas:['__eu'], atrib:{resp:true, env:false, criou:false}, tipos:TODOS_TIPOS.slice(), status:'abertas', tags:[], busca:'', ini:F.ini, fim:F.fim, escopo:F.escopo, ref:F.ref}; }
 function ligarFiltros(){
   $('#b-atualizar').onclick = function(){ HOJE = iso(new Date()); render(); toast('Agenda atualizada.'); };
   $('#b-novo').onclick = function(){ formAtividade(null); };
   $('#b-mais').onclick = function(e){ e.stopPropagation(); opcoes(this, [['imprimir', 'Imprimir a lista'], ['limpar', 'Limpar filtros']], '', function(v){
-    if (v === 'imprimir') window.print(); if (v === 'limpar'){ F = {visao:F.visao, resp:'meu', status:'abertas', tags:[], busca:'', ini:'2026-01-01', fim:'2026-12-31', escopo:F.escopo}; salvarFiltros(); render(); } }); };
-  $('#f-visao').onclick = function(e){ e.stopPropagation(); opcoes(this, [['lista', 'Em lista'], ['kanban', 'Kanban']], F.visao, function(v){ F.visao = v; salvarFiltros(); render(); }); };
-  $('#f-resp').onclick = function(e){ e.stopPropagation(); opcoes(this, [['meu', 'Minha responsabilidade'], ['todos', 'Todos os responsáveis'], '-'].concat(USUARIOS.map(function(u){ return [u.id, u.nome]; })), F.resp, function(v){ F.resp = v; salvarFiltros(); render(); }); };
-  $('#f-status').onclick = function(e){ e.stopPropagation(); opcoes(this, [['abertas', 'A concluir'], ['atrasadas', 'Atrasadas'], ['feitas', 'Concluídas'], ['todas', 'Todas']], F.status, function(v){ F.status = v; salvarFiltros(); render(); }); };
+    if (v === 'imprimir') window.print(); if (v === 'limpar'){ F = filtrosPadrao(); salvarFiltros(); render(); } }); };
+  $('#f-visao').onclick = function(e){ e.stopPropagation(); opcoes(this, [['lista', 'Em lista'], ['dia', 'Por dia'], ['semana', 'Por semana'], ['mes', 'Por mês'], '-', ['kanban', 'Kanban']], F.visao, function(v){
+    F.visao = v; if (CAL[v] && !F.ref) F.ref = HOJE; salvarFiltros(); render(); }); };
+  $('#f-resp').onclick = function(e){ e.stopPropagation(); menuPessoas(this); };
+  $('#f-status').onclick = function(e){ e.stopPropagation(); menuStatus(this); };
   $('#f-tags').onclick = function(e){ e.stopPropagation(); menuEtiquetas(this, F.tags, function(sel){ F.tags = sel; salvarFiltros(); render(); }, false); };
+  $$('[data-tira-tag]').forEach(function(x){ x.onclick = function(){ var id = x.getAttribute('data-tira-tag'); F.tags = F.tags.filter(function(t){ return t !== id; }); salvarFiltros(); render(); }; });
+  var tb = $('#tira-busca'); if (tb) tb.onclick = function(){ F.busca = ''; salvarFiltros(); render(); };
+  var fl = $('#f-limpar'); if (fl) fl.onclick = function(){ F.tags = []; F.busca = ''; salvarFiltros(); render(); };
   $('#f-busca').onclick = function(e){ e.stopPropagation(); abrirMenu(this, '<div class="datas"><input type="text" id="m-busca" placeholder="Título, cliente, caso ou nº do processo" value="' + esc(F.busca) + '" style="width:290px;"></div>', function(m){
-    var i = $('#m-busca', m); i.focus(); i.oninput = function(){ F.busca = i.value; salvarFiltros(); var p = $('#principal'); renderLista(p, visiveis()); }; }); };
-  function menuPeriodo(e){ e.stopPropagation(); var pr = presets();
-    abrirMenu(this, [['hoje', 'Hoje'], ['semana', 'Esta semana'], ['mes', 'Este mês'], ['prox30', 'Próximos 30 dias'], ['ano', 'Este ano']].map(function(o){ return '<button data-p="' + o[0] + '">' + o[1] + '</button>'; }).join('') +
-      '<hr><div class="datas"><span class="sutil" style="font-size:.78rem;">Personalizado</span><input type="date" id="m-ini" value="' + F.ini + '"><input type="date" id="m-fim" value="' + F.fim + '"><button class="btn mini" id="m-ok">Aplicar</button></div>', function(m){
-        $$('[data-p]', m).forEach(function(b){ b.onclick = function(){ var p = pr[b.getAttribute('data-p')]; F.ini = p[0]; F.fim = p[1]; salvarFiltros(); fecharMenu(); render(); }; });
-        $('#m-ok', m).onclick = function(){ F.ini = $('#m-ini', m).value || F.ini; F.fim = $('#m-fim', m).value || F.fim; salvarFiltros(); fecharMenu(); render(); }; }); }
-  $('#f-periodo').onclick = menuPeriodo; $('#f-datas').onclick = menuPeriodo;
+    var i = $('#m-busca', m); i.focus(); i.oninput = function(){ F.busca = i.value; salvarFiltros(); if (F.visao === 'lista') renderLista($('#principal'), visiveis()); else render(); }; }); };
+  if (CAL[F.visao]){
+    $('#cal-ant').onclick = function(){ moverRef(-1); }; $('#cal-prox').onclick = function(){ moverRef(1); };
+    $('#cal-hoje').onclick = function(){ F.ref = HOJE; salvarFiltros(); render(); };
+  } else {
+    var menuPeriodo = function(e){ e.stopPropagation(); var pr = presets();
+      abrirMenu(this, [['hoje', 'Hoje'], ['amanha', 'Amanhã'], ['semana', 'Esta semana'], ['mes', 'Este mês'], ['prox3', 'Próximos 3 dias'], ['proxsemana', 'Próxima semana'], ['proxmes', 'Próximo mês'], '-',
+          ['ontem', 'Ontem'], ['ult7', 'Últimos 7 dias'], ['ult30', 'Últimos 30 dias'], '-', ['ano', 'Este ano']].map(function(o){ return o === '-' ? '<hr>' : '<button data-p="' + o[0] + '">' + o[1] + '</button>'; }).join('') +
+        '<hr><div class="datas"><span class="sutil" style="font-size:.78rem;">Definir período</span><input type="date" id="m-ini" value="' + F.ini + '"><input type="date" id="m-fim" value="' + F.fim + '"><button class="btn mini" id="m-ok">Aplicar</button></div>', function(m){
+          $$('[data-p]', m).forEach(function(b){ b.onclick = function(){ var p = pr[b.getAttribute('data-p')]; F.ini = p[0]; F.fim = p[1]; salvarFiltros(); fecharMenu(); render(); }; });
+          $('#m-ok', m).onclick = function(){ F.ini = $('#m-ini', m).value || F.ini; F.fim = $('#m-fim', m).value || F.fim; if (F.ini > F.fim){ var t = F.ini; F.ini = F.fim; F.fim = t; } salvarFiltros(); fecharMenu(); render(); }; }); };
+    $('#f-periodo').onclick = menuPeriodo; $('#f-datas').onclick = menuPeriodo;
+  }
   $('#f-escopo').onclick = function(e){ e.stopPropagation(); opcoes(this, [['escritorio', 'Atividades do escritório'], ['minhas', 'Minhas atividades']], F.escopo, function(v){ F.escopo = v; salvarFiltros(); render(); }); };
 }
 function alternarConclusao(a){
@@ -1083,6 +1259,7 @@ auth.onAuthStateChanged(function(user){
   EU = user.uid;
   db.collection('users').doc(EU).get().then(function(d){ MEU_ROLE = (d.data() || {}).role || ''; return db.collection('perfis').get(); })
     .then(function(snap){ snap.forEach(function(d){ NOMES[d.id] = (d.data() || {}).displayName || 'Colaborador'; });
+      db.collection('organograma').get().then(function(o){ o.forEach(function(d){ EQUIPE.push(d.id); }); }).catch(function(){});
       ouvirConfig(); ouvir('clientes'); ouvir('casos'); ouvir('publicacoes');
       ouvir('atividades', db.collection(COLS.atividades).where('concluida', '==', false));
       ouvir('atividades', db.collection(COLS.atividades).where('concluidaEm', '>=', mais(-30)), 'atividadesRecentes'); })
