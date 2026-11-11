@@ -229,7 +229,7 @@
 </nav>
 <div class="pag" id="pag"></div>
 
-<div class="barra-teste"><b>AGENDA EM TESTE</b> · dados reais, visíveis só para a equipe do teste · <span class="perm" id="t-perm"></span><button id="t-equipe" style="display:none;">Equipe do teste</button><button id="t-aba" style="display:none;">Registrar aba no menu</button></div>
+<div class="barra-teste"><b>AGENDA EM TESTE</b> · dados reais, visíveis só para a equipe do teste · <span class="perm" id="t-perm"></span><button id="t-equipe" style="display:none;">Equipe do teste</button><button id="t-aba" style="display:none;">Registrar aba no menu</button><button id="t-importar" style="display:none;">Importar do Astrea</button></div>
 
 <script>
 (function(){
@@ -295,7 +295,7 @@ var EU = null, MEU_ROLE = '', NOMES = {}, MEMBROS = {}, USUARIOS = [], PRONTO = 
 function semId(o){ var c = {}; Object.keys(o).forEach(function(k){ if (k !== 'id') c[k] = o[k]; }); return c; }
 // grava só o que mudou desde a última leitura do servidor (cada documento é um cliente, processo, atividade ou publicação)
 function salvar(){
-  var ops = [];
+  inval(); var ops = [];
   Object.keys(COLS).forEach(function(k){
     var vistos = {};
     D[k].forEach(function(o){ vistos[o.id] = 1; var j = JSON.stringify(semId(o)); if (BASE[k][o.id] !== j){ BASE[k][o.id] = j; ops.push(['set', COLS[k], o.id, JSON.parse(j)]); } });
@@ -326,19 +326,43 @@ function agendarRender(){
     render(); if (aberto && atv(aberto)) desenharDetalhe(); else if (aberto) fecharDetalhe();
   }, 200);
 }
-function ouvir(k){
-  db.collection(COLS[k]).onSnapshot(function(snap){
+function mapaDe(k){ var m = new Map(); D[k].forEach(function(o){ m.set(o.id, o); }); return m; }
+function aplicarDoc(k, mapa, id, dados){
+  var o = mapa.get(id);
+  if (o){ Object.keys(o).forEach(function(c){ if (c !== 'id') delete o[c]; }); Object.assign(o, dados); }   // mesmo objeto: telas abertas continuam valendo
+  else { o = Object.assign({id:id}, dados); D[k].push(o); mapa.set(id, o); }
+  BASE[k][id] = JSON.stringify(semId(o));
+}
+function tirarDocs(k, ids){ if (!ids.length) return; var t = {}; ids.forEach(function(id){ t[id] = 1; delete BASE[k][id]; }); D[k] = D[k].filter(function(o){ return !t[o.id]; }); }
+// consulta = só uma parte da coleção (ex.: atividades a concluir). Quem sai da consulta pode só ter mudado (ex.: foi concluída):
+// confere no servidor antes de tirar da tela.
+function ouvir(k, consulta, marca){
+  (consulta || db.collection(COLS[k])).onSnapshot(function(snap){
+    var mapa = mapaDe(k), sairam = [];
     snap.docChanges().forEach(function(ch){
-      var id = ch.doc.id, i = -1;
-      for (var x = 0; x < D[k].length; x++) if (D[k][x].id === id){ i = x; break; }
-      if (ch.type === 'removed'){ if (i >= 0) D[k].splice(i, 1); delete BASE[k][id]; return; }
-      var dados = ch.doc.data();
-      if (i >= 0){ var o = D[k][i]; Object.keys(o).forEach(function(c){ if (c !== 'id') delete o[c]; }); Object.assign(o, dados); }   // mesmo objeto: telas abertas continuam valendo
-      else D[k].push(Object.assign({id:id}, dados));
-      BASE[k][id] = JSON.stringify(semId(i >= 0 ? D[k][i] : D[k][D[k].length - 1]));
+      if (ch.type === 'removed'){ if (mapa.has(ch.doc.id)) sairam.push(ch.doc.id); return; }
+      aplicarDoc(k, mapa, ch.doc.id, ch.doc.data());
     });
-    carregados[k] = true; checarPronto(); agendarRender();
+    if (!consulta) tirarDocs(k, sairam);
+    else sairam.forEach(function(id){ db.collection(COLS[k]).doc(id).get().then(function(d){
+      if (d.exists) aplicarDoc(k, mapaDe(k), id, d.data()); else tirarDocs(k, [id]); inval(); agendarRender(); }).catch(function(){}); });
+    inval(); carregados[marca || k] = true; checarPronto(); agendarRender();
   }, function(e){ falhaAcesso(e); });
+}
+// histórico (atividades concluídas há mais de 30 dias): só é baixado quando alguém precisa (período, processo, tarefas de um prazo)
+var HIST = {};
+function historico(chave, fazerConsulta, depois){
+  var h = HIST[chave]; if (h) return h;
+  h = HIST[chave] = {pronto:false, n:0};
+  function pagina(ultimo){   // em páginas de 1.000, para não pedir tudo de uma vez
+    var q = fazerConsulta().limit(1000); if (ultimo) q = q.startAfter(ultimo);
+    return q.get().then(function(snap){ var m = mapaDe('atividades');
+      snap.forEach(function(d){ if (!m.has(d.id)) aplicarDoc('atividades', m, d.id, d.data()); }); h.n += snap.size; inval();
+      if (snap.size === 1000){ agendarRender(); return pagina(snap.docs[snap.docs.length - 1]); }
+      h.pronto = true; if (depois) depois(); else agendarRender(); });
+  }
+  h.p = pagina(null).catch(function(e){ console.error(e); delete HIST[chave]; h.erro = e; toast('Não foi possível carregar o histórico: ' + e.message); });
+  return h;
 }
 function ouvirConfig(){
   db.collection('agTeste_config').doc('geral').onSnapshot(function(d){
@@ -356,27 +380,40 @@ function montarUsuarios(){
 }
 function checarPronto(){
   if (PRONTO) return;
-  if (['config', 'clientes', 'casos', 'atividades', 'publicacoes'].every(function(k){ return carregados[k]; })){ PRONTO = true; iniciarTela(); }
+  if (['config', 'clientes', 'casos', 'atividades', 'atividadesRecentes', 'publicacoes'].every(function(k){ return carregados[k]; })){ PRONTO = true; iniciarTela(); }
 }
 function falhaAcesso(e){
   console.error(e);
   $('#pag').innerHTML = '<div class="vazio">' + (e && e.code === 'permission-denied' ? 'Você ainda não tem acesso à Agenda (teste). Peça ao administrador para liberar a aba e incluir você na equipe do teste.' : 'Não foi possível carregar: ' + esc(e && e.message || e)) + '</div>';
 }
-function usuario(id){ return USUARIOS.filter(function(u){ return u.id === id; })[0] || {id:id, nome:NOMES[id] || '—', perfil:''}; }
+function usuario(id){ if (String(id || '').indexOf('ex:') === 0) return {id:id, nome:id.slice(3), perfil:''}; return USUARIOS.filter(function(u){ return u.id === id; })[0] || {id:id, nome:NOMES[id] || '—', perfil:''}; }
 function eu(){ return usuario(EU); }
 function iniciais(id){ if (id === EU) return 'Eu'; var p = (usuario(id).nome || '?').split(' '); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); }
-var IDX = {};
+// índices (por id, tarefas de cada prazo, atividades de cada processo, processos de cada cliente); refeitos a cada render/gravação/leitura
+var IX = null;
+function inval(){ IX = null; }
+function ix(){
+  if (IX) return IX;
+  var X = IX = {atividades:new Map(), clientes:new Map(), casos:new Map(), publicacoes:new Map(), filhas:new Map(), porCaso:new Map(), procsCli:new Map(), casoNum:new Map()};
+  function por(m, chave, o){ var l = m.get(chave); if (!l) m.set(chave, l = []); l.push(o); }
+  ['atividades', 'clientes', 'casos', 'publicacoes'].forEach(function(l){ D[l].forEach(function(o){ X[l].set(o.id, o); }); });
+  D.casos.forEach(function(k){ (k.clientes || []).forEach(function(c){ por(X.procsCli, c, k); }); var n = soDig(k.numero); if (n && !X.casoNum.has(n)) X.casoNum.set(n, k); });
+  D.atividades.forEach(function(a){ if (a.paiId) por(X.filhas, a.paiId, a); });
+  D.atividades.forEach(function(a){ var k = casoDe(a); if (k) por(X.porCaso, k.id, a); });
+  return X;
+}
 function achar(lista, id){ if (lista === 'etiquetas') return D.etiquetas.filter(function(x){ return x.id === id; })[0];
+  var m = ix()[lista], o = m && m.get(id); if (o) return o;
   for (var i = 0; i < D[lista].length; i++) if (D[lista][i].id === id) return D[lista][i]; return undefined; }
 function atv(id){ return achar('atividades', id); }
 function cliente(id){ return achar('clientes', id); }
 function caso(id){ return achar('casos', id); }
 function etiqueta(id){ return achar('etiquetas', id); }
-function filhas(a){ return D.atividades.filter(function(x){ return x.paiId === a.id; }).sort(function(x, y){ return (x.data || '9').localeCompare(y.data || '9'); }); }
+function filhas(a){ return (ix().filhas.get(a.id) || []).slice().sort(function(x, y){ return (x.data || '9').localeCompare(y.data || '9'); }); }
 function nomesClientes(k){ return (k.clientes || []).map(function(id){ var c = cliente(id); return c ? c.nome : '?'; }).join(', '); }
-function rotuloCaso(k){ if (!k) return ''; return '(' + nomesClientes(k) + (k.contraria ? ' x ' + k.contraria : '') + ') - ' + k.titulo; }
+function rotuloCaso(k){ if (!k) return ''; if (k.astrea) return k.titulo + (k.clientes && k.clientes.length ? ' (' + nomesClientes(k) + ')' : ''); return '(' + nomesClientes(k) + (k.contraria ? ' x ' + k.contraria : '') + ') - ' + k.titulo; }
 function casoDe(a){ var k = a.casoId ? caso(a.casoId) : null; if (!k && a.paiId){ var p = atv(a.paiId); if (p && p.casoId) k = caso(p.casoId); } return k; }
-function casoPorNumero(n){ var d = soDig(n); if (!d) return null; for (var i = 0; i < D.casos.length; i++) if (soDig(D.casos[i].numero) === d) return D.casos[i]; return null; }
+function casoPorNumero(n){ var d = soDig(n); if (!d) return null; return ix().casoNum.get(d) || null; }
 
 // ---------- DJEN: consulta pública, direto do navegador ----------
 var DJEN_OABS = [['163443', 'MG']];
@@ -460,9 +497,13 @@ function modal(html, cls){ var f = document.createElement('div'); f.className = 
 var SUB = 'agenda';
 try { var s0 = new URLSearchParams(location.search).get('sub') || localStorage.getItem(CHAVE + '_sub'); if (s0) SUB = s0; } catch (e) {}
 $$('#subnav button').forEach(function(b){ b.onclick = function(){ irPara(b.getAttribute('data-sub')); }; });
-function irPara(sub){ SUB = sub; try { localStorage.setItem(CHAVE + '_sub', sub); } catch (e) {} fecharTudo(); render(); window.scrollTo(0, 0); }
+var LIM = {agenda:300, cli:300, proc:300};
+function maisHtml(q, total){ return total > LIM[q] ? '<div class="vazio"><button class="btn sec mini" data-mais="' + q + '">Mostrar mais (' + LIM[q] + ' de ' + total + ')</button></div>' : ''; }
+function ligarMais(el){ $$('[data-mais]', el).forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); LIM[b.getAttribute('data-mais')] += 300; render(); }; }); }
+function irPara(sub){ SUB = sub; LIM = {agenda:300, cli:300, proc:300}; try { localStorage.setItem(CHAVE + '_sub', sub); } catch (e) {} fecharTudo(); render(); window.scrollTo(0, 0); }
 function fecharTudo(){ fecharMenu(); $$('.fundo-modal').forEach(function(f){ f.remove(); }); aberto = null; }
 function render(){
+  inval();
   $$('#subnav button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sub') === SUB); });
   var nn = D.publicacoes.filter(function(p){ return p.status === 'nova'; }).length; $('#qtd-pub').textContent = nn || ''; $('#qtd-pub').style.display = nn ? '' : 'none';
   if (SUB === 'clientes') renderClientes(); else if (SUB === 'processos') renderProcessos(); else if (SUB === 'publicacoes') renderPublicacoes(); else renderAgenda();
@@ -501,18 +542,20 @@ function renderAgenda(){
     '<div class="periodo"><button id="f-periodo">Período <i class="car"></i></button><button id="f-datas">' + dataBR(F.ini) + ' a ' + dataBR(F.fim) + ' <i class="car"></i></button></div>' +
     '<div class="grade"><div class="card" id="principal"></div><aside><div class="card"><div class="est-cab"><button id="f-escopo">' + (F.escopo === 'escritorio' ? 'Atividades do escritório' : 'Minhas atividades') + ' <i class="car"></i></button><span class="sutil">»</span></div><div class="est" id="estat"></div></div>' +
       '<div class="card"><div class="sd-cab">Tarefas sem data e a concluir <span class="sutil">' + ic('funil', 15) + '</span></div><div class="sd-lista" id="sem-data"></div></div></aside></div>';
+  var hist = (F.status === 'feitas' || F.status === 'todas') && F.ini && F.fim ? historico('p:' + F.ini + '|' + F.fim, function(){ return db.collection(COLS.atividades).where('data', '>=', F.ini).where('data', '<=', F.fim); }) : null;
   var lista = visiveis(), el = $('#principal');
   selecionadas = selecionadas.filter(function(id){ return lista.some(function(a){ return a.id === id; }); });
   if (F.visao === 'kanban') renderKanban(el, lista); else renderLista(el, lista);
+  if (hist && !hist.pronto) el.insertAdjacentHTML('afterbegin', '<div class="aviso" style="padding:8px 14px;">Carregando as atividades concluídas do período… ' + (hist.n ? hist.n.toLocaleString('pt-BR') + ' até agora' : '') + '</div>');
   renderLateral(); ligarFiltros();
 }
 function nComent(a){ return a.comentarios.length + filhas(a).reduce(function(s, f){ return s + f.comentarios.length; }, 0); }
 function renderLista(el, lista){
   var h = '<div class="lista-cab"><input type="checkbox" class="ck" id="sel-tudo"' + (lista.length && selecionadas.length === lista.length ? ' checked' : '') + '> ' +
     (selecionadas.length ? selecionadas.length + ' selecionada(s)<div class="lote"><button class="btn sec mini" id="lote-concluir">Concluir</button><button class="btn sec mini" id="lote-etiqueta">Etiquetas</button><button class="btn sec mini" id="lote-limpar">Desmarcar</button></div>'
-      : 'Mostrando ' + lista.length + ' de ' + lista.length + ' atividades') + '</div>';
+      : 'Mostrando ' + Math.min(lista.length, LIM.agenda) + ' de ' + lista.length + ' atividades') + '</div>';
   if (!lista.length) h += '<div class="vazio">Nenhuma atividade encontrada. Verifique os filtros selecionados.</div>';
-  lista.forEach(function(a){
+  lista.slice(0, LIM.agenda).forEach(function(a){
     var pai = a.paiId ? atv(a.paiId) : null, k = casoDe(a), fs = pai ? [] : filhas(a);
     var cls = a.concluida ? 'feita' : a.data === HOJE ? 'hoje' : a.data < HOJE ? 'atrasada' : '';
     h += '<div class="linha ' + cls + '" data-id="' + a.id + '"><input type="checkbox" class="ck" data-sel="' + a.id + '"' + (selecionadas.indexOf(a.id) >= 0 ? ' checked' : '') + '>' +
@@ -525,7 +568,8 @@ function renderLista(el, lista){
       (a.etiquetas.length ? '<div class="tags">' + tagsHtml(a.etiquetas) + '</div>' : '') + '</div>' +
       '<div class="com">' + ic('balao', 17, 1.8) + ' ' + nComent(a) + '</div><div><span class="av" title="' + esc(usuario(a.responsavel).nome) + '">' + iniciais(a.responsavel) + '</span></div></div>';
   });
-  el.innerHTML = h;
+  h += maisHtml('agenda', lista.length);
+  el.innerHTML = h; ligarMais(el);
   $$('.linha', el).forEach(function(r){ r.onclick = function(e){ if (e.target.closest('[data-chk],[data-sel]')) return; abrirDetalhe(r.getAttribute('data-id')); }; });
   $$('[data-chk]', el).forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); alternarConclusao(atv(b.getAttribute('data-chk'))); }; });
   $$('[data-sel]', el).forEach(function(c){ c.onclick = function(e){ e.stopPropagation(); var id = c.getAttribute('data-sel'); if (c.checked) selecionadas.push(id); else selecionadas = selecionadas.filter(function(x){ return x !== id; }); render(); }; });
@@ -536,7 +580,7 @@ function renderLista(el, lista){
 }
 function renderKanban(el, lista){
   el.innerHTML = '<div class="kanban">' + COLUNAS.map(function(c){ var itens = lista.filter(function(a){ return (a.concluida ? 'Concluído' : a.coluna) === c; });
-    return '<div class="kcol" data-col="' + c + '"><h4>' + c + ' (' + itens.length + ')</h4>' + itens.map(function(a){
+    return '<div class="kcol" data-col="' + c + '"><h4>' + c + ' (' + itens.length + (itens.length > 200 ? ' · mostrando 200' : '') + ')</h4>' + itens.slice(0, 200).map(function(a){
       return '<div class="kcard ' + a.tipo + '" draggable="true" data-id="' + a.id + '"><div class="tipo ' + a.tipo + '">' + TIPOS[a.tipo].toUpperCase() + ' · ' + (a.data ? dataBR(a.data) : 'sem data') + '</div><div class="tit">' + esc(a.titulo) + '</div>' +
         (a.etiquetas.length ? '<div class="tags">' + tagsHtml(a.etiquetas) + '</div>' : '') + '<div style="text-align:right;margin-top:4px;"><span class="av">' + iniciais(a.responsavel) + '</span></div></div>'; }).join('') + '</div>'; }).join('') + '</div>';
   $$('.kcard', el).forEach(function(k){ k.onclick = function(){ abrirDetalhe(k.getAttribute('data-id')); }; k.ondragstart = function(e){ e.dataTransfer.setData('text/plain', k.getAttribute('data-id')); }; });
@@ -560,7 +604,7 @@ function renderLateral(){
   $$('[data-est]').forEach(function(d){ d.onclick = function(){ var t = d.getAttribute('data-est'); F.resp = F.escopo === 'escritorio' ? 'todos' : 'meu';
     if (t === 'feitas'){ F.status = 'feitas'; F.ini = F.fim = HOJE; } else if (t === 'hoje'){ F.status = 'abertas'; F.ini = F.fim = HOJE; } else { F.status = 'atrasadas'; F.ini = mais(-30); F.fim = mais(-1); } salvarFiltros(); render(); }; });
   var sd = D.atividades.filter(function(a){ return !a.data && !a.concluida && (F.resp === 'todos' || a.responsavel === (F.resp === 'meu' ? EU : F.resp)); });
-  $('#sem-data').innerHTML = sd.length ? sd.map(function(a){ return '<div class="sd-item" data-id="' + a.id + '">' + esc(a.titulo) + '<small>' + esc(usuario(a.responsavel).nome) + '</small></div>'; }).join('') : 'Nenhuma atividade encontrada. Verifique os filtros selecionados.';
+  $('#sem-data').innerHTML = sd.length ? sd.slice(0, 100).map(function(a){ return '<div class="sd-item" data-id="' + a.id + '">' + esc(a.titulo) + '<small>' + esc(usuario(a.responsavel).nome) + '</small></div>'; }).join('') : 'Nenhuma atividade encontrada. Verifique os filtros selecionados.';
   $$('#sem-data [data-id]').forEach(function(d){ d.onclick = function(){ abrirDetalhe(d.getAttribute('data-id')); }; });
 }
 function presets(){ var d = new Date(), y = d.getFullYear(), seg = new Date(d); seg.setDate(d.getDate() - ((d.getDay() + 6) % 7)); var dom = new Date(seg); dom.setDate(seg.getDate() + 6);
@@ -598,7 +642,8 @@ function alternarConclusao(a){
 
 // ---------- detalhe da atividade ----------
 var aberto = null, abaAtual = 'atividades', subAbertos = {};
-function abrirDetalhe(id){ var f = $('#fundo-det'); if (f) f.remove(); aberto = id; abaAtual = atv(id).paiId ? 'comentarios' : 'atividades'; subAbertos = {}; desenharDetalhe(); }
+function abrirDetalhe(id){ var f = $('#fundo-det'); if (f) f.remove(); aberto = id;
+  historico('f:' + id, function(){ return db.collection(COLS.atividades).where('paiId', '==', id); }, function(){ inval(); if (aberto === id && atv(id)) desenharDetalhe(); }); abaAtual = atv(id).paiId ? 'comentarios' : 'atividades'; subAbertos = {}; desenharDetalhe(); }
 function fecharDetalhe(){ aberto = null; var f = $('#fundo-det'); if (f) f.remove(); }
 function comentariosHtml(a){
   var h = '<div class="coms">' + a.comentarios.map(function(c){ return '<div class="cm"><div class="q"><span><b>' + esc(usuario(c.uid).nome) + '</b> · ' + quando(c.em) + '</span>' +
@@ -765,7 +810,7 @@ function formAtividade(a, pre){
 
 // ================= CLIENTES =================
 var F_CLI = {busca:''};
-function procsDe(c){ return D.casos.filter(function(k){ return k.clientes.indexOf(c.id) >= 0; }); }
+function procsDe(c){ return ix().procsCli.get(c.id) || []; }
 function renderClientes(){
   var lista = D.clientes.filter(function(c){ var b = norm(F_CLI.busca); return !b || norm(c.nome + ' ' + c.email + ' ' + c.fone).indexOf(b) >= 0 || (soDig(F_CLI.busca) && soDig(c.doc).indexOf(soDig(F_CLI.busca)) >= 0); })
     .sort(function(a, b){ return a.nome.localeCompare(b.nome); });
@@ -773,9 +818,9 @@ function renderClientes(){
     '<button class="ico-btn prim" id="c-novo" title="Novo cliente"' + (podeCadastro() ? '' : ' disabled') + '>' + ic('plus', 20, 3) + '</button></div></div>' +
     '<div class="filtros"><input class="busca-in" id="c-busca" placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone" value="' + esc(F_CLI.busca) + '"></div>' +
     '<div class="card"><div class="tab-cab cli-g"><span>Cliente</span><span class="esc">CPF / CNPJ</span><span class="esc">Telefone</span><span class="esc">E-mail</span><span>Processos</span></div>' +
-    (lista.length ? lista.map(function(c){ return '<div class="tab-linha cli-g" data-cli="' + c.id + '"><div><div class="nome">' + esc(c.nome) + '</div><div class="mini-txt">' + (c.tipo === 'PJ' ? 'Pessoa jurídica' : 'Pessoa física') + '</div></div>' +
+    (lista.length ? lista.slice(0, LIM.cli).map(function(c){ return '<div class="tab-linha cli-g" data-cli="' + c.id + '"><div><div class="nome">' + esc(c.nome) + '</div><div class="mini-txt">' + (c.tipo === 'PJ' ? 'Pessoa jurídica' : 'Pessoa física') + (c.astreaTipo === 'Contato' ? ' · contato' : '') + '</div></div>' +
       '<span class="esc mini-txt">' + esc(fmtDoc(c.doc)) + '</span><span class="esc mini-txt">' + esc(c.fone) + '</span><span class="esc mini-txt">' + esc(c.email) + '</span><span>' + procsDe(c).length + '</span></div>'; }).join('')
-      : '<div class="vazio">Nenhum cliente encontrado.</div>') + '</div>';
+      : '<div class="vazio">Nenhum cliente encontrado.</div>') + maisHtml('cli', lista.length) + '</div>'; ligarMais($('#pag'));
   $('#c-novo').onclick = function(){ formCliente(null); };
   var bi = $('#c-busca'); bi.oninput = function(){ F_CLI.busca = bi.value; var pos = bi.selectionStart; renderClientes(); var n = $('#c-busca'); n.focus(); n.setSelectionRange(pos, pos); };
   $$('[data-cli]').forEach(function(r){ r.onclick = function(){ abrirCliente(r.getAttribute('data-cli')); }; });
@@ -841,13 +886,14 @@ function renderProcessos(){
       '<button class="dd" id="k-resp">' + (F_PROC.resp === 'todos' ? 'Todos os responsáveis' : F_PROC.resp === 'meu' ? 'Minha responsabilidade' : esc(usuario(F_PROC.resp).nome)) + ' <i class="car"></i></button>' +
       '<input class="busca-in" id="k-busca" placeholder="Cliente, parte contrária, título ou nº do processo" value="' + esc(F_PROC.busca) + '"></div>' +
     '<div class="card"><div class="tab-cab proc-g"><span>Tipo</span><span>Cliente x parte contrária / assunto</span><span class="esc">Nº / órgão</span><span class="esc">Próxima atividade</span><span></span></div>' +
-    (lista.length ? lista.map(function(k){ var prox = D.atividades.filter(function(a){ return casoDe(a) === k && !a.concluida && a.data; }).sort(function(x, y){ return x.data.localeCompare(y.data); })[0];
+    (lista.length ? lista.slice(0, LIM.proc).map(function(k){ var prox = (ix().porCaso.get(k.id) || []).filter(function(a){ return !a.concluida && a.data; }).sort(function(x, y){ return x.data.localeCompare(y.data); })[0];
       return '<div class="tab-linha proc-g" data-k="' + k.id + '"><span><span class="pill ' + (k.status === 'arquivado' ? 'arquivado' : k.tipo) + '">' + (k.status === 'arquivado' ? 'ARQUIVADO' : k.tipo.toUpperCase()) + '</span></span>' +
-        '<div><div class="nome">' + esc(nomesClientes(k)) + (k.contraria ? ' <span class="sutil">x</span> ' + esc(k.contraria) : '') + '</div><div class="mini-txt">' + esc(k.titulo) + ' · ' + esc(k.area) + '</div>' + (k.etiquetas.length ? '<div class="tags">' + tagsHtml(k.etiquetas) + '</div>' : '') + '</div>' +
+        (k.astrea ? '<div><div class="nome">' + esc(k.titulo) + '</div><div class="mini-txt">' + esc(nomesClientes(k) || 'importado do Astrea') + '</div>'
+          : '<div><div class="nome">' + esc(nomesClientes(k)) + (k.contraria ? ' <span class="sutil">x</span> ' + esc(k.contraria) : '') + '</div><div class="mini-txt">' + esc(k.titulo) + ' · ' + esc(k.area) + '</div>') + (k.etiquetas.length ? '<div class="tags">' + tagsHtml(k.etiquetas) + '</div>' : '') + '</div>' +
         '<div class="esc mini-txt">' + (k.numero ? esc(fmtCnj(k.numero)) + '<br>' : '') + esc(k.orgao || '') + '</div>' +
         '<div class="esc mini-txt">' + (prox ? '<span class="' + (prox.data < HOJE ? 'vermelho' : '') + '">' + dataBR(prox.data) + '</span><br>' + esc(prox.titulo) : '—') + '</div>' +
         '<span class="av" title="' + esc(usuario(k.responsavel).nome) + '">' + iniciais(k.responsavel) + '</span></div>'; }).join('')
-      : '<div class="vazio">Nenhum processo ou caso encontrado.</div>') + '</div>';
+      : '<div class="vazio">Nenhum processo ou caso encontrado.</div>') + maisHtml('proc', lista.length) + '</div>'; ligarMais($('#pag'));
   $('#k-novo').onclick = function(){ formCaso(null); };
   $('#k-tipo').onclick = function(e){ e.stopPropagation(); opcoes(this, [['todos', 'Processos e casos'], ['processo', 'Só processos'], ['caso', 'Só casos']], F_PROC.tipo, function(v){ F_PROC.tipo = v; render(); }); };
   $('#k-status').onclick = function(e){ e.stopPropagation(); opcoes(this, [['ativo', 'Ativos'], ['arquivado', 'Arquivados'], ['todos', 'Ativos e arquivados']], F_PROC.status, function(v){ F_PROC.status = v; render(); }); };
@@ -858,14 +904,15 @@ function renderProcessos(){
 var abaCaso = 'atividades';
 function abrirCaso(id, aba){
   var k = caso(id); if (!k) return; if (aba) abaCaso = aba;
+  var hk = historico('k:' + id, function(){ return db.collection(COLS.atividades).where('casoId', '==', id); }, function(){ inval(); if ($('#fundo-caso')) abrirCaso(id); });
   var velho = $('#fundo-caso'); if (velho) velho.remove();
-  var ats = D.atividades.filter(function(a){ return !a.paiId && casoDe(a) === k; }).sort(function(x, y){ return (x.concluida - y.concluida) || (x.data || '9').localeCompare(y.data || '9'); });
+  var ats = (ix().porCaso.get(k.id) || []).filter(function(a){ return !a.paiId; }).sort(function(x, y){ return (x.concluida - y.concluida) || (x.data || '9').localeCompare(y.data || '9'); });
   var pubs = D.publicacoes.filter(function(p){ return k.numero && soDig(p.numero) === soDig(k.numero); });
   var ed = podeEditarCaso(k);
   var corpo = '';
   if (abaCaso === 'atividades'){
     corpo = (podeCriarPrazo() || perfil() === 'assistente' ? '<button class="btn mini" id="k-novaat" style="margin-bottom:10px;">+ Nova atividade neste ' + k.tipo + '</button>' : '') +
-      '<div class="mini-lista">' + (ats.length ? ats.map(function(a){ var fs = filhas(a);
+      (hk.pronto ? '' : '<p class="aviso">Carregando o histórico deste processo…</p>') + '<div class="mini-lista">' + (ats.length ? ats.slice(0, 300).map(function(a){ var fs = filhas(a);
         return '<div class="item" data-at="' + a.id + '"><span class="tipo ' + a.tipo + '" style="min-width:86px;">' + TIPOS[a.tipo].toUpperCase() + '</span><span class="' + (!a.concluida && a.data && a.data < HOJE ? 'vermelho' : 'sutil') + '" style="min-width:80px;">' + (dataBR(a.data) || 'sem data') + '</span>' +
           '<span class="tt" style="' + (a.concluida ? 'text-decoration:line-through;color:var(--muted);' : '') + '">' + esc(a.titulo) + '</span>' + (fs.length ? '<span class="mini-txt">' + fs.filter(function(x){ return x.concluida; }).length + '/' + fs.length + ' tarefas</span>' : '') +
           '<span class="av" style="margin-left:auto;">' + iniciais(a.responsavel) + '</span></div>'; }).join('') : '<div class="aviso">Nenhuma atividade.</div>') + '</div>';
@@ -1029,14 +1076,16 @@ var SUB_INICIAL = SUB;
 $('#pag').innerHTML = '<div class="vazio">Carregando a Agenda…</div>';
 function iniciarTela(){
   montarUsuarios(); render();
-  if (MEU_ROLE === 'admin'){ $('#t-equipe').style.display = ''; $('#t-aba').style.display = ''; }
+  if (MEU_ROLE === 'admin'){ $('#t-equipe').style.display = ''; $('#t-aba').style.display = ''; $('#t-importar').style.display = ''; }
 }
 auth.onAuthStateChanged(function(user){
   if (!user){ $('#pag').innerHTML = '<div class="vazio">Entre no Portal para usar a Agenda.</div>'; return; }
   EU = user.uid;
   db.collection('users').doc(EU).get().then(function(d){ MEU_ROLE = (d.data() || {}).role || ''; return db.collection('perfis').get(); })
     .then(function(snap){ snap.forEach(function(d){ NOMES[d.id] = (d.data() || {}).displayName || 'Colaborador'; });
-      ouvirConfig(); Object.keys(COLS).forEach(ouvir); })
+      ouvirConfig(); ouvir('clientes'); ouvir('casos'); ouvir('publicacoes');
+      ouvir('atividades', db.collection(COLS.atividades).where('concluida', '==', false));
+      ouvir('atividades', db.collection(COLS.atividades).where('concluidaEm', '>=', mais(-30)), 'atividadesRecentes'); })
     .catch(falhaAcesso);
 });
 $('#t-aba').onclick = function(){
@@ -1061,6 +1110,176 @@ $('#t-equipe').onclick = function(){
         .then(function(){ f.remove(); toast('Equipe do teste salva.'); }).catch(function(e){ toast('Não foi possível salvar: ' + e.message); }); };
   }).catch(function(e){ toast('Não foi possível ler a equipe: ' + e.message); });
 };
+// ================= importar do Astrea (só admin) =================
+// As planilhas são lidas aqui no navegador; nada vai para fora além do próprio Firebase do portal.
+// Ids fixos (derivados de cada linha): rodar de novo não duplica — o que já existe é pulado.
+var XLSX_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js', XLSX_SRI = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
+function carregarXlsx(){
+  if (window.XLSX) return Promise.resolve();
+  return new Promise(function(ok, erro){ var sc = document.createElement('script'); sc.src = XLSX_URL; sc.integrity = XLSX_SRI; sc.crossOrigin = 'anonymous';
+    sc.onload = function(){ ok(); }; sc.onerror = function(){ erro(new Error('não foi possível carregar o leitor de planilhas')); }; document.head.appendChild(sc); });
+}
+function lerPlanilha(arq){
+  return arq.arrayBuffer().then(function(b){ var wb = XLSX.read(b, {type:'array', dense:true}); var ws = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, {defval:'', raw:false, dateNF:'dd/mm/yyyy'}); });
+}
+function hashAst(s){ var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); }
+function txtAst(v){ return String(v == null ? '' : v).trim(); }
+function dataAst(v){ var m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\D+(\d{1,2}):(\d{2}))?/.exec(txtAst(v)); if (!m) return null;
+  return {d:m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2), h:m[4] ? ('0' + m[4]).slice(-2) + ':' + m[5] : ''}; }
+function quandoAst(v, hp){ var x = dataAst(v); return x ? x.d + 'T' + (x.h || hp || '12:00') + ':00-03:00' : null; }
+var UF_TJ = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SE SP TO'.split(' ');
+function tribunalCnj(n){ if (n.length !== 20) return ''; var j = n.charAt(13), tr = +n.substr(14, 2);
+  return j === '8' ? 'TJ' + (UF_TJ[tr - 1] || '') : j === '5' ? (tr ? 'TRT' + tr : 'TST') : j === '4' ? 'TRF' + tr : j === '3' ? 'STJ' : j === '1' ? 'STF' : j === '6' ? 'TRE' : ''; }
+function nomeBusca(t){ return ' ' + norm(t).replace(/[^a-z0-9]+/g, ' ').trim() + ' '; }
+function casarResp(nomeAst){
+  var t = norm(nomeAst).trim().split(/\s+/), melhor = '', pts = 0, empate = false;
+  Object.keys(NOMES).forEach(function(uid){ var u = norm(NOMES[uid]).trim().split(/\s+/); if (u[0] !== t[0]) return;
+    var p = 1 + t.slice(1).filter(function(x){ return x.length > 2 && u.indexOf(x) >= 0; }).length;
+    if (p > pts){ pts = p; melhor = uid; empate = false; } else if (p === pts) empate = true; });
+  return melhor && !empate ? melhor : '';
+}
+var PALETA_AST = ['#1a2a9c', '#e07a10', '#2e7d32', '#7b1fa2', '#c62828', '#00838f', '#5d4037', '#ad1457', '#455a64', '#6a1b9a', '#283593', '#827717'];
+function prepararAstrea(ag, ct){
+  var P = {clientes:[], casos:{}, atividades:[], resp:{}, etq:{}, lidosCt:0, lidosAg:0};
+  var porDoc = {}; D.clientes.forEach(function(c){ if (c.doc) porDoc[c.doc] = c.id; });
+  var BASECT = {'Código':1, 'Tipo':1, 'Pessoa':1, 'Nome/Empresa':1, 'Telefone':1, 'Email':1, 'Endereço':1, 'CPF/CNPJ':1, 'Data de cadastro':1, 'Comentários':1};
+  (ct || []).forEach(function(r){
+    var tipoA = txtAst(r['Tipo']), nome = txtAst(r['Nome/Empresa']); if (!nome || /^usu/i.test(tipoA)) return; P.lidosCt++;
+    var pj = /jur/i.test(r['Pessoa']), docBruto = txtAst(r['CPF/CNPJ']), doc = soDig(docBruto); if (doc.length !== (pj ? 14 : 11)) doc = '';
+    var extra = []; if (docBruto && !doc) extra.push('CPF/CNPJ no Astrea: ' + docBruto);
+    Object.keys(r).forEach(function(k){ var v = txtAst(r[k]); if (!BASECT[k] && v) extra.push(k + ': ' + v); });
+    if (txtAst(r['Comentários'])) extra.push(txtAst(r['Comentários']));
+    var id = 'astc_' + (soDig(r['Código']) || hashAst(nome + '|' + doc)), ja = (doc && porDoc[doc]) || (cliente(id) ? id : '');
+    if (doc && !porDoc[doc]) porDoc[doc] = id;
+    P.clientes.push({id:ja || id, novo:!ja, dados:{tipo:pj ? 'PJ' : 'PF', nome:nome, doc:doc, fone:txtAst(r['Telefone']), email:txtAst(r['Email']), endereco:txtAst(r['Endereço']), obs:extra.join('\n'),
+      astreaTipo:/cliente/i.test(tipoA) ? 'Cliente' : 'Contato', astrea:true, criadoPor:EU, criadoEm:quandoAst(r['Data de cadastro']) || agora()}});
+  });
+  var cont = {};
+  (ag || []).forEach(function(r){
+    var tt = norm(r['Tipo']); if (!txtAst(r['Data']) && !txtAst(r['Título']) && !tt) return; P.lidosAg++;
+    var tipo = /prazo/.test(tt) ? 'prazo' : /audi/.test(tt) ? 'audiencia' : /tarefa/.test(tt) ? 'tarefa' : 'compromisso';
+    var dt = dataAst(r['Data']), hora = (/^\d{1,2}:\d{2}/.exec(txtAst(r['Hora'])) || [''])[0];
+    var resp = txtAst(r['Responsável']).replace(/\s+/g, ' ') || '(sem responsável)'; P.resp[resp] = (P.resp[resp] || 0) + 1;
+    var st = norm(r['Status']), cancel = /cancel/.test(st), aberta = !/conclu|cancel|finaliz/.test(st);
+    var tits = txtAst(r['Título do processo/caso/atendimento']), num = soDig(r['Número do processo']);
+    var kch = num.length === 20 ? num : tits ? 't:' + norm(tits) : '';
+    if (kch){ var k = P.casos[kch];
+      if (!k) k = P.casos[kch] = {chave:kch, titulo:tits, numero:num.length === 20 ? num : '', numOutro:num && num.length !== 20 ? txtAst(r['Número do processo']) : '', orgao:'', orgaoData:'', resp:{}, ultima:'', aberta:false};
+      if (!k.titulo && tits) k.titulo = tits;
+      var jz = txtAst(r['Juízo']); if (jz && (!k.orgao || (dt && dt.d >= k.orgaoData))){ k.orgao = jz; k.orgaoData = dt ? dt.d : ''; }
+      k.resp[resp] = (k.resp[resp] || 0) + 1; if (dt && dt.d > k.ultima) k.ultima = dt.d; if (aberta) k.aberta = true; }
+    var etqs = txtAst(r['Etiquetas']).split(',').map(function(e){ return e.trim(); }).filter(Boolean); if (cancel) etqs.push('Cancelada no Astrea');
+    etqs.forEach(function(e){ P.etq[e] = (P.etq[e] || 0) + 1; });
+    var base = 'ast_' + hashAst([r['Data'], r['Hora'], r['Tipo'], resp, r['Título'], tits, num, r['Data de criação'], txtAst(r['Observação da atividade']).slice(0, 300)].join('|'));
+    cont[base] = (cont[base] || 0) + 1; var id = cont[base] > 1 ? base + '_' + cont[base] : base;
+    var pr = norm(r['Prioridade']);
+    P.atividades.push({id:id, novo:!atv(id), kch:kch, resp:resp, etqs:etqs, cancel:cancel, dados:{tipo:tipo, titulo:txtAst(r['Título']) || TIPOS[tipo], data:dt ? dt.d : '', hora:hora,
+      prioridade:/urg/.test(pr) ? 'Urgente' : /alta/.test(pr) ? 'Alta' : /media/.test(pr) ? 'Média' : 'Baixa', descricao:String(r['Observação da atividade'] || ''),
+      concluida:!aberta, concluidaEm:aberta ? null : (quandoAst(r['Data de conclusão']) || (dt ? dt.d + 'T12:00:00-03:00' : agora())), coluna:aberta ? 'A Fazer' : 'Concluído',
+      envolvidos:txtAst(r['Envolvidos']), criadoEm:quandoAst(r['Data de criação']) || agora()}});
+  });
+  // processos/casos: ligam ao cliente quando o nome completo de um contato aparece no título
+  var nomes = P.clientes.map(function(c){ return {n:nomeBusca(c.dados.nome), id:c.id, cli:c.dados.astreaTipo === 'Cliente'}; })
+    .concat(D.clientes.filter(function(c){ return !c.astrea; }).map(function(c){ return {n:nomeBusca(c.nome), id:c.id, cli:true}; }))
+    .filter(function(x){ return x.n.trim().split(' ').length >= 2 && x.n.length >= 12; });
+  var corte = mais(-365);
+  P.listaCasos = Object.keys(P.casos).map(function(ch){ var k = P.casos[ch], tn = nomeBusca(k.titulo);
+    var ach = nomes.filter(function(x){ return tn.indexOf(x.n) >= 0; }).sort(function(a, b){ return (b.cli - a.cli) || (b.n.length - a.n.length); });
+    var ids = []; ach.forEach(function(x){ if (ids.indexOf(x.id) < 0 && ids.length < 4) ids.push(x.id); });
+    k.id = 'astk_' + hashAst(ch); k.novo = !caso(k.id); k.clientes = ids; k.status = k.aberta || k.ultima >= corte ? 'ativo' : 'arquivado'; return k; });
+  return P;
+}
+function resumoAstrea(P){
+  function n(x){ return Number(x).toLocaleString('pt-BR'); }
+  var cN = P.clientes.filter(function(c){ return c.novo; }), aN = P.atividades.filter(function(a){ return a.novo; }), kN = P.listaCasos.filter(function(k){ return k.novo; });
+  var porTipo = {}; aN.forEach(function(a){ porTipo[a.dados.tipo] = (porTipo[a.dados.tipo] || 0) + 1; });
+  var etqNovas = Object.keys(P.etq).filter(function(e){ return !D.etiquetas.some(function(x){ return norm(x.nome) === norm(e); }); });
+  var opts = '<option value="">Escolha…</option><option value="__ex">Sem usuário no portal (mantém o nome)</option>' +
+    Object.keys(NOMES).sort(function(a, b){ return NOMES[a].localeCompare(NOMES[b]); }).map(function(u){ return '<option value="' + u + '">' + esc(NOMES[u]) + '</option>'; }).join('');
+  var resps = Object.keys(P.resp).sort(function(a, b){ return P.resp[b] - P.resp[a]; });
+  return '<div class="aviso" style="margin-top:12px;line-height:1.6;">' +
+    (P.lidosCt ? '<b>Contatos:</b> ' + n(P.lidosCt) + ' lidos (sem os usuários do Astrea) · ' + n(cN.length) + ' novos (' + n(cN.filter(function(c){ return c.dados.astreaTipo === 'Cliente'; }).length) + ' clientes, ' +
+      n(cN.filter(function(c){ return c.dados.astreaTipo !== 'Cliente'; }).length) + ' contatos) · ' + n(P.lidosCt - cN.length) + ' já cadastrados ou repetidos (pulados)<br>' : '') +
+    (P.lidosAg ? '<b>Processos e casos:</b> ' + n(P.listaCasos.length) + ' (' + n(P.listaCasos.filter(function(k){ return k.numero; }).length) + ' com nº CNJ) · ' + n(kN.length) + ' novos · ' +
+      n(P.listaCasos.filter(function(k){ return k.status === 'ativo'; }).length) + ' ativos, ' + n(P.listaCasos.filter(function(k){ return k.status !== 'ativo'; }).length) + ' arquivados (sem nada aberto nem atividade no último ano) · ' +
+      n(P.listaCasos.filter(function(k){ return k.clientes.length; }).length) + ' ligados a um cliente pelo nome<br>' +
+      '<b>Atividades:</b> ' + n(P.lidosAg) + ' lidas · ' + n(aN.length) + ' novas (' + Object.keys(TIPOS).map(function(t){ return n(porTipo[t] || 0) + ' ' + TIPOS[t].toLowerCase(); }).join(', ') + ') · ' +
+      n(aN.filter(function(a){ return !a.dados.concluida; }).length) + ' a concluir, ' + n(aN.filter(function(a){ return a.dados.concluida && !a.cancel; }).length) + ' concluídas, ' + n(aN.filter(function(a){ return a.cancel; }).length) + ' canceladas<br>' +
+      '<b>Etiquetas:</b> ' + n(Object.keys(P.etq).length) + ' (' + n(etqNovas.length) + ' novas)' : '') + '</div>' +
+    (resps.length ? '<p class="aviso" style="margin-top:12px;"><b>Responsáveis:</b> ligue cada nome do Astrea a uma pessoa do portal. Quem já saiu pode ficar como "sem usuário", com o nome guardado.</p>' +
+      '<div class="mini-lista" style="margin-top:6px;">' + resps.map(function(r){ var sug = r === '(sem responsável)' ? EU : casarResp(r);
+        return '<div class="item" style="cursor:default;"><span class="tt" style="flex:1;">' + esc(r) + ' <span class="sutil">(' + n(P.resp[r]) + ')</span></span><select data-resp-ast="' + esc(r) + '">' +
+          opts.replace('value="' + sug + '"', 'value="' + sug + '" selected') + '</select></div>'; }).join('') + '</div>' : '') +
+    '<p class="aviso" style="margin-top:10px;">Vai gravar ' + n(cN.length + kN.length + aN.length) + ' registros. Leva alguns minutos; não feche esta janela até terminar.</p>';
+}
+function gravarEmLotes(docs, aoAvancar){
+  var i = 0;
+  function proximo(){
+    if (i >= docs.length) return Promise.resolve();
+    var lote = db.batch(), n = 0, tam = 0;
+    while (i < docs.length && n < 400 && tam < 3e6){ var d = docs[i++]; lote.set(db.collection(d[0]).doc(d[1]), d[2]); n++; tam += JSON.stringify(d[2]).length; }
+    return lote.commit().then(function(){ aoAvancar(i, docs.length); return proximo(); });
+  }
+  return proximo();
+}
+function importarAstrea(){
+  if (MEU_ROLE !== 'admin') return;
+  var f = modal('<div class="m-topo"><h2>Importar do Astrea</h2><div class="m-icos"><button id="im-x">' + ic('x', 19) + '</button></div></div>' +
+    '<p class="aviso">Escolha as planilhas exportadas do Astrea (Agenda e Contatos). Elas são lidas aqui no seu navegador e só entram na Agenda (teste) depois que você conferir o resumo e confirmar. O que já foi importado antes é pulado.</p>' +
+    '<div class="form" style="margin-top:12px;"><div class="full"><label>Planilha da agenda (atividades)</label><input type="file" id="im-ag" accept=".xlsx,.xls"></div>' +
+    '<div class="full"><label>Planilha de contatos</label><input type="file" id="im-ct" accept=".xlsx,.xls"></div></div>' +
+    '<div id="im-res"></div><div class="aviso" id="im-st" style="margin-top:8px;"></div>' +
+    '<div class="form-acoes"><button class="btn sec" id="im-c">Fechar</button><button class="btn" id="im-ler">Ler planilhas</button><button class="btn" id="im-ok" style="display:none;">Importar</button></div>', 'neutro');
+  var P = null, st = $('#im-st', f), gravando = false;
+  $('#im-x', f).onclick = $('#im-c', f).onclick = function(){ if (gravando && !confirm('A importação ainda está gravando. Fechar mesmo assim? (o que já foi gravado fica; rode de novo depois para completar)')) return; f.remove(); };
+  $('#im-ler', f).onclick = function(){
+    var ag = $('#im-ag', f).files[0], ct = $('#im-ct', f).files[0], bt = this;
+    if (!ag && !ct){ st.textContent = 'Escolha ao menos uma planilha.'; return; }
+    bt.disabled = true; st.textContent = 'Conferindo o que já foi importado antes…';
+    var tudo = historico('tudo', function(){ return db.collection(COLS.atividades); });   // para não regravar o que já existe
+    Promise.resolve(tudo.p).then(function(){ if (tudo.erro) throw tudo.erro; st.textContent = 'Lendo as planilhas… (a da agenda é grande, pode levar alguns segundos)'; return carregarXlsx(); }).then(function(){ return Promise.all([ag ? lerPlanilha(ag) : [], ct ? lerPlanilha(ct) : []]); }).then(function(r){
+      if (ag && !(r[0][0] && 'Responsável' in r[0][0] && 'Título' in r[0][0])) throw new Error('a planilha da agenda não tem as colunas esperadas (Data, Tipo, Responsável, Título…)');
+      if (ct && !(r[1][0] && 'Nome/Empresa' in r[1][0])) throw new Error('a planilha de contatos não tem a coluna "Nome/Empresa"');
+      P = prepararAstrea(r[0], r[1]); $('#im-res', f).innerHTML = resumoAstrea(P); st.textContent = '';
+      bt.style.display = 'none'; $('#im-ok', f).style.display = '';
+    }).catch(function(e){ bt.disabled = false; st.textContent = 'Não foi possível ler: ' + e.message; });
+  };
+  $('#im-ok', f).onclick = function(){
+    var mapa = {}, falta = [];
+    $$('[data-resp-ast]', f).forEach(function(s){ var r = s.getAttribute('data-resp-ast'); if (!s.value) falta.push(r); mapa[r] = s.value === '__ex' ? 'ex:' + r : s.value; });
+    if (falta.length){ st.textContent = 'Falta escolher: ' + falta.join(', ') + '.'; return; }
+    // etiquetas: aproveita as que já existem (mesmo nome) e cria as que faltam
+    var etqId = {}, novas = D.etiquetas.slice(), cor = novas.length;
+    Object.keys(P.etq).forEach(function(nome){ var e = novas.filter(function(x){ return norm(x.nome) === norm(nome); })[0];
+      if (!e){ e = {id:'ea' + hashAst(nome).slice(0, 8), nome:nome, cor:/cancel/i.test(nome) ? '#757575' : PALETA_AST[cor++ % PALETA_AST.length]}; novas.push(e); } etqId[nome] = e.id; });
+    var docs = [];
+    P.clientes.forEach(function(c){ if (c.novo) docs.push([COLS.clientes, c.id, c.dados]); });
+    var casoId = {};
+    P.listaCasos.forEach(function(k){ casoId[k.chave] = k.id; if (!k.novo) return;
+      var rs = Object.keys(k.resp).sort(function(a, b){ return k.resp[b] - k.resp[a]; });
+      docs.push([COLS.casos, k.id, {tipo:k.numero ? 'processo' : 'caso', titulo:k.titulo || ('Processo ' + fmtCnj(k.numero)), clientes:k.clientes, contraria:'', numero:k.numero, tribunal:tribunalCnj(k.numero),
+        orgao:k.orgao, area:'', fase:'', status:k.status, valor:'', responsavel:mapa[rs[0]] || EU, obs:'Importado do Astrea.' + (k.numOutro ? ' Nº no Astrea: ' + k.numOutro : ''),
+        etiquetas:[], astrea:true, criadoPor:EU, criadoEm:agora()}]); });
+    P.atividades.forEach(function(a){ if (!a.novo) return;
+      docs.push([COLS.atividades, a.id, Object.assign({}, a.dados, {casoId:casoId[a.kch] || '', responsavel:mapa[a.resp] || EU, etiquetas:a.etqs.map(function(e){ return etqId[e]; }),
+        paiId:null, checklist:[], comentarios:[], historico:[{uid:EU, em:agora(), txt:'importou do Astrea' + (a.cancel ? ' (cancelada no Astrea)' : '')}], criadoPor:EU, pubId:null, astrea:true})]); });
+    if (!docs.length){ st.textContent = 'Nada novo para importar.'; return; }
+    var bt = this; bt.disabled = true; gravando = true; $$('select', f).forEach(function(s){ s.disabled = true; });
+    st.textContent = 'Gravando etiquetas…'; D.etiquetas = novas;
+    var t0 = Date.now();
+    Promise.resolve(salvar()).then(function(){
+      return gravarEmLotes(docs, function(i, n){ st.textContent = 'Gravando… ' + i.toLocaleString('pt-BR') + ' de ' + n.toLocaleString('pt-BR') + ' (' + Math.round(100 * i / n) + '%)'; });
+    }).then(function(){
+      gravando = false; st.innerHTML = '<b>Pronto:</b> ' + docs.length.toLocaleString('pt-BR') + ' registros gravados em ' + Math.round((Date.now() - t0) / 1000) + ' s.'; toast('Importação do Astrea concluída.'); render();
+    }).catch(function(e){ gravando = false; bt.disabled = false; console.error(e);
+      st.textContent = 'Parou com erro: ' + (e.code === 'permission-denied' ? 'sem permissão (as regras do Firestore estão publicadas?)' : e.message) + '. O que já foi gravado fica; clique em Importar de novo para continuar.'; });
+  };
+}
+$('#t-importar').onclick = importarAstrea;
 document.addEventListener('keydown', function(e){ if (e.key !== 'Escape') return; if (menuAberto) return fecharMenu(); var fs = $$('.fundo-modal'); if (fs.length){ var u = fs[fs.length - 1]; if (u.id === 'fundo-det') fecharDetalhe(); else u.remove(); } });
 window.__agenda = {D:function(){ return D; }, abrirDetalhe:abrirDetalhe, abrirCaso:abrirCaso, irPara:irPara};
 })();
