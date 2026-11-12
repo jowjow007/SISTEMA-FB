@@ -206,7 +206,11 @@
   .capa-pe .dir b{color:#c9a46a;font-weight:600;letter-spacing:.04em;}
   .chk-capa{display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:10px;cursor:pointer;}
   .hist-acoes{display:flex;flex-direction:column;gap:6px;}
-  .hist-conv{white-space:nowrap;}
+  .hist-acoes{position:relative;}
+  .hist-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:var(--panel);border:1px solid var(--line-strong);border-radius:9px;padding:6px;min-width:190px;box-shadow:0 10px 28px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:2px;}
+  .hist-menu .tit{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:4px 8px;}
+  .hist-menu button{background:none;border:none;text-align:left;padding:7px 9px;border-radius:6px;font-size:.78rem;color:var(--paper);cursor:pointer;}
+  .hist-menu button:hover{background:var(--panel-2);}
 
   .blk{margin-bottom:2.6mm;text-align:justify;}
   .blk.clause{display:flex;gap:1.8mm;}
@@ -1990,22 +1994,63 @@ function esperarImagens(el){
   return Promise.all(Array.from(el.querySelectorAll('img')).map(img=>img.complete&&img.naturalWidth ? null : new Promise(r=>{ img.onload=img.onerror=r; })));
 }
 
-/* ---------- reaproveitar: da proposta para o contrato ---------- */
-function propostaParaContrato(orig){
-  const d = JSON.parse(JSON.stringify(orig)), pp = orig.proposta||{};
-  const up = v => String(v||'').toUpperCase();
-  if(orig.tipo==='proposta_condominio'){
-    d.tipo='contrato_condominio';
-  } else if(pp.subtipo==='pf'){
-    d.tipo='contrato_pf';
-    d.contratantes=[Object.assign(novoContratante(), {nome:pp.nome||'', cpf:pp.cpf||'', profissao:pp.profissao||'', cidadeUf:pp.cidadeUf||''})];
-    d.hon=Object.assign({}, d.hon||{}, pp.exito?{exito:up(pp.exito)}:{} , (pp.implantacao && /\d/.test(pp.implantacao))?{valor:pp.implantacao}:{});
-    d.caso=Object.assign({}, d.caso||{}, (pp.escopoItens&&pp.escopoItens.length)?{escopo:pp.escopoItens.slice()}:{});
-  } else {
-    d.tipo='contrato_pj';
-    d.pj=Object.assign({}, d.pj||{}, {razaoSocial:pp.nome||'', cnpj:pp.cnpj||'', cidadeUf:pp.cidadeUf||'',
-      representantes:[Object.assign(novoRepresentante(), {nome:pp.responsavel||''})]});
-    d.mensal=Object.assign({}, d.mensal||{}, pp.valorMensal?{valor:pp.valorMensal}:{}, pp.exito?{exito:up(pp.exito)}:{});
+/* ---------- aplicar dados: leva o cliente de um documento para outro modelo ---------- */
+// Lê do documento de origem: a "entidade" (quem contrata: pessoa, empresa ou condomínio),
+// a pessoa responsável (o próprio cliente PF, o representante da PJ ou o síndico) e os valores.
+function extrairCliente(o){
+  const pp=o.proposta||{}, pc=o.propostaCondominio||{}, h=o.hon||{}, m=o.mensal||{}, ca=o.caso||{};
+  const ENDK=['email','sedeEnd','sedeNum','sedeCompl','bairro','cidadeUf','cep','cel','tel','whatsapp'];
+  const pessoaParaEnt = c => ({email:c.email, sedeEnd:c.logradouro, sedeNum:c.numero, sedeCompl:c.complemento, bairro:c.bairro, cidadeUf:c.cidadeUf, cep:c.cep, cel:c.cel, tel:c.tel, whatsapp:c.whatsapp});
+  const r={tipoCli:'pj', nome:'', fantasia:'', cpf:'', cnpj:'', end:{}, pessoa:null, valorMensal:'', valorInicial:'', exito:'', escopo:[], objeto:''};
+  const so = x => { const e={}; ENDK.forEach(k=>{ if(x && x[k]) e[k]=x[k]; }); return e; };
+  if(o.tipo==='contrato_pf'){
+    const c=(o.contratantes||[])[0]||{};
+    Object.assign(r,{tipoCli:'pf', nome:c.nome||'', cpf:c.cpf||'', end:so(pessoaParaEnt(c)), pessoa:c,
+      valorInicial:h.valor||'', exito:h.exito||'', escopo:ca.escopo||[], objeto:ca.objeto||''});
+  } else if(o.tipo==='contrato_pj'){
+    const pj=o.pj||{};
+    Object.assign(r,{tipoCli:'pj', nome:pj.razaoSocial||'', fantasia:pj.nomeFantasia||'', cnpj:pj.cnpj||'', end:so(pj), pessoa:(pj.representantes||[])[0]||null,
+      valorMensal:m.valor||'', exito:m.exito||''});
+  } else if(o.tipo==='contrato_condominio' || o.tipo==='proposta_condominio'){
+    const cd=o.condominio||{}, sn=o.sindico||{};
+    Object.assign(r,{tipoCli:'cond', nome:cd.razaoSocial||'', fantasia:cd.nomeFantasia||'', cnpj:cd.cnpj||'', end:so(cd), pessoa:sn.nome?sn:null});
+    if(o.tipo==='contrato_condominio') Object.assign(r,{valorMensal:m.valor||'', exito:m.exito||''});
+    else Object.assign(r,{valorInicial:pc.honInicial||'', exito:pc.exito||'', objeto:pc.objeto||''});
+  } else if(o.tipo==='proposta_pf_pj'){
+    const pf=pp.subtipo==='pf';
+    Object.assign(r,{tipoCli:pf?'pf':'pj', nome:pp.nome||'', cpf:pf?(pp.cpf||''):'', cnpj:pf?'':(pp.cnpj||''), end:pp.cidadeUf?{cidadeUf:pp.cidadeUf}:{},
+      pessoa: pf ? {nome:pp.nome||'', cpf:pp.cpf||'', profissao:pp.profissao||'', cidadeUf:pp.cidadeUf||''} : (pp.responsavel?{nome:pp.responsavel}:null),
+      valorMensal:pp.valorMensal||'', valorInicial:pp.implantacao||'', exito:pp.exito||'', escopo:pp.escopoItens||[]});
+  }
+  return r;
+}
+function aplicarDados(orig, alvo){
+  const d=JSON.parse(JSON.stringify(orig)), c=extrairCliente(orig);
+  const temNum = v => /\d/.test(String(v||''));
+  const PESSOAK=['nome','nacionalidade','estadoCivil','profissao','rg','rgOrgao','cpf','email','logradouro','numero','complemento','bairro','cidadeUf','cep','cel','tel','whatsapp'];
+  const pessoa = base => { const x=base; if(c.pessoa) PESSOAK.forEach(k=>{ if(c.pessoa[k]) x[k]=c.pessoa[k]; }); return x; };
+  const entidade = antigo => Object.assign({}, antigo||{}, c.end, {razaoSocial:c.nome, nomeFantasia:c.fantasia||'', cnpj:c.cnpj});
+  d.tipo=alvo;
+  if(alvo==='contrato_pf'){
+    d.contratantes=[pessoa(novoContratante())];
+    if(!d.contratantes[0].nome) d.contratantes[0].nome=c.nome;
+    d.hon=Object.assign({}, d.hon||{}, c.exito?{exito:c.exito.toUpperCase()}:{}, temNum(c.valorInicial)?{valor:c.valorInicial}:{});
+    d.caso=Object.assign({}, d.caso||{}, c.escopo.length?{escopo:c.escopo.slice()}:{}, c.objeto?{objeto:c.objeto}:{});
+  } else if(alvo==='contrato_pj' || alvo==='contrato_condominio'){
+    if(alvo==='contrato_pj') d.pj=Object.assign(entidade(d.pj), {representantes:[pessoa(novoRepresentante())]});
+    else { d.condominio=entidade(d.condominio); d.sindico=pessoa(Object.assign({}, novoContratante(), {nome:''})); }
+    d.mensal=Object.assign({}, d.mensal||{}, temNum(c.valorMensal)?{valor:c.valorMensal}:{}, c.exito?{exito:c.exito.toUpperCase()}:{});
+  } else if(alvo==='proposta_pf_pj'){
+    const pf=c.tipoCli==='pf', ps=c.pessoa||{};
+    d.proposta=Object.assign({}, d.proposta||{}, {subtipo:pf?'pf':'pj', nome:c.nome, cnpj:c.cnpj, cpf:pf?(c.cpf||ps.cpf||''):'',
+      profissao:pf?(ps.profissao||''):'', responsavel:pf?'':(ps.nome||''), cidadeUf:c.end.cidadeUf||ps.cidadeUf||''},
+      temNum(c.valorMensal)?{valorMensal:c.valorMensal}:{}, temNum(c.valorInicial)?{implantacao:c.valorInicial}:{},
+      c.exito?{exito:c.exito}:{}, c.escopo.length?{escopoItens:c.escopo.slice()}:{});
+  } else if(alvo==='proposta_condominio'){
+    d.condominio=entidade(d.condominio);
+    if(c.pessoa && c.tipoCli!=='pf') d.sindico=pessoa(Object.assign({}, novoContratante(), {nome:''}));
+    d.propostaCondominio=Object.assign({}, d.propostaCondominio||{}, temNum(c.valorInicial)?{honInicial:c.valorInicial}:{},
+      c.exito?{exito:c.exito}:{}, c.objeto?{objeto:c.objeto}:{});
   }
   d.datasRaw=Object.assign({}, d.datasRaw||{}, {data:''});
   return d;
@@ -2312,6 +2357,7 @@ function preencherFormulario(d){
   document.getElementById('gerar-status').textContent = 'Documento carregado do histórico — revise e gere o PDF novamente se precisar.';
   window.scrollTo({top:0, behavior:'smooth'});
 }
+document.addEventListener('click',()=>document.querySelectorAll('.hist-menu').forEach(m=>m.remove()));
 function renderHistorico(docs){
   docs = docs.filter(x=>TIPOS_DESTA_ABA.indexOf(x.tipo)>=0).slice(0,25);   // a coleção também guarda o que o Criador de Documentos gera
   const wrap=document.getElementById('historico-list');
@@ -2327,12 +2373,25 @@ function renderHistorico(docs){
         <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${esc(item.nomeDisplay)}</div>
         <div class="hist-meta">${esc(item.valorDisplay||'')}${item.valorDisplay&&item.dataDisplay?' · ':''}${esc(item.dataDisplay||'')}</div>
       </button>
-      <div class="hist-acoes"><button type="button" class="hist-dl">Baixar PDF</button>${String(item.tipo).indexOf('proposta')===0?'<button type="button" class="hist-dl hist-conv" title="Abre o contrato já com os dados do cliente desta proposta">Fazer o contrato</button>':''}</div>
+      <div class="hist-acoes"><button type="button" class="hist-dl">Baixar PDF</button><button type="button" class="hist-dl hist-aplicar" title="Usa os dados do cliente deste documento em outro modelo (proposta, contrato…)">Aplicar dados</button></div>
     `;
     row.querySelector('.hist-main').addEventListener('click',()=>preencherFormulario(item.dados));
-    const conv=row.querySelector('.hist-conv');
-    if(conv) conv.addEventListener('click',()=>{ preencherFormulario(propostaParaContrato(item.dados));
-      document.getElementById('gerar-status').textContent='Contrato montado com os dados da proposta — confira as partes, valores e cláusulas antes de gerar o PDF.'; });
+    const apl=row.querySelector('.hist-aplicar');
+    apl.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const aberto=row.querySelector('.hist-menu');
+      document.querySelectorAll('.hist-menu').forEach(m=>m.remove());
+      if(aberto) return;
+      const menu=document.createElement('div'); menu.className='hist-menu';
+      menu.innerHTML='<div class="tit">Aplicar os dados em</div>' + TIPOS_DESTA_ABA.filter(t=>t!==item.tipo)
+        .map(t=>`<button type="button" data-alvo="${t}">${esc(labelTipo(t))}</button>`).join('');
+      menu.querySelectorAll('[data-alvo]').forEach(b=>b.addEventListener('click',e=>{
+        e.stopPropagation(); menu.remove();
+        preencherFormulario(aplicarDados(item.dados, b.dataset.alvo));
+        document.getElementById('gerar-status').textContent=labelTipo(b.dataset.alvo)+' montado com os dados de "'+(item.nomeDisplay||'')+'" — confira as partes, valores e cláusulas antes de gerar o PDF.';
+      }));
+      apl.parentNode.appendChild(menu);
+    });
     const dlBtn=row.querySelector('.hist-dl');
     dlBtn.addEventListener('click',async()=>{
       dlBtn.disabled=true; dlBtn.textContent='Gerando…';
