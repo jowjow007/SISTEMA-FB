@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="../../assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
@@ -187,6 +187,26 @@
   .doc-footer .l1{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:1mm;font-weight:600;}
   .doc-footer .l2{display:flex;align-items:center;justify-content:center;gap:5px;color:#333;}
   .doc-footer svg{width:9px;height:9px;flex:0 0 auto;}
+
+  /* ---- capa (contratos e propostas) ---- */
+  .doc-page.capa{background:linear-gradient(180deg,#2a0b10 0%,#1c080b 55%,#120506 100%);color:#f3ebe3;}
+  .capa-foto{position:absolute;left:0;top:0;width:210mm;height:160mm;display:block;}
+  .capa-veu{position:absolute;left:0;top:0;width:210mm;height:161mm;background:linear-gradient(180deg,rgba(28,8,11,.35) 0%,rgba(28,8,11,0) 30%,rgba(28,8,11,.45) 70%,#200a0d 100%);}
+  .capa-moldura{position:absolute;left:9mm;top:9mm;right:9mm;bottom:9mm;border:.3mm solid rgba(201,164,106,.45);}
+  .capa-corpo{position:absolute;left:24mm;right:24mm;top:166mm;}
+  .capa-rotulo{font-size:8.2pt;letter-spacing:.3em;color:#c9a46a;text-transform:uppercase;font-weight:500;line-height:1.6;}
+  .capa-fio{height:.45mm;width:42mm;background:linear-gradient(90deg,#c9a46a,rgba(201,164,106,0));margin:6mm 0 9mm;}
+  .capa-pref{font-size:7.6pt;letter-spacing:.28em;color:rgba(243,235,227,.62);text-transform:uppercase;}
+  .capa-nome{font-family:'Cormorant Garamond',Georgia,serif;font-size:30pt;line-height:1.08;font-weight:600;margin-top:3mm;color:#fbf6f0;}
+  .capa-nome.m{font-size:24pt;} .capa-nome.p{font-size:19pt;}
+  .capa-sub{font-size:9.2pt;line-height:1.55;color:rgba(243,235,227,.78);margin-top:5mm;max-height:29mm;overflow:hidden;}
+  .capa-pe{position:absolute;left:24mm;right:24mm;bottom:20mm;display:flex;justify-content:space-between;align-items:flex-end;gap:8mm;border-top:.3mm solid rgba(201,164,106,.4);padding-top:5mm;}
+  .capa-pe img{height:9.5mm;}
+  .capa-pe .dir{text-align:right;font-size:7.4pt;color:rgba(243,235,227,.72);line-height:1.65;}
+  .capa-pe .dir b{color:#c9a46a;font-weight:600;letter-spacing:.04em;}
+  .chk-capa{display:flex;align-items:center;gap:8px;font-size:.86rem;margin-bottom:10px;cursor:pointer;}
+  .hist-acoes{display:flex;flex-direction:column;gap:6px;}
+  .hist-conv{white-space:nowrap;}
 
   .blk{margin-bottom:2.6mm;text-align:justify;}
   .blk.clause{display:flex;gap:1.8mm;}
@@ -667,6 +687,7 @@ document.addEventListener("DOMContentLoaded", function(){
       </div>
 
       <div class="card">
+        <label class="chk-capa"><input type="checkbox" id="f-capa" checked> Incluir capa (foto da fachada, padrão do escritório)</label>
         <button class="btn" id="btn-gerar" type="button" style="width:100%">Gerar e baixar PDF</button>
         <p class="hint" id="gerar-status" style="margin-top:10px;"></p>
       </div>
@@ -1134,6 +1155,7 @@ function coletarDados(){
     dataExtenso: fmtDataExtenso(document.getElementById('f-data').value),
     dataRaw: document.getElementById('f-data').value,
     foroRef: document.getElementById('f-foro-ref').value.trim()||'do(a) Contratante',
+    capa: document.getElementById('f-capa').checked,
     proposta:{
       subtipo: document.getElementById('pp-subtipo').value,
       nome: val('pp-nome'), responsavel: val('pp-responsavel'), cnpj: val('pp-cnpj'),
@@ -1929,6 +1951,66 @@ function docFooterHtml(pageNum,totalPages){
     <div class="l2"><svg viewBox="0 0 24 24" fill="#333"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.5 7.3 11.7.2.2.5.3.7.3s.5-.1.7-.3C13 21.5 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg><span>Rua Senador Salgado Filho, 426, B. Tabajaras | UBERLÂNDIA / MG | CEP 38400-236</span></div>
   </div>`;
 }
+
+/* ---------- capa (contratos e propostas): foto da fachada, padrão do escritório ---------- */
+function capaInfo(d){
+  const prop = String(d.tipo||'').indexOf('proposta')===0;
+  const nome = resumoDocumento(d).nome;
+  let sub='', local='', data='';
+  if(d.tipo==='contrato_pf') sub=(d.caso&&d.caso.objeto)||'';
+  else if(d.tipo==='contrato_pj') sub=(d.pj&&d.pj.nomeFantasia)||'';
+  else if(d.tipo==='contrato_condominio') sub=(d.condominio&&d.condominio.nomeFantasia)||'';
+  else if(d.tipo==='proposta_condominio') sub=(d.propostaCondominio&&d.propostaCondominio.objeto)||'';
+  else if(d.tipo==='proposta_pf_pj') sub=(d.proposta&&d.proposta.responsavel&&d.proposta.subtipo!=='pf') ? 'A/C ' + d.proposta.responsavel : '';
+  if(sub.length>230) sub=sub.slice(0,227).replace(/\s+\S*$/,'')+'…';
+  if(prop){ const p=d.tipo==='proposta_condominio'?d.propostaCondominio:d.proposta; local=(p&&p.localEmissao)||'Uberlândia/MG'; data=(p&&p.dataEmissao)||''; }
+  else { local=(d.cidade||'Uberlândia')+'/MG'; data=d.dataExtenso||''; }
+  if(/_{3,}/.test(data)) data='';
+  const validade = prop ? ((d.tipo==='proposta_condominio'?d.propostaCondominio:d.proposta)||{}).validade : '';
+  return {prop, nome, sub, local, data, validade:(validade && !/_{3,}/.test(validade)) ? validade : ''};
+}
+function makeCapa(d){
+  const c=capaInfo(d), tam = c.nome.length>70 ? ' p' : c.nome.length>38 ? ' m' : '';
+  const page=document.createElement('div');
+  page.className='doc-page capa';
+  page.innerHTML = `<img class="capa-foto" src="../../assets/capa-contratos.jpg" alt="">
+    <div class="capa-veu"></div><div class="capa-moldura"></div>
+    <div class="capa-corpo">
+      <div class="capa-rotulo">${c.prop?'Proposta de prestação de<br>serviços advocatícios':'Contrato de prestação de<br>serviços advocatícios'}</div>
+      <div class="capa-fio"></div>
+      <div class="capa-pref">${c.prop?'Apresentada a':'Contratante'}</div>
+      <div class="capa-nome${tam}">${esc(c.nome)}</div>
+      ${c.sub?`<div class="capa-sub">${esc(c.sub)}</div>`:''}
+    </div>
+    <div class="capa-pe"><img src="../../assets/logo-dark.png" alt="Fonseca e Braga">
+      <div class="dir">${esc(c.local)}${c.data?' · '+esc(c.data):''}${c.validade?'<br><b>Válida até '+esc(c.validade)+'</b>':''}<br>www.fonsecaebraga.com.br</div></div>`;
+  return page;
+}
+function esperarImagens(el){
+  return Promise.all(Array.from(el.querySelectorAll('img')).map(img=>img.complete&&img.naturalWidth ? null : new Promise(r=>{ img.onload=img.onerror=r; })));
+}
+
+/* ---------- reaproveitar: da proposta para o contrato ---------- */
+function propostaParaContrato(orig){
+  const d = JSON.parse(JSON.stringify(orig)), pp = orig.proposta||{};
+  const up = v => String(v||'').toUpperCase();
+  if(orig.tipo==='proposta_condominio'){
+    d.tipo='contrato_condominio';
+  } else if(pp.subtipo==='pf'){
+    d.tipo='contrato_pf';
+    d.contratantes=[Object.assign(novoContratante(), {nome:pp.nome||'', cpf:pp.cpf||'', profissao:pp.profissao||'', cidadeUf:pp.cidadeUf||''})];
+    d.hon=Object.assign({}, d.hon||{}, pp.exito?{exito:up(pp.exito)}:{} , (pp.implantacao && /\d/.test(pp.implantacao))?{valor:pp.implantacao}:{});
+    d.caso=Object.assign({}, d.caso||{}, (pp.escopoItens&&pp.escopoItens.length)?{escopo:pp.escopoItens.slice()}:{});
+  } else {
+    d.tipo='contrato_pj';
+    d.pj=Object.assign({}, d.pj||{}, {razaoSocial:pp.nome||'', cnpj:pp.cnpj||'', cidadeUf:pp.cidadeUf||'',
+      representantes:[Object.assign(novoRepresentante(), {nome:pp.responsavel||''})]});
+    d.mensal=Object.assign({}, d.mensal||{}, pp.valorMensal?{valor:pp.valorMensal}:{}, pp.exito?{exito:up(pp.exito)}:{});
+  }
+  d.datasRaw=Object.assign({}, d.datasRaw||{}, {data:''});
+  return d;
+}
+const TIPOS_DESTA_ABA=['contrato_pf','contrato_pj','contrato_condominio','proposta_pf_pj','proposta_condominio'];
 function makePageShell(){
   const page=document.createElement('div');
   page.className='doc-page';
@@ -2054,7 +2136,8 @@ function render(){
   const blocks = buildDocumento(d);
   const wrap=document.getElementById('doc-pages');
   const pages = paginate(blocks, wrap);
-  status.textContent = pages.length+' página(s)';
+  if(d.capa) wrap.insertBefore(makeCapa(d), wrap.firstChild);
+  status.textContent = pages.length+' página(s)' + (d.capa?' + capa':'');
   status.className='status ok';
 }
 
@@ -2104,6 +2187,9 @@ async function gerarPDFdeDados(d, filename){
   try{
     const pages = paginate(blocks, offscreen);
     numPaginas = pages.length;
+    if(d.capa){ const capa=makeCapa(d); offscreen.insertBefore(capa, offscreen.firstChild); pages.unshift(capa); }
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    await esperarImagens(offscreen);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
     for(let i=0;i<pages.length;i++){
@@ -2202,6 +2288,7 @@ function preencherFormulario(d){
   datasEditadas = {}; // reaberto do histórico: volta a sair com a data de hoje
   document.getElementById('f-data').value = (d.datasRaw&&d.datasRaw.data)||'';
   document.getElementById('f-foro-ref').value = d.foroRef||'do(a) Contratante';
+  document.getElementById('f-capa').checked = d.capa!==false;
 
   const p=d.proposta||{};
   document.getElementById('pp-subtipo').value = p.subtipo||'pj';
@@ -2226,6 +2313,7 @@ function preencherFormulario(d){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function renderHistorico(docs){
+  docs = docs.filter(x=>TIPOS_DESTA_ABA.indexOf(x.tipo)>=0).slice(0,25);   // a coleção também guarda o que o Criador de Documentos gera
   const wrap=document.getElementById('historico-list');
   const msg=document.getElementById('historico-msg');
   if(docs.length===0){ msg.textContent='Nenhum documento gerado ainda.'; wrap.innerHTML=''; return; }
@@ -2239,9 +2327,12 @@ function renderHistorico(docs){
         <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${esc(item.nomeDisplay)}</div>
         <div class="hist-meta">${esc(item.valorDisplay||'')}${item.valorDisplay&&item.dataDisplay?' · ':''}${esc(item.dataDisplay||'')}</div>
       </button>
-      <button type="button" class="hist-dl">Baixar PDF</button>
+      <div class="hist-acoes"><button type="button" class="hist-dl">Baixar PDF</button>${String(item.tipo).indexOf('proposta')===0?'<button type="button" class="hist-dl hist-conv" title="Abre o contrato já com os dados do cliente desta proposta">Fazer o contrato</button>':''}</div>
     `;
     row.querySelector('.hist-main').addEventListener('click',()=>preencherFormulario(item.dados));
+    const conv=row.querySelector('.hist-conv');
+    if(conv) conv.addEventListener('click',()=>{ preencherFormulario(propostaParaContrato(item.dados));
+      document.getElementById('gerar-status').textContent='Contrato montado com os dados da proposta — confira as partes, valores e cláusulas antes de gerar o PDF.'; });
     const dlBtn=row.querySelector('.hist-dl');
     dlBtn.addEventListener('click',async()=>{
       dlBtn.disabled=true; dlBtn.textContent='Gerando…';
@@ -2259,7 +2350,7 @@ function renderHistorico(docs){
 }
 function carregarHistorico(){
   if(!window.__db) return;
-  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(25)
+  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(150)
     .onSnapshot(snap=>{
       renderHistorico(snap.docs.map(doc=>doc.data()));
     }, err=>{
