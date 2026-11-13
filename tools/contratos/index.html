@@ -201,6 +201,9 @@
   .capa-nome.m{font-size:24pt;} .capa-nome.p{font-size:19pt;}
   .capa-nome-pre{font-family:'Cormorant Garamond',Georgia,serif;font-size:15pt;font-weight:500;letter-spacing:.06em;color:rgba(243,235,227,.82);margin-top:3mm;line-height:1.1;}
   .capa-nome-pre + .capa-nome{margin-top:1mm;}
+  .assin-final{margin-top:20mm;} .assin-final .sig-pair{margin-top:22mm;}
+  .assin-final.c1{margin-top:10mm;} .assin-final.c1 .sig-pair{margin-top:14mm;}
+  .assin-final.c2{margin-top:4mm;} .assin-final.c2 .sig-pair{margin-top:10mm;}
   .hon-tbl.areas .hon-row{font-size:7.6pt;line-height:1.25;}
   .hon-tbl.areas .k, .hon-tbl.areas .v{padding:.75mm 2mm;}
   .hon-row + .blk, .hon-row + .sec-bar, .hon-tbl + .blk, .hon-tbl + .sec-bar{margin-top:3mm;}
@@ -1875,9 +1878,9 @@ function buildPropostaPFPJ(d){
   blocks.push(secBar('13. VALIDADE DA PROPOSTA'));
   blocks.push(clause('13.1.', 'A presente Proposta de Prestação de Serviços Advocatícios terá validade até o dia <strong>'+esc(p.validade)+'</strong>.'));
   // data e assinaturas num bloco só (não se separam entre páginas), bem afastados do último item
-  blocks.push(C(`<div class="blk" style="margin-top:20mm;">
+  blocks.push(C(`<div class="blk assin-final">
     <div style="text-align:center;">${esc(p.localEmissao)}, <strong>${esc(p.dataEmissao)}</strong>.</div>
-    <div class="sig-pair" style="margin-top:22mm;">
+    <div class="sig-pair">
       <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Jonathan Fonseca</div><div class="doc">OAB/MG nº 163.443</div></div>
       <div class="sig-line" style="margin:0;"><div class="rule"></div><div class="name">Hecy Braga</div><div class="doc">OAB/MG nº 95.948</div></div>
     </div></div>`));
@@ -2100,12 +2103,17 @@ function paginate(blocks, wrap){
     const node = wrapper.firstElementChild || document.createTextNode(html);
     protegerNumeros(node);
     content.appendChild(node);
+    // data e assinaturas: antes de pular de página, tenta caber na mesma página com menos espaço
+    if(node.classList && node.classList.contains('assin-final')){
+      ['c1','c2'].forEach(c=>{ if(estourou(content, node)){ node.classList.remove('c1'); node.classList.add(c); } });
+      if(estourou(content, node)) node.classList.remove('c1','c2');
+    }
     if(estourou(content, node)){
       content.removeChild(node);
       // título de seção ou frase que apresenta a tabela não fica sozinho no pé da página
       const levar=[];
       let ant=content.lastElementChild;
-      while(ant && levar.length<2 && content.children.length>levar.length+1 && (ant.classList.contains('sec-bar') || (ant.classList.contains('clause') && /:\s*$/.test(ant.textContent)) || (node.classList&&(node.classList.contains('hon-row')||node.classList.contains('hon-tbl'))&&!ant.classList.contains('hon-row')&&!ant.classList.contains('hon-tbl')&&levar.length===0))){
+      while(ant && levar.length<2 && content.children.length>levar.length+1 && (ant.classList.contains('sec-bar') || (ant.classList.contains('clause') && /:\s*$/.test(ant.textContent)) || (node.classList&&node.classList.contains('assin-final')&&levar.length===0) || (node.classList&&(node.classList.contains('hon-row')||node.classList.contains('hon-tbl'))&&!ant.classList.contains('hon-row')&&!ant.classList.contains('hon-tbl')&&levar.length===0))){
         levar.unshift(ant); ant=ant.previousElementSibling;
       }
       levar.forEach(x=>content.removeChild(x));
