@@ -201,7 +201,7 @@
   .capa-nome.m{font-size:24pt;} .capa-nome.p{font-size:19pt;}
   .capa-nome-pre{font-family:'Cormorant Garamond',Georgia,serif;font-size:15pt;font-weight:500;letter-spacing:.06em;color:rgba(243,235,227,.82);margin-top:3mm;line-height:1.1;}
   .capa-nome-pre + .capa-nome{margin-top:1mm;}
-  .hon-row + .blk, .hon-row + .sec-bar{margin-top:3mm;}
+  .hon-row + .blk, .hon-row + .sec-bar, .hon-tbl + .blk, .hon-tbl + .sec-bar{margin-top:3mm;}
   .capa-sub{font-size:9.2pt;line-height:1.55;color:rgba(243,235,227,.78);margin-top:5mm;max-height:29mm;overflow:hidden;}
   .capa-pe{position:absolute;left:24mm;right:24mm;bottom:20mm;display:flex;justify-content:space-between;align-items:flex-end;gap:8mm;border-top:.3mm solid rgba(201,164,106,.4);padding-top:5mm;}
   .capa-pe img{height:9.5mm;}
@@ -1263,10 +1263,11 @@ function areaTableBlocks(d){
       html += `<div class="k" style="flex:0 0 46mm;border-left:1pt solid #1a1a1a;">${esc(l2)}</div><div class="v" style="flex:1;">${d.areas[k2]?'SIM':'NÃO'}</div>`;
     }
     html += `</div>`;
-    blocks.push(C(html));
+    blocks.push(html);
   }
-  return blocks;
+  return [tabela(blocks)];   // a tabela inteira é um bloco só: não se divide entre páginas
 }
+function tabela(linhas){ return C(`<div class="hon-tbl">${linhas.join('')}</div>`); }
 function C(html){ return {type:'raw', html}; }
 function clause(num,text){ return {type:'clause', num, text}; }
 function sub(letter,text){ return {type:'sub', letter, text}; }
@@ -1466,7 +1467,7 @@ function buildContratoPJ(d){
     ['2.1.17.  HONORÁRIOS (COBRANÇA JUDICIAL)', m.cobrancaJudicial],
     ['2.1.18.  HONORÁRIOS DE ÊXITO', m.exito]
   ];
-  rows18.forEach((r,idx)=>blocks.push(C(honRow(r[0],r[1],idx===0))));
+  blocks.push(tabela(rows18.map((r,idx)=>honRow(r[0],r[1],idx===0))));
   if(m.valorPos){
     blocks.push(clause('2.2.', 'Encerrado o período inicial previsto neste Contrato, os honorários advocatícios mensais passarão a ser de R$ '+esc(m.valorPos)+', a partir do '+esc(m.mesPos)+' mês de vigência, permanecendo inalteradas as demais disposições contratuais aplicáveis à cobrança, ao vencimento, ao reajuste e aos encargos moratórios.'));
   }
@@ -1649,7 +1650,7 @@ function buildContratoCondominio(d){
     ['HONORÁRIOS (COBRANÇA EXTRAJUDICIAL)', m.cobranca],
     ['HONORÁRIOS DE ÊXITO', m.exito]
   ];
-  rows.forEach((r,idx)=>blocks.push(C(honRow('2.1.'+(idx+1)+'.  '+r[0],r[1],idx===0))));
+  blocks.push(tabela(rows.map((r,idx)=>honRow('2.1.'+(idx+1)+'.  '+r[0],r[1],idx===0))));
   blocks.push(clause('2.2.', 'Os serviços poderão ser realizados tanto pela <strong>CONTRATADA</strong> como por qualquer / quaisquer outro(a)(s) advogado(a)(s), associado(a)(s), colaborador(a)(es) e/ou parceiro(a)(s) da Fonseca e Braga Sociedade de Advogados, desde que habilitado(a)(s) para a execução.'));
   blocks.push(clause('2.3.', 'Todas as atividades administrativas, cartorárias e/ou paralegais serão desenvolvidas com exclusividade pela <strong>CONTRATADA</strong> e conforme facultado no item 2.2. deste Contrato.'));
 
@@ -1811,7 +1812,7 @@ function buildPropostaPFPJ(d){
   ] : [
     ['Nome', p.nome], ['CPF', p.cpf], ['Profissão', p.profissao], ['Cidade/UF', p.cidadeUf], ['Escopo-base', p.escopoBase]
   ];
-  idRows.forEach((r,idx)=>blocks.push(C(honRow(r[0].toUpperCase(), r[1], idx===0))));
+  blocks.push(tabela(idRows.map((r,idx)=>honRow(r[0].toUpperCase(), r[1], idx===0))));
 
   blocks.push(secBar('1. APRESENTAÇÃO'));
   blocks.push(clause('1.1.', 'Agradecemos a confiança depositada e a oportunidade de apresentar esta Proposta de Prestação de Serviços Advocatícios, elaborada pela Fonseca e Braga Sociedade de Advogados.'));
@@ -2102,7 +2103,7 @@ function paginate(blocks, wrap){
       // título de seção ou frase que apresenta a tabela não fica sozinho no pé da página
       const levar=[];
       let ant=content.lastElementChild;
-      while(ant && levar.length<2 && content.children.length>levar.length+1 && (ant.classList.contains('sec-bar') || (ant.classList.contains('clause') && /:\s*$/.test(ant.textContent)) || (node.classList&&node.classList.contains('hon-row')&&!ant.classList.contains('hon-row')&&levar.length===0))){
+      while(ant && levar.length<2 && content.children.length>levar.length+1 && (ant.classList.contains('sec-bar') || (ant.classList.contains('clause') && /:\s*$/.test(ant.textContent)) || (node.classList&&(node.classList.contains('hon-row')||node.classList.contains('hon-tbl'))&&!ant.classList.contains('hon-row')&&!ant.classList.contains('hon-tbl')&&levar.length===0))){
         levar.unshift(ant); ant=ant.previousElementSibling;
       }
       levar.forEach(x=>content.removeChild(x));
@@ -2276,9 +2277,9 @@ async function gerarPDFdeDados(d, filename){
     const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
     for(let i=0;i<pages.length;i++){
       const ehCapa = pages[i].classList.contains('capa');
-      const canvas = await html2canvas(pages[i], {scale:3, useCORS:true, backgroundColor:'#ffffff'});
+      const canvas = await html2canvas(pages[i], {scale:4, useCORS:true, backgroundColor:'#ffffff'});
       if(i>0) pdf.addPage('a4','portrait');
-      if(ehCapa) pdf.addImage(canvas.toDataURL('image/jpeg',0.93),'JPEG',0,0,210,297,undefined,'FAST');
+      if(ehCapa) pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
       else pdf.addImage(canvas,'PNG',0,0,210,297,undefined,'FAST');
     }
     pdf.save(filename);
