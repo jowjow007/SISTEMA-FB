@@ -293,7 +293,7 @@
 </nav>
 <div class="pag" id="pag"></div>
 
-<div class="barra-teste"><b>AGENDA EM TESTE</b> · dados reais, visíveis só para a equipe do teste · <span class="perm" id="t-perm"></span><button id="t-equipe" style="display:none;">Equipe do teste</button><button id="t-aba" style="display:none;">Registrar aba no menu</button><button id="t-importar" style="display:none;">Importar do Astrea</button></div>
+<div class="barra-teste"><b>AGENDA EM TESTE</b> · dados reais, visíveis só para a equipe do teste · <span class="perm" id="t-perm"></span><button id="t-equipe" style="display:none;">Equipe do teste</button><button id="t-aba" style="display:none;">Registrar aba no menu</button><button id="t-importar" style="display:none;">Importar do Astrea</button><button id="t-ligar" style="display:none;">Tarefas nos prazos</button></div>
 
 <script>
 (function(){
@@ -1369,7 +1369,7 @@ var SUB_INICIAL = SUB;
 $('#pag').innerHTML = '<div class="vazio">Carregando a Agenda…</div>';
 function iniciarTela(){
   montarUsuarios(); render();
-  if (MEU_ROLE === 'admin'){ $('#t-equipe').style.display = ''; $('#t-aba').style.display = ''; $('#t-importar').style.display = ''; }
+  if (MEU_ROLE === 'admin'){ $('#t-equipe').style.display = ''; $('#t-aba').style.display = ''; $('#t-importar').style.display = ''; $('#t-ligar').style.display = ''; }
 }
 auth.onAuthStateChanged(function(user){
   if (!user){ $('#pag').innerHTML = '<div class="vazio">Entre no Portal para usar a Agenda.</div>'; return; }
@@ -1558,9 +1558,11 @@ function importarAstrea(){
       docs.push([COLS.casos, k.id, {tipo:k.numero ? 'processo' : 'caso', titulo:k.titulo || ('Processo ' + fmtCnj(k.numero)), clientes:k.clientes, contraria:'', numero:k.numero, tribunal:tribunalCnj(k.numero),
         orgao:k.orgao, area:'', fase:'', status:k.status, valor:'', responsavel:mapa[rs[0]] || EU, obs:'Importado do Astrea.' + (k.numOutro ? ' Nº no Astrea: ' + k.numOutro : ''),
         etiquetas:[], astrea:true, criadoPor:EU, criadoEm:agora()}]); });
+    var paiDe = vincularPorCriacao(P.atividades.map(function(a){ return {id:a.id, tipo:a.dados.tipo, caso:a.kch, criado:msCriacao(a.dados.criadoEm), data:a.dados.data}; }));
     P.atividades.forEach(function(a){ if (!a.novo) return;
+      var pai = paiDe[a.id] || null;
       docs.push([COLS.atividades, a.id, Object.assign({}, a.dados, {casoId:casoId[a.kch] || '', responsavel:mapa[a.resp] || EU, etiquetas:a.etqs.map(function(e){ return etqId[e]; }),
-        paiId:null, checklist:[], comentarios:[], historico:[{uid:EU, em:agora(), txt:'importou do Astrea' + (a.cancel ? ' (cancelada no Astrea)' : '')}], criadoPor:EU, pubId:null, astrea:true})]); });
+        paiId:pai, paiAstrea:!!pai, checklist:[], comentarios:[], historico:[{uid:EU, em:agora(), txt:'importou do Astrea' + (a.cancel ? ' (cancelada no Astrea)' : '')}], criadoPor:EU, pubId:null, astrea:true})]); });
     if (!docs.length){ st.textContent = 'Nada novo para importar.'; return; }
     var bt = this; bt.disabled = true; gravando = true; $$('select', f).forEach(function(s){ s.disabled = true; });
     st.textContent = 'Gravando etiquetas…'; D.etiquetas = novas;
@@ -1574,6 +1576,67 @@ function importarAstrea(){
   };
 }
 $('#t-importar').onclick = importarAstrea;
+
+/* ---------- tarefas que, no Astrea, ficavam DENTRO de um prazo ----------
+   A planilha do Astrea não diz a que prazo cada tarefa pertence. Mas o Astrea cria o prazo e as tarefas dele juntos:
+   mesmo processo/caso e criação com poucos minutos de diferença (ex.: prazo 11:35, tarefa 11:37).
+   Regra: tarefa do mesmo processo/caso de um prazo (ou audiência) criada até JANELA_MIN minutos antes/depois dele;
+   havendo mais de um, fica o de criação mais próxima. */
+var JANELA_MIN = 10;
+function vincularPorCriacao(itens){   // itens: {id, tipo, caso, criado (ms), data}
+  var pais = {}, r = {}, amb = 0;
+  itens.forEach(function(x){ if ((x.tipo === 'prazo' || x.tipo === 'audiencia') && x.caso && x.criado) (pais[x.caso] = pais[x.caso] || []).push(x); });
+  itens.forEach(function(t){
+    if (t.tipo !== 'tarefa' || !t.caso || !t.criado) return;
+    var cs = (pais[t.caso] || []).filter(function(p){ return Math.abs(p.criado - t.criado) <= JANELA_MIN * 60000; });
+    if (!cs.length) return; if (cs.length > 1) amb++;
+    cs.sort(function(a, b){ return (Math.abs(a.criado - t.criado) - Math.abs(b.criado - t.criado)) || ((a.data >= t.data ? 0 : 1) - (b.data >= t.data ? 0 : 1)) || String(a.data).localeCompare(String(b.data)); });
+    r[t.id] = cs[0].id;
+  });
+  r.__amb = amb; return r;
+}
+function msCriacao(s){ var t = Date.parse(s || ''); return isNaN(t) ? 0 : t; }
+function ligarTarefasAstrea(){
+  if (MEU_ROLE !== 'admin') return;
+  var f = modal('<div class="m-topo"><h2>Tarefas dentro dos prazos (Astrea)</h2><div class="m-icos"><button id="lg-x">' + ic('x', 19) + '</button></div></div>' +
+    '<p class="aviso" style="line-height:1.6;">A planilha do Astrea não informa a que prazo cada tarefa pertencia, e por isso elas entraram soltas na agenda. ' +
+    'Aqui elas voltam para dentro do prazo pela mesma regra do Astrea: <b>mesmo processo/caso</b> e <b>criadas junto com o prazo</b> (até ' + JANELA_MIN + ' minutos de diferença). Vale também para audiências. ' +
+    'Nada é apagado, e dá para desfazer depois.</p><div id="lg-res"></div><div class="aviso" id="lg-st" style="margin-top:8px;"></div>' +
+    '<div class="form-acoes"><button class="btn sec" id="lg-desf" style="display:none;margin-right:auto;">Desfazer vínculos automáticos</button><button class="btn sec" id="lg-c">Fechar</button><button class="btn" id="lg-ok" disabled>Analisando…</button></div>', 'neutro');
+  var st = $('#lg-st', f), ok = $('#lg-ok', f), mapa = null;
+  $('#lg-x', f).onclick = $('#lg-c', f).onclick = function(){ f.remove(); };
+  st.textContent = 'Carregando todas as atividades (pode levar alguns segundos)…';
+  var tudo = historico('tudo', function(){ return db.collection(COLS.atividades); });
+  Promise.resolve(tudo.p).then(function(){
+    if (tudo.erro) throw tudo.erro;
+    var ast = D.atividades.filter(function(a){ return a.astrea && !a.paiId; });
+    mapa = vincularPorCriacao(ast.map(function(a){ return {id:a.id, tipo:a.tipo, caso:a.casoId, criado:msCriacao(a.criadoEm), data:a.data || ''}; }));
+    var ids = Object.keys(mapa).filter(function(k){ return k !== '__amb'; });
+    var abertas = ids.filter(function(id){ return !atv(id).concluida; }).length;
+    var nPais = {}; ids.forEach(function(id){ nPais[mapa[id]] = 1; });
+    var ja = D.atividades.filter(function(a){ return a.paiAstrea; }).length;
+    $('#lg-desf', f).style.display = ja ? '' : 'none'; $('#lg-desf', f).textContent = 'Desfazer vínculos automáticos (' + ja.toLocaleString('pt-BR') + ')';
+    if (!ids.length){ st.textContent = ja ? 'Nada novo: as tarefas já estão nos prazos.' : 'Nenhuma tarefa solta foi encontrada junto de um prazo.'; ok.textContent = 'Ligar'; return; }
+    var amostra = ids.filter(function(id){ return !atv(id).concluida; }).slice(0, 12);
+    $('#lg-res', f).innerHTML = '<div class="aviso" style="line-height:1.6;"><b>' + ids.length.toLocaleString('pt-BR') + ' tarefas</b> vão para dentro de <b>' + Object.keys(nPais).length.toLocaleString('pt-BR') + ' prazos/audiências</b> · ' +
+      abertas.toLocaleString('pt-BR') + ' a concluir, ' + (ids.length - abertas).toLocaleString('pt-BR') + ' concluídas' + (mapa.__amb ? ' · ' + mapa.__amb + ' com mais de um prazo próximo (ficou o mais próximo)' : '') + '</div>' +
+      '<p class="aviso" style="margin-top:10px;">Confira alguns exemplos com o Astrea antes de confirmar:</p><div class="mini-lista" style="margin-top:6px;">' + amostra.map(function(id){ var t = atv(id), pz = atv(mapa[id]);
+        return '<div class="item" style="cursor:default;display:block;"><b>' + esc(TIPOS[pz.tipo]) + ':</b> ' + esc(pz.titulo) + ' <span class="sutil">(' + dataBR(pz.data) + ')</span><br><span class="sutil">↳ tarefa:</span> ' + esc(t.titulo) + ' <span class="sutil">(' + dataBR(t.data) + ' · ' + esc(usuario(t.responsavel).nome) + ')</span></div>'; }).join('') + '</div>';
+    st.textContent = ''; ok.disabled = false; ok.textContent = 'Ligar ' + ids.length.toLocaleString('pt-BR') + ' tarefas aos prazos';
+    ok.onclick = function(){
+      ok.disabled = true; st.textContent = 'Gravando…';
+      ids.forEach(function(id){ var t = atv(id), pz = atv(mapa[id]); t.paiId = pz.id; t.paiAstrea = true; registrar(t, 'entrou no ' + TIPOS[pz.tipo].toLowerCase() + ' "' + pz.titulo + '" (vínculo do Astrea pela criação)'); });
+      Promise.resolve(salvar()).then(function(){ st.innerHTML = '<b>Pronto:</b> ' + ids.length.toLocaleString('pt-BR') + ' tarefas ligadas aos prazos.'; ok.textContent = 'Feito'; render(); toast('Tarefas ligadas aos prazos.'); })
+        .catch(function(e){ st.textContent = 'Erro ao gravar: ' + e.message; ok.disabled = false; });
+    };
+  }).catch(function(e){ st.textContent = 'Não foi possível carregar: ' + e.message; });
+  $('#lg-desf', f).onclick = function(){
+    var ls = D.atividades.filter(function(a){ return a.paiAstrea; }); if (!ls.length || !confirm('Soltar de novo as ' + ls.length + ' tarefas ligadas automaticamente?')) return;
+    ls.forEach(function(t){ t.paiId = null; delete t.paiAstrea; registrar(t, 'saiu do prazo (vínculo automático desfeito)'); });
+    Promise.resolve(salvar()).then(function(){ st.textContent = 'Vínculos automáticos desfeitos.'; $('#lg-desf', f).style.display = 'none'; render(); });
+  };
+}
+$('#t-ligar').onclick = ligarTarefasAstrea;
 document.addEventListener('keydown', function(e){ if (e.key !== 'Escape') return; if (menuAberto) return fecharMenu(); var fs = $$('.fundo-modal'); if (fs.length){ var u = fs[fs.length - 1]; if (u.id === 'fundo-det') fecharDetalhe(); else u.remove(); } });
 window.__agenda = {D:function(){ return D; }, abrirDetalhe:abrirDetalhe, abrirCaso:abrirCaso, irPara:irPara};
 })();
