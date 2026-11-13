@@ -11,27 +11,31 @@
 <script src="../../firebase-config.js"></script>
 <script>
 (function(){
-  try { if (localStorage.getItem('fb-portal-theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
-  window.addEventListener('storage', function(e){ if (e.key === 'fb-portal-theme'){ if (e.newValue === 'light') document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme'); } });
+  // a Agenda tem o próprio claro/escuro (botão no topo); começa no claro, como o Astrea
+  var t = 'claro'; try { t = localStorage.getItem('fb-agenda-tema') || 'claro'; } catch (e) {}
+  if (t === 'claro') document.documentElement.setAttribute('data-theme', 'light');
 })();
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#161010; --panel:#211918; --panel-2:#2a1f1e; --panel-3:#332524; --paper:#ece6e1; --muted:#9c908b;
-    --red:#b8362e; --red-bright:#e0574c; --red-deep:#5c1a16; --azul:#5aa9f0; --roxo:#b48be8; --laranja:#f0a24a; --ok:#4caf7d;
-    --line:rgba(236,230,225,.10); --line-strong:rgba(236,230,225,.20);
-    --hoje:rgba(76,175,125,.13); --atras:rgba(201,70,60,.15);
-    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
-    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --ink:#0d0909; --panel:#141010; --panel-2:#1e1716; --panel-3:#2a201f; --paper:#faf6f3; --muted:#b4a9a4;
+    --red:#c0392b; --red-bright:#ff5a4d; --red-deep:#5c1a16; --azul:#4da3ff; --roxo:#b48be8; --laranja:#ffa040; --amarelo:#ffd23f; --ok:#4cd08a;
+    --line:rgba(255,255,255,.07); --line-strong:rgba(255,255,255,.15); --hover:rgba(255,255,255,.05);
+    --hoje:transparent; --atras:transparent;
+    --font-display:"Lato","Segoe UI",system-ui,sans-serif;
+    --font-body:"Lato","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   }
+  /* claro, nítido como o Astrea: branco puro, texto quase preto, cinzas neutros (sem bege) */
   :root[data-theme="light"]{
-    --ink:#f3efe9; --panel:#fff; --panel-2:#f1ece6; --panel-3:#e6dfd7; --paper:#241c1b; --muted:#7d716b;
-    --red-bright:#c62f25; --azul:#1e78c8; --roxo:#7b3fbf; --laranja:#c96f00; --ok:#2e8b57;
-    --line:rgba(36,28,27,.10); --line-strong:rgba(36,28,27,.16); --hoje:#e6f6ee; --atras:#fdeeee;
+    --ink:#ffffff; --panel:#ffffff; --panel-2:#f5f5f5; --panel-3:#ebebeb; --paper:#1f1f1f; --muted:#6f6f6f;
+    --red:#b8362e; --red-bright:#d50000; --azul:#1565c0; --roxo:#7b3fbf; --laranja:#e65100; --amarelo:#e0a800; --ok:#2e7d32;
+    --line:#ececec; --line-strong:#dddddd; --hover:#f4f4f4; --hoje:transparent; --atras:transparent;
   }
   *{box-sizing:border-box;}
   *{scrollbar-width:thin;scrollbar-color:var(--red-deep) var(--panel-2);}
-  html,body{margin:0;background:var(--panel);color:var(--paper);font-family:var(--font-body);font-size:14px;}
+  html,body{margin:0;background:var(--panel);color:var(--paper);font-family:var(--font-body);font-size:14px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
   button{font-family:inherit;cursor:pointer;color:inherit;}
   input,select,textarea{font-family:inherit;color:var(--paper);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 9px;font-size:.88rem;}
   input[type=date]{color-scheme:dark;} :root[data-theme="light"] input[type=date]{color-scheme:light;}
@@ -44,7 +48,7 @@
   .subnav button:not(.active) .qtd{background:var(--red);color:#fff;}
   .pag{max-width:min(1920px,100%);margin:0 auto;padding:18px clamp(16px,2vw,32px) 90px;}
   .topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;}
-  .topo h1{font-family:var(--font-display);font-weight:600;font-size:1.45rem;margin:0;}
+  .topo h1{font-family:var(--font-display);font-weight:400;font-size:1.6rem;margin:0;letter-spacing:-.01em;}
   .topo .subt{font-size:.8rem;color:var(--muted);margin:3px 0 0;}
   .topo .acoes{display:flex;gap:8px;}
   .ico-btn{width:40px;height:38px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);display:inline-flex;align-items:center;justify-content:center;}
@@ -71,18 +75,24 @@
   .btn.mini{padding:5px 10px;font-size:.76rem;}
   .btn:disabled{opacity:.45;cursor:default;}
   input[type=checkbox].ck{width:15px;height:15px;accent-color:var(--red);margin:0;padding:0;}
-  .linha{display:grid;grid-template-columns:15px 105px 22px minmax(0,1fr) 62px 34px;gap:0 14px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer;}
-  .linha:hover{background:var(--panel-2);}
-  .linha.hoje{background:var(--hoje);} .linha.atrasada{background:var(--atras);}
+  .linha{display:grid;grid-template-columns:15px 105px 22px minmax(0,1fr) 62px 34px 92px;gap:0 14px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer;position:relative;--tp:var(--red-bright);}
+  .linha.tp-tarefa{--tp:var(--azul);} .linha.tp-audiencia{--tp:var(--amarelo);} .linha.tp-compromisso{--tp:var(--laranja);}
+  .linha:hover{background:var(--hover);}
+  .linha:hover::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tp);}
+  .linha.atrasada .dt{color:var(--red-bright);}
+  .acts{display:flex;gap:2px;justify-content:flex-end;opacity:0;transition:opacity .12s;}
+  .linha:hover .acts,.acts:focus-within{opacity:1;}
+  .acts button{background:none;border:none;color:var(--muted);width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;padding:0;}
+  .acts button:hover{background:var(--panel-3);color:var(--paper);}
   .linha.feita .tit{text-decoration:line-through;color:var(--muted);}
   .dt{line-height:1.35;font-size:.92rem;}
   .dt .hora{display:block;font-size:.76rem;color:var(--muted);}
   .chk{background:none;border:none;padding:0;color:var(--muted);display:inline-flex;}
   .chk:hover,.chk.on{color:var(--ok);}
-  .tipo{font-size:.7rem;font-weight:800;letter-spacing:.03em;color:var(--red-bright);}
-  .tipo.tarefa{color:var(--azul);} .tipo.audiencia{color:var(--roxo);} .tipo.compromisso{color:var(--laranja);}
-  .tit{font-size:.95rem;font-weight:600;text-transform:uppercase;line-height:1.3;}
-  .caso{font-size:.78rem;color:var(--muted);text-transform:uppercase;line-height:1.35;margin-top:2px;}
+  .tipo{font-size:.68rem;font-weight:900;letter-spacing:.04em;color:var(--red-bright);}
+  .tipo.tarefa{color:var(--azul);} .tipo.audiencia{color:var(--amarelo);} .tipo.compromisso{color:var(--laranja);}
+  .tit{font-size:.93rem;font-weight:700;text-transform:uppercase;line-height:1.3;}
+  .caso{font-size:.76rem;color:var(--muted);text-transform:uppercase;line-height:1.4;margin-top:2px;}
   .pai{font-size:.75rem;color:var(--azul);margin-top:3px;}
   .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;}
   .tag{display:inline-flex;align-items:center;gap:5px;color:#fff;font-size:.64rem;font-weight:800;padding:3px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;}
@@ -103,16 +113,35 @@
   .sd-item{padding:8px 0;border-bottom:1px solid var(--line);color:var(--paper);cursor:pointer;}
   .sd-item small{display:block;color:var(--muted);}
   /* menus */
-  .menu{position:fixed;z-index:80;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);min-width:210px;padding:6px 0;max-height:60vh;overflow:auto;}
+  .menu{position:fixed;z-index:80;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:210px;padding:6px 0;max-height:60vh;overflow:auto;}
   .menu button,.menu label{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;padding:9px 16px;font-size:.86rem;}
   .menu button:hover,.menu label:hover{background:var(--panel-2);}
   .menu .sel{color:var(--red-bright);font-weight:700;}
   .menu hr{border:none;border-top:1px solid var(--line-strong);margin:5px 0;}
   .menu .datas{padding:8px 16px;display:flex;flex-direction:column;gap:6px;}
+  .menu.et{width:300px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:70vh;}
+  .et-tit{font-size:.7rem;font-weight:900;letter-spacing:.06em;padding:14px 16px 8px;}
+  .et-busca{padding:0 16px 8px;position:relative;} .et-busca input{width:100%;padding-right:30px;}
+  .et-busca svg{position:absolute;right:26px;top:9px;color:var(--muted);}
+  .et-lista{overflow:auto;flex:1;padding:2px 0;}
+  .menu.et label{padding:7px 16px;font-size:.84rem;gap:10px;}
+  .sq{width:14px;height:14px;border-radius:2px;display:inline-block;flex:0 0 auto;}
+  .sq.sem{background:linear-gradient(135deg,transparent 45%,#e53935 45%,#e53935 55%,transparent 55%);border:1px solid var(--line-strong);}
+  .et-ger{display:block;width:100%;border:none;border-top:1px solid var(--line-strong);background:none;color:var(--azul);font-weight:900;font-size:.72rem;letter-spacing:.06em;padding:12px;}
+  .et-ger:hover{background:var(--hover);}
+  .et-criar{color:var(--azul);font-weight:700;}
+  .lnk{background:none;border:none;color:var(--azul);font-size:.95rem;padding:8px 10px;}
+  .et-tab{display:grid;grid-template-columns:minmax(0,1fr) 200px 48px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--line);gap:12px;}
+  .et-tab.cab{font-size:.74rem;font-weight:900;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--line-strong);}
+  .et-tab .nm{display:flex;align-items:center;gap:12px;}
+  .et-tab:not(.cab):hover{background:var(--hover);}
+  .pal{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:6px;}
+  .pal button{height:26px;border-radius:4px;border:2px solid transparent;padding:0;}
+  .pal button.on{border-color:var(--paper);box-shadow:0 0 0 2px var(--panel) inset;}
   /* modal */
   .fundo-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:44px 16px;overflow:auto;}
   .modal{background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;width:min(700px,100%);border-left:4px solid var(--red);padding:24px 26px 28px;position:relative;}
-  .modal.tarefa{border-left-color:var(--azul);} .modal.audiencia{border-left-color:var(--roxo);} .modal.compromisso{border-left-color:var(--laranja);}
+  .modal.tarefa{border-left-color:var(--azul);} .modal.audiencia{border-left-color:var(--amarelo);} .modal.compromisso{border-left-color:var(--laranja);}
   .modal.neutro{border-left-color:var(--line-strong);}
   .modal.largo{width:min(860px,100%);}
   .m-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -129,6 +158,7 @@
   .lk{color:var(--azul);text-transform:uppercase;cursor:pointer;text-decoration:none;}
   .lk:hover{text-decoration:underline;}
   .sutil{color:var(--muted);}
+  .rot{display:block;font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.02em;}
   .dropv{background:none;border:none;padding:0;font-size:inherit;display:inline-flex;align-items:center;gap:5px;}
   .dropv:disabled .car{display:none;} .dropv:disabled{cursor:default;}
   .vermelho{color:var(--red-bright);}
@@ -228,7 +258,7 @@
   .cal-d.hoje .cal-n{background:var(--red);color:#fff;}
   .cal-it{font-size:.72rem;padding:3px 6px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:var(--panel-2);border-left:3px solid var(--red);}
   .cal-it:hover{background:var(--panel-3);}
-  .cal-it.tarefa{border-left-color:var(--azul);} .cal-it.audiencia{border-left-color:var(--roxo);} .cal-it.compromisso{border-left-color:var(--laranja);}
+  .cal-it.tarefa{border-left-color:var(--azul);} .cal-it.audiencia{border-left-color:var(--amarelo);} .cal-it.compromisso{border-left-color:var(--laranja);}
   .cal-it.feita{text-decoration:line-through;opacity:.6;}
   .cal.sem .cal-it{white-space:normal;}
   .cal-mais{background:none;border:none;color:var(--red-bright);font-size:.72rem;font-weight:700;padding:3px 4px;}
@@ -240,7 +270,8 @@
   @media (max-width:900px){
     .grade{grid-template-columns:1fr;}
     .linha{grid-template-columns:15px 70px 20px minmax(0,1fr) 30px;padding:12px;gap:0 9px;}
-    .linha .com{display:none;}
+    .linha .com,.linha .acts{display:none;}
+    .et-tab{grid-template-columns:minmax(0,1fr) 90px 40px;}
     .form{grid-template-columns:1fr;}
     .campos,.abas,.aba{margin-left:0;}
     .kanban{grid-template-columns:1fr;}
@@ -284,7 +315,10 @@ var P = {
   baixo:'<path d="m6 9 6 6 6-6"/>', cima:'<path d="m6 15 6-6 6 6"/>',
   maisc:'<circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M12 8v8M8 12h8" stroke="var(--panel)"/>',
   pessoa:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
-  baixar:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'
+  baixar:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2" fill="currentColor" stroke="none"/><path d="M8 3v4M16 3v4"/><path d="M6.5 11h2M11 11h2M15.5 11h2M6.5 15h2M11 15h2M15.5 15h2" stroke="var(--panel)" stroke-width="1.8"/>',
+  sol:'<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  lua:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>'
 };
 function ic(n, s, sw){ return '<svg width="' + (s||18) + '" height="' + (s||18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw||2.2) + '" stroke-linecap="round" stroke-linejoin="round">' + P[n] + '</svg>'; }
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -512,18 +546,70 @@ function opcoes(ancora, lista, atual, aoEscolher){
   abrirMenu(ancora, lista.map(function(o){ return o === '-' ? '<hr>' : '<button data-v="' + esc(o[0]) + '" class="' + (o[0] === atual ? 'sel' : '') + '">' + o[1] + '</button>'; }).join(''), function(m){
     $$('button[data-v]', m).forEach(function(b){ b.onclick = function(){ fecharMenu(); aoEscolher(b.getAttribute('data-v')); }; }); });
 }
-function menuEtiquetas(ancora, sel0, aoMudar, permiteCriar){
-  abrirMenu(ancora, D.etiquetas.map(function(e){ return '<label><input type="checkbox" class="ck" value="' + e.id + '"' + (sel0.indexOf(e.id) >= 0 ? ' checked' : '') + '> <span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + '</span></label>'; }).join('') +
-    (permiteCriar ? '<hr><div class="datas"><input type="text" id="nova-et" placeholder="Nova etiqueta" maxlength="30"><div style="display:flex;gap:6px;align-items:center;"><input type="color" id="nova-et-cor" value="#00838f" style="padding:0;width:40px;height:32px;"><button class="btn mini" id="nova-et-ok">Criar</button></div></div>' : ''),
-  function(m){
-    $$('input[type=checkbox]', m).forEach(function(c){ c.onchange = function(){ aoMudar($$('input[type=checkbox]', m).filter(function(x){ return x.checked; }).map(function(x){ return x.value; })); }; });
-    var ok = $('#nova-et-ok', m); if (ok) ok.onclick = function(){ var n = $('#nova-et', m).value.trim(); if (!n) return;
-      var e = {id:'e' + Date.now().toString(36), nome:n, cor:$('#nova-et-cor', m).value}; D.etiquetas.push(e); salvar(); aoMudar(sel0.concat([e.id])); fecharMenu(); toast('Etiqueta "' + n + '" criada.'); };
+function etOrdenadas(){ return D.etiquetas.slice().sort(function(a, b){ return norm(a.nome).localeCompare(norm(b.nome)); }); }
+// como no Astrea: título, "Encontrar etiqueta", quadradinho de cor + nome, "Sem etiqueta" (no filtro) e "Gerenciar etiquetas"
+function menuEtiquetas(ancora, sel0, aoMudar, permiteCriar, ehFiltro){
+  var sel = sel0.slice();
+  var linha = function(id, nome, sq){ return '<label data-n="' + esc(norm(nome)) + '"><input type="checkbox" class="ck" value="' + id + '"' + (sel.indexOf(id) >= 0 ? ' checked' : '') + '> ' + sq + '<span>' + esc(nome) + '</span></label>'; };
+  var m = abrirMenu(ancora, '<div class="et-tit">ETIQUETAS</div><div class="et-busca"><input type="text" id="et-q" placeholder="Encontrar etiqueta" autocomplete="off">' + ic('busca', 15, 2.4) + '</div>' +
+    '<div class="et-lista">' + (ehFiltro ? linha('__sem', 'Sem etiqueta', '<i class="sq sem"></i>') : '') +
+    etOrdenadas().map(function(e){ return linha(e.id, e.nome, '<i class="sq" style="background:' + corEt(e) + '"></i>'); }).join('') +
+    '<button class="et-criar" id="et-criar" style="display:none;"></button></div>' +
+    '<button class="et-ger" id="et-ger">GERENCIAR ETIQUETAS</button>', function(m){
+    m.classList.add('et');
+    $$('input[type=checkbox]', m).forEach(function(c){ c.onchange = function(){ sel = $$('input[type=checkbox]', m).filter(function(x){ return x.checked; }).map(function(x){ return x.value; }); aoMudar(sel.slice()); }; });
+    var q = $('#et-q', m), cr = $('#et-criar', m);
+    q.oninput = function(){ var t = norm(q.value.trim()), algum = false;
+      $$('label[data-n]', m).forEach(function(l){ var v = !t || l.getAttribute('data-n').indexOf(t) >= 0; l.style.display = v ? '' : 'none'; if (v && l.getAttribute('data-n') === t) algum = true; });
+      var mostra = permiteCriar && t && !algum && podeGerirEt(); cr.style.display = mostra ? '' : 'none'; if (mostra) cr.textContent = '+ Criar etiqueta "' + q.value.trim() + '"'; };
+    cr.onclick = function(){ var n = q.value.trim().slice(0, 40); if (!n) return;
+      var e = {id:'e' + Date.now().toString(36), nome:n, cor:CORES_ASTREA[norm(n)] || '#ef5b04'}; D.etiquetas.push(e); salvar(); sel.push(e.id); aoMudar(sel.slice()); fecharMenu(); toast('Etiqueta "' + n + '" criada.'); };
+    $('#et-ger', m).onclick = function(){ fecharMenu(); var fd = $('#fundo-det'); if (fd) fd.remove(); VER_ET = true; render(); window.scrollTo(0, 0); };
+    setTimeout(function(){ q.focus(); }, 30);
   });
+  var r = ancora.getBoundingClientRect(); if (m.offsetHeight + r.bottom > innerHeight - 50) m.style.top = Math.max(8, innerHeight - m.offsetHeight - 50) + 'px';
+}
+function podeGerirEt(){ return perfil() !== 'estagiario'; }
+// tela "Etiquetas" (como Configurações › Etiquetas do Astrea)
+function renderEtiquetas(){
+  var uso = {}; D.atividades.forEach(function(a){ if (!a.concluida) (a.etiquetas || []).forEach(function(t){ uso[t] = (uso[t] || 0) + 1; }); });
+  var pode = podeGerirEt();
+  $('#pag').innerHTML = '<div class="topo"><div><h1>Etiquetas</h1><p class="subt">' + D.etiquetas.length + ' etiquetas · as cores seguem o padrão do Astrea</p></div><div class="acoes" style="align-items:center;">' +
+    '<button class="lnk" id="et-voltar">Voltar</button>' + (pode ? '<button class="btn" id="et-add">ADICIONAR ETIQUETA</button>' : '') + '</div></div>' +
+    '<div class="card"><div class="et-tab cab"><span>NOME</span><span>EM ATIVIDADES A CONCLUIR</span><span></span></div>' +
+    etOrdenadas().map(function(e){ return '<div class="et-tab"><span class="nm"><i class="sq" style="background:' + corEt(e) + '"></i>' + esc(e.nome) + '</span><span class="sutil">' + (uso[e.id] || 0).toLocaleString('pt-BR') + '</span><span>' +
+      (pode ? '<button class="ico-btn" style="width:32px;height:32px;border:none;background:none;" data-et-op="' + e.id + '" title="Opções">' + ic('dots', 16) + '</button>' : '') + '</span></div>'; }).join('') + '</div>';
+  $('#et-voltar').onclick = function(){ VER_ET = false; render(); };
+  var ad = $('#et-add'); if (ad) ad.onclick = function(){ formEtiqueta(null); };
+  $$('[data-et-op]').forEach(function(b){ b.onclick = function(ev){ ev.stopPropagation(); var e = etiqueta(b.getAttribute('data-et-op'));
+    opcoes(b, [['editar', 'Editar'], ['excluir', 'Excluir']], '', function(v){
+      if (v === 'editar') formEtiqueta(e);
+      else if (confirm('Excluir a etiqueta "' + e.nome + '"? Ela deixa de aparecer nas atividades.')){ D.etiquetas = D.etiquetas.filter(function(x){ return x.id !== e.id; }); F.tags = F.tags.filter(function(t){ return t !== e.id; }); salvarFiltros(); salvar(); render(); toast('Etiqueta excluída.'); } }); }; });
+}
+function formEtiqueta(e){
+  var PAL = []; Object.keys(CORES_ASTREA).forEach(function(k){ var c = CORES_ASTREA[k]; if (PAL.indexOf(c) < 0) PAL.push(c); });
+  ['#00838f', '#5d4037', '#455a64', '#ad1457', '#827717'].forEach(function(c){ if (PAL.indexOf(c) < 0) PAL.push(c); });
+  var cor = e ? corEt(e) : '#ef5b04';
+  var f = modal('<div class="m-topo"><h2>' + (e ? 'Editar etiqueta' : 'Adicionar etiqueta') + '</h2><button class="ico-btn" id="fe-x" style="border:none;background:none;">' + ic('x', 18) + '</button></div>' +
+    '<div style="margin-top:18px;display:flex;flex-direction:column;gap:14px;"><div><label class="rot">Nome</label><input id="fe-nome" maxlength="40" style="width:100%;" value="' + esc(e ? e.nome : '') + '"></div>' +
+    '<div><label class="rot">Cor</label><div class="pal">' + PAL.map(function(c){ return '<button type="button" data-cor="' + c + '" style="background:' + c + '"' + (c === cor ? ' class="on"' : '') + '></button>'; }).join('') + '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;"><input type="color" id="fe-cor" value="' + cor + '" style="padding:0;width:44px;height:32px;"><span class="sutil">ou escolha outra cor</span><span class="tag" id="fe-prev" style="margin-left:auto;"></span></div></div>' +
+    '<div style="display:flex;justify-content:flex-end;gap:8px;"><button class="btn sec" id="fe-canc">Cancelar</button><button class="btn" id="fe-ok">Salvar</button></div></div>', 'neutro');
+  var q = function(s){ return $(s, f); };
+  function prev(){ q('#fe-prev').textContent = q('#fe-nome').value.trim() || 'ETIQUETA'; q('#fe-prev').setAttribute('style', estiloEt({nome:'', cor:cor, corManual:true}) + ';margin-left:auto;'); }
+  $$('[data-cor]', f).forEach(function(b){ b.onclick = function(){ cor = b.getAttribute('data-cor'); q('#fe-cor').value = cor; $$('[data-cor]', f).forEach(function(x){ x.classList.toggle('on', x === b); }); prev(); }; });
+  q('#fe-cor').oninput = function(){ cor = q('#fe-cor').value; $$('[data-cor]', f).forEach(function(x){ x.classList.remove('on'); }); prev(); };
+  q('#fe-nome').oninput = prev; prev();
+  q('#fe-x').onclick = q('#fe-canc').onclick = function(){ f.remove(); };
+  q('#fe-ok').onclick = function(){ var n = q('#fe-nome').value.trim(); if (!n){ toast('Informe o nome.'); return; }
+    if (D.etiquetas.some(function(x){ return x !== e && norm(x.nome) === norm(n); })){ toast('Já existe uma etiqueta com esse nome.'); return; }
+    if (e){ e.nome = n; e.cor = cor; e.corManual = true; } else D.etiquetas.push({id:'e' + Date.now().toString(36), nome:n, cor:cor, corManual:true});
+    salvar(); f.remove(); render(); toast('Etiqueta salva.'); };
+  setTimeout(function(){ q('#fe-nome').focus(); }, 30);
 }
 /* cores das etiquetas exatamente como no Astrea (tiradas da tela de Etiquetas de lá); o texto fica escuro nas cores claras */
 var CORES_ASTREA = {'a definir':'#010101', 'anal./prod. acordo':'#f25c08', 'analise':'#f05a02', 'ativos':'#077800', 'atv. externa - despachos e diligencias':'#f15d08', 'audiencia':'#fdff5e', 'caso (cpj)':'#6afffc', 'cliente suspenso':'#ea0003', 'condominio - geral':'#020095', 'condominio - ocorrencias':'#020095', 'contatos (cliente ou outros)':'#ef5b02', 'contrarrazoes':'#f05a04', 'contrato e analise contratual':'#f15d08', 'cpsa':'#f781fb', 'calculos':'#ed5c04', 'defesa':'#f25c06', 'dir. administrativo':'#0100f2', 'dir. ambiental':'#2f0ef4', 'dir. civil':'#2f0ef4', 'dir. condominial':'#2f0ef4', 'dir. contratual':'#2f0ef4', 'dir. criminal':'#2f0ef4', 'dir. das familias':'#0100f2', 'dir. do consumidor':'#2f0ef4', 'dir. do trabalho':'#0100f2', 'dir. eleitoral':'#0100f2', 'dir. empresarial':'#0100f2', 'dir. previdenciario':'#0100f2', 'dir. tributario':'#0100f2', 'distribuicao':'#ef5b04', 'financeiro':'#077702', 'informativo de decisao':'#ef5b04', 'just. federal':'#632664', 'manifestacao':'#ef5b04', 'notificacao condominial':'#f681fb', 'notificacao e contranotificacao':'#ef5b04', 'notificacoes (condominios)':'#ef5b04', 'paralegal':'#ef5b04', 'parecer':'#ef5b04', 'peticao inicial':'#ef5b04', 'ppsa':'#2aff16', 'prazo de retorno':'#5b0000', 'prazo fatal':'#e70000', 'prazo interno':'#32ea04', 'prod. documentos e cadastros diversos':'#ef5b04', 'protocolo':'#ef5b04', 'recebida':'#323232', 'recursos':'#ef5b04', 'relatorio':'#ef5b04', 'repeticao semanal':'#c008c8', 'revisao':'#ef5b04', 'spazio (2º grupo)':'#9cff97', 'ted - turma recursal oab/mg':'#0100f2'};
-function corEt(e){ return CORES_ASTREA[norm(String(e.nome || '').trim())] || e.cor || '#4a4f55'; }
+function corEt(e){ return (e.corManual && e.cor) || CORES_ASTREA[norm(String(e.nome || '').trim())] || e.cor || '#4a4f55'; }
 function estiloEt(e){ var c = corEt(e), h = c.replace('#', ''); if (h.length === 3) h = h.split('').map(function(x){ return x + x; }).join('');
   var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
   return 'background:' + c + ';color:' + ((r * 299 + g * 587 + b * 114) / 1000 >= 170 ? '#1b1b1b' : '#fff'); }
@@ -533,9 +619,9 @@ function modal(html, cls){ var f = document.createElement('div'); f.className = 
   document.body.appendChild(f); f.addEventListener('mousedown', function(e){ if (e.target === f) f.remove(); }); return f; }
 
 // ================= navegação entre sub-abas =================
-var SUB = 'agenda';
+var SUB = 'agenda', VER_ET = false;
 try { var s0 = new URLSearchParams(location.search).get('sub') || localStorage.getItem(CHAVE + '_sub'); if (s0) SUB = s0; } catch (e) {}
-$$('#subnav button').forEach(function(b){ b.onclick = function(){ irPara(b.getAttribute('data-sub')); }; });
+$$('#subnav button').forEach(function(b){ b.onclick = function(){ VER_ET = false; irPara(b.getAttribute('data-sub')); }; });
 var LIM = {agenda:300, cli:300, proc:300};
 function maisHtml(q, total){ return total > LIM[q] ? '<div class="vazio"><button class="btn sec mini" data-mais="' + q + '">Mostrar mais (' + LIM[q] + ' de ' + total + ')</button></div>' : ''; }
 function ligarMais(el){ $$('[data-mais]', el).forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); LIM[b.getAttribute('data-mais')] += 300; render(); }; }); }
@@ -545,7 +631,7 @@ function render(){
   inval();
   $$('#subnav button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sub') === SUB); });
   var nn = D.publicacoes.filter(function(p){ return p.status === 'nova'; }).length; $('#qtd-pub').textContent = nn || ''; $('#qtd-pub').style.display = nn ? '' : 'none';
-  if (SUB === 'clientes') renderClientes(); else if (SUB === 'processos') renderProcessos(); else if (SUB === 'publicacoes') renderPublicacoes(); else renderAgenda();
+  if (VER_ET) renderEtiquetas(); else if (SUB === 'clientes') renderClientes(); else if (SUB === 'processos') renderProcessos(); else if (SUB === 'publicacoes') renderPublicacoes(); else renderAgenda();
   $('#t-perm').textContent = PERFIL_TXT[perfil()];
 }
 function rerender(){ render(); if (aberto && atv(aberto)) desenharDetalhe(); }
@@ -583,7 +669,7 @@ function passa(a, semStatus, ini, fim){
     if (F.status === 'atrasadas'){ if (s !== 'abertas' || !a.data || a.data >= HOJE) return false; }
     else if (F.status !== 'todas' && s !== F.status) return false; }
   if (!a.data || a.data < (ini || F.ini) || a.data > (fim || F.fim)) return false;
-  if (F.tags.length && !F.tags.some(function(t){ return a.etiquetas.indexOf(t) >= 0; })) return false;
+  if (F.tags.length && !F.tags.some(function(t){ return t === '__sem' ? !a.etiquetas.length : a.etiquetas.indexOf(t) >= 0; })) return false;
   if (F.busca){ var k = casoDe(a), pai = a.paiId ? atv(a.paiId) : null;
     if (norm(a.titulo + ' ' + (k ? rotuloCaso(k) + ' ' + k.numero + ' ' + soDig(k.numero) : '') + ' ' + (pai ? pai.titulo : '')).indexOf(norm(F.busca)) < 0) return false; }
   return true;
@@ -622,10 +708,11 @@ function renderAgenda(){
   var hist = precisaHist && fx[0] && fx[1] ? historico('p:' + fx[0] + '|' + fx[1], function(){ return db.collection(COLS.atividades).where('data', '>=', fx[0]).where('data', '<=', fx[1]); }) : null;
   var lista = visiveis(fx[0], fx[1]);
   var tipoParcial = F.tipos.length < TODOS_TIPOS.length;
-  var chips = F.tags.map(function(id){ var e = etiqueta(id); return e ? '<span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + ' <span class="x" data-tira-tag="' + id + '">✖</span></span>' : ''; }).join('') +
+  var chips = F.tags.map(function(id){ var e = id === '__sem' ? {nome:'Sem etiqueta', cor:'#8a8a8a', corManual:true} : etiqueta(id); return e ? '<span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + ' <span class="x" data-tira-tag="' + id + '">✖</span></span>' : ''; }).join('') +
     (F.busca ? '<span class="tag" style="background:#4a4f55">“' + esc(F.busca) + '” <span class="x" id="tira-busca">✖</span></span>' : '');
   $('#pag').innerHTML =
     '<div class="topo"><div><h1>Agenda <span class="pill nova" style="vertical-align:middle;">TESTE</span></h1><p class="subt">Prazos, tarefas, audiências e compromissos do escritório.</p></div><div class="acoes">' +
+      '<button class="ico-btn" id="b-tema" title="' + (temaClaro() ? 'Mudar para o tema escuro' : 'Mudar para o tema claro') + '">' + ic(temaClaro() ? 'lua' : 'sol', 18, 2) + '</button>' +
       '<button class="ico-btn" id="b-atualizar" title="Atualizar">' + ic('refresh', 18, 2.4) + '</button><button class="ico-btn" id="b-mais" title="Mais opções">' + ic('dots', 18) + '</button>' +
       '<button class="ico-btn prim" id="b-novo" title="Nova atividade">' + ic('plus', 20, 3) + '</button></div></div>' +
     '<div class="filtros"><button class="dd" id="f-visao">' + ({lista:'Em lista', dia:'Por dia', semana:'Por semana', mes:'Por mês', kanban:'Kanban'})[F.visao] + ' <i class="car"></i></button>' +
@@ -646,7 +733,10 @@ function renderAgenda(){
   else renderLista(el, lista);
   if (hist && !hist.pronto) el.insertAdjacentHTML('afterbegin', '<div class="aviso" style="padding:8px 14px;">Carregando as atividades concluídas do período… ' + (hist.n ? hist.n.toLocaleString('pt-BR') + ' até agora' : '') + '</div>');
   renderLateral(); ligarFiltros();
+  $('#b-tema').onclick = function(){ var c = !temaClaro(); if (c) document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('fb-agenda-tema', c ? 'claro' : 'escuro'); } catch (e) {} render(); };
 }
+function temaClaro(){ return document.documentElement.getAttribute('data-theme') === 'light'; }
 function itemCal(a){ return '<div class="cal-it ' + a.tipo + (a.concluida ? ' feita' : '') + '" data-id="' + a.id + '" title="' + esc(TIPOS[a.tipo] + ': ' + a.titulo + ' — ' + usuario(a.responsavel).nome) + '">' +
   (a.hora ? '<b>' + a.hora + '</b> ' : '') + esc(a.titulo) + '</div>'; }
 function porDia(lista){ var m = {}; lista.forEach(function(a){ (m[a.data] = m[a.data] || []).push(a); }); return m; }
@@ -681,7 +771,7 @@ function renderLista(el, lista){
   lista.slice(0, LIM.agenda).forEach(function(a){
     var pai = a.paiId ? atv(a.paiId) : null, k = casoDe(a), fs = pai ? [] : filhas(a);
     var cls = a.concluida ? 'feita' : a.data === HOJE ? 'hoje' : a.data < HOJE ? 'atrasada' : '';
-    h += '<div class="linha ' + cls + '" data-id="' + a.id + '"><input type="checkbox" class="ck" data-sel="' + a.id + '"' + (selecionadas.indexOf(a.id) >= 0 ? ' checked' : '') + '>' +
+    h += '<div class="linha tp-' + a.tipo + ' ' + cls + '" data-id="' + a.id + '"><input type="checkbox" class="ck" data-sel="' + a.id + '"' + (selecionadas.indexOf(a.id) >= 0 ? ' checked' : '') + '>' +
       '<div class="dt">' + rotuloData(a.data) + (a.hora ? '<span class="hora">' + a.hora + '</span>' : '') + '</div>' +
       '<button class="chk' + (a.concluida ? ' on' : '') + '" data-chk="' + a.id + '" title="' + (a.concluida ? 'Reabrir' : 'Concluir') + '">' + ic('chk2', 18, 1.8) + '</button>' +
       '<div><div class="tipo ' + a.tipo + '">' + TIPOS[a.tipo].toUpperCase() + '</div><div class="tit">' + esc(a.titulo) + '</div>' +
@@ -689,7 +779,8 @@ function renderLista(el, lista){
       (pai ? '<div class="pai">↳ do ' + TIPOS[pai.tipo].toLowerCase() + ': ' + esc(pai.titulo) + ' (' + esc(pai.responsavel === EU ? 'Eu' : usuario(pai.responsavel).nome) + ')</div>' : '') +
       (fs.length ? '<div class="pai">' + fs.filter(function(f){ return f.concluida; }).length + ' de ' + fs.length + ' tarefas concluídas</div>' : '') +
       (a.etiquetas.length ? '<div class="tags">' + tagsHtml(a.etiquetas, podeEditar(a)) + '</div>' : '') + '</div>' +
-      '<div class="com">' + ic('balao', 17, 1.8) + ' ' + nComent(a) + '</div><div><span class="av" title="' + esc(usuario(a.responsavel).nome) + '">' + iniciais(a.responsavel) + '</span></div></div>';
+      '<div class="com">' + ic('balao', 17, 1.8) + ' ' + nComent(a) + '</div><div><span class="av" title="' + esc(usuario(a.responsavel).nome) + '">' + iniciais(a.responsavel) + '</span></div>' +
+      (podeEditar(a) ? '<div class="acts"><button data-act="et" title="Etiquetas">' + ic('tag', 17) + '</button><button data-act="dt" title="Alterar a data">' + ic('cal', 17, 2) + '</button><button data-act="mais" title="Mais opções">' + ic('dots', 17) + '</button></div>' : '<div></div>') + '</div>';
   });
   h += maisHtml('agenda', lista.length);
   el.innerHTML = h; ligarMais(el);
@@ -697,6 +788,8 @@ function renderLista(el, lista){
     var tira = e.target.closest('[data-tirar]');
     if (tira){ e.stopPropagation(); var x = atv(r.getAttribute('data-id')); if (!x || !podeEditar(x)) return;
       x.etiquetas = x.etiquetas.filter(function(t){ return t !== tira.getAttribute('data-tirar'); }); registrar(x, 'removeu uma etiqueta'); salvar(); render(); return; }
+    var act = e.target.closest('[data-act]');
+    if (act){ e.stopPropagation(); acaoLinha(act, atv(r.getAttribute('data-id'))); return; }
     if (e.target.closest('[data-chk],[data-sel]')) return; abrirDetalhe(r.getAttribute('data-id')); }; });
   $$('[data-chk]', el).forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); alternarConclusao(atv(b.getAttribute('data-chk'))); }; });
   $$('[data-sel]', el).forEach(function(c){ c.onclick = function(e){ e.stopPropagation(); var id = c.getAttribute('data-sel'); if (c.checked) selecionadas.push(id); else selecionadas = selecionadas.filter(function(x){ return x !== id; }); render(); }; });
@@ -704,6 +797,15 @@ function renderLista(el, lista){
   var lc = $('#lote-concluir'); if (lc) lc.onclick = function(){ var n = 0; selecionadas.forEach(function(id){ var a = atv(id); if (podeConcluir(a) && !a.concluida){ a.concluida = true; a.concluidaEm = agora(); registrar(a, 'concluiu'); n++; } }); salvar(); selecionadas = []; render(); toast(n + ' atividade(s) concluída(s).'); };
   var le = $('#lote-etiqueta'); if (le) le.onclick = function(e){ e.stopPropagation(); menuEtiquetas(le, [], function(sel){ selecionadas.forEach(function(id){ var a = atv(id); if (!podeEditar(a)) return; sel.forEach(function(t){ if (a.etiquetas.indexOf(t) < 0) a.etiquetas.push(t); }); }); salvar(); render(); }); };
   var ll = $('#lote-limpar'); if (ll) ll.onclick = function(){ selecionadas = []; render(); };
+}
+function acaoLinha(b, a){
+  if (!a || !podeEditar(a)) return;
+  var tp = b.getAttribute('data-act');
+  if (tp === 'et') menuEtiquetas(b, a.etiquetas, function(sel){ a.etiquetas = sel; registrar(a, 'alterou as etiquetas'); salvar(); render(); }, true);
+  else if (tp === 'dt') abrirMenu(b, '<div class="datas"><b style="font-size:.8rem;">Alterar a data</b><input type="date" id="ld-data" value="' + (a.data || '') + '"><button class="btn mini" id="ld-ok">Salvar</button></div>', function(m){
+    $('#ld-ok', m).onclick = function(){ var v = $('#ld-data', m).value; if (!v) return; if (v !== a.data){ registrar(a, 'alterou a data de ' + dataBR(a.data) + ' para ' + dataBR(v)); a.data = v; salvar(); } fecharMenu(); render(); }; });
+  else opcoes(b, [['abrir', 'Abrir'], ['editar', 'Editar'], ['concluir', a.concluida ? 'Reabrir' : 'Concluir']], '', function(v){
+    if (v === 'abrir') abrirDetalhe(a.id); else if (v === 'editar') formAtividade(a); else alternarConclusao(a); });
 }
 function renderKanban(el, lista){
   el.innerHTML = '<div class="kanban">' + COLUNAS.map(function(c){ var itens = lista.filter(function(a){ return (a.concluida ? 'Concluído' : a.coluna) === c; });
@@ -794,7 +896,7 @@ function ligarFiltros(){
     F.visao = v; if (CAL[v] && !F.ref) F.ref = HOJE; salvarFiltros(); render(); }); };
   $('#f-resp').onclick = function(e){ e.stopPropagation(); menuPessoas(this); };
   $('#f-status').onclick = function(e){ e.stopPropagation(); menuStatus(this); };
-  $('#f-tags').onclick = function(e){ e.stopPropagation(); menuEtiquetas(this, F.tags, function(sel){ F.tags = sel; salvarFiltros(); render(); }, false); };
+  $('#f-tags').onclick = function(e){ e.stopPropagation(); menuEtiquetas(this, F.tags, function(sel){ F.tags = sel; salvarFiltros(); render(); }, false, true); };
   $$('[data-tira-tag]').forEach(function(x){ x.onclick = function(){ var id = x.getAttribute('data-tira-tag'); F.tags = F.tags.filter(function(t){ return t !== id; }); salvarFiltros(); render(); }; });
   var tb = $('#tira-busca'); if (tb) tb.onclick = function(){ F.busca = ''; salvarFiltros(); render(); };
   var fl = $('#f-limpar'); if (fl) fl.onclick = function(){ F.tags = []; F.busca = ''; salvarFiltros(); render(); };
