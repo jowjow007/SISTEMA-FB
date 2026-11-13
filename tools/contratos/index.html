@@ -201,6 +201,8 @@
   .capa-nome.m{font-size:24pt;} .capa-nome.p{font-size:19pt;}
   .capa-nome-pre{font-family:'Cormorant Garamond',Georgia,serif;font-size:15pt;font-weight:500;letter-spacing:.06em;color:rgba(243,235,227,.82);margin-top:3mm;line-height:1.1;}
   .capa-nome-pre + .capa-nome{margin-top:1mm;}
+  .hon-tbl.areas .hon-row{font-size:7.6pt;line-height:1.25;}
+  .hon-tbl.areas .k, .hon-tbl.areas .v{padding:.75mm 2mm;}
   .hon-row + .blk, .hon-row + .sec-bar, .hon-tbl + .blk, .hon-tbl + .sec-bar{margin-top:3mm;}
   .capa-sub{font-size:9.2pt;line-height:1.55;color:rgba(243,235,227,.78);margin-top:5mm;max-height:29mm;overflow:hidden;}
   .capa-pe{position:absolute;left:24mm;right:24mm;bottom:20mm;display:flex;justify-content:space-between;align-items:flex-end;gap:8mm;border-top:.3mm solid rgba(201,164,106,.4);padding-top:5mm;}
@@ -1257,15 +1259,15 @@ function areaTableBlocks(d){
   for(let i=0;i<AREAS.length;i+=2){
     const [k1,l1]=AREAS[i];
     const pair2 = AREAS[i+1];
-    let html = `<div class="hon-row${i===0?' first':''}" style="font-size:8pt;"><div class="k" style="flex:0 0 46mm;">${esc(l1)}</div><div class="v" style="flex:0 0 16mm;">${d.areas[k1]?'SIM':'NÃO'}</div>`;
+    let html = `<div class="hon-row${i===0?' first':''}"><div class="k" style="flex:0 0 58mm;">${esc(l1)}</div><div class="v" style="flex:0 0 13mm;">${d.areas[k1]?'SIM':'NÃO'}</div>`;
     if(pair2){
       const [k2,l2]=pair2;
-      html += `<div class="k" style="flex:0 0 46mm;border-left:1pt solid #1a1a1a;">${esc(l2)}</div><div class="v" style="flex:1;">${d.areas[k2]?'SIM':'NÃO'}</div>`;
+      html += `<div class="k" style="flex:0 0 58mm;border-left:1pt solid #1a1a1a;">${esc(l2)}</div><div class="v" style="flex:1;">${d.areas[k2]?'SIM':'NÃO'}</div>`;
     }
     html += `</div>`;
     blocks.push(html);
   }
-  return [tabela(blocks)];   // a tabela inteira é um bloco só: não se divide entre páginas
+  return [C(`<div class="hon-tbl areas">${blocks.join('')}</div>`)];   // bloco só (não se divide) e compacta, para caber sem pular página
 }
 function tabela(linhas){ return C(`<div class="hon-tbl">${linhas.join('')}</div>`); }
 function C(html){ return {type:'raw', html}; }
