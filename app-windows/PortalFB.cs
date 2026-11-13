@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("239.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("239.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("240.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("240.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,12 +41,26 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "239";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "240";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
+
+        // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
+        // desenha tudo em 96 dpi e estica a imagem — o texto inteiro do portal fica embaçado.
+        [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr valor);
+        [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+        [DllImport("user32.dll")] static extern uint GetDpiForSystem();
+        // fator da escala da tela (1,25 em 125%) — tamanhos fixos de janela são multiplicados por ele
+        public static float Escala() { try { uint d = GetDpiForSystem(); if (d >= 96) return d / 96f; } catch { } return 1f; }
+        static void NitidezNaEscalaDaTela()
+        {
+            try { if (SetProcessDpiAwarenessContext(new IntPtr(-4))) return; } catch { }   // por monitor, v2 (Windows 10 1703+)
+            try { SetProcessDPIAware(); } catch { }
+        }
 
         [STAThread]
         static void Main(string[] args)
         {
+            NitidezNaEscalaDaTela();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             AppDomain.CurrentDomain.AssemblyResolve += ResolverBiblioteca;
@@ -309,6 +323,7 @@ namespace PortalFB
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Fundo; ForeColor = Texto;
             Font = new Font("Segoe UI", 10f);
+            AutoScaleDimensions = new SizeF(96F, 96F);   // desenhado para 100%; o WinForms amplia para a escala da tela
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(520, 300);
             ShowInTaskbar = true;
@@ -380,8 +395,9 @@ namespace PortalFB
             BackColor = Color.FromArgb(22, 16, 16);
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             StartPosition = FormStartPosition.CenterScreen;
-            Size = ehPrincipal ? new Size(1360, 860) : new Size(1000, 760);
-            MinimumSize = new Size(380, 480);
+            float esc = Programa.Escala();
+            Size = ehPrincipal ? new Size((int)(1360 * esc), (int)(860 * esc)) : new Size((int)(1000 * esc), (int)(760 * esc));
+            MinimumSize = new Size((int)(380 * esc), (int)(480 * esc));
             web.Dock = DockStyle.Fill;
             web.DefaultBackgroundColor = Color.FromArgb(22, 16, 16);
             Controls.Add(web);
@@ -486,7 +502,7 @@ namespace PortalFB
             var adiamento = e.GetDeferral();
             var filha = new Janela(null, false);
             if (janelinha && e.WindowFeatures.HasSize)
-                filha.Size = new Size((int)Math.Max(420, e.WindowFeatures.Width + 16), (int)Math.Max(480, e.WindowFeatures.Height + 39));
+                filha.Size = new Size((int)(Math.Max(420, e.WindowFeatures.Width + 16) * Programa.Escala()), (int)(Math.Max(480, e.WindowFeatures.Height + 39) * Programa.Escala()));
             filha.Show();
             filha.PrepararComoFilha().ContinueWith(t =>
             {
