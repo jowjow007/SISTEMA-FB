@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("240.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("240.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("241.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("241.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "240";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "241";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),

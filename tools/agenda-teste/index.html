@@ -523,7 +523,9 @@ function ehAdmin(){ return perfil() === 'admin'; }
 function donoDe(a){ return a.criadoPor === EU || a.responsavel === EU; }
 function podeEditar(a){ if (ehAdmin()) return true; var pai = a.paiId && atv(a.paiId); if (pai && donoDe(pai)) return true; if (perfil() === 'estagiario') return false; return donoDe(a); }
 function podeConcluir(a){ return podeEditar(a) || a.responsavel === EU; }
-function podeCriarTarefa(a){ return ehAdmin() || donoDe(a); }
+function podeCriarTarefa(a){ return encadeia(a) && (ehAdmin() || donoDe(a)); }
+// como no Astrea: o PRAZO (e audiência/compromisso) é dividido em tarefas encadeadas; a TAREFA não encadeia outras tarefas
+function encadeia(a){ return !!a && !a.paiId && a.tipo !== 'tarefa'; }
 function envolvido(a){ var r = a.paiId ? atv(a.paiId) : a; if (!r) return false; return r.responsavel === EU || filhas(r).some(function(f){ return f.responsavel === EU; }); }
 function podeComentar(a){ return perfil() !== 'estagiario' || envolvido(a); }
 function podeCriarPrazo(){ return ehAdmin() || perfil() === 'advogado'; }
@@ -931,7 +933,7 @@ function alternarConclusao(a){
 // ---------- detalhe da atividade ----------
 var aberto = null, abaAtual = 'atividades', subAbertos = {};
 function abrirDetalhe(id){ var f = $('#fundo-det'); if (f) f.remove(); aberto = id;
-  historico('f:' + id, function(){ return db.collection(COLS.atividades).where('paiId', '==', id); }, function(){ inval(); if (aberto === id && atv(id)) desenharDetalhe(); }); abaAtual = atv(id).paiId ? 'comentarios' : 'atividades'; subAbertos = {}; desenharDetalhe(); }
+  historico('f:' + id, function(){ return db.collection(COLS.atividades).where('paiId', '==', id); }, function(){ inval(); if (aberto === id && atv(id)) desenharDetalhe(); }); abaAtual = (encadeia(atv(id)) || filhas(atv(id)).length) ? 'atividades' : 'comentarios'; subAbertos = {}; desenharDetalhe(); }
 function fecharDetalhe(){ aberto = null; var f = $('#fundo-det'); if (f) f.remove(); }
 function comentariosHtml(a){
   var h = '<div class="coms">' + a.comentarios.map(function(c){ return '<div class="cm"><div class="q"><span><b>' + esc(usuario(c.uid).nome) + '</b> · ' + quando(c.em) + '</span>' +
@@ -962,7 +964,7 @@ function desenharDetalhe(){
   var pai = a.paiId ? atv(a.paiId) : null, fs = filhas(a), ed = podeEditar(a), co = podeConcluir(a), atras = !a.concluida && a.data && a.data < HOJE, k = casoDe(a);
   var pub = a.pubId ? achar('publicacoes', a.pubId) : null;
   var h = '<div class="modal ' + a.tipo + '"><div class="m-topo"><h2>' + TIPOS[a.tipo] + '</h2><div class="m-icos">' +
-    (!a.paiId ? '<button id="d-add" title="Nova tarefa encadeada"' + (podeCriarTarefa(a) ? '' : ' disabled') + '>' + ic('plus', 19, 2.6) + '</button>' : '') +
+    (encadeia(a) ? '<button id="d-add" title="Nova tarefa encadeada"' + (podeCriarTarefa(a) ? '' : ' disabled') + '>' + ic('plus', 19, 2.6) + '</button>' : '') +
     '<button data-et="' + a.id + '" title="Etiquetas"' + (ed ? '' : ' disabled') + '>' + ic('tag', 18) + '</button><button data-zap="' + a.id + '" title="Enviar pelo WhatsApp">' + ic('zap', 19, 1.6) + '</button>' +
     '<button data-chat="' + a.id + '" title="Enviar para o chat do Portal">' + ic('chat', 19, 1.8) + '</button><button id="d-editar" title="Editar"' + (ed ? '' : ' disabled') + '>' + ic('lapis', 17) + '</button>' +
     '<button data-kebab="' + a.id + '" title="Mais">' + ic('dots', 19) + '</button><button id="d-fechar" title="Fechar">' + ic('x', 19) + '</button></div></div>' +
@@ -972,13 +974,16 @@ function desenharDetalhe(){
     (pai ? '<div><b>Do ' + TIPOS[pai.tipo].toLowerCase() + ':</b> <a class="lk" id="d-pai">' + esc(pai.titulo) + '</a></div>' : '') +
     (k ? '<div><b>' + (k.tipo === 'processo' ? 'Processo' : 'Caso') + ':</b> <a class="lk" id="d-caso">' + esc(rotuloCaso(k)) + '</a>' + (k.numero ? ' <span class="sutil">· ' + fmtCnj(k.numero) + '</span>' : '') + '</div>' : '') +
     (pub ? '<div><b>Origem:</b> <a class="lk" id="d-pub" style="text-transform:none;">publicação de ' + dataBR(pub.disponibilizacao) + ' (' + esc(pub.tipoAto) + ')</a></div>' : '') +
-    '<div><b>Quadro Kanban:</b> Kanban Padrão &nbsp;&nbsp; <b>Coluna:</b> <button class="dropv" data-col="' + a.id + '"' + (co ? '' : ' disabled') + '>' + (a.concluida ? 'Concluído' : a.coluna) + ' <i class="car"></i></button></div>' +
-    '<div><b>Responsável:</b> <button class="dropv" data-resp="' + a.id + '"' + (ed ? '' : ' disabled') + '>' + esc(usuario(a.responsavel).nome) + ' <i class="car"></i></button></div>' +
-    '<div><b>Criado por:</b> <span class="sutil">' + esc(usuario(a.criadoPor).nome) + '</span></div></div><div class="abas">' +
-    (!a.paiId ? '<button data-aba="atividades" class="' + (abaAtual === 'atividades' ? 'on' : '') + '">Atividades <span class="n">' + fs.length + '</span></button>' : '') +
+    (function(){ var kb = '<div><b>Quadro Kanban:</b> Kanban Padrão &nbsp;&nbsp; <b>Coluna:</b> <button class="dropv" data-col="' + a.id + '"' + (co ? '' : ' disabled') + '>' + (a.concluida ? 'Concluído' : a.coluna) + ' <i class="car"></i></button></div>',
+      rs = '<div><b>Responsável:</b> <button class="dropv" data-resp="' + a.id + '"' + (ed ? '' : ' disabled') + '>' + esc(usuario(a.responsavel).nome) + ' <i class="car"></i></button></div>',
+      cp = '<div><b>Criado por:</b> <span class="sutil">' + esc(usuario(a.criadoPor).nome) + '</span></div>',
+      pr = '<div><b>Prioridade:</b> <button class="dropv" data-prio="' + a.id + '"' + (ed ? '' : ' disabled') + '>' + esc(a.prioridade || 'Baixa') + ' <span class="sutil" style="margin-left:3px;">' + ic('maisc', 15) + '</span></button></div>';
+      return a.tipo === 'tarefa' ? rs + kb + cp + pr : kb + rs + cp; })() + '</div><div class="abas">' +
+    ((encadeia(a) || fs.length) ? '<button data-aba="atividades" class="' + (abaAtual === 'atividades' ? 'on' : '') + '">Atividades <span class="n">' + fs.length + '</span></button>' : '') +
     '<button data-aba="checklists" class="' + (abaAtual === 'checklists' ? 'on' : '') + '">Checklists</button>' +
     '<button data-aba="comentarios" class="' + (abaAtual === 'comentarios' ? 'on' : '') + '">Comentários' + (a.comentarios.length ? ' <span class="n">' + a.comentarios.length + '</span>' : '') + '</button>' +
     '<button data-aba="outros" class="' + (abaAtual === 'outros' ? 'on' : '') + '">Outros</button><button data-aba="historico" class="' + (abaAtual === 'historico' ? 'on' : '') + '">Histórico de alterações</button></div><div class="aba">';
+  if (abaAtual === 'atividades' && !encadeia(a) && !fs.length) abaAtual = 'comentarios';
   if (abaAtual === 'atividades'){
     h += fs.map(cartaoTarefa).join('');
     if (!fs.length) h += '<div class="aviso" style="margin-bottom:10px;">Nenhuma tarefa encadeada. Divida o prazo em tarefas para a equipe (ex.: buscar documentos, fazer a peça, revisar, protocolar).</div>';
@@ -990,7 +995,7 @@ function desenharDetalhe(){
   } else if (abaAtual === 'comentarios'){ h += comentariosHtml(a);
   } else if (abaAtual === 'outros'){
     h += '<div class="form"><div class="full"><label>Descrição / observações</label><textarea id="o-desc" rows="4"' + (ed ? '' : ' disabled') + '>' + esc(a.descricao) + '</textarea></div>' +
-      '<div><label>Prioridade</label><select id="o-prio"' + (ed ? '' : ' disabled') + '>' + PRIORIDADES.map(function(p){ return '<option' + (p === a.prioridade ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div></div>' +
+      (a.tipo === 'tarefa' ? '' : '<div><label>Prioridade</label><select id="o-prio"' + (ed ? '' : ' disabled') + '>' + PRIORIDADES.map(function(p){ return '<option' + (p === a.prioridade ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div>') + '</div>' +
       (ed ? '<div class="form-acoes"><button class="btn" id="o-salvar">Salvar</button></div>' : '');
   } else { h += '<div class="hist">' + a.historico.map(function(x){ return '<div><b>' + esc(usuario(x.uid).nome) + '</b> ' + esc(x.txt) + ' <small>· ' + quando(x.em) + '</small></div>'; }).join('') + '</div>'; }
   fundo.innerHTML = h + '</div></div>'; fundo.scrollTop = rol; ligarDetalhe(fundo, a);
@@ -1046,7 +1051,7 @@ function ligarDetalhe(fundo, a){
   each('[data-cl]', function(c){ c.onchange = function(){ var i = +c.getAttribute('data-cl'); a.checklist[i].f = c.checked; registrar(a, (c.checked ? 'marcou' : 'desmarcou') + ' "' + a.checklist[i].t + '"'); salvar(); desenharDetalhe(); }; });
   each('[data-cl-del]', function(b){ b.onclick = function(e){ e.preventDefault(); a.checklist.splice(+b.getAttribute('data-cl-del'), 1); salvar(); desenharDetalhe(); }; });
   if (q('#cl-add')) q('#cl-add').onclick = function(){ var t = q('#cl-novo').value.trim(); if (!t) return; a.checklist.push({t:t, f:false}); registrar(a, 'adicionou ao checklist "' + t + '"'); salvar(); desenharDetalhe(); };
-  if (q('#o-salvar')) q('#o-salvar').onclick = function(){ a.descricao = q('#o-desc').value; a.prioridade = q('#o-prio').value; registrar(a, 'editou os dados'); salvar(); render(); toast('Salvo.'); };
+  if (q('#o-salvar')) q('#o-salvar').onclick = function(){ a.descricao = q('#o-desc').value; if (q('#o-prio')) a.prioridade = q('#o-prio').value; registrar(a, 'editou os dados'); salvar(); render(); toast('Salvo.'); };
 }
 function textoAtividade(a){ var pai = a.paiId ? atv(a.paiId) : null, k = casoDe(a);
   return '*' + TIPOS[a.tipo] + ': ' + a.titulo + '*\nData: ' + (a.data ? dataBR(a.data) + (a.hora ? ' às ' + a.hora : '') : 'sem data') + '\n' + (k ? (k.tipo === 'processo' ? 'Processo: ' : 'Caso: ') + rotuloCaso(k) + (k.numero ? ' (' + fmtCnj(k.numero) + ')' : '') + '\n' : '') +
