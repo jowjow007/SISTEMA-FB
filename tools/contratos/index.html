@@ -199,6 +199,9 @@
   .capa-pref{font-size:7.6pt;letter-spacing:.28em;color:rgba(243,235,227,.62);text-transform:uppercase;}
   .capa-nome{font-family:'Cormorant Garamond',Georgia,serif;font-size:30pt;line-height:1.08;font-weight:600;margin-top:3mm;color:#fbf6f0;}
   .capa-nome.m{font-size:24pt;} .capa-nome.p{font-size:19pt;}
+  .capa-nome-pre{font-family:'Cormorant Garamond',Georgia,serif;font-size:15pt;font-weight:500;letter-spacing:.06em;color:rgba(243,235,227,.82);margin-top:3mm;line-height:1.1;}
+  .capa-nome-pre + .capa-nome{margin-top:1mm;}
+  .hon-row + .blk, .hon-row + .sec-bar{margin-top:3mm;}
   .capa-sub{font-size:9.2pt;line-height:1.55;color:rgba(243,235,227,.78);margin-top:5mm;max-height:29mm;overflow:hidden;}
   .capa-pe{position:absolute;left:24mm;right:24mm;bottom:20mm;display:flex;justify-content:space-between;align-items:flex-end;gap:8mm;border-top:.3mm solid rgba(201,164,106,.4);padding-top:5mm;}
   .capa-pe img{height:9.5mm;}
@@ -1973,8 +1976,15 @@ function capaInfo(d){
   const validade = prop ? ((d.tipo==='proposta_condominio'?d.propostaCondominio:d.proposta)||{}).validade : '';
   return {prop, nome, sub, local, data, validade:(validade && !/_{3,}/.test(validade)) ? validade : ''};
 }
+function partesNome(nome){
+  // "CONDOMÍNIO RESIDENCIAL GRAND X" -> prefixo "Condomínio Residencial" em cima e o nome próprio em destaque embaixo
+  const m=String(nome||'').trim().match(/^((?:condom[ií]nio|edif[ií]cio|residencial|associa[cç][aã]o)(?:\s+(?:(?:dos|das|de|do|da)\s+)?(?:residencial|edif[ií]cio|comercial|vertical|horizontal|clube))*)\s+(.+)$/i);
+  if(!m) return {pre:'', nome:String(nome||'')};
+  const pre=m[1].toLowerCase().split(/\s+/).map(w=>/^(dos|das|de|do|da)$/.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+  return {pre, nome:m[2]};
+}
 function makeCapa(d){
-  const c=capaInfo(d), tam = c.nome.length>70 ? ' p' : c.nome.length>38 ? ' m' : '';
+  const c=capaInfo(d), pn=partesNome(c.nome), tam = pn.nome.length>70 ? ' p' : pn.nome.length>38 ? ' m' : '';
   const page=document.createElement('div');
   page.className='doc-page capa';
   page.innerHTML = `<img class="capa-foto" src="../../assets/capa-contratos.jpg" alt="">
@@ -1983,7 +1993,7 @@ function makeCapa(d){
       <div class="capa-rotulo">${c.prop?'Proposta de prestação de<br>serviços advocatícios':'Contrato de prestação de<br>serviços advocatícios'}</div>
       <div class="capa-fio"></div>
       <div class="capa-pref">${c.prop?'Apresentada a':'Contratante'}</div>
-      <div class="capa-nome${tam}">${esc(c.nome)}</div>
+      ${pn.pre?`<div class="capa-nome-pre">${esc(pn.pre)}</div>`:''}<div class="capa-nome${tam}">${esc(pn.nome)}</div>
       ${c.sub?`<div class="capa-sub">${esc(c.sub)}</div>`:''}
     </div>
     <div class="capa-pe"><img src="../../assets/logo-dark.png" alt="Fonseca e Braga">
@@ -2063,6 +2073,11 @@ function makePageShell(){
   return page;
 }
 
+function estourou(content, node){
+  if(content.scrollHeight > content.clientHeight) return true;
+  // a borda de baixo de uma linha de tabela pode passar 1px do limite sem mudar o scrollHeight
+  return node.getBoundingClientRect && node.getBoundingClientRect().bottom > content.getBoundingClientRect().bottom - 1.5;
+}
 function paginate(blocks, wrap){
   // as páginas precisam estar anexadas ao DOM vivo enquanto medimos scrollHeight/clientHeight,
   // senão o navegador não calcula layout e a paginação nunca detecta estouro de página.
@@ -2077,13 +2092,22 @@ function paginate(blocks, wrap){
     const node = wrapper.firstElementChild || document.createTextNode(html);
     protegerNumeros(node);
     content.appendChild(node);
-    if(content.scrollHeight > content.clientHeight){
+    if(estourou(content, node)){
       content.removeChild(node);
+      // título de seção ou frase que apresenta a tabela não fica sozinho no pé da página
+      const levar=[];
+      let ant=content.lastElementChild;
+      while(ant && levar.length<2 && content.children.length>levar.length+1 && (ant.classList.contains('sec-bar') || (ant.classList.contains('clause') && /:\s*$/.test(ant.textContent)) || (node.classList&&node.classList.contains('hon-row')&&!ant.classList.contains('hon-row')&&levar.length===0))){
+        levar.unshift(ant); ant=ant.previousElementSibling;
+      }
+      levar.forEach(x=>content.removeChild(x));
       const p=makePageShell();
       wrap.appendChild(p);
       pages.push(p);
       content = p.querySelector('.doc-content');
+      levar.forEach(x=>content.appendChild(x));
       content.appendChild(node);
+      if(node.classList && node.classList.contains('hon-row')) node.classList.add('first');   // tabela que continua: fecha a borda de cima
     }
   });
   // numera paginas e coloca a rubrica de quem gerou
@@ -2166,6 +2190,13 @@ function buildDocumento(d){
   return [];
 }
 
+/* todas as variações de fonte usadas no documento precisam estar carregadas ANTES de paginar,
+   senão a medição sai com a fonte reserva e as linhas crescem depois (tabela cortada no pé da página) */
+let fontesProntas=false;
+const FONTES = (document.fonts && document.fonts.load) ? Promise.all(['400','500','600','700'].map(w=>document.fonts.load(w+' 10pt Poppins'))
+  .concat(['500','600'].map(w=>document.fonts.load(w+' 20pt "Cormorant Garamond"')))).catch(()=>{}).then(()=>document.fonts.ready).then(()=>{ fontesProntas=true; })
+  : Promise.resolve().then(()=>{ fontesProntas=true; });
+FONTES.then(()=>{ if(document.getElementById('doc-pages').children.length) render(); });
 function render(){
   atualizarParcelasPreview('h-data-1parc','h-qtd-parcelas','h-periodicidade','h-parcelas-preview');
   atualizarParcelasPreview('m-data1','m-qtd-parcelas','mensal','m-parcelas-preview');
@@ -2230,6 +2261,7 @@ async function gerarPDFdeDados(d, filename){
   document.body.appendChild(offscreen);
   let numPaginas = 0;
   try{
+    await FONTES;
     const pages = paginate(blocks, offscreen);
     numPaginas = pages.length;
     if(d.capa){ const capa=makeCapa(d); offscreen.insertBefore(capa, offscreen.firstChild); pages.unshift(capa); }
@@ -2238,9 +2270,11 @@ async function gerarPDFdeDados(d, filename){
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
     for(let i=0;i<pages.length;i++){
-      const canvas = await html2canvas(pages[i], {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+      const ehCapa = pages[i].classList.contains('capa');
+      const canvas = await html2canvas(pages[i], {scale:3, useCORS:true, backgroundColor:'#ffffff'});
       if(i>0) pdf.addPage('a4','portrait');
-      pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,210,297,undefined,'FAST');
+      if(ehCapa) pdf.addImage(canvas.toDataURL('image/jpeg',0.93),'JPEG',0,0,210,297,undefined,'FAST');
+      else pdf.addImage(canvas,'PNG',0,0,210,297,undefined,'FAST');
     }
     pdf.save(filename);
   } finally {
