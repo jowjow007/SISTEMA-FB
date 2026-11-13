@@ -85,7 +85,7 @@
   .caso{font-size:.78rem;color:var(--muted);text-transform:uppercase;line-height:1.35;margin-top:2px;}
   .pai{font-size:.75rem;color:var(--azul);margin-top:3px;}
   .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;}
-  .tag{display:inline-flex;align-items:center;gap:5px;color:#fff;font-size:.64rem;font-weight:800;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.02em;}
+  .tag{display:inline-flex;align-items:center;gap:5px;color:#fff;font-size:.64rem;font-weight:800;padding:3px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;}
   .tag .x{opacity:.85;cursor:pointer;}
   .com{display:flex;align-items:center;gap:6px;color:var(--muted);}
   .av{width:28px;height:28px;border-radius:50%;background:var(--panel-3);color:var(--paper);font-size:.7rem;display:inline-flex;align-items:center;justify-content:center;font-weight:700;border:1px solid var(--line-strong);}
@@ -513,7 +513,7 @@ function opcoes(ancora, lista, atual, aoEscolher){
     $$('button[data-v]', m).forEach(function(b){ b.onclick = function(){ fecharMenu(); aoEscolher(b.getAttribute('data-v')); }; }); });
 }
 function menuEtiquetas(ancora, sel0, aoMudar, permiteCriar){
-  abrirMenu(ancora, D.etiquetas.map(function(e){ return '<label><input type="checkbox" class="ck" value="' + e.id + '"' + (sel0.indexOf(e.id) >= 0 ? ' checked' : '') + '> <span class="tag" style="background:' + e.cor + '">' + esc(e.nome) + '</span></label>'; }).join('') +
+  abrirMenu(ancora, D.etiquetas.map(function(e){ return '<label><input type="checkbox" class="ck" value="' + e.id + '"' + (sel0.indexOf(e.id) >= 0 ? ' checked' : '') + '> <span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + '</span></label>'; }).join('') +
     (permiteCriar ? '<hr><div class="datas"><input type="text" id="nova-et" placeholder="Nova etiqueta" maxlength="30"><div style="display:flex;gap:6px;align-items:center;"><input type="color" id="nova-et-cor" value="#00838f" style="padding:0;width:40px;height:32px;"><button class="btn mini" id="nova-et-ok">Criar</button></div></div>' : ''),
   function(m){
     $$('input[type=checkbox]', m).forEach(function(c){ c.onchange = function(){ aoMudar($$('input[type=checkbox]', m).filter(function(x){ return x.checked; }).map(function(x){ return x.value; })); }; });
@@ -521,8 +521,14 @@ function menuEtiquetas(ancora, sel0, aoMudar, permiteCriar){
       var e = {id:'e' + Date.now().toString(36), nome:n, cor:$('#nova-et-cor', m).value}; D.etiquetas.push(e); salvar(); aoMudar(sel0.concat([e.id])); fecharMenu(); toast('Etiqueta "' + n + '" criada.'); };
   });
 }
+/* cores das etiquetas exatamente como no Astrea (tiradas da tela de Etiquetas de lá); o texto fica escuro nas cores claras */
+var CORES_ASTREA = {'a definir':'#010101', 'anal./prod. acordo':'#f25c08', 'analise':'#f05a02', 'ativos':'#077800', 'atv. externa - despachos e diligencias':'#f15d08', 'audiencia':'#fdff5e', 'caso (cpj)':'#6afffc', 'cliente suspenso':'#ea0003', 'condominio - geral':'#020095', 'condominio - ocorrencias':'#020095', 'contatos (cliente ou outros)':'#ef5b02', 'contrarrazoes':'#f05a04', 'contrato e analise contratual':'#f15d08', 'cpsa':'#f781fb', 'calculos':'#ed5c04', 'defesa':'#f25c06', 'dir. administrativo':'#0100f2', 'dir. ambiental':'#2f0ef4', 'dir. civil':'#2f0ef4', 'dir. condominial':'#2f0ef4', 'dir. contratual':'#2f0ef4', 'dir. criminal':'#2f0ef4', 'dir. das familias':'#0100f2', 'dir. do consumidor':'#2f0ef4', 'dir. do trabalho':'#0100f2', 'dir. eleitoral':'#0100f2', 'dir. empresarial':'#0100f2', 'dir. previdenciario':'#0100f2', 'dir. tributario':'#0100f2', 'distribuicao':'#ef5b04', 'financeiro':'#077702', 'informativo de decisao':'#ef5b04', 'just. federal':'#632664', 'manifestacao':'#ef5b04', 'notificacao condominial':'#f681fb', 'notificacao e contranotificacao':'#ef5b04', 'notificacoes (condominios)':'#ef5b04', 'paralegal':'#ef5b04', 'parecer':'#ef5b04', 'peticao inicial':'#ef5b04', 'ppsa':'#2aff16', 'prazo de retorno':'#5b0000', 'prazo fatal':'#e70000', 'prazo interno':'#32ea04', 'prod. documentos e cadastros diversos':'#ef5b04', 'protocolo':'#ef5b04', 'recebida':'#323232', 'recursos':'#ef5b04', 'relatorio':'#ef5b04', 'repeticao semanal':'#c008c8', 'revisao':'#ef5b04', 'spazio (2º grupo)':'#9cff97', 'ted - turma recursal oab/mg':'#0100f2'};
+function corEt(e){ return CORES_ASTREA[norm(String(e.nome || '').trim())] || e.cor || '#4a4f55'; }
+function estiloEt(e){ var c = corEt(e), h = c.replace('#', ''); if (h.length === 3) h = h.split('').map(function(x){ return x + x; }).join('');
+  var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+  return 'background:' + c + ';color:' + ((r * 299 + g * 587 + b * 114) / 1000 >= 170 ? '#1b1b1b' : '#fff'); }
 function tagsHtml(lista, comX){ return (lista || []).map(function(id){ var e = etiqueta(id); if (!e) return '';
-  return '<span class="tag" style="background:' + e.cor + '">' + esc(e.nome) + (comX ? ' <span class="x" data-tirar="' + id + '">✖</span>' : '') + '</span>'; }).join(''); }
+  return '<span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + (comX ? ' <span class="x" data-tirar="' + id + '">✖</span>' : '') + '</span>'; }).join(''); }
 function modal(html, cls){ var f = document.createElement('div'); f.className = 'fundo-modal'; f.innerHTML = '<div class="modal ' + (cls || '') + '">' + html + '</div>';
   document.body.appendChild(f); f.addEventListener('mousedown', function(e){ if (e.target === f) f.remove(); }); return f; }
 
@@ -616,7 +622,7 @@ function renderAgenda(){
   var hist = precisaHist && fx[0] && fx[1] ? historico('p:' + fx[0] + '|' + fx[1], function(){ return db.collection(COLS.atividades).where('data', '>=', fx[0]).where('data', '<=', fx[1]); }) : null;
   var lista = visiveis(fx[0], fx[1]);
   var tipoParcial = F.tipos.length < TODOS_TIPOS.length;
-  var chips = F.tags.map(function(id){ var e = etiqueta(id); return e ? '<span class="tag" style="background:' + e.cor + '">' + esc(e.nome) + ' <span class="x" data-tira-tag="' + id + '">✖</span></span>' : ''; }).join('') +
+  var chips = F.tags.map(function(id){ var e = etiqueta(id); return e ? '<span class="tag" style="' + estiloEt(e) + '">' + esc(e.nome) + ' <span class="x" data-tira-tag="' + id + '">✖</span></span>' : ''; }).join('') +
     (F.busca ? '<span class="tag" style="background:#4a4f55">“' + esc(F.busca) + '” <span class="x" id="tira-busca">✖</span></span>' : '');
   $('#pag').innerHTML =
     '<div class="topo"><div><h1>Agenda <span class="pill nova" style="vertical-align:middle;">TESTE</span></h1><p class="subt">Prazos, tarefas, audiências e compromissos do escritório.</p></div><div class="acoes">' +
@@ -682,12 +688,16 @@ function renderLista(el, lista){
       (k ? '<div class="caso">' + esc(rotuloCaso(k)) + '</div>' : '') +
       (pai ? '<div class="pai">↳ do ' + TIPOS[pai.tipo].toLowerCase() + ': ' + esc(pai.titulo) + ' (' + esc(pai.responsavel === EU ? 'Eu' : usuario(pai.responsavel).nome) + ')</div>' : '') +
       (fs.length ? '<div class="pai">' + fs.filter(function(f){ return f.concluida; }).length + ' de ' + fs.length + ' tarefas concluídas</div>' : '') +
-      (a.etiquetas.length ? '<div class="tags">' + tagsHtml(a.etiquetas) + '</div>' : '') + '</div>' +
+      (a.etiquetas.length ? '<div class="tags">' + tagsHtml(a.etiquetas, podeEditar(a)) + '</div>' : '') + '</div>' +
       '<div class="com">' + ic('balao', 17, 1.8) + ' ' + nComent(a) + '</div><div><span class="av" title="' + esc(usuario(a.responsavel).nome) + '">' + iniciais(a.responsavel) + '</span></div></div>';
   });
   h += maisHtml('agenda', lista.length);
   el.innerHTML = h; ligarMais(el);
-  $$('.linha', el).forEach(function(r){ r.onclick = function(e){ if (e.target.closest('[data-chk],[data-sel]')) return; abrirDetalhe(r.getAttribute('data-id')); }; });
+  $$('.linha', el).forEach(function(r){ r.onclick = function(e){
+    var tira = e.target.closest('[data-tirar]');
+    if (tira){ e.stopPropagation(); var x = atv(r.getAttribute('data-id')); if (!x || !podeEditar(x)) return;
+      x.etiquetas = x.etiquetas.filter(function(t){ return t !== tira.getAttribute('data-tirar'); }); registrar(x, 'removeu uma etiqueta'); salvar(); render(); return; }
+    if (e.target.closest('[data-chk],[data-sel]')) return; abrirDetalhe(r.getAttribute('data-id')); }; });
   $$('[data-chk]', el).forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); alternarConclusao(atv(b.getAttribute('data-chk'))); }; });
   $$('[data-sel]', el).forEach(function(c){ c.onclick = function(e){ e.stopPropagation(); var id = c.getAttribute('data-sel'); if (c.checked) selecionadas.push(id); else selecionadas = selecionadas.filter(function(x){ return x !== id; }); render(); }; });
   var st = $('#sel-tudo'); if (st) st.onclick = function(){ selecionadas = st.checked ? lista.map(function(a){ return a.id; }) : []; render(); };
@@ -1432,7 +1442,7 @@ function importarAstrea(){
     // etiquetas: aproveita as que já existem (mesmo nome) e cria as que faltam
     var etqId = {}, novas = D.etiquetas.slice(), cor = novas.length;
     Object.keys(P.etq).forEach(function(nome){ var e = novas.filter(function(x){ return norm(x.nome) === norm(nome); })[0];
-      if (!e){ e = {id:'ea' + hashAst(nome).slice(0, 8), nome:nome, cor:/cancel/i.test(nome) ? '#757575' : PALETA_AST[cor++ % PALETA_AST.length]}; novas.push(e); } etqId[nome] = e.id; });
+      if (!e){ e = {id:'ea' + hashAst(nome).slice(0, 8), nome:nome, cor:CORES_ASTREA[norm(nome.trim())] || (/cancel/i.test(nome) ? '#757575' : PALETA_AST[cor++ % PALETA_AST.length])}; novas.push(e); } etqId[nome] = e.id; });
     var docs = [];
     P.clientes.forEach(function(c){ if (c.novo) docs.push([COLS.clientes, c.id, c.dados]); });
     var casoId = {};
