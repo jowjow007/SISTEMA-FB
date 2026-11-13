@@ -1595,6 +1595,18 @@ function vincularPorCriacao(itens){   // itens: {id, tipo, caso, criado (ms), da
   });
   r.__amb = amb; return r;
 }
+// regra 2 (opcional): tarefa criada DEPOIS de um prazo do mesmo caso, com data até a data do prazo (e o prazo até 120 dias depois
+// da criação da tarefa), quando só existe UM prazo possível — é a tarefa acrescentada mais tarde ao prazo.
+function vincularDepois(itens, ja){
+  var pais = {}, r = {};
+  itens.forEach(function(x){ if ((x.tipo === 'prazo' || x.tipo === 'audiencia') && x.caso && x.criado && x.data) (pais[x.caso] = pais[x.caso] || []).push(x); });
+  itens.forEach(function(t){
+    if (t.tipo !== 'tarefa' || ja[t.id] || !t.caso || !t.criado || !t.data) return;
+    var cs = (pais[t.caso] || []).filter(function(p){ return p.criado < t.criado && t.data <= p.data && (Date.parse(p.data + 'T12:00:00-03:00') - t.criado) <= 120 * 864e5; });
+    if (cs.length === 1) r[t.id] = cs[0].id;
+  });
+  return r;
+}
 function msCriacao(s){ var t = Date.parse(s || ''); return isNaN(t) ? 0 : t; }
 function ligarTarefasAstrea(){
   if (MEU_ROLE !== 'admin') return;
@@ -1610,23 +1622,37 @@ function ligarTarefasAstrea(){
   Promise.resolve(tudo.p).then(function(){
     if (tudo.erro) throw tudo.erro;
     var ast = D.atividades.filter(function(a){ return a.astrea && !a.paiId; });
-    mapa = vincularPorCriacao(ast.map(function(a){ return {id:a.id, tipo:a.tipo, caso:a.casoId, criado:msCriacao(a.criadoEm), data:a.data || ''}; }));
+    var itens = ast.map(function(a){ return {id:a.id, tipo:a.tipo, caso:a.casoId, criado:msCriacao(a.criadoEm), data:a.data || ''}; });
+    mapa = vincularPorCriacao(itens);
     var ids = Object.keys(mapa).filter(function(k){ return k !== '__amb'; });
-    var abertas = ids.filter(function(id){ return !atv(id).concluida; }).length;
-    var nPais = {}; ids.forEach(function(id){ nPais[mapa[id]] = 1; });
+    var depois = vincularDepois(itens, mapa), idsD = Object.keys(depois);
     var ja = D.atividades.filter(function(a){ return a.paiAstrea; }).length;
     $('#lg-desf', f).style.display = ja ? '' : 'none'; $('#lg-desf', f).textContent = 'Desfazer vínculos automáticos (' + ja.toLocaleString('pt-BR') + ')';
-    if (!ids.length){ st.textContent = ja ? 'Nada novo: as tarefas já estão nos prazos.' : 'Nenhuma tarefa solta foi encontrada junto de um prazo.'; ok.textContent = 'Ligar'; return; }
-    var amostra = ids.filter(function(id){ return !atv(id).concluida; }).slice(0, 12);
-    $('#lg-res', f).innerHTML = '<div class="aviso" style="line-height:1.6;"><b>' + ids.length.toLocaleString('pt-BR') + ' tarefas</b> vão para dentro de <b>' + Object.keys(nPais).length.toLocaleString('pt-BR') + ' prazos/audiências</b> · ' +
-      abertas.toLocaleString('pt-BR') + ' a concluir, ' + (ids.length - abertas).toLocaleString('pt-BR') + ' concluídas' + (mapa.__amb ? ' · ' + mapa.__amb + ' com mais de um prazo próximo (ficou o mais próximo)' : '') + '</div>' +
-      '<p class="aviso" style="margin-top:10px;">Confira alguns exemplos com o Astrea antes de confirmar:</p><div class="mini-lista" style="margin-top:6px;">' + amostra.map(function(id){ var t = atv(id), pz = atv(mapa[id]);
-        return '<div class="item" style="cursor:default;display:block;"><b>' + esc(TIPOS[pz.tipo]) + ':</b> ' + esc(pz.titulo) + ' <span class="sutil">(' + dataBR(pz.data) + ')</span><br><span class="sutil">↳ tarefa:</span> ' + esc(t.titulo) + ' <span class="sutil">(' + dataBR(t.data) + ' · ' + esc(usuario(t.responsavel).nome) + ')</span></div>'; }).join('') + '</div>';
-    st.textContent = ''; ok.disabled = false; ok.textContent = 'Ligar ' + ids.length.toLocaleString('pt-BR') + ' tarefas aos prazos';
+    if (!ids.length && !idsD.length){ st.textContent = ja ? 'Nada novo: as tarefas já estão nos prazos.' : 'Nenhuma tarefa solta foi encontrada junto de um prazo.'; ok.textContent = 'Ligar'; return; }
+    function n(x){ return x.toLocaleString('pt-BR'); }
+    function resumo(lista, m){ var ab = lista.filter(function(id){ return !atv(id).concluida; }).length, ps = {}; lista.forEach(function(id){ ps[m[id]] = 1; });
+      return '<b>' + n(lista.length) + ' tarefas</b> em <b>' + n(Object.keys(ps).length) + ' prazos/audiências</b> · ' + n(ab) + ' a concluir, ' + n(lista.length - ab) + ' concluídas'; }
+    function exemplos(lista, m, q){ return '<div class="mini-lista" style="margin-top:6px;">' + lista.filter(function(id){ return !atv(id).concluida; }).slice(0, q).map(function(id){ var t = atv(id), pz = atv(m[id]);
+        return '<div class="item" style="cursor:default;display:block;"><b>' + esc(TIPOS[pz.tipo]) + ':</b> ' + esc(pz.titulo) + ' <span class="sutil">(' + dataBR(pz.data) + ')</span><br><span class="sutil">↳ tarefa:</span> ' + esc(t.titulo) +
+          ' <span class="sutil">(' + dataBR(t.data) + ' · ' + esc(usuario(t.responsavel).nome) + ' · criada ' + dataBR(String(t.criadoEm).slice(0, 10)) + ')</span></div>'; }).join('') + '</div>'; }
+    // quantas tarefas cada prazo recebe (um prazo pode ter várias)
+    var porPai = {}; ids.forEach(function(id){ porPai[mapa[id]] = (porPai[mapa[id]] || 0) + 1; });
+    var maxT = Object.keys(porPai).reduce(function(x, k){ return Math.max(x, porPai[k]); }, 0), varias = Object.keys(porPai).filter(function(k){ return porPai[k] > 1; }).length;
+    $('#lg-res', f).innerHTML =
+      (ids.length ? '<div class="aviso" style="line-height:1.6;"><b>1) Criadas junto com o prazo</b> (mesmo caso, até ' + JANELA_MIN + ' min) — praticamente certas:<br>' + resumo(ids, mapa) +
+        (varias ? ' · ' + n(varias) + ' prazos ficam com várias tarefas (até ' + maxT + ')' : '') + (mapa.__amb ? ' · ' + mapa.__amb + ' com mais de um prazo próximo (ficou o mais próximo)' : '') + '</div>' + exemplos(ids, mapa, 8) : '') +
+      (idsD.length ? '<label class="aviso" style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;line-height:1.6;cursor:pointer;"><input type="checkbox" id="lg-dep" class="ck" style="margin-top:4px;"><span><b>2) Acrescentadas depois</b> (opcional, menos certo): ' +
+        'tarefas criadas depois de um prazo do mesmo caso, com data até a data do prazo, quando <b>só existe um prazo possível</b>.<br>' + resumo(idsD, depois) + '</span></label>' + exemplos(idsD, depois, 8) : '');
+    st.textContent = ''; ok.disabled = false;
+    function rotulo(){ var t = ids.length + ($('#lg-dep', f) && $('#lg-dep', f).checked ? idsD.length : 0); ok.textContent = 'Ligar ' + n(t) + ' tarefas aos prazos'; ok.disabled = !t; }
+    rotulo(); if ($('#lg-dep', f)) $('#lg-dep', f).onchange = rotulo;
     ok.onclick = function(){
+      var usarD = $('#lg-dep', f) && $('#lg-dep', f).checked, total = 0;
       ok.disabled = true; st.textContent = 'Gravando…';
-      ids.forEach(function(id){ var t = atv(id), pz = atv(mapa[id]); t.paiId = pz.id; t.paiAstrea = true; registrar(t, 'entrou no ' + TIPOS[pz.tipo].toLowerCase() + ' "' + pz.titulo + '" (vínculo do Astrea pela criação)'); });
-      Promise.resolve(salvar()).then(function(){ st.innerHTML = '<b>Pronto:</b> ' + ids.length.toLocaleString('pt-BR') + ' tarefas ligadas aos prazos.'; ok.textContent = 'Feito'; render(); toast('Tarefas ligadas aos prazos.'); })
+      function ligar(lista, m, como){ lista.forEach(function(id){ var t = atv(id), pz = atv(m[id]); if (!t || !pz || t.paiId) return; t.paiId = pz.id; t.paiAstrea = true; total++;
+        registrar(t, 'entrou no ' + TIPOS[pz.tipo].toLowerCase() + ' "' + pz.titulo + '" (vínculo do Astrea: ' + como + ')'); }); }
+      ligar(ids, mapa, 'criada junto com o prazo'); if (usarD) ligar(idsD, depois, 'acrescentada depois, único prazo possível');
+      Promise.resolve(salvar()).then(function(){ st.innerHTML = '<b>Pronto:</b> ' + n(total) + ' tarefas ligadas aos prazos.'; ok.textContent = 'Feito'; render(); toast('Tarefas ligadas aos prazos.'); })
         .catch(function(e){ st.textContent = 'Erro ao gravar: ' + e.message; ok.disabled = false; });
     };
   }).catch(function(e){ st.textContent = 'Não foi possível carregar: ' + e.message; });
