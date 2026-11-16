@@ -1857,6 +1857,7 @@
       listEl.scrollTop += (porChave[ancora.k].getBoundingClientRect().top - listEl.getBoundingClientRect().top) - ancora.d;
     }
     grudadoNoFim = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 120;
+    if (typeof bcAposRender === 'function') bcAposRender();
     if (pularPara && !carregandoAntigas){ var alvoId = pularPara; pularPara = null; pularParaMensagem(alvoId); }
     // a lista ainda não enche a tela: busca as anteriores
     if (temMaisAntigas && !carregandoAntigas && listEl.scrollHeight <= listEl.clientHeight + 300) carregarAntigas();
@@ -2942,8 +2943,8 @@
     if (x && (x.carregando || x.marca === marca)) return x.p;
     x = buscaCache[c.id] = { carregando: true, marca: marca, msgs: x ? x.msgs : [] };
     x.p = db.collection('conversas').doc(c.id).collection('mensagens').orderBy('criadoEm', 'desc').limit(BUSCA_MSGS_POR_CONVERSA).get().then(function(snap){
-      x.msgs = snap.docs.map(function(d){ var m = d.data();
-        return { id: d.id, autorUid: m.autorUid, em: m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : null, tipo: m.tipo,
+      x.msgs = snap.docs.map(function(d, pos){ var m = d.data();
+        return { id: d.id, pos: pos, autorUid: m.autorUid, em: m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : null, tipo: m.tipo,
           txt: [m.texto, m.transcricao, m.documentoNome].filter(Boolean).join(' · ') }; }).filter(function(m){ return m.txt && m.tipo !== 'sistema'; });
       x.carregando = false;
     }).catch(function(){ x.carregando = false; });
@@ -2984,35 +2985,64 @@
   };
   // busca DENTRO da conversa aberta: lupa no topo → digita → ↑ ↓ passam pelas mensagens que têm o termo
   var bcBar = document.getElementById('busca-conv'), bcIn = document.getElementById('busca-conv-in'), bcCont = document.getElementById('busca-conv-cont');
-  var bcAchados = [], bcPos = -1, bcTimer = null;
-  function bcFechar(){ bcBar.classList.remove('show'); bcIn.value = ''; bcAchados = []; bcPos = -1; bcCont.textContent = ''; limparMarcas(); }
-  function limparMarcas(){ els.msgList.querySelectorAll('mark.bc').forEach(function(mk){ var t = document.createTextNode(mk.textContent); mk.parentNode.replaceChild(t, mk); }); }
-  function marcarNaMensagem(id, termo){
-    limparMarcas();
-    var row = els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (!row) return;
-    var w = document.createTreeWalker(row.querySelector('.msg-bubble') || row, NodeFilter.SHOW_TEXT), nos = [], n;
+  var bcAchados = [], bcPos = -1, bcTimer = null, bcAlvo = null, bcBusca = 0;
+  function bcFechar(){ bcBar.classList.remove('show'); bcIn.value = ''; bcAchados = []; bcPos = -1; bcAlvo = null; bcBusca++; bcCont.textContent = ''; limparMarcas(); }
+  function limparMarcas(){ els.msgList.querySelectorAll('mark.bc').forEach(function(mk){ var pai = mk.parentNode; pai.replaceChild(document.createTextNode(mk.textContent), mk); pai.normalize(); }); }
+  function linhaDaMsg(id){ return els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); }
+  // marca o termo em todos os trechos de texto da mensagem (o texto pode estar repartido em vários pedaços)
+  function marcarNaLinha(row, termo){
+    var bolha = row.querySelector('.msg-bubble') || row, w = document.createTreeWalker(bolha, NodeFilter.SHOW_TEXT), nos = [], n, achou = false;
     while ((n = w.nextNode())) nos.push(n);
-    nos.forEach(function(no){ var txt = no.nodeValue, k = semAcento(txt).indexOf(termo); if (k < 0) return;
+    nos.forEach(function(no){
+      var txt = no.nodeValue, norm = semAcento(txt);
+      if (norm.length !== txt.length) return;   // texto com acento "solto": não dá para casar posição a posição
+      var k = norm.indexOf(termo); if (k < 0) return;
       var frag = document.createDocumentFragment(), ini = 0;
-      while (k >= 0){ frag.appendChild(document.createTextNode(txt.slice(ini, k))); var mk = document.createElement('mark'); mk.className = 'bc'; mk.textContent = txt.slice(k, k + termo.length); frag.appendChild(mk); ini = k + termo.length; k = semAcento(txt).indexOf(termo, ini); }
-      frag.appendChild(document.createTextNode(txt.slice(ini))); no.parentNode.replaceChild(frag, no); });
+      while (k >= 0){ frag.appendChild(document.createTextNode(txt.slice(ini, k))); var mk = document.createElement('mark'); mk.className = 'bc'; mk.textContent = txt.slice(k, k + termo.length); frag.appendChild(mk); ini = k + termo.length; k = norm.indexOf(termo, ini); }
+      frag.appendChild(document.createTextNode(txt.slice(ini))); no.parentNode.replaceChild(frag, no); achou = true;
+    });
+    return achou;
+  }
+  // chamado ao fim de cada desenho da lista: rola até a mensagem procurada (uma vez) e mantém o termo marcado
+  function bcAposRender(){
+    if (!bcAlvo) return;
+    var row = linhaDaMsg(bcAlvo.id);
+    if (!row){
+      // ainda não carregou (chegaram mensagens novas depois da busca): pede mais um pouco, uma vez por carga
+      if (temMaisAntigas && !carregandoAntigas && activeId && bcAlvo.cargas < 6){ bcAlvo.cargas++; carregandoAntigas = true; limiteMsgs += 100; ouvirMensagens(activeId); }
+      return;
+    }
+    if (bcAlvo.rolar){
+      bcAlvo.rolar = false;
+      if (bcAchados.length) bcCont.textContent = (bcPos + 1) + ' de ' + bcAchados.length;
+      els.msgList.querySelectorAll('mark.bc').length && limparMarcas();
+      row.scrollIntoView({ block: 'center' });   // direto, sem animação: a animação brigava com a lista sendo redesenhada
+      row.classList.add('highlight'); setTimeout(function(){ row.classList.remove('highlight'); }, 1200);
+    }
+    if (!row.querySelector('mark.bc')) marcarNaLinha(row, bcAlvo.termo);
   }
   function bcIr(delta){
     if (!bcAchados.length) return;
     bcPos = (bcPos + delta + bcAchados.length) % bcAchados.length;
     bcCont.textContent = (bcPos + 1) + ' de ' + bcAchados.length;
-    var id = bcAchados[bcPos], termo = semAcento(bcIn.value.trim());
-    var alvo = els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
-    if (alvo){ pularParaMensagem(id); marcarNaMensagem(id, termo); }
-    else { pularParaMensagem(id); var tentativas = 0; var t = setInterval(function(){ if (els.msgList.querySelector('[data-msg-id="' + id + '"]') || ++tentativas > 40){ clearInterval(t); pularParaMensagem(id); marcarNaMensagem(id, termo); } }, 250); }
+    var a = bcAchados[bcPos];
+    limparMarcas();
+    bcAlvo = { id: a.id, termo: semAcento(bcIn.value.trim()), rolar: true, cargas: 0 };
+    if (linhaDaMsg(a.id)) return bcAposRender();
+    // mensagem mais antiga que as carregadas: carrega de uma vez até ela (com folga), em vez de 200 em 200
+    var precisa = (a.pos || 0) + 40;
+    if (activeId && limiteMsgs < precisa){ limiteMsgs = precisa; carregandoAntigas = true; bcCont.textContent = 'carregando… ' + (bcPos + 1) + ' de ' + bcAchados.length; ouvirMensagens(activeId); }
+    else bcAposRender();
   }
   function bcProcurar(){
-    var termo = semAcento(bcIn.value.trim()), c = conversas.filter(function(x){ return x.id === activeId; })[0];
+    var termo = semAcento(bcIn.value.trim()), c = conversas.filter(function(x){ return x.id === activeId; })[0], minha = ++bcBusca;
+    bcAlvo = null;
     if (!c || termo.length < 2){ bcAchados = []; bcPos = -1; bcCont.textContent = ''; limparMarcas(); return; }
     bcCont.textContent = 'procurando…';
     carregarBusca(c).then(function(){
+      if (minha !== bcBusca || c.id !== activeId) return;   // a pessoa já digitou outra coisa ou trocou de conversa
       var x = buscaCache[c.id] || { msgs: [] };
-      bcAchados = x.msgs.filter(function(m){ return semAcento(m.txt).indexOf(termo) >= 0; }).map(function(m){ return m.id; });   // já vem do mais novo para o mais antigo
+      bcAchados = x.msgs.filter(function(m){ return semAcento(m.txt).indexOf(termo) >= 0; });   // já vem do mais novo para o mais antigo
       bcPos = -1;
       if (!bcAchados.length){ bcCont.textContent = 'nada encontrado'; limparMarcas(); return; }
       bcIr(1);
