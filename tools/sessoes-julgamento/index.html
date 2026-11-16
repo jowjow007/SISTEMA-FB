@@ -918,11 +918,11 @@
     json.text().then(function(txt){
       var p = JSON.parse(txt);
       var slug = slugify(p.condominio);
-      if (!confirm('Importar ' + (p.sessoes || []).length + ' sessão(ões) e ' + (p.recursos || []).length + ' recurso(s) do ' + p.condominio + '?\n\nAs sessões entram como RASCUNHO (o conselho não vê até você liberar). Recursos que já existem são atualizados, e arquivos já enviados não são enviados de novo.')) return;
+      if (!confirm('Importar ' + (p.sessoes || []).length + ' sessão(ões) e ' + (p.recursos || []).length + ' recurso(s) do ' + p.condominio + '?\n\nAs sessões entram como RASCUNHO (o conselho não vê até você liberar). Pode importar a pasta inteira de novo: o que já está no portal NÃO é alterado (sessões e textos editados pela equipe ficam como estão). Entram só os recursos novos, os campos que estavam em branco e os arquivos que ainda não foram enviados.')) return;
       var porArquivo = {}; lista.forEach(function(f){ porArquivo[(f.webkitRelativePath || f.name).slice(raiz.length)] = f; });
       app.innerHTML = '<h2>Importando…</h2><div id="imp-log" class="small" style="white-space:pre-wrap;line-height:1.6;"></div><div class="barra-up" style="height:8px;"><div id="imp-barra"></div></div>';
       var log = function(t){ var el = document.getElementById('imp-log'); if (el) el.textContent += t + '\n'; };
-      var idsSessao = {};
+      var idsSessao = {}, novosRec = {};
       var total = (p.recursos || []).reduce(function(n, r){ return n + (r.arquivos || []).length; }, 0), feitos = 0;
       return (p.sessoes || []).reduce(function(pr, s){
         return pr.then(function(){
@@ -931,10 +931,12 @@
           var ref = db.collection('sessoesJulgamento').doc(id);
           log('… sessão: ' + (s.titulo || s.data));
           return ref.get().then(function(ex){
-            var dados = { condominioSlug:slug, condominioNome:p.condominio, data:s.data || '', titulo:s.titulo || 'Sessão de julgamento', local:s.local || '', realizada:!!s.realizada };
-            if (!ex.exists) Object.assign(dados, { liberada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
-            return ref.set(dados, { merge:true });
-          }).then(function(){ log('✔ sessão: ' + (s.titulo || s.data)); });
+            // sessão que já existe fica como está (data, título, local e "realizada" podem ter sido acertados pela equipe)
+            if (ex.exists) { log('= sessão já existe, mantida: ' + (ex.data().titulo || s.titulo || s.data)); return; }
+            var dados = { condominioSlug:slug, condominioNome:p.condominio, data:s.data || '', titulo:s.titulo || 'Sessão de julgamento', local:s.local || '', realizada:!!s.realizada,
+              liberada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid };
+            return ref.set(dados, { merge:true }).then(function(){ log('✔ sessão nova: ' + (s.titulo || s.data)); });
+          });
         });
       }, Promise.resolve()).then(function(){
         return (p.recursos || []).reduce(function(pr, r){
@@ -944,13 +946,16 @@
             log('… recurso #' + r.ocorrencia);
             return ref.get().then(function(ex){
               var atual = ex.exists ? ex.data() : null;
+              if (!atual) novosRec[r.ocorrencia] = true;
               var sess = sessoes[idsSessao[r.sessao]] || {};
               var dados = {};
-              CAMPOS_TEXTO.forEach(function(k){ if (r[k] != null) dados[k] = String(r[k]); });
-              Object.assign(dados, { sessaoId:idsSessao[r.sessao], condominioSlug:slug, condominioNome:p.condominio, liberado:!!(atual ? atual.liberado : sess.liberada),
-                atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid });
-              if (!atual) Object.assign(dados, { provas:[], criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
-              return ref.set(dados, { merge:true }).then(function(){
+              // recurso que já existe: só preenche o que está em branco (o que a equipe escreveu ou corrigiu não muda)
+              CAMPOS_TEXTO.forEach(function(k){ if (r[k] != null && String(r[k]).trim() && !(atual && String(atual[k] || '').trim())) dados[k] = String(r[k]); });
+              if (!atual) Object.assign(dados, { sessaoId:idsSessao[r.sessao], condominioSlug:slug, condominioNome:p.condominio, liberado:!!sess.liberada,
+                provas:[], criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
+              if (!atual || Object.keys(dados).length) Object.assign(dados, { atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid });
+              if (atual && !atual.sessaoId && idsSessao[r.sessao]) dados.sessaoId = idsSessao[r.sessao];
+              return (atual && !Object.keys(dados).length ? Promise.resolve() : ref.set(dados, { merge:true })).then(function(){
                 var ja = (atual && atual.provas || []).map(function(x){ return x.nome + '|' + x.tamanho; });
                 return (r.arquivos || []).reduce(function(pa, a){
                   return pa.then(function(){
@@ -967,7 +972,7 @@
                   });
                 }, Promise.resolve());
               });
-            }).then(function(){ log('✔ recurso #' + r.ocorrencia + ' (' + (r.arquivos || []).length + ' arquivos)'); });
+            }).then(function(){ log('✔ recurso #' + r.ocorrencia + (novosRec[r.ocorrencia] ? ' (novo)' : ' (já existia: só o que faltava)') + ' — ' + (r.arquivos || []).length + ' arquivos'); });
           });
         }, Promise.resolve());
       }).then(function(){ log('\nConcluído. As sessões estão como rascunho: confira e libere ao conselho.'); state.condo = slug;

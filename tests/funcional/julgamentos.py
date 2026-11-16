@@ -277,6 +277,32 @@ def main():
                and (F.ler('sessoesJulgamento/condominio-ficticio-beta-set-2026') or {}).get('liberada') is False
                and (F.ler('sessoesJulgamento/condominio-ficticio-beta-set-2026') or {}).get('realizada') is True,
                str(F.ler('recursosJulgamento/condominio-ficticio-beta-900002'))[:300] + ' | ' + pa.evaluate("document.getElementById('app').innerText.slice(0, 600)").replace(chr(10), ' / '))
+        # reimportar a mesma pasta com um recurso a mais: o que a equipe editou não muda, o novo entra, arquivos não duplicam
+        import requests
+        rb = 'recursosJulgamento/condominio-ficticio-beta-900002'
+        requests.patch(f'{F.DOCS}/{rb}?updateMask.fieldPaths=unidade&updateMask.fieldPaths=morador', headers=F.DONO,
+                       json={'fields': {'unidade': F.fs_valor('Bloco 1, nº 2 (corrigido pela equipe)'), 'morador': F.fs_valor('')}}).raise_for_status()
+        requests.patch(f'{F.DOCS}/sessoesJulgamento/condominio-ficticio-beta-set-2026?updateMask.fieldPaths=data&updateMask.fieldPaths=titulo', headers=F.DONO,
+                       json={'fields': {'data': F.fs_valor('2026-09-22'), 'titulo': F.fs_valor('Sessão de 22/09 (acertada pela equipe)')}}).raise_for_status()
+        os.makedirs(os.path.join(pac, '900003'))
+        open(os.path.join(pac, '900003', 'FOTO.pdf'), 'wb').write(F.PDF_FALSO)
+        pj = json.load(open(os.path.join(pac, 'pacote.json'), encoding='utf-8'))
+        pj['recursos'][0].update({'unidade': 'Texto antigo do pacote', 'morador': 'Morador Ficticio', 'titulo': 'Título antigo'})
+        pj['recursos'].append({'sessao': 'set-2026', 'ocorrencia': '900003', 'unidade': 'Bloco 2, nº 3', 'titulo': 'Barulho', 'fatos': 'Outro fato fictício.',
+                               'arquivos': [{'arquivo': '900003/FOTO.pdf', 'categoria': 'prova'}]})
+        json.dump(pj, open(os.path.join(pac, 'pacote.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+        pa.goto(URL); F.esperar(pa, "!!document.getElementById('importar')", 20000)
+        pa.set_input_files('#importar', pac)
+        F.esperar(pa, "(document.getElementById('imp-log') || {}).textContent && document.getElementById('imp-log').textContent.includes('Concluído')", 60000)
+        r2, s2 = F.ler(rb) or {}, F.ler('sessoesJulgamento/condominio-ficticio-beta-set-2026') or {}
+        F.caso(G, 'reimportar: textos editados pela equipe e a sessão acertada ficam como estão',
+               r2.get('unidade') == 'Bloco 1, nº 2 (corrigido pela equipe)' and r2.get('titulo') == 'Animal sem guia'
+               and s2.get('data') == '2026-09-22' and s2.get('titulo', '').startswith('Sessão de 22/09'), str(r2)[:300] + ' | ' + str(s2)[:200])
+        F.caso(G, 'reimportar: campo que estava em branco é preenchido; arquivos não duplicam',
+               r2.get('morador') == 'Morador Ficticio' and len(r2.get('provas', [])) == 2, str(r2.get('provas'))[:200])
+        F.caso(G, 'reimportar: o recurso novo entra com o arquivo',
+               F.ate(lambda: len((F.ler('recursosJulgamento/condominio-ficticio-beta-900003') or {}).get('provas', [])) == 1, 20)
+               and (F.ler('recursosJulgamento/condominio-ficticio-beta-900003') or {}).get('sessaoId') == 'condominio-ficticio-beta-set-2026')
         F.caso(G, 'recurso importado de sessão realizada aparece como "decisão a lançar"',
                (pa.goto(URL) or True) and F.esperar(pa, "document.querySelectorAll('[data-condo]').length >= 2", 15000)
                and (pa.click('[data-condo="condominio-ficticio-beta"]') or True)
