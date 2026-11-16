@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("249.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("249.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("250.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("250.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "249";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "250";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -378,6 +378,66 @@ namespace PortalFB
         }
     }
 
+    // ---------- número de mensagens não lidas do chat sobre o ícone da barra de tarefas ----------
+    // O portal manda "naolidas:N"; o Windows mostra um pequeno ícone sobreposto (ITaskbarList3.SetOverlayIcon).
+    [ComImport, Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface ITaskbarList3
+    {
+        void HrInit(); void AddTab(IntPtr hwnd); void DeleteTab(IntPtr hwnd); void ActivateTab(IntPtr hwnd); void SetActiveAlt(IntPtr hwnd);
+        void MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool tela);
+        void SetProgressValue(IntPtr hwnd, ulong feito, ulong total); void SetProgressState(IntPtr hwnd, int estado);
+        void RegisterTab(IntPtr aba, IntPtr janela); void UnregisterTab(IntPtr aba); void SetTabOrder(IntPtr aba, IntPtr antes);
+        void SetTabActive(IntPtr aba, IntPtr janela, uint reservado);
+        void ThumbBarAddButtons(IntPtr hwnd, uint qtd, IntPtr botoes); void ThumbBarUpdateButtons(IntPtr hwnd, uint qtd, IntPtr botoes);
+        void ThumbBarSetImageList(IntPtr hwnd, IntPtr lista);
+        void SetOverlayIcon(IntPtr hwnd, IntPtr icone, [MarshalAs(UnmanagedType.LPWStr)] string descricao);
+    }
+    [ComImport, Guid("56FDF344-FD6D-11d0-958A-006097C9A090"), ClassInterface(ClassInterfaceType.None)]
+    class TaskbarListCom { }
+
+    static class SeloNaBarra
+    {
+        [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
+        static ITaskbarList3 barra;
+        static IntPtr iconeAtual = IntPtr.Zero;
+        static int ultimo = -1;
+
+        public static void Mostrar(Form janela, int n)
+        {
+            if (n < 0) n = 0;
+            if (n == ultimo) return;
+            try
+            {
+                if (barra == null) { barra = (ITaskbarList3)new TaskbarListCom(); barra.HrInit(); }
+                IntPtr novo = n > 0 ? Desenhar(n > 99 ? "99+" : n.ToString()) : IntPtr.Zero;
+                barra.SetOverlayIcon(janela.Handle, novo, n > 0 ? n + (n == 1 ? " mensagem não lida" : " mensagens não lidas") : "");
+                if (iconeAtual != IntPtr.Zero) DestroyIcon(iconeAtual);
+                iconeAtual = novo;
+                ultimo = n;
+            }
+            catch { /* Windows sem barra de tarefas compatível: fica só o número no título da janela */ }
+        }
+
+        static IntPtr Desenhar(string txt)
+        {
+            int lado = Math.Max(16, (int)Math.Round(16 * Programa.Escala()));   // o selo tem 16 px na escala 100%
+            using (var bmp = new Bitmap(lado, lado, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                g.Clear(Color.Transparent);
+                using (var fundo = new SolidBrush(Color.FromArgb(229, 57, 53))) g.FillEllipse(fundo, 0, 0, lado - 1, lado - 1);
+                using (var borda = new Pen(Color.White, Math.Max(1f, lado / 16f))) g.DrawEllipse(borda, 0.5f, 0.5f, lado - 2, lado - 2);
+                float tam = lado * (txt.Length > 2 ? 0.36f : txt.Length > 1 ? 0.48f : 0.62f);
+                using (var fonte = new Font("Segoe UI", tam, FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    g.DrawString(txt, fonte, Brushes.White, new RectangleF(0, 0, lado, lado + 1), fmt);
+                return bmp.GetHicon();
+            }
+        }
+    }
+
     // ---------- janela do app ----------
     class Janela : Form
     {
@@ -446,6 +506,12 @@ namespace PortalFB
             if (!Uri.TryCreate(e.Source, UriKind.Absolute, out u) || !DoPortal(u)) return;
             string msg;
             try { msg = e.TryGetWebMessageAsString(); } catch { return; }
+            if (msg != null && msg.StartsWith("naolidas:"))
+            {
+                int n;
+                if (principal && int.TryParse(msg.Substring(9), out n)) SeloNaBarra.Mostrar(this, n);
+                return;
+            }
             if (msg != "atualizar-agora") return;
             var wv = web.CoreWebView2;
             ThreadPool.QueueUserWorkItem(delegate
