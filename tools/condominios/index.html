@@ -355,6 +355,23 @@
     .split > div:first-child{border-right:none;}
     main{padding:24px 16px 60px;}
   }
+
+  /* convenção e regimento nos cards (16/11/2026) */
+  .docs-cond{display:flex;flex-direction:column;gap:6px;margin:10px 0 4px;}
+  .doc-cond{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--card-line);border-radius:8px;padding:6px 8px;font-size:.8rem;}
+  .doc-cond .acoes{display:flex;gap:6px;}
+  .doc-cond button{border:1px solid var(--card-line);background:transparent;color:inherit;border-radius:6px;padding:3px 10px;font-size:.74rem;font-weight:700;cursor:pointer;}
+  .doc-cond button:hover{background:var(--red);border-color:var(--red);color:#fff;}
+  .doc-cond small{color:var(--muted);font-size:.72rem;}
+  .doc-cond.falta,.doc-cond.carregando{opacity:.6;}
+  .doc-viewer{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:18px;}
+  .doc-viewer-box{background:var(--card,#fff);color:var(--text,#222);width:min(1100px,100%);height:min(94vh,100%);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .doc-viewer-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--card-line);}
+  .doc-viewer-top span{display:flex;gap:8px;}
+  .doc-viewer iframe{flex:1;border:0;width:100%;background:#525659;}
+  .tab-docs{width:100%;border-collapse:collapse;font-size:.8rem;}
+  .tab-docs th,.tab-docs td{text-align:left;padding:6px;border-bottom:1px solid var(--card-line);vertical-align:top;}
+  .tab-docs select{width:100%;padding:5px;border:1px solid var(--card-line);border-radius:6px;background:var(--card);color:var(--text);}
 </style>
 </head>
 <body>
@@ -372,6 +389,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
 <script>
 /* ---------- data ---------- */
@@ -544,6 +562,123 @@ document.addEventListener('click', function(e){
   baixarArquivoPrivado(a.getAttribute('data-arquivo-privado'), a.getAttribute('data-arquivo-privado'));
 });
 
+
+/* ---------- Convenção e Regimento de cada condomínio (Storage: condominiosDocs/{slug}/convencao.pdf | regimento.pdf) ---------- */
+var storageCond = null; try { if (fbReady && firebase.storage) storageCond = firebase.storage(); } catch (e) {}
+var DOCS_COND = {}, docsCondCarregando = false, docsCondCarregados = false;
+var TIPOS_DOC_COND = [{ id: 'convencao', rot: 'Convenção', ic: '📘' }, { id: 'regimento', rot: 'Regimento', ic: '📗' }];
+function carregarDocsCond(forcar){
+  if (!storageCond || !CONDOMINIOS.length || docsCondCarregando || (docsCondCarregados && !forcar)) return;
+  docsCondCarregando = true;
+  var ps = [];
+  CONDOMINIOS.forEach(function(c){ var slug = slugify(c.nome); DOCS_COND[slug] = DOCS_COND[slug] || {};
+    TIPOS_DOC_COND.forEach(function(t){ var ref = storageCond.ref('condominiosDocs/' + slug + '/' + t.id + '.pdf');
+      ps.push(ref.getMetadata().then(function(m){ return ref.getDownloadURL().then(function(u){
+        DOCS_COND[slug][t.id] = { url: u, nome: (m.customMetadata && m.customMetadata.nomeOriginal) || (t.rot + ' - ' + c.nome + '.pdf'), tam: m.size }; }); })
+        .catch(function(){ DOCS_COND[slug][t.id] = null; })); }); });
+  Promise.all(ps).then(function(){ docsCondCarregando = false; docsCondCarregados = true; if (state.section === 'condominios') render(); });
+}
+function botoesDocsCond(c){
+  var slug = slugify(c.nome), d = DOCS_COND[slug] || {};
+  return '<div class="docs-cond">' + TIPOS_DOC_COND.map(function(t){
+    var x = d[t.id];
+    if (x === undefined) return '<div class="doc-cond carregando"><span>' + t.ic + ' ' + t.rot + '</span><small>carregando…</small></div>';
+    if (!x) return '<div class="doc-cond falta"><span>' + t.ic + ' ' + t.rot + '</span><small>não enviada</small></div>';
+    return '<div class="doc-cond"><span>' + t.ic + ' ' + t.rot + '</span><span class="acoes"><button type="button" data-doc-ver="' + slug + '|' + t.id + '">Ver</button>' +
+      '<button type="button" data-doc-baixar="' + slug + '|' + t.id + '">Baixar</button></span></div>';
+  }).join('') + '</div>';
+}
+function docCondDe(chave){ var p = chave.split('|'); var x = (DOCS_COND[p[0]] || {})[p[1]]; var c = CONDOMINIOS.filter(function(k){ return slugify(k.nome) === p[0]; })[0];
+  var t = TIPOS_DOC_COND.filter(function(k){ return k.id === p[1]; })[0]; return x ? { doc: x, cond: c, tipo: t } : null; }
+function baixarDocCond(chave, botao){
+  var r = docCondDe(chave); if (!r) return;
+  var antes = botao ? botao.textContent : ''; if (botao){ botao.textContent = 'Baixando…'; botao.disabled = true; }
+  fetch(r.doc.url).then(function(resp){ if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.blob(); }).then(function(b){
+    var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = r.doc.nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 60000);
+  }).catch(function(){ window.open(r.doc.url, '_blank', 'noopener'); })   // sem CORS no bucket: abre o PDF numa aba (dá para salvar por lá)
+    .then(function(){ if (botao){ botao.textContent = antes; botao.disabled = false; } });
+}
+function verDocCond(chave){
+  var r = docCondDe(chave); if (!r) return;
+  var f = document.createElement('div'); f.className = 'doc-viewer'; f.innerHTML = '<div class="doc-viewer-box"><div class="doc-viewer-top"><b>' + escapeHtml(r.tipo.rot + ' — ' + r.cond.nome) + '</b>' +
+    '<span><button type="button" class="btn secondary" data-v-baixar>Baixar</button><button type="button" class="btn ghost" data-v-fechar title="Fechar (Esc)">✕ Fechar</button></span></div>' +
+    '<iframe src="' + escapeHtml(r.doc.url) + '#view=FitH" title="' + escapeHtml(r.tipo.rot) + '"></iframe></div>';
+  document.body.appendChild(f); document.documentElement.style.overflow = 'hidden';
+  function fechar(){ f.remove(); document.documentElement.style.overflow = ''; document.removeEventListener('keydown', esc); }
+  function esc(e){ if (e.key === 'Escape') fechar(); }
+  document.addEventListener('keydown', esc);
+  f.querySelector('[data-v-fechar]').onclick = fechar; f.addEventListener('mousedown', function(e){ if (e.target === f) fechar(); });
+  f.querySelector('[data-v-baixar]').onclick = function(){ baixarDocCond(chave, this); };
+}
+document.addEventListener('click', function(e){
+  var v = e.target.closest && e.target.closest('[data-doc-ver]'); if (v){ e.preventDefault(); return verDocCond(v.getAttribute('data-doc-ver')); }
+  var b = e.target.closest && e.target.closest('[data-doc-baixar]'); if (b){ e.preventDefault(); return baixarDocCond(b.getAttribute('data-doc-baixar'), b); }
+  var en = e.target.closest && e.target.closest('[data-docs-enviar]'); if (en){ e.preventDefault(); return abrirEnvioDocsCond(); }
+});
+// administrador: escolhe a pasta "Convenções e Regimentos" e o portal reconhece o condomínio e o tipo pelo nome de cada PDF
+function casarCondominio(rotulo){
+  var tk = slugify(rotulo).split('-').filter(function(w){ return w.length > 2 && ['condominio', 'residencial', 'edificio'].indexOf(w) < 0; });
+  if (!tk.length) return '';
+  var melhor = '', nota = 0;
+  CONDOMINIOS.forEach(function(c){ var cs = slugify(c.nome).split('-'), n = tk.filter(function(w){ return cs.indexOf(w) >= 0; }).length;
+    if (n > nota || (n === nota && n && slugify(c.nome).length < slugify(melhor).length)){ nota = n; melhor = c.nome; } });
+  return nota >= Math.min(2, tk.length) ? melhor : '';
+}
+function abrirEnvioDocsCond(){
+  if (!isAdminUser() || !storageCond) return;
+  var f = document.createElement('div'); f.className = 'doc-viewer';
+  f.innerHTML = '<div class="doc-viewer-box" style="max-width:860px;height:auto;max-height:92vh;"><div class="doc-viewer-top"><b>Enviar convenções e regimentos</b><button type="button" class="btn ghost" data-e-fechar>✕</button></div>' +
+    '<div style="padding:16px 20px;overflow:auto;"><p style="font-size:.86rem;line-height:1.55;margin:0 0 12px;">Escolha a pasta <b>"Convenções e Regimentos"</b> (com as subpastas de cada condomínio) ou selecione os PDFs. O portal reconhece o condomínio pelo nome do arquivo ou da subpasta e o tipo pela palavra <i>Convenção</i> ou <i>Regimento</i>. Confira a tabela antes de enviar; o que já existir é substituído.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><label class="btn secondary" style="cursor:pointer;">Escolher a pasta<input type="file" id="e-pasta" webkitdirectory multiple hidden></label><label class="btn secondary" style="cursor:pointer;">Escolher PDFs<input type="file" id="e-arqs" accept="application/pdf,.pdf" multiple hidden></label></div>' +
+    '<div id="e-tab" style="margin-top:14px;"></div><div id="e-st" style="font-size:.84rem;margin-top:10px;"></div>' +
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;"><button type="button" class="btn" id="e-ok" disabled>Enviar</button></div></div></div>';
+  document.body.appendChild(f);
+  var itens = [], enviando = false;
+  function fechar(){ if (enviando && !confirm('O envio ainda está em andamento. Fechar mesmo assim?')) return; f.remove(); }
+  f.querySelector('[data-e-fechar]').onclick = fechar;
+  function opcoes(sel){ return '<option value="">— ignorar —</option>' + CONDOMINIOS.map(function(c){ return '<option' + (c.nome === sel ? ' selected' : '') + '>' + escapeHtml(c.nome) + '</option>'; }).join(''); }
+  function receber(lista){
+    var vistos = {};
+    itens = Array.prototype.filter.call(lista, function(a){ return /\.pdf$/i.test(a.name); }).map(function(a){
+      var caminho = a.webkitRelativePath || a.name, partes = caminho.split('/'), pasta = partes.length > 2 ? partes[partes.length - 2] : '';
+      var colch = (/\[([^\]]+)\]/.exec(a.name) || [])[1] || '';
+      var tipo = /conven/i.test(a.name) ? 'convencao' : /regim/i.test(a.name) ? 'regimento' : '';
+      var cond = casarCondominio(colch || pasta || a.name.replace(/\.pdf$/i, ''));
+      var chave = cond + '|' + tipo, dup = !!vistos[chave] && !!cond && !!tipo; vistos[chave] = 1;   // ex.: "Regimento Interno(1).pdf" repetido
+      return { arq: a, nome: a.name, pasta: pasta, tipo: tipo, cond: dup ? '' : cond, dup: dup };
+    });
+    pintar();
+  }
+  function pintar(){
+    f.querySelector('#e-tab').innerHTML = itens.length ? '<table class="tab-docs"><tr><th>Arquivo</th><th>Condomínio</th><th>Tipo</th></tr>' + itens.map(function(x, i){
+      return '<tr><td>' + escapeHtml(x.nome) + '<br><small>' + (x.arq.size / 1048576).toFixed(1) + ' MB' + (x.dup ? ' · repetido, ignorado' : '') + '</small></td>' +
+        '<td><select data-i="' + i + '" data-k="cond">' + opcoes(x.cond) + '</select></td><td><select data-i="' + i + '" data-k="tipo"><option value="">—</option><option value="convencao"' + (x.tipo === 'convencao' ? ' selected' : '') + '>Convenção</option><option value="regimento"' + (x.tipo === 'regimento' ? ' selected' : '') + '>Regimento</option></select></td></tr>'; }).join('') + '</table>'
+      : '<p style="font-size:.84rem;color:var(--muted);">Nenhum PDF escolhido.</p>';
+    f.querySelectorAll('select[data-i]').forEach(function(sl){ sl.onchange = function(){ itens[+sl.getAttribute('data-i')][sl.getAttribute('data-k')] = sl.value; contar(); }; });
+    contar();
+  }
+  function prontos(){ return itens.filter(function(x){ return x.cond && x.tipo; }); }
+  function contar(){ var n = prontos().length; var ok = f.querySelector('#e-ok'); ok.disabled = !n || enviando; ok.textContent = 'Enviar ' + n + ' arquivo(s)'; }
+  f.querySelector('#e-pasta').onchange = function(){ receber(this.files); };
+  f.querySelector('#e-arqs').onchange = function(){ receber(this.files); };
+  f.querySelector('#e-ok').onclick = function(){
+    var fila = prontos(), st = f.querySelector('#e-st'), feitos = 0, erros = [];
+    enviando = true; contar();
+    function proximo(){
+      if (!fila.length){ enviando = false; st.innerHTML = '<b>Pronto:</b> ' + feitos + ' enviado(s)' + (erros.length ? ' · erros: ' + escapeHtml(erros.join('; ')) : '') + '.'; docsCondCarregados = false; carregarDocsCond(true); contar(); return; }
+      var x = fila.shift(), slug = slugify(x.cond);
+      var ref = storageCond.ref('condominiosDocs/' + slug + '/' + x.tipo + '.pdf');
+      var nomeBonito = (x.tipo === 'convencao' ? 'Convenção' : 'Regimento Interno') + ' - ' + x.cond + '.pdf';
+      var task = ref.put(x.arq, { contentType: 'application/pdf', contentDisposition: 'inline; filename="' + nomeBonito.replace(/[^\x20-\x7e]/g, '_') + '"', customMetadata: { nomeOriginal: nomeBonito } });
+      task.on('state_changed', function(sn){ st.textContent = 'Enviando ' + (feitos + 1) + ': ' + x.nome + ' — ' + Math.round(100 * sn.bytesTransferred / sn.totalBytes) + '%'; },
+        function(err){ erros.push(x.nome + ' (' + (err.code === 'storage/unauthorized' ? 'sem permissão — publique as regras do Storage' : err.message) + ')'); proximo(); },
+        function(){ feitos++; proximo(); });
+    }
+    proximo();
+  };
+}
+
 function escapeHtml(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -618,6 +753,7 @@ function render(){
   else if(state.section === 'fluxos') m.innerHTML = viewFluxos();
   else if(state.section === 'relatorios-condominiais') m.innerHTML = viewRelatoriosCondominiais();
   bindDynamic();
+  if (state.section === 'condominios' && dadosCondoStatus === 'ok') carregarDocsCond();
 }
 
 function bindDynamic(){
@@ -884,6 +1020,7 @@ function viewCondoGrid(){
     + '<p class="lead">Consulte síndicos, regras especiais, número de unidades e particularidades de cada condomínio.</p>'
     + '<hr class="rule">'
     + avisoDadosCondo()
+    + (isAdminUser() && CONDOMINIOS.length ? '<div style="display:flex;justify-content:flex-end;margin:-6px 0 12px;"><button type="button" class="btn secondary" data-docs-enviar>📤 Enviar convenções e regimentos</button></div>' : '')
     + '<div class="grid g3">' + CONDOMINIOS.map(function(c,i){
         var slug = slugify(c.nome);
         return '<div class="condo-card">'
@@ -891,6 +1028,7 @@ function viewCondoGrid(){
           + '<h3>'+c.nome+'</h3>'
           + '<p class="sind">Síndico(a): <b>'+c.sindico+'</b></p>'
           + unidadesBlocoCard(slug, c.nome)
+          + botoesDocsCond(c)
           + (c.nota ? '<p class="note">⚠ '+truncate(c.nota,90)+'</p>' : '')
           + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>→</span></button>'
           + '</div>';
@@ -933,6 +1071,8 @@ function viewCondoDetail(){
       + (c.nota
           ? '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;line-height:1.55;">'+c.nota+'</div></div></div>'
           : '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;color:var(--muted);">Nenhuma particularidade registrada — segue o procedimento padrão.</div></div></div>');
+  } else if(state.condoSubtab === 'regimento'){
+    html += '<p class="lead" style="margin-bottom:12px;font-size:.86rem;">Convenção condominial e regimento interno de ' + escapeHtml(c.nome) + ' — veja aqui no portal ou baixe o PDF.</p>' + botoesDocsCond(c);
   } else if(state.condoSubtab === 'relatorios'){
     html += viewCondoRelatorios(c);
   } else {

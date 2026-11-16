@@ -455,6 +455,35 @@
   #thread-active{position:relative;}
   #thread-active.soltando::after{content:'📎  Solte o arquivo para anexar';position:absolute;inset:8px;z-index:30;display:flex;align-items:center;justify-content:center;
     border:2px dashed var(--red-bright,#c9463c);border-radius:14px;background:rgba(22,16,16,.78);color:#fff;font-size:1.05rem;font-weight:600;pointer-events:none;}
+
+  /* ---- áudio (16/11/2026) ---- */
+  .icon-btn.gravando{color:#fff;background:#d32f2f;border-color:#d32f2f;animation:pulsoGrav 1.2s ease-in-out infinite;}
+  @keyframes pulsoGrav{0%,100%{box-shadow:0 0 0 0 rgba(211,47,47,.5);}50%{box-shadow:0 0 0 6px rgba(211,47,47,0);}}
+  .grav-tempo{font-size:.78rem;font-weight:700;color:#e53935;min-width:42px;display:none;align-self:center;}
+  .grav-tempo.on{display:inline-block;}
+  .audio-preview-row{display:none;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:10px;margin-bottom:8px;}
+  .audio-preview-row.show{display:flex;}
+  .audio-preview-row audio{height:34px;flex:1;min-width:0;}
+  .audio-preview-row .st{font-size:.74rem;color:var(--muted);white-space:nowrap;}
+  .audio-preview-row button{background:none;border:1px solid var(--line-strong);border-radius:8px;padding:5px 10px;color:inherit;font-size:.76rem;}
+  .msg-audio{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:100%;}
+  .msg-audio audio{width:100%;height:36px;}
+  .msg-transc{font-size:.8rem;line-height:1.45;opacity:.92;border-left:3px solid currentColor;padding:2px 0 2px 8px;white-space:pre-wrap;}
+  .msg-transc .rot{display:block;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-bottom:2px;}
+  /* ---- busca dentro das mensagens ---- */
+  .busca-msgs{border-top:1px solid var(--line-strong);margin-top:6px;padding-top:4px;}
+  .busca-msgs .tit{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 14px 4px;display:flex;justify-content:space-between;}
+  .busca-msg-item{display:block;width:100%;text-align:left;background:none;border:none;color:inherit;padding:8px 14px;border-radius:8px;cursor:pointer;}
+  .busca-msg-item:hover{background:var(--panel-2);}
+  .busca-msg-item .q{font-size:.8rem;font-weight:700;display:flex;justify-content:space-between;gap:8px;}
+  .busca-msg-item .q small{font-weight:400;color:var(--muted);white-space:nowrap;}
+  .busca-msg-item .t{font-size:.78rem;color:var(--muted);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .busca-msg-item mark{background:rgba(255,196,0,.45);color:inherit;border-radius:2px;padding:0 1px;}
+  /* ---- membros do grupo ---- */
+  .membros-grupo{max-height:220px;overflow:auto;border:1px solid var(--line-strong);border-radius:10px;margin:10px 0 8px;}
+  .membros-grupo .m{display:flex;align-items:center;gap:10px;padding:7px 10px;font-size:.84rem;}
+  .membros-grupo .m + .m{border-top:1px solid var(--line);}
+  .membros-tit{font-size:.74rem;font-weight:700;color:var(--muted);margin-top:12px;}
   .lightbox-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;
     z-index:70;padding:20px;cursor:zoom-out;
@@ -558,6 +587,11 @@
           </div>
           <button id="btn-remover-doc">Remover</button>
         </div>
+        <div class="audio-preview-row" id="audio-preview-row">
+          <audio id="audio-preview" controls preload="metadata"></audio>
+          <span class="st" id="audio-preview-st"></span>
+          <button id="btn-remover-audio" type="button">Remover</button>
+        </div>
         <div class="composer-row">
           <button class="icon-btn" id="btn-anexar" title="Anexar foto">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -575,9 +609,13 @@
           <button class="icon-btn" id="btn-emoji" title="Emoji"></button>
           <div class="emoji-popover" id="emoji-popover"></div>
           <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
+          <span class="grav-tempo" id="grav-tempo">0:00</span>
+          <button class="icon-btn" id="btn-audio" title="Gravar áudio">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7"></path></svg>
+          </button>
           <button class="send-btn" id="btn-enviar" title="Enviar"></button>
         </div>
-        <div class="media-hint">Suporta texto, fotos e documentos (até 500 KB). Áudio e vídeo ainda não estão disponíveis nesta ferramenta.</div>
+        <div class="media-hint">Texto, fotos, documentos (até 10 MB) e áudio de até 5 minutos, com transcrição automática.</div>
       </div>
     </div>
   </section>
@@ -643,6 +681,9 @@
       </div>
     </div>
     <input type="text" id="grupo-nome-input" placeholder="Nome do grupo" maxlength="80">
+    <div class="membros-tit" id="grupo-membros-tit">Membros</div>
+    <div class="membros-grupo" id="grupo-membros"></div>
+    <button type="button" class="btn ghost" id="grupo-add-membros">+ Adicionar membros</button>
     <div class="err" id="grupo-form-err"></div>
     <div class="modal-foot">
       <button class="btn ghost" id="grupo-fechar">Cancelar</button>
@@ -691,6 +732,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
+<script src="../assistente-ia/gemini-config.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1719,10 +1761,15 @@
           '<div class="tamanho">' + formatBytes(m.documentoTamanho || 0) + '</div>' +
           '</span></a>';
       }
+      if (m.tipo === 'audio'){
+        var auSrc = urlDeMidia(m.audioUrl || '');
+        out += '<div class="msg-audio">' + (auSrc ? '<audio controls preload="none" src="' + auSrc + '"></audio>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
+          (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>' : '') + '</div>';
+      }
       if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
       out += '</div>';
       out += '<button class="msg-reply-btn" data-reply="' + m.id + '" title="Responder">' + icoSvg('reply', 28) + '</button>';
-      if (m.texto) out += '<button class="msg-copy-btn" data-copy="' + m.id + '" title="Copiar mensagem">' + icoSvg('copy', 28) + '</button>';
+      if (m.texto || m.transcricao) out += '<button class="msg-copy-btn" data-copy="' + m.id + '" title="' + (m.texto ? 'Copiar mensagem' : 'Copiar a transcrição') + '">' + icoSvg('copy', 28) + '</button>';
       out += '<button class="msg-fwd-btn" data-fwd="' + m.id + '" title="Encaminhar">' + icoSvg('forward', 28) + '</button>';
       if (m.texto || m.documentoNome) out += '<button class="msg-task-btn" data-task="' + m.id + '" title="Enviar para Minhas anotações (vira tarefa)">' + icoSvg('taskAdd', 28) + '</button>';
       out += '<button class="msg-react-btn" data-react="' + m.id + '" title="Reagir">' + icoSvg('smiley', 28) + '</button>';
@@ -1835,7 +1882,7 @@
       if (forwardMsg) abrirPicker('encaminhar');
     } else if (t.hasAttribute('data-copy')){
       msg = msgPorId(t.getAttribute('data-copy'));
-      if (msg && msg.texto) copiarTexto(msg.texto, t);
+      if (msg && (msg.texto || msg.transcricao)) copiarTexto(msg.texto || msg.transcricao, t);
     } else if (t.hasAttribute('data-task')){
       msg = msgPorId(t.getAttribute('data-task'));
       if (msg) abrirTarefaDaMensagem(msg, t);
@@ -2094,6 +2141,7 @@
   function resumoMensagem(m){
     if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
     if (m.tipo === 'documento') return '📄 ' + (m.documentoNome || 'Documento') + (m.texto ? ': ' + m.texto : '');
+    if (m.tipo === 'audio') return '🎤 Áudio (' + mmss(m.audioDuracao) + ')' + (m.transcricao ? ': ' + m.transcricao : '') + (m.texto ? ' — ' + m.texto : '');
     return m.texto || '';
   }
 
@@ -2197,10 +2245,11 @@
     }
     if (novoDocumento && !novoDocumento.storageUrl && !novoDocumento.dataUrl){ limparComposerDoc(); alert('O arquivo não terminou de subir. Anexe de novo, por favor.'); return; }
     var texto = els.composerInput.value.trim();
-    if (!texto && !novaFotoUrl && !novoDocumento) return;
+    if (novoAudio && !novoAudio.url){ limparComposerAudio(); alert('O áudio não terminou de subir. Grave de novo, por favor.'); return; }
+    if (!texto && !novaFotoUrl && !novoDocumento && !novoAudio) return;
     enviandoMsg = true;
     els.btnEnviar.disabled = true;
-    var tipo = novoDocumento ? 'documento' : (novaFotoUrl ? 'foto' : 'texto');
+    var tipo = novoAudio ? 'audio' : novoDocumento ? 'documento' : (novaFotoUrl ? 'foto' : 'texto');
     var msgData = {
       autorUid: myUid,
       tipo: tipo,
@@ -2222,12 +2271,14 @@
       criadoEm: FV.serverTimestamp(),
       lidaPor: [myUid]
     };
+    if (novoAudio){ msgData.audioUrl = novoAudio.url; msgData.audioTipo = novoAudio.tipo; msgData.audioDuracao = novoAudio.duracao; msgData.audioTamanho = novoAudio.tamanho; msgData.transcricao = novoAudio.transcricao || null; }
     var preview = resumoMensagem(msgData);
     postMessageTo(activeId, msgData, preview).then(function(){
       els.composerInput.value = '';
       els.composerInput.style.height = 'auto';
       limparComposerFoto();
       limparComposerDoc();
+      limparComposerAudio();
       cancelarResposta();
     }).catch(function(e){
       alert('Não foi possível enviar: ' + e.message);
@@ -2594,7 +2645,12 @@
     els.pickerFotoGrupoRow.style.display = 'none';
     els.pickerFotoGrupoPreview.style.backgroundImage = '';
     els.pickerFotoGrupoPreview.innerHTML = '#';
-    if (mode === 'nova'){
+    if (mode === 'membros'){
+      els.pickerTitle.textContent = 'Adicionar ao grupo';
+      els.pickerHint.textContent = 'Escolha quem vai entrar no grupo. Essas pessoas passam a ver as mensagens a partir de agora e o histórico da conversa.';
+      els.pickerConfirmar.style.display = 'inline-block';
+      els.pickerConfirmar.textContent = 'Adicionar';
+    } else if (mode === 'nova'){
       els.pickerTitle.textContent = 'Nova conversa';
       els.pickerHint.textContent = 'Escolha um colega (conversa direta) ou vários (cria um canal).';
       els.pickerConfirmar.style.display = 'inline-block';
@@ -2685,9 +2741,10 @@
   function renderPickerList(){
     var termo = els.pickerBusca.value.trim().toLowerCase();
 
-    if (pickerMode === 'nova'){
+    if (pickerMode === 'nova' || pickerMode === 'membros'){
+      var grupoAtual = pickerMode === 'membros' ? (conversas.filter(function(x){ return x.id === activeId; })[0] || {}) : {};
       var contatos = Object.keys(perfis)
-        .filter(function(uid){ return uid !== myUid; })
+        .filter(function(uid){ return uid !== myUid && (grupoAtual.participantes || []).indexOf(uid) === -1; })
         .map(function(uid){ return { uid: uid, nome: perfis[uid].displayName || 'Colaborador' }; })
         .filter(function(c){ return !termo || c.nome.toLowerCase().indexOf(termo) !== -1; })
         .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
@@ -2707,8 +2764,8 @@
           var uid = el.getAttribute('data-uid');
           pickerSelected[uid] = !pickerSelected[uid];
           var qtd = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; }).length;
-          els.pickerNomeGrupo.style.display = qtd > 1 ? 'block' : 'none';
-          els.pickerFotoGrupoRow.style.display = qtd > 1 ? 'flex' : 'none';
+          els.pickerNomeGrupo.style.display = qtd > 1 && pickerMode === 'nova' ? 'block' : 'none';
+          els.pickerFotoGrupoRow.style.display = qtd > 1 && pickerMode === 'nova' ? 'flex' : 'none';
           renderPickerList();
         });
       });
@@ -2769,6 +2826,10 @@
       documentoNome: forwardMsg.documentoNome || null,
       documentoTipo: forwardMsg.documentoTipo || null,
       documentoTamanho: forwardMsg.documentoTamanho || null,
+      audioUrl: forwardMsg.audioUrl || null,
+      audioTipo: forwardMsg.audioTipo || null,
+      audioDuracao: forwardMsg.audioDuracao || null,
+      transcricao: forwardMsg.transcricao || null,
       encaminhada: true,
       encaminhadaDeAutorNome: autorOriginal,
       criadoEm: FV.serverTimestamp(),
@@ -2784,6 +2845,12 @@
     var uids = Object.keys(pickerSelected).filter(function(u){ return pickerSelected[u]; });
     if (!uids.length){
       els.pickerErr.textContent = 'Escolha ao menos um colaborador.';
+      return;
+    }
+    if (pickerMode === 'membros'){
+      els.pickerConfirmar.disabled = true;
+      adicionarMembros(uids).then(function(){ fecharPicker(); }).catch(function(e){ els.pickerErr.textContent = 'Erro: ' + e.message; })
+        .then(function(){ els.pickerConfirmar.disabled = false; });
       return;
     }
     if (uids.length === 1){
@@ -2803,6 +2870,166 @@
       selecionarConversa(id);
     });
   });
+
+
+  // ---------------- Esc fecha a imagem aberta (e os pop-ups) ----------------
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (els.lightbox.classList.contains('open')){ els.lightbox.classList.remove('open'); e.preventDefault(); return; }
+    if (els.reactPicker && els.reactPicker.classList.contains('open')){ fecharReactPicker(); return; }
+    ['picker-backdrop', 'grupo-backdrop', 'tags-backdrop', 'tarefa-backdrop'].forEach(function(id){ var b = document.getElementById(id); if (b && b.classList.contains('open')) b.classList.remove('open'); });
+  });
+
+  // ---------------- membros do grupo: ver e adicionar ----------------
+  function pintarMembrosGrupo(c){
+    var box = document.getElementById('grupo-membros'); if (!box) return;
+    var ps = (c.participantes || []).slice().sort(function(a, b){ return nomeDe(a).localeCompare(nomeDe(b), 'pt-BR'); });
+    document.getElementById('grupo-membros-tit').textContent = 'Membros (' + ps.length + ')';
+    box.innerHTML = ps.map(function(u){ return '<div class="m">' + avatarHtml(nomeDe(u), perfis[u] && perfis[u].photoBase64, false, u) + '<span>' + escapeHtml(nomeDe(u)) + (u === myUid ? ' <span style="color:var(--muted)">(você)</span>' : '') + '</span></div>'; }).join('');
+  }
+  els.btnEditarGrupo.addEventListener('click', function(){
+    var c = conversas.filter(function(x){ return x.id === activeId; })[0]; if (c && c.tipo === 'grupo') pintarMembrosGrupo(c);
+  });
+  document.getElementById('grupo-add-membros').addEventListener('click', function(){
+    els.grupoBackdrop.classList.remove('open'); abrirPicker('membros');
+  });
+  function adicionarMembros(uids){
+    var c = conversas.filter(function(x){ return x.id === activeId; })[0];
+    if (!c || c.tipo !== 'grupo') return Promise.resolve();
+    var novos = uids.filter(function(u){ return (c.participantes || []).indexOf(u) === -1; });
+    if (!novos.length) return Promise.resolve();
+    var upd = { participantes: FV.arrayUnion.apply(FV, novos) };
+    novos.forEach(function(u){ upd['naoLidoPor.' + u] = 0; });
+    var texto = myNome + ' adicionou ' + novos.map(nomeDe).join(', ');
+    return db.collection('conversas').doc(c.id).update(upd).then(function(){
+      return postMessageTo(c.id, { autorUid: myUid, tipo: 'sistema', texto: texto, fotoBase64: null, documentoBase64: null, documentoNome: null, documentoTipo: null, documentoTamanho: null,
+        encaminhada: false, criadoEm: FV.serverTimestamp(), lidaPor: [myUid] }, texto);
+    });
+  }
+
+  // ---------------- busca dentro das mensagens (palavras e letras) ----------------
+  // Firestore não tem busca por texto: as últimas mensagens de cada conversa são lidas uma vez e procuradas aqui.
+  var buscaCache = {}, buscaTimer = null, BUSCA_MSGS_POR_CONVERSA = 600;
+  function semAcento(t){ return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function carregarBusca(c){
+    var marca = c.ultimaMensagemEm && c.ultimaMensagemEm.toMillis ? c.ultimaMensagemEm.toMillis() : 0;
+    var x = buscaCache[c.id];
+    if (x && (x.carregando || x.marca === marca)) return x.p;
+    x = buscaCache[c.id] = { carregando: true, marca: marca, msgs: x ? x.msgs : [] };
+    x.p = db.collection('conversas').doc(c.id).collection('mensagens').orderBy('criadoEm', 'desc').limit(BUSCA_MSGS_POR_CONVERSA).get().then(function(snap){
+      x.msgs = snap.docs.map(function(d){ var m = d.data();
+        return { id: d.id, autorUid: m.autorUid, em: m.criadoEm && m.criadoEm.toDate ? m.criadoEm.toDate() : null, tipo: m.tipo,
+          txt: [m.texto, m.transcricao, m.documentoNome].filter(Boolean).join(' · ') }; }).filter(function(m){ return m.txt && m.tipo !== 'sistema'; });
+      x.carregando = false;
+    }).catch(function(){ x.carregando = false; });
+    return x.p;
+  }
+  function trechoMarcado(txt, termo){
+    var n = semAcento(txt), i = n.indexOf(termo); if (i < 0) return escapeHtml(txt.slice(0, 140));
+    var ini = Math.max(0, i - 40), fim = Math.min(txt.length, i + termo.length + 80);
+    return (ini ? '…' : '') + escapeHtml(txt.slice(ini, i)) + '<mark>' + escapeHtml(txt.slice(i, i + termo.length)) + '</mark>' + escapeHtml(txt.slice(i + termo.length, fim)) + (fim < txt.length ? '…' : '');
+  }
+  function renderBuscaMensagens(){
+    var antigo = els.convList.querySelector('.busca-msgs'); if (antigo) antigo.remove();
+    var bruto = els.buscaConversas.value.trim(), termo = semAcento(bruto);
+    if (termo.length < 2) return;
+    var lista = conversas.filter(function(c){ return !conversaExcluida(c); });
+    var pend = lista.map(carregarBusca);
+    var achados = [];
+    lista.forEach(function(c){ var x = buscaCache[c.id]; if (!x) return;
+      x.msgs.forEach(function(m){ if (semAcento(m.txt).indexOf(termo) >= 0) achados.push({ c: c, m: m }); }); });
+    achados.sort(function(a, b){ return (b.m.em ? b.m.em.getTime() : 0) - (a.m.em ? a.m.em.getTime() : 0); });
+    var carregando = lista.some(function(c){ return buscaCache[c.id] && buscaCache[c.id].carregando; });
+    var box = document.createElement('div'); box.className = 'busca-msgs';
+    box.innerHTML = '<div class="tit"><span>Mensagens</span><span>' + (carregando ? 'procurando…' : achados.length + (achados.length === 1 ? ' resultado' : ' resultados')) + '</span></div>' +
+      (achados.length ? achados.slice(0, 60).map(function(a){
+        return '<button class="busca-msg-item" data-bconv="' + a.c.id + '" data-bmsg="' + a.m.id + '"><div class="q"><span>' + escapeHtml(tituloConversa(a.c)) + '</span><small>' +
+          (a.m.em ? a.m.em.toLocaleDateString('pt-BR') : '') + '</small></div><div class="t">' + escapeHtml(nomeDe(a.m.autorUid)) + ': ' + trechoMarcado(a.m.txt, termo) + '</div></button>'; }).join('')
+        : (carregando ? '' : '<div style="padding:6px 14px 12px;color:var(--muted);font-size:.8rem;">Nenhuma mensagem com "' + escapeHtml(bruto) + '".</div>'));
+    els.convList.appendChild(box);
+    box.querySelectorAll('[data-bconv]').forEach(function(b){ b.addEventListener('click', function(){
+      var msgId = b.getAttribute('data-bmsg'); selecionarConversa(b.getAttribute('data-bconv')); pularPara = msgId; }); });
+    if (carregando){ clearTimeout(buscaTimer); Promise.all(pend).then(function(){ buscaTimer = setTimeout(renderBuscaMensagens, 50); }); }
+  }
+  var renderConvListBase = renderConvList;
+  renderConvList = function(){
+    renderConvListBase();
+    var vazio = els.convList.querySelector('.conv-empty');
+    if (vazio && els.buscaConversas.value.trim()) vazio.textContent = 'Nenhuma conversa com esse nome ou etiqueta.';
+    renderBuscaMensagens();
+  };
+
+  // ---------------- áudio: gravar, enviar e transcrever (Gemini, pelo proxy do Assistente IA) ----------------
+  var gravador = null, gravChunks = [], gravInicio = 0, gravTimer = null, novoAudio = null, AUDIO_MAX_SEG = 300;
+  var btnMic = document.getElementById('btn-audio'), gravTempo = document.getElementById('grav-tempo');
+  var audioRow = document.getElementById('audio-preview-row'), audioPrev = document.getElementById('audio-preview'), audioSt = document.getElementById('audio-preview-st');
+  function mmss(seg){ seg = Math.round(seg || 0); return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0'); }
+  function limparComposerAudio(){ novoAudio = null; audioRow.classList.remove('show'); try { URL.revokeObjectURL(audioPrev.src); } catch (e) {} audioPrev.removeAttribute('src'); }
+  document.getElementById('btn-remover-audio').addEventListener('click', function(){ limparComposerAudio(); subindoAnexo = false; enviarAoTerminar = false; els.btnEnviar.disabled = false; });
+  function tipoGravacao(){ var ts = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    for (var i = 0; i < ts.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(ts[i])) return ts[i]; return ''; }
+  function pararGravacao(){ if (gravador && gravador.state !== 'inactive') gravador.stop(); }
+  btnMic.addEventListener('click', function(){
+    if (!activeId) return;
+    if (gravador && gravador.state === 'recording') return pararGravacao();
+    if (!navigator.mediaDevices || !window.MediaRecorder) return alert('Este navegador não grava áudio. Use o Chrome ou o Edge atualizados.');
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      limparComposerFoto(); limparComposerDoc(); limparComposerAudio();
+      var tipo = tipoGravacao(); gravChunks = [];
+      gravador = new MediaRecorder(stream, tipo ? { mimeType: tipo, audioBitsPerSecond: 32000 } : undefined);
+      var convDoAudio = activeId;
+      gravador.ondataavailable = function(ev){ if (ev.data && ev.data.size) gravChunks.push(ev.data); };
+      gravador.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        clearInterval(gravTimer); btnMic.classList.remove('gravando'); btnMic.title = 'Gravar áudio'; gravTempo.classList.remove('on');
+        var dur = (Date.now() - gravInicio) / 1000;
+        var mime = (gravador.mimeType || tipo || 'audio/webm').split(';')[0];
+        var blob = new Blob(gravChunks, { type: mime }); gravador = null;
+        if (dur < 1 || blob.size < 800) return;   // toque sem querer
+        if (convDoAudio !== activeId) return;
+        prepararAudio(blob, mime, dur);
+      };
+      gravInicio = Date.now(); gravador.start(1000);
+      btnMic.classList.add('gravando'); btnMic.title = 'Parar e anexar'; gravTempo.classList.add('on'); gravTempo.textContent = '0:00';
+      gravTimer = setInterval(function(){ var s = (Date.now() - gravInicio) / 1000; gravTempo.textContent = mmss(s); if (s >= AUDIO_MAX_SEG) pararGravacao(); }, 250);
+    }).catch(function(){ alert('Sem acesso ao microfone. Permita o uso do microfone para o portal (no cadeado da barra de endereço) e tente de novo.'); });
+  });
+  function blobParaBase64(blob){ return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(String(r.result).split(',')[1]); }; r.onerror = rej; r.readAsDataURL(blob); }); }
+  function transcreverAudio(blob, mime){
+    if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return Promise.resolve(null);
+    return Promise.all([blobParaBase64(blob), auth.currentUser.getIdToken()]).then(function(r){
+      var corpo = { contents: [{ role: 'user', parts: [
+          { inline_data: { mime_type: mime, data: r[0] } },
+          { text: 'Transcreva este áudio em português do Brasil, palavra por palavra, com pontuação. Responda SOMENTE com a transcrição, sem comentários. Se não houver fala, responda exatamente: [sem fala]' }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } };
+      var ctl = window.AbortController ? new AbortController() : null; var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 60000);
+      return fetch(GEMINI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r[1] }, body: JSON.stringify(corpo), signal: ctl ? ctl.signal : undefined })
+        .then(function(resp){ clearTimeout(to); return resp.json().then(function(d){ if (!resp.ok) throw new Error((d && (d.error && (d.error.message || d.error))) || ('HTTP ' + resp.status)); return d; }); })
+        .then(function(d){ var c = d.candidates && d.candidates[0], ps = c && c.content && c.content.parts || [];
+          var t = ps.map(function(x){ return x.text || ''; }).join('').trim(); return t && t !== '[sem fala]' ? t.slice(0, 8000) : null; });
+    });
+  }
+  function prepararAudio(blob, mime, dur){
+    var ext = /mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
+    novoAudio = { url: null, tipo: mime, duracao: Math.round(dur), tamanho: blob.size, transcricao: null, transcrevendo: true };
+    var meu = novoAudio;
+    audioPrev.src = URL.createObjectURL(blob); audioRow.classList.add('show');
+    audioSt.textContent = mmss(dur) + ' · enviando e transcrevendo…';
+    els.btnEnviar.disabled = true; els.btnEnviar.title = 'Enviando áudio…'; subindoAnexo = true;
+    var caminho = 'chat/' + activeId + '/' + myUid + '/' + Date.now() + '_audio.' + ext;
+    var up = uploadParaStorage(blob, caminho).then(function(url){ meu.url = url; });
+    var tr = transcreverAudio(blob, mime).then(function(t){ meu.transcricao = t; }).catch(function(e){ console.warn('transcrição', e); meu.erroTransc = e.message; })
+      .then(function(){ meu.transcrevendo = false; });
+    Promise.all([up, tr]).then(function(){
+      if (novoAudio !== meu) return;
+      audioSt.textContent = mmss(dur) + (meu.transcricao ? ' · transcrito' : ' · sem transcrição' + (meu.erroTransc ? ' (' + meu.erroTransc.slice(0, 60) + ')' : ''));
+      els.btnEnviar.disabled = false; els.btnEnviar.title = ''; anexoTerminou(true);
+    }).catch(function(err){
+      if (novoAudio !== meu) return;
+      limparComposerAudio(); els.btnEnviar.disabled = false; els.btnEnviar.title = ''; anexoTerminou(false);
+      alert('Não foi possível enviar o áudio: ' + (err.message || err));
+    });
+  }
 
   // ---------------- boot ----------------
 
