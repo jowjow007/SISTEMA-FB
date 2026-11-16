@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v250</span>
+      <span class="version-tag">v251</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3894,19 +3894,42 @@
   // número no ícone da aba, selo no ícone do app instalado pelo navegador e, no app do Windows, o número sobre o
   // ícone da barra de tarefas (o app recebe a contagem por mensagem e desenha o selo)
   const TITULO_PORTAL = document.title || 'Portal Fonseca e Braga';
-  let faviconOriginal = null, faviconImg = null, naoLidasAvisadas = -1;
+  let faviconOriginal = null, faviconImg = null, naoLidasAvisadas = -1, naoLidasAnterior = -1, piscaTimer = null, piscaFase = false;
+  function tituloComNumero(){ const n = Math.max(0, mhChatUnread | 0); return n > 0 ? '(' + (n > 99 ? '99+' : n) + ') ' + TITULO_PORTAL : TITULO_PORTAL; }
+  // pisca: o título alterna com "Nova mensagem no chat" e o ícone alterna entre a bolinha e o ícone normal
+  function piscarAvisoChat(){
+    try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('piscar'); } catch (e) {}
+    if (piscaTimer) return;
+    piscaFase = false;
+    piscaTimer = setInterval(function(){
+      piscaFase = !piscaFase;
+      document.title = piscaFase ? '💬 Nova mensagem no chat' : tituloComNumero();
+      const link = document.querySelector('link[rel~="icon"]');
+      if (link && faviconOriginal && faviconComNumero) link.href = piscaFase ? faviconComNumero : faviconOriginal;
+    }, 1000);
+  }
+  function pararPiscarChat(){
+    if (!piscaTimer) return;
+    clearInterval(piscaTimer); piscaTimer = null; piscaFase = false;
+    document.title = tituloComNumero();
+    const link = document.querySelector('link[rel~="icon"]');
+    if (link && faviconOriginal) link.href = (mhChatUnread > 0 && faviconComNumero) ? faviconComNumero : faviconOriginal;
+  }
+  window.addEventListener('focus', pararPiscarChat);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && document.hasFocus()) pararPiscarChat(); });
+  let faviconComNumero = null;
   function avisoNaoLidasForaDaPagina(n){
     n = Math.max(0, n | 0);
     if (n === naoLidasAvisadas) return;
     naoLidasAvisadas = n;
     const rotulo = n > 99 ? '99+' : String(n);
-    document.title = n > 0 ? '(' + rotulo + ') ' + TITULO_PORTAL : TITULO_PORTAL;
+    if (!piscaTimer) document.title = n > 0 ? '(' + rotulo + ') ' + TITULO_PORTAL : TITULO_PORTAL;
     try { if (navigator.setAppBadge) { n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
     try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('naolidas:' + n); } catch (e) {}
     const link = document.querySelector('link[rel~="icon"]');
     if (!link) return;
     if (!faviconOriginal) faviconOriginal = link.href;
-    if (!n){ link.href = faviconOriginal; return; }
+    if (!n){ faviconComNumero = null; link.href = faviconOriginal; return; }
     const desenhar = function(){
       try {
         const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -3918,7 +3941,8 @@
         g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.font = 'bold ' + (rotulo.length > 2 ? 17 : rotulo.length > 1 ? 22 : 26) + 'px Arial, sans-serif';
         g.fillText(rotulo, cx, cy + 1);
-        link.href = c.toDataURL('image/png');
+        faviconComNumero = c.toDataURL('image/png');
+        if (!piscaTimer || piscaFase) link.href = faviconComNumero;
       } catch (e) { /* sem canvas: fica só o número no título */ }
     };
     if (faviconImg && faviconImg.complete && faviconImg.naturalWidth) return desenhar();
@@ -3955,6 +3979,10 @@
         }, 0);
         atualizarBadgesMobileHome();
         updateTabBlinks();
+        // chegou mensagem nova e a pessoa não está olhando o portal: a aba (e o app) piscam até ela voltar
+        if (naoLidasAnterior >= 0 && mhChatUnread > naoLidasAnterior && (document.hidden || !document.hasFocus())) piscarAvisoChat();
+        if (!mhChatUnread) pararPiscarChat();
+        naoLidasAnterior = mhChatUnread;
         avisoNaoLidasForaDaPagina(mhChatUnread);
       }, function(){ /* sem acesso ao chat: ignora, badge fica em 0 */ });
     db.collection('pendTarefas').where('ownerUid', '==', currentProfile.uid)

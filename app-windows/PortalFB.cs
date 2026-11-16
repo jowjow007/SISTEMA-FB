@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("250.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("250.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("251.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("251.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "250";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "251";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -398,6 +398,23 @@ namespace PortalFB
     static class SeloNaBarra
     {
         [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
+        [StructLayout(LayoutKind.Sequential)]
+        struct FLASHWINFO { public uint cbSize; public IntPtr hwnd; public uint dwFlags; public uint uCount; public uint dwTimeout; }
+        [DllImport("user32.dll")] static extern bool FlashWindowEx(ref FLASHWINFO info);
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+
+        // mensagem nova com o app em segundo plano: o botão da barra de tarefas pisca até a pessoa abrir a janela
+        public static void Piscar(Form janela)
+        {
+            try
+            {
+                if (GetForegroundWindow() == janela.Handle) return;
+                var f = new FLASHWINFO { hwnd = janela.Handle, dwFlags = 2 | 12, uCount = 0, dwTimeout = 0 };   // FLASHW_TRAY | FLASHW_TIMERNOFG
+                f.cbSize = (uint)Marshal.SizeOf(typeof(FLASHWINFO));
+                FlashWindowEx(ref f);
+            }
+            catch { }
+        }
         static ITaskbarList3 barra;
         static IntPtr iconeAtual = IntPtr.Zero;
         static int ultimo = -1;
@@ -512,6 +529,7 @@ namespace PortalFB
                 if (principal && int.TryParse(msg.Substring(9), out n)) SeloNaBarra.Mostrar(this, n);
                 return;
             }
+            if (msg == "piscar") { if (principal) SeloNaBarra.Piscar(this); return; }
             if (msg != "atualizar-agora") return;
             var wv = web.CoreWebView2;
             ThreadPool.QueueUserWorkItem(delegate
