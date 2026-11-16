@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v251</span>
+      <span class="version-tag">v252</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3901,16 +3901,31 @@
     try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('piscar'); } catch (e) {}
     if (piscaTimer) return;
     piscaFase = false;
-    piscaTimer = setInterval(function(){
+    const passo = function(){
       piscaFase = !piscaFase;
       document.title = piscaFase ? '💬 Nova mensagem no chat' : tituloComNumero();
       const link = document.querySelector('link[rel~="icon"]');
       if (link && faviconOriginal && faviconComNumero) link.href = piscaFase ? faviconComNumero : faviconOriginal;
-    }, 1000);
+    };
+    // O Chrome segura os temporizadores de aba em segundo plano há mais de 5 min (1 vez por MINUTO) e o pisca
+    // parava. O relógio de um worker não sofre esse freio: ele só avisa a página a cada segundo.
+    const w = relogioPisca();
+    if (w){ w.onmessage = passo; w.postMessage(1000); piscaTimer = { worker: w }; }
+    else piscaTimer = { id: setInterval(passo, 1000) };
+  }
+  let relogioWorker = null;
+  function relogioPisca(){
+    if (relogioWorker !== null) return relogioWorker || null;
+    try {
+      const url = URL.createObjectURL(new Blob(['var t;onmessage=function(e){clearInterval(t);if(e.data>0)t=setInterval(function(){postMessage(1)},e.data)}'], { type: 'text/javascript' }));
+      relogioWorker = new Worker(url);
+    } catch (e) { relogioWorker = false; }
+    return relogioWorker || null;
   }
   function pararPiscarChat(){
     if (!piscaTimer) return;
-    clearInterval(piscaTimer); piscaTimer = null; piscaFase = false;
+    if (piscaTimer.worker) piscaTimer.worker.postMessage(0); else clearInterval(piscaTimer.id);
+    piscaTimer = null; piscaFase = false;
     document.title = tituloComNumero();
     const link = document.querySelector('link[rel~="icon"]');
     if (link && faviconOriginal) link.href = (mhChatUnread > 0 && faviconComNumero) ? faviconComNumero : faviconOriginal;
