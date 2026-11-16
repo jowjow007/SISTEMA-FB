@@ -469,7 +469,16 @@
   .msg-audio{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:100%;}
   .msg-audio audio{width:100%;height:36px;}
   .msg-transc{font-size:.8rem;line-height:1.45;opacity:.92;border-left:3px solid currentColor;padding:2px 0 2px 8px;white-space:pre-wrap;}
+  .msg-transc-st{font-size:.74rem;opacity:.7;font-style:italic;}
+  .msg-transc-btn{align-self:flex-start;background:none;border:1px solid currentColor;border-radius:8px;color:inherit;opacity:.85;font-size:.74rem;padding:3px 10px;cursor:pointer;}
   .msg-transc .rot{display:block;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.7;margin-bottom:2px;}
+  /* ---- busca dentro da conversa ---- */
+  .busca-conv{display:none;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line-strong);}
+  .busca-conv.show{display:flex;}
+  .busca-conv input{flex:1;min-width:0;padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.86rem;}
+  .busca-conv .cont{font-size:.76rem;color:var(--muted);white-space:nowrap;min-width:70px;text-align:right;}
+  .busca-conv button{background:none;border:1px solid var(--line-strong);border-radius:7px;color:var(--paper);width:30px;height:30px;cursor:pointer;}
+  mark.bc{background:#ffd54f;color:#111;border-radius:2px;padding:0 1px;}
   /* ---- busca dentro das mensagens ---- */
   .busca-msgs{border-top:1px solid var(--line-strong);margin-top:6px;padding-top:4px;}
   .busca-msgs .tit{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 14px 4px;display:flex;justify-content:space-between;}
@@ -559,12 +568,20 @@
           <div class="thread-sub" id="thread-sub"></div>
         </div>
         <div class="thread-tags-row">
+          <button class="small-link-btn" id="btn-busca-conv" title="Procurar nesta conversa"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg> Procurar</button>
           <button class="small-link-btn" id="btn-pin"></button>
           <button class="small-link-btn" id="btn-etiquetas"></button>
           <button class="small-link-btn" id="btn-editar-grupo" style="display:none;"></button>
           <button class="small-link-btn" id="btn-arquivar"></button>
           <button class="small-link-btn danger" id="btn-excluir-conversa"></button>
         </div>
+      </div>
+      <div class="busca-conv" id="busca-conv">
+        <input type="text" id="busca-conv-in" placeholder="Procurar nesta conversa…" autocomplete="off">
+        <span class="cont" id="busca-conv-cont"></span>
+        <button type="button" id="busca-conv-ant" title="Anterior (mais antiga)">▲</button>
+        <button type="button" id="busca-conv-prox" title="Próxima (mais nova)">▼</button>
+        <button type="button" id="busca-conv-x" title="Fechar (Esc)">✕</button>
       </div>
       <div class="msg-list" id="msg-list"></div>
       <div class="composer">
@@ -1617,6 +1634,7 @@
     mensagensCache = [];
     limiteMsgs = PASSO_MSGS; temMaisAntigas = false; carregandoAntigas = false;
     lendoIds = {}; pularPara = null; grudadoNoFim = true;
+    var bcb = document.getElementById('busca-conv'); if (bcb && bcb.classList.contains('show')) document.getElementById('busca-conv-x').click();
     cancelarResposta();
     var prefsAtual = tagsPorConversa[id];
     if (prefsAtual && prefsAtual.excluidaAte){
@@ -1764,7 +1782,10 @@
       if (m.tipo === 'audio'){
         var auSrc = urlDeMidia(m.audioUrl || '');
         out += '<div class="msg-audio">' + (auSrc ? '<audio controls preload="none" src="' + auSrc + '"></audio>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
-          (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>' : '') + '</div>';
+          (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>'
+            : m.transcricaoStatus === 'vazio' ? '<div class="msg-transc-st">sem fala para transcrever</div>'
+            : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
+            : '<button type="button" class="msg-transc-btn" data-transc="' + m.id + '">' + (m.transcricaoStatus === 'falhou' ? 'A transcrição falhou · tentar de novo' : 'Transcrever') + '</button>') + '</div>';
       }
       if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
       out += '</div>';
@@ -2141,7 +2162,7 @@
   function resumoMensagem(m){
     if (m.tipo === 'foto') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
     if (m.tipo === 'documento') return '📄 ' + (m.documentoNome || 'Documento') + (m.texto ? ': ' + m.texto : '');
-    if (m.tipo === 'audio') return '🎤 Áudio (' + mmss(m.audioDuracao) + ')' + (m.transcricao ? ': ' + m.transcricao : '') + (m.texto ? ' — ' + m.texto : '');
+    if (m.tipo === 'audio') return '🎤 Áudio (' + mmss(m.audioDuracao) + ')' + (m.texto ? ': ' + m.texto : '');
     return m.texto || '';
   }
 
@@ -2215,7 +2236,8 @@
   els.btnEnviar.addEventListener('click', enviarMensagem);
 
   function postMessageTo(conversaId, msgData, preview){
-    return db.collection('conversas').doc(conversaId).collection('mensagens').add(msgData).then(function(){
+    var refMsg = db.collection('conversas').doc(conversaId).collection('mensagens').doc();
+    return refMsg.set(msgData).then(function(){
       var cached = conversas.filter(function(x){ return x.id === conversaId; })[0];
       var participantesPromise = cached
         ? Promise.resolve(cached.participantes || [])
@@ -2233,7 +2255,7 @@
         });
         return db.collection('conversas').doc(conversaId).update(updates);
       });
-    });
+    }).then(function(){ return refMsg.id; });
   }
 
   function enviarMensagem(){
@@ -2271,9 +2293,12 @@
       criadoEm: FV.serverTimestamp(),
       lidaPor: [myUid]
     };
-    if (novoAudio){ msgData.audioUrl = novoAudio.url; msgData.audioTipo = novoAudio.tipo; msgData.audioDuracao = novoAudio.duracao; msgData.audioTamanho = novoAudio.tamanho; msgData.transcricao = novoAudio.transcricao || null; }
+    var audioEnviado = novoAudio;
+    if (novoAudio){ msgData.audioUrl = novoAudio.url; msgData.audioTipo = novoAudio.tipo; msgData.audioDuracao = novoAudio.duracao; msgData.audioTamanho = novoAudio.tamanho; msgData.transcricao = null; msgData.transcricaoStatus = 'pendente'; }
     var preview = resumoMensagem(msgData);
-    postMessageTo(activeId, msgData, preview).then(function(){
+    var convDoEnvio = activeId;
+    postMessageTo(activeId, msgData, preview).then(function(msgId){
+      if (audioEnviado && msgId) transcreverMensagem(convDoEnvio, msgId, audioEnviado.blob, audioEnviado.tipo);
       els.composerInput.value = '';
       els.composerInput.style.height = 'auto';
       limparComposerFoto();
@@ -2956,8 +2981,52 @@
     renderConvListBase();
     var vazio = els.convList.querySelector('.conv-empty');
     if (vazio && els.buscaConversas.value.trim()) vazio.textContent = 'Nenhuma conversa com esse nome ou etiqueta.';
-    renderBuscaMensagens();
   };
+  // busca DENTRO da conversa aberta: lupa no topo → digita → ↑ ↓ passam pelas mensagens que têm o termo
+  var bcBar = document.getElementById('busca-conv'), bcIn = document.getElementById('busca-conv-in'), bcCont = document.getElementById('busca-conv-cont');
+  var bcAchados = [], bcPos = -1, bcTimer = null;
+  function bcFechar(){ bcBar.classList.remove('show'); bcIn.value = ''; bcAchados = []; bcPos = -1; bcCont.textContent = ''; limparMarcas(); }
+  function limparMarcas(){ els.msgList.querySelectorAll('mark.bc').forEach(function(mk){ var t = document.createTextNode(mk.textContent); mk.parentNode.replaceChild(t, mk); }); }
+  function marcarNaMensagem(id, termo){
+    limparMarcas();
+    var row = els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (!row) return;
+    var w = document.createTreeWalker(row.querySelector('.msg-bubble') || row, NodeFilter.SHOW_TEXT), nos = [], n;
+    while ((n = w.nextNode())) nos.push(n);
+    nos.forEach(function(no){ var txt = no.nodeValue, k = semAcento(txt).indexOf(termo); if (k < 0) return;
+      var frag = document.createDocumentFragment(), ini = 0;
+      while (k >= 0){ frag.appendChild(document.createTextNode(txt.slice(ini, k))); var mk = document.createElement('mark'); mk.className = 'bc'; mk.textContent = txt.slice(k, k + termo.length); frag.appendChild(mk); ini = k + termo.length; k = semAcento(txt).indexOf(termo, ini); }
+      frag.appendChild(document.createTextNode(txt.slice(ini))); no.parentNode.replaceChild(frag, no); });
+  }
+  function bcIr(delta){
+    if (!bcAchados.length) return;
+    bcPos = (bcPos + delta + bcAchados.length) % bcAchados.length;
+    bcCont.textContent = (bcPos + 1) + ' de ' + bcAchados.length;
+    var id = bcAchados[bcPos], termo = semAcento(bcIn.value.trim());
+    var alvo = els.msgList.querySelector('[data-msg-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (alvo){ pularParaMensagem(id); marcarNaMensagem(id, termo); }
+    else { pularParaMensagem(id); var tentativas = 0; var t = setInterval(function(){ if (els.msgList.querySelector('[data-msg-id="' + id + '"]') || ++tentativas > 40){ clearInterval(t); pularParaMensagem(id); marcarNaMensagem(id, termo); } }, 250); }
+  }
+  function bcProcurar(){
+    var termo = semAcento(bcIn.value.trim()), c = conversas.filter(function(x){ return x.id === activeId; })[0];
+    if (!c || termo.length < 2){ bcAchados = []; bcPos = -1; bcCont.textContent = ''; limparMarcas(); return; }
+    bcCont.textContent = 'procurando…';
+    carregarBusca(c).then(function(){
+      var x = buscaCache[c.id] || { msgs: [] };
+      bcAchados = x.msgs.filter(function(m){ return semAcento(m.txt).indexOf(termo) >= 0; }).map(function(m){ return m.id; });   // já vem do mais novo para o mais antigo
+      bcPos = -1;
+      if (!bcAchados.length){ bcCont.textContent = 'nada encontrado'; limparMarcas(); return; }
+      bcIr(1);
+    });
+  }
+  document.getElementById('btn-busca-conv').addEventListener('click', function(){
+    if (bcBar.classList.contains('show')) return bcFechar();
+    bcBar.classList.add('show'); bcIn.focus();
+  });
+  bcIn.addEventListener('input', function(){ clearTimeout(bcTimer); bcTimer = setTimeout(bcProcurar, 300); });
+  bcIn.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); bcIr(e.shiftKey ? -1 : 1); } else if (e.key === 'Escape'){ e.stopPropagation(); bcFechar(); } });
+  document.getElementById('busca-conv-ant').addEventListener('click', function(){ bcIr(1); });    // ↑ = mais antiga
+  document.getElementById('busca-conv-prox').addEventListener('click', function(){ bcIr(-1); });  // ↓ = mais nova
+  document.getElementById('busca-conv-x').addEventListener('click', bcFechar);
 
   // ---------------- áudio: gravar, enviar e transcrever (Gemini, pelo proxy do Assistente IA) ----------------
   var gravador = null, gravChunks = [], gravInicio = 0, gravTimer = null, novoAudio = null, AUDIO_MAX_SEG = 300;
@@ -2995,14 +3064,31 @@
     }).catch(function(){ alert('Sem acesso ao microfone. Permita o uso do microfone para o portal (no cadeado da barra de endereço) e tente de novo.'); });
   });
   function blobParaBase64(blob){ return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(String(r.result).split(',')[1]); }; r.onerror = rej; r.readAsDataURL(blob); }); }
+  // O Gemini não aceita WebM (formato que o Chrome grava): para transcrever, converte para WAV 16 kHz mono (leve e aceito)
+  function paraWav16k(blob){
+    var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx || !window.OfflineAudioContext) return Promise.reject(new Error('sem AudioContext'));
+    return blob.arrayBuffer().then(function(buf){ var ctx = new Ctx(); return new Promise(function(res, rej){ ctx.decodeAudioData(buf, res, rej); }).then(function(ab){ try { ctx.close(); } catch (e) {} return ab; }); })
+      .then(function(ab){
+        var taxa = 16000, n = Math.max(1, Math.ceil(ab.duration * taxa)), off = new OfflineAudioContext(1, n, taxa), src = off.createBufferSource();
+        src.buffer = ab; src.connect(off.destination); src.start(0); return off.startRendering();
+      }).then(function(r){
+        var d = r.getChannelData(0), buf = new ArrayBuffer(44 + d.length * 2), v = new DataView(buf);
+        function txt(o, t){ for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+        txt(0, 'RIFF'); v.setUint32(4, 36 + d.length * 2, true); txt(8, 'WAVE'); txt(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); txt(36, 'data'); v.setUint32(40, d.length * 2, true);
+        for (var i = 0; i < d.length; i++){ var x = Math.max(-1, Math.min(1, d[i])); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+        return new Blob([buf], { type: 'audio/wav' });
+      });
+  }
   function transcreverAudio(blob, mime){
+    if (!/^audio\/(wav|mp3|mpeg|aiff|aac|ogg|flac)/.test(mime || '')) return paraWav16k(blob).then(function(w){ return transcreverAudio(w, 'audio/wav'); });
     if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return Promise.resolve(null);
     return Promise.all([blobParaBase64(blob), auth.currentUser.getIdToken()]).then(function(r){
       var corpo = { contents: [{ role: 'user', parts: [
           { inline_data: { mime_type: mime, data: r[0] } },
           { text: 'Transcreva este áudio em português do Brasil, palavra por palavra, com pontuação. Responda SOMENTE com a transcrição, sem comentários. Se não houver fala, responda exatamente: [sem fala]' }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } };
-      var ctl = window.AbortController ? new AbortController() : null; var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 60000);
+      var ctl = window.AbortController ? new AbortController() : null; var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 240000);
       return fetch(GEMINI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r[1] }, body: JSON.stringify(corpo), signal: ctl ? ctl.signal : undefined })
         .then(function(resp){ clearTimeout(to); return resp.json().then(function(d){ if (!resp.ok) throw new Error((d && (d.error && (d.error.message || d.error))) || ('HTTP ' + resp.status)); return d; }); })
         .then(function(d){ var c = d.candidates && d.candidates[0], ps = c && c.content && c.content.parts || [];
@@ -3011,18 +3097,16 @@
   }
   function prepararAudio(blob, mime, dur){
     var ext = /mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
-    novoAudio = { url: null, tipo: mime, duracao: Math.round(dur), tamanho: blob.size, transcricao: null, transcrevendo: true };
+    novoAudio = { url: null, tipo: mime, duracao: Math.round(dur), tamanho: blob.size, blob: blob };
     var meu = novoAudio;
     audioPrev.src = URL.createObjectURL(blob); audioRow.classList.add('show');
-    audioSt.textContent = mmss(dur) + ' · enviando e transcrevendo…';
+    audioSt.textContent = mmss(dur) + ' · enviando…';
     els.btnEnviar.disabled = true; els.btnEnviar.title = 'Enviando áudio…'; subindoAnexo = true;
+    enviarAoTerminar = true;   // assim que terminar de subir, o áudio já sai (a transcrição vem depois, na própria mensagem)
     var caminho = 'chat/' + activeId + '/' + myUid + '/' + Date.now() + '_audio.' + ext;
-    var up = uploadParaStorage(blob, caminho).then(function(url){ meu.url = url; });
-    var tr = transcreverAudio(blob, mime).then(function(t){ meu.transcricao = t; }).catch(function(e){ console.warn('transcrição', e); meu.erroTransc = e.message; })
-      .then(function(){ meu.transcrevendo = false; });
-    Promise.all([up, tr]).then(function(){
+    uploadParaStorage(blob, caminho).then(function(url){
       if (novoAudio !== meu) return;
-      audioSt.textContent = mmss(dur) + (meu.transcricao ? ' · transcrito' : ' · sem transcrição' + (meu.erroTransc ? ' (' + meu.erroTransc.slice(0, 60) + ')' : ''));
+      meu.url = url; audioSt.textContent = mmss(dur);
       els.btnEnviar.disabled = false; els.btnEnviar.title = ''; anexoTerminou(true);
     }).catch(function(err){
       if (novoAudio !== meu) return;
@@ -3030,6 +3114,24 @@
       alert('Não foi possível enviar o áudio: ' + (err.message || err));
     });
   }
+  // transcreve e grava na mensagem já enviada (regras: só os campos da transcrição, e só em mensagem de áudio)
+  var transcrevendoIds = {};
+  function transcreverMensagem(conversaId, msgId, blob, mime){
+    if (transcrevendoIds[msgId]) return; transcrevendoIds[msgId] = true;
+    var ref = db.collection('conversas').doc(conversaId).collection('mensagens').doc(msgId);
+    var obter = blob ? Promise.resolve(blob) : ref.get().then(function(d){ var m = d.data() || {}; mime = m.audioTipo || 'audio/webm';
+      return storage.refFromURL(m.audioUrl).getBlob ? storage.refFromURL(m.audioUrl).getBlob() : fetch(m.audioUrl).then(function(r){ return r.blob(); }); });
+    return obter.then(function(b){ return transcreverAudio(b, mime); })
+      .then(function(t){ return ref.update({ transcricao: t || null, transcricaoStatus: t ? 'ok' : 'vazio' }); })
+      .catch(function(e){ console.warn('transcrição', e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
+      .then(function(){ delete transcrevendoIds[msgId]; });
+  }
+  els.msgList.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('[data-transc]'); if (!b || !activeId) return;
+    b.disabled = true; b.textContent = 'Transcrevendo…';
+    transcreverMensagem(activeId, b.getAttribute('data-transc'));
+  });
+
 
   // ---------------- boot ----------------
 

@@ -220,7 +220,13 @@ service cloud.firestore {
                       && request.resource.data.autorUid == request.auth.uid;
         allow update: if isAtivo()
                       && request.auth.uid in get(/databases/$(database)/documents/conversas/$(conversaId)).data.participantes
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor','reacoes']);
+                      && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lidaPor','reacoes'])
+                          // áudio (16/11/2026): a transcrição chega depois do envio; só esses campos, só em mensagem de áudio
+                          || (resource.data.get('tipo', '') == 'audio'
+                              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transcricao', 'transcricaoStatus'])
+                              && request.resource.data.get('transcricaoStatus', '') in ['ok', 'vazio', 'falhou', 'pendente']
+                              && (request.resource.data.get('transcricao', null) == null
+                                  || (request.resource.data.transcricao is string && request.resource.data.transcricao.size() <= 8000))));
         allow delete: if false;
       }
     }
