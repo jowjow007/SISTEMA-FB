@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v252</span>
+      <span class="version-tag">v253</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3901,17 +3901,25 @@
     try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('piscar'); } catch (e) {}
     if (piscaTimer) return;
     piscaFase = false;
+    // letreiro: "(1) Chat · nova mensagem" corre no título, uma letra a cada 300 ms; o ícone pisca a cada ~1 s
+    let tique = 0, desloc = -1;
     const passo = function(){
-      piscaFase = !piscaFase;
-      document.title = piscaFase ? '💬 Nova mensagem no chat' : tituloComNumero();
-      const link = document.querySelector('link[rel~="icon"]');
-      if (link && faviconOriginal && faviconComNumero) link.href = piscaFase ? faviconComNumero : faviconOriginal;
+      const n = Math.max(0, mhChatUnread | 0);
+      const texto = '(' + (n > 99 ? '99+' : n) + ') Chat · ' + (n === 1 ? 'nova mensagem' : 'novas mensagens') + '   •   ';
+      desloc = (desloc + 1) % texto.length;
+      document.title = texto.slice(desloc) + texto.slice(0, desloc);
+      if (++tique % 3 === 0){
+        piscaFase = !piscaFase;
+        const link = document.querySelector('link[rel~="icon"]');
+        if (link && faviconOriginal && faviconComNumero) link.href = piscaFase ? faviconComNumero : faviconOriginal;
+      }
     };
     // O Chrome segura os temporizadores de aba em segundo plano há mais de 5 min (1 vez por MINUTO) e o pisca
     // parava. O relógio de um worker não sofre esse freio: ele só avisa a página a cada segundo.
     const w = relogioPisca();
-    if (w){ w.onmessage = passo; w.postMessage(1000); piscaTimer = { worker: w }; }
-    else piscaTimer = { id: setInterval(passo, 1000) };
+    if (w){ w.onmessage = passo; w.postMessage(300); piscaTimer = { worker: w }; }
+    else piscaTimer = { id: setInterval(passo, 300) };
+    passo();
   }
   let relogioWorker = null;
   function relogioPisca(){
