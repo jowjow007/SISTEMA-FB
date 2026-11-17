@@ -1,8 +1,8 @@
-// Otimizador do Chrome — diagnóstico + ajustes automáticos para os computadores do escritório.
-// Abre e já mostra o diagnóstico; o botão "Corrigir automaticamente" grava as políticas do Chrome/Edge
-// (HKLM\SOFTWARE\Policies) pedindo permissão de administrador só nesse momento.
-// Linha de comando:  OtimizadorChrome.exe /aplicar   (aplica sem janela; precisa estar como administrador)
-//                    OtimizadorChrome.exe /desfazer  (remove só o que este app gravou)
+// Otimizador de PC — diagnóstico + ajustes automáticos para os computadores do escritório.
+// Abre e já mostra o diagnóstico; "Corrigir automaticamente" aplica os ajustes do Chrome/Edge e do Windows
+// (Otimizacoes.cs), pedindo permissão de administrador só nesse momento.
+// Linha de comando:  OtimizadorPC.exe /aplicar | /desfazer | /instalar | /desinstalar  (como administrador)
+//                    OtimizadorPC.exe /relatorio <arquivo> | /testar-envio <arquivo> | /monitor
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,8 +18,8 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("Otimizador do Chrome")]
-[assembly: AssemblyProduct("Otimizador do Chrome")]
+[assembly: AssemblyTitle("Otimizador de PC")]
+[assembly: AssemblyProduct("Otimizador de PC")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
@@ -90,6 +90,7 @@ static class Ajustes
                 k.SetValue("StartupBoostEnabled", 0, RegistryValueKind.DWord);             // Edge não abre escondido com o Windows
                 k.SetValue("BackgroundModeEnabled", 0, RegistryValueKind.DWord);
             }
+            Otimizacoes.AplicarSistema();   // inicialização, temporários do Windows, inicialização rápida
             return true;
         }
         catch { return false; }
@@ -104,6 +105,7 @@ static class Ajustes
             Registry.LocalMachine.DeleteSubKeyTree(CHROME + @"\TabDiscardingExceptions", false);
             using (RegistryKey k = Registry.LocalMachine.OpenSubKey(EDGE, true))
                 if (k != null) foreach (string n in new[] { "StartupBoostEnabled", "BackgroundModeEnabled" }) k.DeleteValue(n, false);
+            Otimizacoes.DesfazerSistema();
             return true;
         }
         catch { return false; }
@@ -118,6 +120,19 @@ static class Ajustes
             object b = k.GetValue("BackgroundModeEnabled");
             return v is int && (int)v == 1 && b is int && (int)b == 0;
         }
+    }
+
+    // o que ainda falta na parte de administrador (computador todo)
+    public static bool SistemaPendente()
+    {
+        return !JaAplicado() || Otimizacoes.InicializacaoRapidaLigada()
+            || Otimizacoes.Inicializacao().Any(i => i.Onde.StartsWith("todos") && i.Dispensavel && !i.Desligado);
+    }
+    public static bool UsuarioPendente()
+    {
+        double gb;
+        return ChromeEscondido(out gb) || AutoInicio().Count > 0 || !Otimizacoes.UsuarioAplicado()
+            || Otimizacoes.Inicializacao().Any(i => i.Onde.StartsWith("usuário") && i.Dispensavel && !i.Desligado);
     }
 
     // ---- parte do usuário (roda sem administrador, na conta de quem está usando)
@@ -143,8 +158,9 @@ static class Ajustes
         return r;
     }
 
-    // apaga o auto-início escondido e encerra o Chrome se ele estiver sem janela (não perde nenhuma aba)
-    public static void LimparUsuario()
+    // apaga o auto-início escondido, encerra o Chrome se ele estiver sem janela (não perde nenhuma aba) e aplica as
+    // otimizações do usuário (inicialização, temporários, efeitos). Devolve quanto liberou de temporários (bytes).
+    public static long LimparUsuario()
     {
         try
         {
@@ -153,12 +169,14 @@ static class Ajustes
         }
         catch { }
         double gb;
-        if (ChromeEscondido(out gb))
+        // só encerra se estiver escondido há mais de 2 min (no login o Chrome pode estar abrindo a janela)
+        if (ChromeEscondido(out gb) && Process.GetProcessesByName("chrome").All(x => { try { return (DateTime.Now - x.StartTime).TotalMinutes > 2; } catch { return false; } }))
             foreach (Process p in Process.GetProcessesByName("chrome")) { try { p.Kill(); } catch { } }
         foreach (Process p in Process.GetProcessesByName("msedge"))
         {   // Edge escondido (sem janela) também sai
             try { if (Process.GetProcessesByName("msedge").All(x => x.MainWindowHandle == IntPtr.Zero)) p.Kill(); } catch { }
         }
+        try { return Otimizacoes.AplicarUsuario(); } catch { return 0; }
     }
 
     public static bool SouAdmin()
@@ -207,7 +225,7 @@ static class Diagnostico
         {"AcroRd32","Adobe Reader"}, {"GoogleDriveFS","Google Drive"}, {"Spotify","Spotify"}, {"Discord","Discord"},
         {"PortalFB","Portal FB (app)"}, {"AnyDesk","AnyDesk"}, {"TeamViewer","TeamViewer"}
     };
-    static readonly string[] Ignorar = { "Idle", "System", "Memory Compression", "Registry", "Secure System", "chrome", "vmmem", "dwm", "csrss", "smss", "wininit", "services", "lsass", "svchost", "fontdrvhost", "OtimizadorChrome" };
+    static readonly string[] Ignorar = { "Idle", "System", "Memory Compression", "Registry", "Secure System", "chrome", "vmmem", "dwm", "csrss", "smss", "wininit", "services", "lsass", "svchost", "fontdrvhost", "OtimizadorPC" };
 
     // extensões conhecidas por pesar e raramente fazer falta no escritório
     static readonly string[] Pesadas = { "honey", "méliuz", "meliuz", "cuponomia", "buscapé", "buscape", "pelando", "zoom ", "grammarly",
@@ -256,16 +274,35 @@ static class Diagnostico
             "Gastam memória o dia todo mesmo sem ninguém abrir. O \"Corrigir automaticamente\" desliga isso."));
 
         // 3. ajustes
-        if (Ajustes.JaAplicado()) r.Add(new Achado(2, "Ajustes de economia já aplicados neste computador",
+        if (Ajustes.JaAplicado()) r.Add(new Achado(2, "Chrome e Edge já configurados para economizar memória",
             "Abas paradas são congeladas automaticamente (portal, sistemas dos tribunais, Astrea e WhatsApp nunca são congelados)."));
-        else r.Add(new Achado(0, "O Chrome ainda não está configurado para economizar memória",
+        else r.Add(new Achado(0, "Chrome e Edge ainda não estão configurados para economizar memória",
             "Clique em \"Corrigir automaticamente\". Abas paradas passam a ser congeladas e o Chrome deixa de ficar rodando depois de fechado."));
 
-        // 4. dias ligado
+        // 4. dias ligado / inicialização rápida
         double dias = Sistema.DiasLigado();
+        bool rapida = Otimizacoes.InicializacaoRapidaLigada();
         if (dias >= 3) r.Add(new Achado(1, "O computador não é reiniciado há " + (int)dias + " dias",
-            "Use Iniciar > Energia > REINICIAR (só desligar não limpa a memória no Windows 10/11). Uma vez por semana resolve."));
+            rapida ? "Use Iniciar > Energia > REINICIAR (do jeito que está, só desligar não limpa a memória). Uma vez por semana resolve."
+                   : "Desligue ou reinicie ao fim do dia — isso limpa a memória."));
         else r.Add(new Achado(2, "Computador reiniciado recentemente", ""));
+        if (rapida) r.Add(new Achado(1, "\"Desligar\" não limpa a memória neste computador",
+            "A inicialização rápida do Windows está ligada: desligar guarda a memória e volta com ela. O \"Corrigir automaticamente\" desliga isso, e desligar passa a valer como reiniciar."));
+
+        // 4b. programas que abrem com o Windows
+        List<Otimizacoes.ItemInicio> inicio = Otimizacoes.Inicializacao();
+        List<Otimizacoes.ItemInicio> disp = inicio.Where(i => i.Dispensavel && !i.Desligado).ToList();
+        int ativos = inicio.Count(i => !i.Desligado);
+        if (disp.Count > 0) r.Add(new Achado(0, disp.Count + " programa(s) dispensável(is) abrem sozinhos com o Windows",
+            string.Join(", ", disp.Select(i => i.Nome).Distinct().ToArray()) + ". Ficam gastando memória o dia todo. O \"Corrigir automaticamente\" desliga o início automático (o programa continua instalado e abre normalmente quando alguém clicar)."));
+        else r.Add(new Achado(2, ativos + " programa(s) abrem com o Windows — nenhum dispensável", ""));
+
+        // 4c. temporários e efeitos visuais
+        long temp = Otimizacoes.TamanhoTemp(System.IO.Path.GetTempPath());
+        if (temp > 1073741824L) r.Add(new Achado(1, GB(temp / 1073741824.0) + " de arquivos temporários",
+            "O \"Corrigir automaticamente\" apaga os que têm mais de 2 dias."));
+        if (Otimizacoes.EfeitosLigados() && total <= 8.5) r.Add(new Achado(1, "Transparência e animações do Windows ligadas",
+            "Num computador com " + GB(total) + " elas pesam. O \"Corrigir automaticamente\" desliga (a aparência fica mais simples)."));
 
         // 5. extensões
         exts = LerExtensoes();
@@ -423,7 +460,7 @@ class Janela : Form
     public Janela()
     {
         try { SetProcessDPIAware(); } catch { }
-        Text = "Otimizador do Chrome";
+        Text = "Otimizador de PC";
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 10f);
         ClientSize = new Size(1080, 680);
@@ -458,14 +495,14 @@ class Janela : Form
             }
             else
                 Elevar("/instalar", "Instalado!\n\nA partir de agora o Otimizador abre sozinho toda vez que qualquer pessoa entrar no Windows, monitora o computador o tempo todo e envia para o Painel dos Computadores do portal. " +
-                    "Os ajustes do Chrome também foram aplicados.\n\nNinguém precisa fazer mais nada. Pode fechar esta janela.");
+                    "As otimizações também foram aplicadas — e as de cada usuário se aplicam sozinhas no login dele.\n\nNinguém precisa fazer mais nada. Pode fechar esta janela.");
         };
 
-        corrigir.Click += delegate { Elevar("/aplicar", "Pronto! Ajustes aplicados.\n\nFeche o Chrome por completo e abra de novo para valer tudo."); };
+        corrigir.Click += delegate { Elevar("/aplicar", "Pronto! Computador otimizado:\n\n• Chrome e Edge economizando memória\n• programas dispensáveis não abrem mais com o Windows\n• \"Desligar\" passa a limpar a memória\n• sem transparência e animações\n\nFeche o Chrome por completo e abra de novo para valer tudo."); };
         desfazer.Click += delegate
         {
-            if (MessageBox.Show("Remover os ajustes de economia deste computador?", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                Elevar("/desfazer", "Ajustes removidos. O Chrome volta ao normal depois de fechado e aberto de novo.");
+            if (MessageBox.Show("Desfazer os ajustes deste computador? (Chrome/Edge, programas que abrem com o Windows, inicialização rápida e efeitos visuais voltam como eram)", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                Elevar("/desfazer", "Ajustes desfeitos. Tudo volta como era (o Chrome, depois de fechado e aberto de novo).");
         };
         verificar.Click += delegate { Rodar(); };
         copiar.Click += delegate
@@ -510,9 +547,8 @@ class Janela : Form
         else { topo.Text = "Tudo certo neste computador"; topo.ForeColor = Color.FromArgb(22, 128, 61); }
         resumo.Text = textoResumo;
 
-        bool aplicado = Ajustes.JaAplicado();
-        double gbEsc;
-        bool pendente = !aplicado || Ajustes.ChromeEscondido(out gbEsc) || Ajustes.AutoInicio().Count > 0;
+        bool aplicado = Ajustes.JaAplicado() || Otimizacoes.UsuarioAplicado();
+        bool pendente = Ajustes.SistemaPendente() || Ajustes.UsuarioPendente();
         corrigir.Text = pendente ? "Corrigir automaticamente" : "Ajustes já aplicados ✓";
         corrigir.Enabled = pendente;
         corrigir.BackColor = pendente ? Color.FromArgb(22, 128, 61) : Color.FromArgb(170, 190, 175);
@@ -550,10 +586,10 @@ class Janela : Form
     void Elevar(string arg, string okMsg)
     {
         bool ok;
-        if (arg == "/aplicar" && Ajustes.JaAplicado())
-        {   // políticas já gravadas: só falta a parte do usuário, que não precisa de administrador
-            Ajustes.LimparUsuario();
-            MessageBox.Show("Pronto! O Chrome escondido foi encerrado e não abre mais sozinho com o Windows.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        if (arg == "/aplicar" && !Ajustes.SistemaPendente())
+        {   // parte do computador já feita: só falta a do usuário, que não precisa de administrador
+            long lib = Ajustes.LimparUsuario();
+            MessageBox.Show("Pronto! Otimizações deste usuário aplicadas." + Liberado(lib), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
             Rodar(); return;
         }
         if (Ajustes.SouAdmin()) ok = arg == "/aplicar" ? Ajustes.Aplicar() : Ajustes.Desfazer();
@@ -571,11 +607,18 @@ class Janela : Form
                 return;
             }
         }
-        if (ok && (arg == "/aplicar" || arg == "/instalar")) Ajustes.LimparUsuario();
+        long liberado = 0;
+        if (ok && (arg == "/aplicar" || arg == "/instalar")) liberado = Ajustes.LimparUsuario();
+        if (ok && arg == "/desfazer") Otimizacoes.DesfazerUsuario();
         if (ok && arg == "/instalar") Monitor.IniciarInstalado();
-        if (ok) MessageBox.Show(okMsg, Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        if (ok) MessageBox.Show(okMsg + Liberado(liberado), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
         else MessageBox.Show("Não consegui gravar os ajustes. Chame o responsável pelos computadores.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         Rodar();
+    }
+
+    static string Liberado(long bytes)
+    {
+        return bytes > 50L * 1048576 ? "\n\nArquivos temporários apagados: " + Diagnostico.GB(bytes / 1073741824.0) + "." : "";
     }
 
     string Relatorio() { return Relatorio(textoResumo, achados, exts); }
@@ -583,7 +626,7 @@ class Janela : Form
     public static string Relatorio(string textoResumo, List<Achado> achados, List<Diagnostico.Extensao> exts)
     {
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("Otimizador do Chrome — " + Environment.MachineName + " (" + Environment.UserName + ") — " + DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+        sb.AppendLine("Otimizador de PC — " + Environment.MachineName + " (" + Environment.UserName + ") — " + DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
         sb.AppendLine(textoResumo);
         foreach (Achado a in achados)
         {

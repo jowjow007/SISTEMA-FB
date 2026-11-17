@@ -128,7 +128,7 @@ static class Envio
         }
     }
 
-    // teste manual: OtimizadorChrome.exe /testar-envio  → grava uma medição e diz se a regra aceitou
+    // teste manual: OtimizadorPC.exe /testar-envio  → grava uma medição e diz se a regra aceitou
     public static string Testar()
     {
         if (!Ligado) return "Sem chave: o app foi compilado sem privado/monitor-chave.txt.";

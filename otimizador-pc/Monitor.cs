@@ -20,11 +20,11 @@ using Microsoft.Win32;
 static class Monitor
 {
     public const int DIAS = 7, INTERVALO_S = 30;
-    const string RUN = @"Software\Microsoft\Windows\CurrentVersion\Run", NOME_RUN = "OtimizadorChromeMonitor";
-    const string MUTEX = "OtimizadorChrome_Monitor", PARAR = "OtimizadorChrome_Parar";
+    const string RUN = @"Software\Microsoft\Windows\CurrentVersion\Run", NOME_RUN = "OtimizadorPCMonitor";
+    const string MUTEX = "OtimizadorPC_Monitor", PARAR = "OtimizadorPC_Parar";
     static readonly CultureInfo INV = CultureInfo.InvariantCulture;
 
-    public static string Pasta { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OtimizadorChrome"); } }
+    public static string Pasta { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OtimizadorPC"); } }
     static string PastaLog { get { return Path.Combine(Pasta, "monitor"); } }
     static string ArqFim { get { return Path.Combine(Pasta, "fim.txt"); } }
 
@@ -38,8 +38,8 @@ static class Monitor
 
     // ------------------------------------------------ instalação permanente (todos os usuários, inicia com o Windows)
     const string RUN_HKLM = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
-    public static string PastaInstalacao { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OtimizadorChrome"); } }
-    public static string ExeInstalado { get { return Path.Combine(PastaInstalacao, "OtimizadorChrome.exe"); } }
+    public static string PastaInstalacao { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OtimizadorPC"); } }
+    public static string ExeInstalado { get { return Path.Combine(PastaInstalacao, "OtimizadorPC.exe"); } }
 
     public static bool Instalado()
     {
@@ -58,6 +58,8 @@ static class Monitor
             {
                 // se uma versão antiga estiver rodando, pede para ela sair antes de trocar o arquivo
                 try { using (EventWaitHandle e = new EventWaitHandle(false, EventResetMode.ManualReset, PARAR)) e.Set(); } catch { }
+                // nome antigo (quando o app se chamava Otimizador do Chrome)
+                try { using (RegistryKey k = Registry.LocalMachine.OpenSubKey(RUN_HKLM, true)) if (k != null) k.DeleteValue("OtimizadorChromeMonitor", false); } catch { }
                 for (int i = 0; ; i++)
                 {
                     try { File.Copy(origem, ExeInstalado, true); break; }
@@ -103,7 +105,7 @@ static class Monitor
     public static void Ligar()
     {
         Directory.CreateDirectory(PastaLog);
-        string destino = Path.Combine(Pasta, "OtimizadorChrome.exe");
+        string destino = Path.Combine(Pasta, "OtimizadorPC.exe");
         // copia o app para uma pasta fixa (se a pessoa apagar o Downloads, o monitor continua)
         if (!string.Equals(Path.GetFullPath(Application.ExecutablePath), Path.GetFullPath(destino), StringComparison.OrdinalIgnoreCase))
             try { File.Copy(Application.ExecutablePath, destino, true); } catch { if (!File.Exists(destino)) destino = Application.ExecutablePath; }
@@ -131,10 +133,10 @@ static class Monitor
                 parar.Reset();
                 NotifyIcon icone = new NotifyIcon();
                 try { icone.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { icone.Icon = SystemIcons.Information; }
-                icone.Text = "Otimizador do Chrome";
+                icone.Text = "Otimizador de PC";
                 icone.Visible = true;
                 ContextMenuStrip menu = new ContextMenuStrip();
-                menu.Items.Add("Abrir o Otimizador", null, delegate { try { Process.Start(Application.ExecutablePath); } catch { } });
+                menu.Items.Add("Abrir o Otimizador de PC", null, delegate { try { Process.Start(Application.ExecutablePath); } catch { } });
                 if (!Instalado()) menu.Items.Add("Parar o monitoramento", null, delegate { Desligar(); });
                 icone.ContextMenuStrip = menu;
                 icone.DoubleClick += delegate { try { Process.Start(Application.ExecutablePath); } catch { } };
@@ -151,6 +153,27 @@ static class Monitor
                 rapido.Tick += delegate { if (parar.WaitOne(0)) { icone.Visible = false; Application.ExitThread(); } };
                 Limpar();
                 a.Amostra();
+                // instalado: 2 min depois do login aplica as otimizações deste usuário (Chrome escondido, inicialização,
+                // temporários, efeitos) e, no fim da tarde, lembra de reiniciar se o PC está ligado há 4+ dias
+                bool otimizou = false; DateTime avisou = DateTime.MinValue; DateTime inicio = DateTime.Now;
+                System.Windows.Forms.Timer extra = new System.Windows.Forms.Timer { Interval = 60000 };
+                extra.Tick += delegate
+                {
+                    try
+                    {
+                        if (!otimizou && (DateTime.Now - inicio).TotalMinutes >= 2 && Instalado()) { otimizou = true; Ajustes.LimparUsuario(); }
+                        double dias = Sistema.DiasLigado();
+                        if (dias >= 4 && DateTime.Now.Hour >= 16 && avisou.Date != DateTime.Today)
+                        {
+                            avisou = DateTime.Now;
+                            icone.ShowBalloonTip(20000, "Reinicie o computador hoje",
+                                "Ele está ligado há " + (int)dias + " dias e isso deixa tudo lento. Ao terminar o dia, salve o que estiver aberto e use Iniciar > Energia > Reiniciar (ou Desligar).",
+                                ToolTipIcon.Info);
+                        }
+                    }
+                    catch { }
+                };
+                extra.Start();
                 t.Start(); rapido.Start();
                 Application.Run();
                 icone.Visible = false; icone.Dispose();
@@ -515,18 +538,11 @@ static class Monitor
     static string Inicializacao()
     {
         StringBuilder sb = new StringBuilder();
-        foreach (RegistryKey raiz in new[] { Registry.CurrentUser, Registry.LocalMachine })
-            foreach (string sub in new[] { RUN, @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run" })
-                try
-                {
-                    using (RegistryKey k = raiz.OpenSubKey(sub))
-                        if (k != null) foreach (string n in k.GetValueNames())
-                            {
-                                string v = Convert.ToString(k.GetValue(n));
-                                sb.AppendLine("   " + n + "  →  " + (v.Length > 110 ? v.Substring(0, 110) + "…" : v));
-                            }
-                }
-                catch { }
+        foreach (Otimizacoes.ItemInicio i in Otimizacoes.Inicializacao())
+        {
+            string v = i.Comando ?? "";
+            sb.AppendLine("   " + (i.Desligado ? "[desligado] " : i.Dispensavel ? "[DISPENSÁVEL] " : "") + i.Nome + " (" + i.Onde.Split('|')[0] + ")  →  " + (v.Length > 100 ? v.Substring(0, 100) + "…" : v));
+        }
         try
         {
             string pasta = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
