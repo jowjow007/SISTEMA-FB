@@ -20,6 +20,11 @@ if ($chave) {
   Write-Host "SHA-256 da chave (tem que ser o mesmo da função chaveMonitor() em firestore.rules): $hash"
 }
 
+# o app do Portal vai embutido: o "Instalador FB.exe" instala os dois de uma vez (o Portal depois se atualiza sozinho)
+$portal = Join-Path $raiz 'baixar\PortalFB.exe'
+$recursos = @()
+if (Test-Path $portal) { $recursos += "/resource:$portal,PortalFB.exe" } else { Write-Warning 'baixar\PortalFB.exe não existe: o instalador não vai levar o app do Portal.' }
+
 $fw = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
 $saida = Join-Path $dist 'OtimizadorPC.exe'
 $icone = Join-Path $aqui '..\app-windows\portal-fb.ico'
@@ -27,6 +32,8 @@ $icone = Join-Path $aqui '..\app-windows\portal-fb.ico'
   "/out:$saida" "/win32icon:$icone" "/win32manifest:$(Join-Path $aqui 'app.manifest')" `
   "/reference:$fw\System.Windows.Forms.dll" "/reference:$fw\System.Drawing.dll" `
   "/reference:$fw\System.Web.Extensions.dll" "/reference:$fw\System.Core.dll" "/reference:$fw\System.Management.dll" `
-  (Join-Path $aqui 'OtimizadorPC.cs') (Join-Path $aqui 'Monitor.cs') (Join-Path $aqui 'Envio.cs') (Join-Path $aqui 'Otimizacoes.cs') $gerado
+  @recursos (Join-Path $aqui 'OtimizadorPC.cs') (Join-Path $aqui 'Monitor.cs') (Join-Path $aqui 'Envio.cs') (Join-Path $aqui 'Otimizacoes.cs') $gerado
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar' }
-Write-Host "Pronto: $saida"
+# mesmo arquivo com outro nome: ao abrir, já instala tudo
+Copy-Item $saida (Join-Path $dist 'Instalador FB.exe') -Force
+Write-Host "Pronto: $saida e $(Join-Path $dist 'Instalador FB.exe')"

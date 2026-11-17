@@ -44,8 +44,40 @@ static class Programa
         }
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        Application.Run(new Janela());
+        // "Instalador FB.exe" (mesmo arquivo, outro nome): ao abrir já instala o app do Portal + o Otimizador
+        bool instalador = Path.GetFileNameWithoutExtension(Application.ExecutablePath).ToLowerInvariant().Contains("instalador");
+        Application.Run(new Janela(instalador));
         return 0;
+    }
+}
+
+// ---------------------------------------------------------------- app do Portal (vai embutido neste .exe)
+static class Portal
+{
+    public static string ExeInstalado { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"PortalFB\PortalFB.exe"); } }
+    public static bool Instalado() { return File.Exists(ExeInstalado); }
+    public static bool Embutido() { return Assembly.GetExecutingAssembly().GetManifestResourceInfo("PortalFB.exe") != null; }
+
+    // instala o app do Portal para o usuário atual (sem administrador). Já instalado: não mexe (ele se atualiza sozinho,
+    // e a cópia embutida aqui pode ser mais antiga). Devolve uma frase para a mensagem final.
+    public static string Instalar()
+    {
+        if (Instalado()) return "O app do Portal já estava instalado.";
+        if (!Embutido()) return "";
+        try
+        {
+            string pasta = Path.Combine(Path.GetTempPath(), "PortalFB-instalar-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            Directory.CreateDirectory(pasta);
+            string exe = Path.Combine(pasta, "PortalFB.exe");
+            using (Stream r = Assembly.GetExecutingAssembly().GetManifestResourceStream("PortalFB.exe"))
+            using (FileStream f = File.Create(exe)) r.CopyTo(f);
+            // "--atualizar": instala sem perguntar nada (atalhos, Aplicativos instalados) e abre o Portal
+            Process p = Process.Start(new ProcessStartInfo(exe, "--atualizar") { UseShellExecute = false });
+            p.WaitForExit(120000);
+            try { Directory.Delete(pasta, true); } catch { }
+            return Instalado() ? "App do Portal instalado (atalho \"Portal FB\" na área de trabalho)." : "Não consegui instalar o app do Portal.";
+        }
+        catch (Exception ex) { return "Não consegui instalar o app do Portal: " + ex.Message; }
     }
 }
 
@@ -457,7 +489,9 @@ class Janela : Form
 
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
 
-    public Janela()
+    public Janela() : this(false) { }
+
+    public Janela(bool instalarAoAbrir)
     {
         try { SetProcessDPIAware(); } catch { }
         Text = "Otimizador de PC";
@@ -493,9 +527,7 @@ class Janela : Form
                     Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 Elevar("/desinstalar", "Desinstalado. Este computador não é mais monitorado.");
             }
-            else
-                Elevar("/instalar", "Instalado!\n\nA partir de agora o Otimizador abre sozinho toda vez que qualquer pessoa entrar no Windows, monitora o computador o tempo todo e envia para o Painel dos Computadores do portal. " +
-                    "As otimizações também foram aplicadas — e as de cada usuário se aplicam sozinhas no login dele.\n\nNinguém precisa fazer mais nada. Pode fechar esta janela.");
+            else InstalarTudo();
         };
 
         corrigir.Click += delegate { Elevar("/aplicar", "Pronto! Computador otimizado:\n\n• Chrome e Edge economizando memória\n• programas dispensáveis não abrem mais com o Windows\n• \"Desligar\" passa a limpar a memória\n• sem transparência e animações\n\nFeche o Chrome por completo e abra de novo para valer tudo."); };
@@ -523,7 +555,23 @@ class Janela : Form
         };
 
         Controls.Add(meio); Controls.Add(monitorando); Controls.Add(botoes); Controls.Add(resumo); Controls.Add(topo);
-        Shown += delegate { Rodar(); };
+        Shown += delegate
+        {
+            Rodar();
+            if (instalarAoAbrir && !Monitor.Instalado()) BeginInvoke((MethodInvoker)InstalarTudo);
+            else if (instalarAoAbrir) { string s = Portal.Instalar(); if (s != "") MessageBox.Show("O Otimizador já está instalado neste computador.\n\n" + s, Text, MessageBoxButtons.OK, MessageBoxIcon.Information); }
+        };
+    }
+
+    // instala o app do Portal (usuário atual, sem senha) e depois o Otimizador (pede administrador uma vez)
+    void InstalarTudo()
+    {
+        Cursor = Cursors.WaitCursor; topo.Text = "Instalando..."; Application.DoEvents();
+        string portal = Portal.Instalar();
+        Cursor = Cursors.Default;
+        Elevar("/instalar", "Instalado!\n\n" + (portal != "" ? "• " + portal + "\n" : "") +
+            "• Otimizador de PC: abre sozinho toda vez que qualquer pessoa entrar no Windows, monitora o computador o tempo todo e envia para o Painel dos Computadores do portal.\n" +
+            "• Otimizações aplicadas — as de cada usuário se aplicam sozinhas no login dele.\n\nNinguém precisa fazer mais nada.");
     }
 
     Button Botao(string t, int w, bool principal)
