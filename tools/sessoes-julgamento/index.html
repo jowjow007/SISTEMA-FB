@@ -60,6 +60,28 @@
   .card{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line-strong);border-radius:14px;padding:16px;}
   .card.click{cursor:pointer;transition:border-color .15s,transform .15s;} .card.click:hover{border-color:var(--gold);transform:translateY(-1px);}
   .card h3{margin:0 0 4px;font-size:1rem;}
+  /* lista de sessões (16/11/2026): filtro por situação, grupos e um card por sessão com a data em destaque */
+  .filtros-sessao{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;}
+  .filtros-sessao button{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:22px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.86rem;cursor:pointer;}
+  .filtros-sessao button .n{font-size:.74rem;font-weight:700;background:var(--panel-3);border-radius:10px;padding:1px 8px;}
+  .filtros-sessao button.on{background:var(--red);border-color:var(--red);color:#fff;} .filtros-sessao button.on .n{background:rgba(255,255,255,.22);}
+  .grupo-sessao{margin:4px 0 10px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px;}
+  .grupo-sessao::after{content:"";flex:1;height:1px;background:var(--line-strong);}
+  .grid-sessoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:24px;}
+  .card-sessao{display:flex;gap:14px;align-items:stretch;padding:14px;}
+  .card-sessao .dia{flex:0 0 64px;border-radius:12px;background:var(--panel-3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px 4px;line-height:1.15;}
+  .card-sessao .dia b{font-size:1.6rem;font-family:var(--font-display);} .card-sessao .dia span{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .card-sessao .dia.agendada{background:rgba(110,168,220,.16);} .card-sessao .dia.agendada b{color:var(--blue);}
+  .card-sessao .dia.sem{background:rgba(217,164,65,.14);} .card-sessao .dia.sem b{color:var(--amber);}
+  .card-sessao .dia.feita{background:rgba(216,178,90,.12);} .card-sessao .dia.feita b{color:var(--gold);}
+  .card-sessao .corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .card-sessao h3{margin:2px 0 0;font-size:.98rem;line-height:1.3;}
+  .card-sessao .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .card-sessao .prog{margin-top:4px;}
+  .card-sessao .abrir{margin-top:6px;font-size:.78rem;color:var(--gold);font-weight:600;}
+  .seletor-condo{display:flex;align-items:center;gap:10px;margin:0 0 16px;flex-wrap:wrap;}
+  .seletor-condo label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+  .seletor-condo select{min-width:280px;max-width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.92rem;}
   .tag{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:10px;border:1px solid currentColor;}
   .tag.rasc{color:var(--muted);} .tag.lib{color:var(--blue);} .tag.real{color:var(--gold);}
   .tag.agu{color:var(--amber);} .tag.lanc{color:var(--red-bright);} .tag.mant{color:var(--red-bright);} .tag.canc{color:var(--green);} .tag.mod{color:var(--blue);}
@@ -338,6 +360,13 @@
 
   function chipsCondos(){
     if (condos.length <= 1 && !equipe) return '';
+    // muitos condomínios: uma lista de escolha em vez de uma fileira de botões
+    if (condos.length > 4) {
+      return '<div class="seletor-condo"><label for="sel-condo">Condomínio</label><select id="sel-condo">' + condos.map(function(c){
+        var n = sessoesDoCondo(c.slug).length;
+        return '<option value="' + esc(c.slug) + '"' + (c.slug === state.condo ? ' selected' : '') + '>' + esc(c.nome) + (n ? ' (' + n + (n === 1 ? ' sessão)' : ' sessões)') : '') + '</option>';
+      }).join('') + '</select></div>';
+    }
     return '<div class="chips">' + condos.map(function(c){
       return '<button type="button" class="chip' + (c.slug === state.condo ? ' on' : '') + '" data-condo="' + esc(c.slug) + '">' + esc(c.nome) + '</button>';
     }).join('') + '</div>';
@@ -361,20 +390,52 @@
     if (equipe && !condos.length) return h + '<div class="vazio">A lista de condomínios ainda não foi carregada (Administração › dados privados).</div>';
     var lista = state.condo ? sessoesDoCondo(state.condo) : [];
     if (!lista.length) return h + '<div class="vazio">' + (equipe ? 'Nenhuma sessão cadastrada para este condomínio. Clique em "+ Nova sessão".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
-    h += '<div class="grid">' + lista.map(function(s){
-      var rs = recursosDaSessao(s.id), st = statusSessao(s);
-      var julgados = rs.filter(function(r){ return r.decisao && r.decisao.resultado; }).length;
-      var lidos = rs.filter(function(r){ return leituras[me.uid + '_' + r.id]; }).length;
-      var pct = rs.length ? Math.round(100 * (equipe ? julgados : lidos) / rs.length) : 0;
-      return '<div class="card click" data-sessao="' + esc(s.id) + '">'
-        + '<span class="tag ' + st.tag + '">' + esc(equipe ? st.rot : (s.realizada ? 'Realizada' : 'Próxima sessão')) + '</span>'
-        + '<h3 style="margin-top:8px;">' + esc(s.titulo || 'Sessão de julgamento') + '</h3>'
-        + '<div class="muted small">📅 ' + esc(dataHoraBR(s.data)) + (s.local ? ' · ' + esc(s.local) : '') + '</div>'
-        + '<div class="small" style="margin-top:8px;">' + rs.length + (rs.length === 1 ? ' recurso' : ' recursos') + ' · '
-        + (equipe ? julgados + ' com decisão lançada' : lidos + ' analisado' + (lidos === 1 ? '' : 's') + ' por você') + '</div>'
-        + '<div class="prog"><div style="width:' + pct + '%"></div></div></div>';
+    var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
+    var porGrupo = { agendadas:[], aguardando:[], realizadas:[] };
+    lista.forEach(function(s){ porGrupo[situacaoSessao(s)].push(s); });
+    porGrupo.agendadas.sort(function(a, b){ return String(a.data).localeCompare(String(b.data)); });   // a mais próxima primeiro
+    porGrupo.realizadas.sort(function(a, b){ return String(b.data || '').localeCompare(String(a.data || '')) || String(b.titulo || '').localeCompare(String(a.titulo || ''), 'pt-BR'); });
+    var filtro = state.filtroSessao || 'todas';
+    h += '<div class="filtros-sessao">' + [{ id:'todas', rot:'Todas', n:lista.length }].concat(GRUPOS.map(function(g){ return { id:g.id, rot:g.rot, n:porGrupo[g.id].length }; })).map(function(f){
+      return '<button type="button" data-filtro-sessao="' + f.id + '" class="' + (filtro === f.id ? 'on' : '') + '">' + esc(f.rot) + ' <span class="n">' + f.n + '</span></button>';
     }).join('') + '</div>';
+    var algum = false;
+    GRUPOS.forEach(function(g){
+      if (filtro !== 'todas' && filtro !== g.id) return;
+      var gs = porGrupo[g.id];
+      if (!gs.length) return;
+      algum = true;
+      if (filtro === 'todas') h += '<div class="grupo-sessao">' + esc(g.rot) + ' · ' + gs.length + '</div>';
+      h += '<div class="grid-sessoes">' + gs.map(cardSessao).join('') + '</div>';
+    });
+    if (!algum) h += '<div class="vazio">' + ({ agendadas:'Nenhuma sessão agendada.', aguardando:'Nenhuma sessão aguardando agendamento.', realizadas:'Nenhuma sessão realizada ainda.' }[filtro] || 'Nenhuma sessão.') + '</div>';
     return h;
+  }
+  // realizada -> "realizadas"; com data e ainda não realizada -> "agendadas"; sem data -> "aguardando agendamento"
+  function situacaoSessao(s){ return s.realizada ? 'realizadas' : (s.data ? 'agendadas' : 'aguardando'); }
+  var MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function cardSessao(s){
+    var rs = recursosDaSessao(s.id), sit = situacaoSessao(s);
+    var julgados = rs.filter(function(r){ return r.decisao && r.decisao.resultado; }).length;
+    var lidos = rs.filter(function(r){ return leituras[me.uid + '_' + r.id]; }).length;
+    var pct = rs.length ? Math.round(100 * (equipe ? julgados : lidos) / rs.length) : 0;
+    var p = String(s.data || '').slice(0, 10).split('-'), hora = String(s.data || '').slice(11, 16);
+    var dia = p.length === 3
+      ? '<div class="dia ' + (sit === 'realizadas' ? 'feita' : 'agendada') + '"><b>' + esc(p[2]) + '</b><span>' + (MESES_CURTOS[parseInt(p[1], 10) - 1] || '') + '/' + esc(p[0].slice(2)) + '</span>' + (hora ? '<span>' + esc(hora.replace(':', 'h')) + '</span>' : '') + '</div>'
+      : '<div class="dia ' + (sit === 'realizadas' ? 'feita' : 'sem') + '"><b>' + (sit === 'realizadas' ? '✓' : '?') + '</b><span>' + (sit === 'realizadas' ? 'sem data' : 'a agendar') + '</span></div>';
+    var rotSit = { realizadas:'Realizada', agendadas:'Agendada', aguardando:'Aguardando agendamento' }[sit];
+    var tagSit = { realizadas:'real', agendadas:'lib', aguardando:'agu' }[sit];
+    var tags = '<span class="tag ' + tagSit + '">' + rotSit + '</span>';
+    if (equipe && !s.realizada) tags += s.liberada ? '<span class="tag lib">Liberada ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
+    if (equipe && s.realizada && rs.length && julgados < rs.length) tags += '<span class="tag lanc">' + (rs.length - julgados) + ' a lançar</span>';
+    return '<div class="card click card-sessao" data-sessao="' + esc(s.id) + '">' + dia
+      + '<div class="corpo"><div class="tags">' + tags + '</div>'
+      + '<h3>' + esc(s.titulo || 'Sessão de julgamento') + '</h3>'
+      + '<div class="muted small">' + (s.data ? '📅 ' + esc(dataHoraBR(s.data)) : 'Data a definir') + (s.local ? ' · ' + esc(s.local) : '') + '</div>'
+      + '<div class="small">' + rs.length + (rs.length === 1 ? ' recurso' : ' recursos') + ' · '
+      + (equipe ? julgados + ' com decisão lançada' : lidos + ' analisado' + (lidos === 1 ? '' : 's') + ' por você') + '</div>'
+      + '<div class="prog"><div style="width:' + pct + '%"></div></div>'
+      + '<span class="abrir">Abrir sessão →</span></div></div>';
   }
 
   function telaSessao(){
@@ -1005,12 +1066,14 @@
     if (t.id === 'ed-arquivos') { enviarArquivos(t.files, document.getElementById('ed-categoria').value, rascunho.id, document.getElementById('upl-status')); t.value = ''; }
     if (t.id === 'ed-categoria') state.categoriaUp = t.value;
     if (t.id === 'importar') { importarPacote(t.files); t.value = ''; }
+    if (t.id === 'sel-condo') { state.condo = t.value; mostrar(true); }
   });
   app.addEventListener('click', function(e){
     var el = e.target.closest('button, .card, .linha, [data-ir]');
     if (!el) return;
     var d = el.dataset;
     if (d.condo) { state.condo = d.condo; mostrar(true); return; }
+    if (d.filtroSessao) { state.filtroSessao = d.filtroSessao; mostrar(true); return; }
     if (d.ir) { ir(d.ir); return; }
     if (d.editar) { e.stopPropagation(); abrirEdicao(d.editar); return; }
     if (d.recurso) { ir('recurso', { recursoId:d.recurso, passo:0 }); return; }
