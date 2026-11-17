@@ -230,7 +230,7 @@ def main():
         exp = rr.get('provasExpiramEm')
         F.caso(G, 'as provas passam a vencer em 90 dias', bool(exp), str(exp))
         F.caso(G, 'conselheira vê o resultado e a ementa no passo "Decisão"',
-               (pc.click('[data-passo="4"]') or True) and F.esperar(pc, "document.body.innerText.includes('Penalidade modulada') && document.body.innerText.includes('EMENTA'.toLowerCase()) || document.body.innerText.includes('Ementa')", 15000))
+               (pc.click('[data-passo="3"]') or True) and F.esperar(pc, "document.body.innerText.includes('Penalidade modulada') && document.body.innerText.includes('EMENTA'.toLowerCase()) || document.body.innerText.includes('Ementa')", 15000))
         foto(pc, '6-conselho-decisao')
         with pc.expect_popup() as pop:
             pc.click('[data-ementa-pdf]')

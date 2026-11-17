@@ -400,7 +400,7 @@
     if (!equipe) {
       var c = condos.find(function(x){ return x.slug === state.condo; }) || condos[0];
       h += '<div class="aviso">Olá, ' + esc(me.nome.split(' ')[0]) + '! Aqui estão os recursos que o conselho do <b>' + esc(c.nome) + '</b> vai julgar. '
-        + 'Abra cada um e siga os passos: <b>resumo → provas → alegações do morador → fundamentos</b>. Ao terminar, marque "Analisei este recurso". '
+        + 'Abra cada um e siga os passos: <b>resumo → provas → alegações do morador</b>. Ao terminar, marque "Analisei este recurso". '
         + 'O material é de uso restrito à sessão de julgamento.</div>';
     }
     h += chipsCondos();
@@ -543,7 +543,7 @@
     return h;
   }
 
-  var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Fundamentos', 'Decisão'];
+  var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Decisão'];   // sem "Fundamentos" (16/11/2026, a pedido do escritório)
   function telaRecurso(){
     var r = recursos[state.recursoId], s = sessoes[r.sessaoId] || {}, st = statusRecurso(r);
     var h = '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>'
@@ -577,14 +577,11 @@
         + campoFicha('Pedido de recurso', dataBR(r.dataRecurso)) + campoFicha('Quem pediu a abertura', r.quemAbriu) + '</div>';
       h += r.fatos ? '<h3>Dos fatos</h3><div class="texto">' + esc(r.fatos) + '</div>' : '';
       h += r.historicoUnidade ? '<h3>Histórico da unidade</h3><div class="texto">' + esc(r.historicoUnidade) + '</div>' : '';
+      h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
     } else if (p === 1) {
       h += telaProvas(r);
     } else if (p === 2) {
       h += r.alegacoes ? '<div class="texto">' + esc(r.alegacoes) + '</div>' : '<div class="vazio">O escritório ainda não resumiu as alegações do morador. Veja o recurso dele nas provas (categoria "Recurso do morador").</div>';
-    } else if (p === 3) {
-      h += r.fundamentos ? '<h3>Fundamentos da penalidade</h3><div class="texto">' + esc(r.fundamentos) + '</div>' : '';
-      h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
-      if (!r.fundamentos && !r.observacoes) h += '<div class="vazio">Sem fundamentos cadastrados.</div>';
     } else {
       h += telaDecisaoLeitura(r);
     }
@@ -804,7 +801,7 @@
     if (!dec.ementa && !confirm('Salvar sem ementa? Você pode escrever depois.')) return;
     var expira = (r.decisao && r.provasExpiramEm) ? r.provasExpiramEm : TS.fromMillis(Date.now() + DIAS_PROVAS * 86400000);
     db.collection('recursosJulgamento').doc(r.id).update({ decisao:dec, provasExpiramEm:expira, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid })
-      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('recurso', { recursoId:r.id, passo:4 }); })
+      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('recurso', { recursoId:r.id, passo:3 }); })
       .catch(function(e){ avisoErro('Não foi possível salvar: ' + e.message); });
   }
   function sugerirEmenta(){
@@ -882,7 +879,8 @@
       setTimeout(function(){ mostrar(true); }, 0);
       db.collection('acessosProvasJulgamento').add({ uid:me.uid, nome:me.nome, recursoId:r.id, condominioSlug:r.condominioSlug, arquivo:caminho, em:FV.serverTimestamp() }).catch(function(){});
     }).catch(function(e){
-      if (botao) { botao.disabled = false; botao.textContent = 'Não foi possível abrir: ' + e.message; }
+      var msg = /failed to fetch|networkerror|load failed/i.test(e.message || '') ? 'o Storage ainda não autoriza o portal a ler arquivos (CORS). Avise o administrador.' : e.message;
+      if (botao) { botao.disabled = false; botao.textContent = 'Não foi possível abrir: ' + msg; }
     });
   }
 
