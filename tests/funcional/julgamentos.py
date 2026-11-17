@@ -172,6 +172,9 @@ def main():
         F.caso(G, '... o cartão abre as sessões, com o botão "← Condomínios"',
                F.esperar(hub, "location.pathname.includes('sessoes-julgamento') && getComputedStyle(document.getElementById('voltar-condo')).display !== 'none' && document.body.innerText.includes('novembro de 2026')", 15000))
         hub.close()
+        F.caso(G, 'lista abre em "Ocorrências": um card por ocorrência, com o número',
+               F.esperar(pc, f"!!document.querySelector('.card-oc[data-recurso=\"{rec_id}\"] .num') && document.querySelector('.card-oc[data-recurso=\"{rec_id}\"] .num').textContent === '#900001'", 10000))
+        pc.click('[data-ver-por="sessoes"]')
         pc.click(f'[data-sessao="{sid}"]')
         F.esperar(pc, f"!!document.querySelector('[data-recurso=\"{rec_id}\"]')", 10000)
         pc.click(f'[data-recurso="{rec_id}"]')
@@ -306,6 +309,7 @@ def main():
         F.caso(G, 'recurso importado de sessão realizada aparece como "decisão a lançar"',
                (pa.goto(URL) or True) and F.esperar(pa, "document.querySelectorAll('[data-condo]').length >= 2", 15000)
                and (pa.click('[data-condo="condominio-ficticio-beta"]') or True)
+               and (pa.click('[data-ver-por="sessoes"]') or True)
                and (pa.click('[data-sessao="condominio-ficticio-beta-set-2026"]') or True)
                and F.esperar(pa, "document.body.innerText.toLowerCase().includes('decisão a lançar')", 10000))
         pa.goto(URL)

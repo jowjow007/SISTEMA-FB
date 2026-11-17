@@ -79,6 +79,18 @@
   .card-sessao .tags{display:flex;gap:6px;flex-wrap:wrap;}
   .card-sessao .prog{margin-top:4px;}
   .card-sessao .abrir{margin-top:6px;font-size:.78rem;color:var(--gold);font-weight:600;}
+  /* um card por ocorrência (16/11/2026) */
+  .ver-por{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin:0 0 14px;}
+  .ver-por button{padding:8px 16px;border:none;background:var(--panel-2);color:var(--muted);font:inherit;font-size:.84rem;font-weight:600;cursor:pointer;}
+  .ver-por button.on{background:var(--gold);color:#1b1310;}
+  .busca-oc{margin:0 0 14px;max-width:420px;} .busca-oc input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.9rem;}
+  .grid-oc{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
+  .card-oc{display:flex;flex-direction:column;gap:5px;padding:14px 15px;}
+  .card-oc .topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .card-oc .num{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:var(--gold);letter-spacing:.02em;}
+  .card-oc h3{margin:0;font-size:.95rem;line-height:1.3;}
+  .card-oc .sess{font-size:.76rem;color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:auto;}
+  .card-oc .tags{display:flex;gap:6px;flex-wrap:wrap;}
   .seletor-condo{display:flex;align-items:center;gap:10px;margin:0 0 16px;flex-wrap:wrap;}
   .seletor-condo label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
   .seletor-condo select{min-width:280px;max-width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.92rem;}
@@ -363,8 +375,10 @@
     // muitos condomínios: uma lista de escolha em vez de uma fileira de botões
     if (condos.length > 4) {
       return '<div class="seletor-condo"><label for="sel-condo">Condomínio</label><select id="sel-condo">' + condos.map(function(c){
-        var n = sessoesDoCondo(c.slug).length;
-        return '<option value="' + esc(c.slug) + '"' + (c.slug === state.condo ? ' selected' : '') + '>' + esc(c.nome) + (n ? ' (' + n + (n === 1 ? ' sessão)' : ' sessões)') : '') + '</option>';
+        var porOc = (state.verPor || 'ocorrencias') === 'ocorrencias';
+        var n = porOc ? Object.values(recursos).filter(function(r){ return r.condominioSlug === c.slug; }).length : sessoesDoCondo(c.slug).length;
+        var rot = porOc ? (n === 1 ? ' ocorrência)' : ' ocorrências)') : (n === 1 ? ' sessão)' : ' sessões)');
+        return '<option value="' + esc(c.slug) + '"' + (c.slug === state.condo ? ' selected' : '') + '>' + esc(c.nome) + (n ? ' (' + n + rot : '') + '</option>';
       }).join('') + '</select></div>';
     }
     return '<div class="chips">' + condos.map(function(c){
@@ -388,6 +402,10 @@
       + (admin ? '<label class="btn sec peq" style="cursor:pointer;">⬆ Importar pacote<input type="file" id="importar" webkitdirectory multiple style="display:none;"></label>' : '')
       + '</div>';
     if (equipe && !condos.length) return h + '<div class="vazio">A lista de condomínios ainda não foi carregada (Administração › dados privados).</div>';
+    var verPor = state.verPor || 'ocorrencias';
+    h += '<div class="ver-por"><button type="button" data-ver-por="ocorrencias" class="' + (verPor === 'ocorrencias' ? 'on' : '') + '">Ocorrências</button>'
+      + '<button type="button" data-ver-por="sessoes" class="' + (verPor === 'sessoes' ? 'on' : '') + '">Sessões</button></div>';
+    if (verPor === 'ocorrencias') return h + listaOcorrencias();
     var lista = state.condo ? sessoesDoCondo(state.condo) : [];
     if (!lista.length) return h + '<div class="vazio">' + (equipe ? 'Nenhuma sessão cadastrada para este condomínio. Clique em "+ Nova sessão".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
     var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
@@ -410,6 +428,51 @@
     });
     if (!algum) h += '<div class="vazio">' + ({ agendadas:'Nenhuma sessão agendada.', aguardando:'Nenhuma sessão aguardando agendamento.', realizadas:'Nenhuma sessão realizada ainda.' }[filtro] || 'Nenhuma sessão.') + '</div>';
     return h;
+  }
+  // um card por ocorrência (recurso), com o número dela; a situação vem da sessão em que ela está
+  function situacaoRecurso(r){ var s = sessoes[r.sessaoId]; return s ? situacaoSessao(s) : 'aguardando'; }
+  function listaOcorrencias(){
+    var h = '';
+    var todos = Object.values(recursos).filter(function(r){ return r.condominioSlug === state.condo; });
+    if (!todos.length) return '<div class="vazio">' + (equipe ? 'Nenhuma ocorrência cadastrada para este condomínio. Use "+ Nova sessão" (em Sessões) ou "⬆ Importar pacote".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
+    var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
+    var busca = String(state.buscaOc || '').trim().toLowerCase();
+    var bate = function(r){ return !busca || [r.ocorrencia, r.titulo, r.classificacao, r.unidade, r.morador].join(' ').toLowerCase().indexOf(busca) >= 0; };
+    var porGrupo = { agendadas:[], aguardando:[], realizadas:[] };
+    todos.forEach(function(r){ porGrupo[situacaoRecurso(r)].push(r); });
+    var num = function(a, b){ return String(a.ocorrencia).localeCompare(String(b.ocorrencia), 'pt-BR', { numeric:true }); };
+    var dataSess = function(r){ return String((sessoes[r.sessaoId] || {}).data || ''); };
+    porGrupo.agendadas.sort(function(a, b){ return dataSess(a).localeCompare(dataSess(b)) || num(a, b); });
+    porGrupo.aguardando.sort(num);
+    porGrupo.realizadas.sort(num);
+    var filtro = state.filtroSessao || 'todas';
+    h += '<div class="filtros-sessao">' + [{ id:'todas', rot:'Todas', n:todos.length }].concat(GRUPOS.map(function(g){ return { id:g.id, rot:g.rot, n:porGrupo[g.id].length }; })).map(function(f){
+      return '<button type="button" data-filtro-sessao="' + f.id + '" class="' + (filtro === f.id ? 'on' : '') + '">' + esc(f.rot) + ' <span class="n">' + f.n + '</span></button>';
+    }).join('') + '</div>';
+    h += '<div class="busca-oc"><input id="ed-busca-oc" placeholder="Procurar: número da ocorrência, assunto, unidade…" value="' + esc(state.buscaOc || '') + '" autocomplete="off"></div>';
+    var algum = false;
+    GRUPOS.forEach(function(g){
+      if (filtro !== 'todas' && filtro !== g.id) return;
+      var gs = porGrupo[g.id].filter(bate);
+      if (!gs.length) return;
+      algum = true;
+      if (filtro === 'todas') h += '<div class="grupo-sessao">' + esc(g.rot) + ' · ' + gs.length + '</div>';
+      h += '<div class="grid-oc">' + gs.map(cardOcorrencia).join('') + '</div>';
+    });
+    if (!algum) h += '<div class="vazio">' + (busca ? 'Nenhuma ocorrência com "' + esc(state.buscaOc) + '".' : ({ agendadas:'Nenhuma ocorrência em sessão agendada.', aguardando:'Nenhuma ocorrência aguardando agendamento.', realizadas:'Nenhuma ocorrência julgada ainda.' }[filtro] || 'Nenhuma ocorrência.')) + '</div>';
+    return h;
+  }
+  function cardOcorrencia(r){
+    var s = sessoes[r.sessaoId] || {}, st = statusRecurso(r), n = (r.provas || []).length;
+    var tags = '<span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>';
+    if (equipe && !s.realizada) tags += r.liberado ? '<span class="tag lib">Liberado ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
+    if (!equipe) tags += leituras[me.uid + '_' + r.id] ? '<span class="tag canc">✔ analisado</span>' : '<span class="tag agu">a analisar</span>';
+    return '<div class="card click card-oc" data-recurso="' + esc(r.id) + '">'
+      + '<div class="topo"><span class="num">#' + esc(r.ocorrencia) + '</span><span class="muted small">' + n + (n === 1 ? ' arquivo' : ' arquivos') + '</span></div>'
+      + '<h3>' + esc(r.titulo || r.classificacao || 'Ocorrência') + '</h3>'
+      + '<div class="muted small">' + esc(r.unidade || '') + (r.morador ? ' · ' + esc(r.morador) : '') + '</div>'
+      + '<div class="tags">' + tags + '</div>'
+      + '<div class="sess">' + esc(s.titulo || 'Sem sessão') + ' · ' + (s.data ? '📅 ' + esc(dataHoraBR(s.data)) : 'data a definir') + '</div></div>';
   }
   // realizada -> "realizadas"; com data e ainda não realizada -> "agendadas"; sem data -> "aguardando agendamento"
   function situacaoSessao(s){ return s.realizada ? 'realizadas' : (s.data ? 'agendadas' : 'aguardando'); }
@@ -476,7 +539,9 @@
   var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Fundamentos', 'Decisão'];
   function telaRecurso(){
     var r = recursos[state.recursoId], s = sessoes[r.sessaoId] || {}, st = statusRecurso(r);
-    var h = '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>'
+    var h = ((state.verPor || 'ocorrencias') === 'ocorrencias'
+        ? '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>'
+        : '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>')
       + '<div class="barra"><div><h2>Ocorrência #' + esc(r.ocorrencia) + ' — ' + esc(r.titulo || r.classificacao || '') + '</h2>'
       + '<div class="muted small">' + esc(nomeCondo(r.condominioSlug)) + ' · ' + esc(r.unidade || '') + ' · sessão de ' + esc(dataHoraBR(s.data)) + '</div></div>'
       + '<span class="espaco"></span><span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>'
@@ -1058,6 +1123,8 @@
     });
     var modBox = document.getElementById('dec-mod-box');
     if (modBox) modBox.addEventListener('change', function(){ Array.prototype.forEach.call(modBox.querySelectorAll('label'), function(l){ l.classList.toggle('on', !!l.querySelector('input:checked')); }); });
+    var bOc = document.getElementById('ed-busca-oc');
+    if (bOc) bOc.addEventListener('input', function(){ state.buscaOc = bOc.value; var pos = bOc.selectionStart; bOc.blur(); mostrar(true); var b2 = document.getElementById('ed-busca-oc'); b2.focus(); b2.setSelectionRange(pos, pos); });
     var filtro = document.getElementById('ed-filtro-ementario');
     if (filtro) filtro.addEventListener('input', function(){ state.filtroEmentario = filtro.value; var pos = filtro.selectionStart; filtro.blur(); mostrar(true); var f2 = document.getElementById('ed-filtro-ementario'); f2.focus(); f2.setSelectionRange(pos, pos); });
   }
@@ -1074,6 +1141,7 @@
     var d = el.dataset;
     if (d.condo) { state.condo = d.condo; mostrar(true); return; }
     if (d.filtroSessao) { state.filtroSessao = d.filtroSessao; mostrar(true); return; }
+    if (d.verPor) { state.verPor = d.verPor; mostrar(true); return; }
     if (d.ir) { ir(d.ir); return; }
     if (d.editar) { e.stopPropagation(); abrirEdicao(d.editar); return; }
     if (d.recurso) { ir('recurso', { recursoId:d.recurso, passo:0 }); return; }
