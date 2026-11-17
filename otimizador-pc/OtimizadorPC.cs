@@ -32,6 +32,20 @@ static class Programa
         if (a == "/aplicar") return Ajustes.Aplicar() ? 0 : 1;
         if (a == "/desfazer") return Ajustes.Desfazer() ? 0 : 1;
         if (a == "/monitor") { Monitor.Rodar(); return 0; }
+        if (a == "/listar-bloqueio" && args.Length > 1)
+        {   // só consulta: quais extensões o "Corrigir" bloquearia neste PC (id + nome, quando instalada)
+            System.Web.Script.Serialization.JavaScriptSerializer js = new System.Web.Script.Serialization.JavaScriptSerializer();
+            StringBuilder sb = new StringBuilder();
+            foreach (string id in Ajustes.ExtensoesParaBloquear())
+            {
+                string nome = null;
+                foreach (string d in Directory.GetDirectories(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\User Data")))
+                    try { string dir = Path.Combine(d, "Extensions", id); if (Directory.Exists(dir)) { nome = Diagnostico.NomeExtensao(js, dir); break; } } catch { }
+                sb.AppendLine(id + "  " + (nome ?? "(não instalada aqui)"));
+            }
+            File.WriteAllText(args[1], sb.ToString(), Encoding.UTF8);
+            return 0;
+        }
         if (a == "/instalar") return Monitor.Instalar() ? 0 : 1;        // precisa de administrador
         if (a == "/desinstalar") return Monitor.Desinstalar() ? 0 : 1;  // precisa de administrador
         if (a == "/testar-envio") { string res = Envio.Testar(); if (args.Length > 1) File.WriteAllText(args[1], res, Encoding.UTF8); return res.StartsWith("OK") ? 0 : 1; }
@@ -96,6 +110,69 @@ static class Ajustes
         "meet.google.com"         // reunião não pode cair
     };
 
+    // Extensões bloqueadas (Chrome e Edge removem/desativam e não deixam instalar de novo). Fixas: ids conferidos.
+    public static readonly string[] BloqueioFixo = {
+        "fheoggkfdfchfphceeifdbepaooicaho",   // McAfee WebAdvisor (vem de carona em outros instaladores)
+        "jdcfmebflppkljibgpdlboifpcaalolg",   // Méliuz: Cashback e cupons
+        "bmnlcjabgnpnenekpadlanbbkooimhnj",   // Honey (cupons)
+        "gomekmidlodglbbmalcneegieacbdmki",   // Avast Online Security
+        "nbmoafcmbajniiapeidgficgifbfmjfo"    // AVG Online Security
+    };
+    // além das fixas, bloqueia as encontradas nos perfis dos usuários com estes nomes (cupom/cashback/"proteção" de antivírus)
+    static readonly string[] NomesBloquear = { "méliuz", "meliuz", "cuponomia", "pelando", "buscapé", "buscape", "cashback", "honey",
+        "superdeal", "mcafee", "webadvisor", "avast", "avg ", "norton", "kaspersky", "hola " };
+    // nunca bloquear (certificado digital, assinadores, PJe), mesmo que o nome case com algo acima
+    static readonly string[] NomesNunca = { "signer", "pki", "assinatura", "assinador", "certisign", "bry", "token", "safenet", "pje",
+        "soluti", "serasa", "valid", "certificado", "lacuna" };
+
+    public static List<string> ExtensoesParaBloquear()
+    {
+        List<string> ids = new List<string>(BloqueioFixo);
+        try
+        {
+            JavaScriptSerializer js = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+            foreach (string usuario in Directory.GetDirectories(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "Users")))
+            {
+                string ud = Path.Combine(usuario, @"AppData\Local\Google\Chrome\User Data");
+                if (!Directory.Exists(ud)) continue;
+                foreach (string perfil in Directory.GetDirectories(ud))
+                {
+                    string dirExt = Path.Combine(perfil, "Extensions");
+                    if (!Directory.Exists(dirExt)) continue;
+                    foreach (string dirId in Directory.GetDirectories(dirExt))
+                    {
+                        try
+                        {
+                            string id = Path.GetFileName(dirId);
+                            if (ids.Contains(id)) continue;
+                            string nome = Diagnostico.NomeExtensao(js, dirId);
+                            if (nome == null) continue;
+                            string low = " " + nome.ToLowerInvariant() + " ";
+                            if (NomesNunca.Any(n => low.Contains(n))) continue;
+                            if (NomesBloquear.Any(n => low.Contains(n))) ids.Add(id);
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+        catch { }
+        return ids;
+    }
+
+    public static bool ProtecaoReforcada()
+    {
+        using (RegistryKey k = Registry.LocalMachine.OpenSubKey(CHROME))
+        { object v = k == null ? null : k.GetValue("SafeBrowsingProtectionLevel"); return v is int && (int)v == 2; }
+    }
+
+    static void GravarLista(string chave, List<string> valores)
+    {
+        Registry.LocalMachine.DeleteSubKeyTree(chave, false);
+        using (RegistryKey k = Registry.LocalMachine.CreateSubKey(chave))
+            for (int i = 0; i < valores.Count; i++) k.SetValue((i + 1).ToString(), valores[i], RegistryValueKind.String);
+    }
+
     public static int NivelEconomia()
     {
         // 8 GB ou menos: economia máxima; acima disso: equilibrada
@@ -113,7 +190,11 @@ static class Ajustes
                 k.SetValue("BackgroundModeEnabled", 0, RegistryValueKind.DWord);           // não fica rodando depois de fechado
                 k.SetValue("NetworkPredictionOptions", 2, RegistryValueKind.DWord);        // não pré-carrega páginas
                 k.SetValue("ShoppingListEnabled", 0, RegistryValueKind.DWord);
+                k.SetValue("SafeBrowsingProtectionLevel", 2, RegistryValueKind.DWord);       // Navegação segura: proteção reforçada
             }
+            List<string> bloquear = ExtensoesParaBloquear();
+            GravarLista(CHROME + @"\ExtensionInstallBlocklist", bloquear);
+            GravarLista(EDGE + @"\ExtensionInstallBlocklist", bloquear);
             Registry.LocalMachine.DeleteSubKeyTree(CHROME + @"\TabDiscardingExceptions", false);
             using (RegistryKey k = Registry.LocalMachine.CreateSubKey(CHROME + @"\TabDiscardingExceptions"))
                 for (int i = 0; i < Excecoes.Length; i++) k.SetValue((i + 1).ToString(), Excecoes[i], RegistryValueKind.String);
@@ -121,6 +202,8 @@ static class Ajustes
             {
                 k.SetValue("StartupBoostEnabled", 0, RegistryValueKind.DWord);             // Edge não abre escondido com o Windows
                 k.SetValue("BackgroundModeEnabled", 0, RegistryValueKind.DWord);
+                k.SetValue("SmartScreenEnabled", 1, RegistryValueKind.DWord);              // Edge: proteção contra sites e downloads perigosos
+                k.SetValue("SmartScreenPuaEnabled", 1, RegistryValueKind.DWord);           // Edge: bloqueia programas indesejados
             }
             Otimizacoes.AplicarSistema();   // inicialização, temporários do Windows, inicialização rápida
             return true;
@@ -133,10 +216,12 @@ static class Ajustes
         try
         {
             using (RegistryKey k = Registry.LocalMachine.OpenSubKey(CHROME, true))
-                if (k != null) foreach (string n in new[] { "HighEfficiencyModeEnabled", "MemorySaverModeSavings", "BackgroundModeEnabled", "NetworkPredictionOptions", "ShoppingListEnabled" }) k.DeleteValue(n, false);
+                if (k != null) foreach (string n in new[] { "HighEfficiencyModeEnabled", "MemorySaverModeSavings", "BackgroundModeEnabled", "NetworkPredictionOptions", "ShoppingListEnabled", "SafeBrowsingProtectionLevel" }) k.DeleteValue(n, false);
             Registry.LocalMachine.DeleteSubKeyTree(CHROME + @"\TabDiscardingExceptions", false);
+            Registry.LocalMachine.DeleteSubKeyTree(CHROME + @"\ExtensionInstallBlocklist", false);
+            Registry.LocalMachine.DeleteSubKeyTree(EDGE + @"\ExtensionInstallBlocklist", false);
             using (RegistryKey k = Registry.LocalMachine.OpenSubKey(EDGE, true))
-                if (k != null) foreach (string n in new[] { "StartupBoostEnabled", "BackgroundModeEnabled" }) k.DeleteValue(n, false);
+                if (k != null) foreach (string n in new[] { "StartupBoostEnabled", "BackgroundModeEnabled", "SmartScreenEnabled", "SmartScreenPuaEnabled" }) k.DeleteValue(n, false);
             Otimizacoes.DesfazerSistema();
             return true;
         }
@@ -157,7 +242,7 @@ static class Ajustes
     // o que ainda falta na parte de administrador (computador todo)
     public static bool SistemaPendente()
     {
-        return !JaAplicado() || Otimizacoes.InicializacaoRapidaLigada()
+        return !JaAplicado() || !ProtecaoReforcada() || Otimizacoes.InicializacaoRapidaLigada()
             || Otimizacoes.Inicializacao().Any(i => i.Onde.StartsWith("todos") && i.Dispensavel && !i.Desligado);
     }
     public static bool UsuarioPendente()
@@ -306,8 +391,10 @@ static class Diagnostico
             "Gastam memória o dia todo mesmo sem ninguém abrir. O \"Corrigir automaticamente\" desliga isso."));
 
         // 3. ajustes
-        if (Ajustes.JaAplicado()) r.Add(new Achado(2, "Chrome e Edge já configurados para economizar memória",
-            "Abas paradas são congeladas automaticamente (portal, sistemas dos tribunais, Astrea e WhatsApp nunca são congelados)."));
+        if (Ajustes.JaAplicado() && Ajustes.ProtecaoReforcada()) r.Add(new Achado(2, "Chrome e Edge configurados (economia de memória e proteção reforçada)",
+            "Abas paradas são congeladas automaticamente (portal, sistemas dos tribunais, Astrea e WhatsApp nunca são congelados); extensões de cupom/cashback e de \"proteção\" de antivírus ficam bloqueadas; a Navegação segura está no modo reforçado."));
+        else if (Ajustes.JaAplicado()) r.Add(new Achado(1, "Falta ligar a proteção reforçada e o bloqueio de extensões",
+            "Clique em \"Corrigir automaticamente\": a Navegação segura do Chrome passa ao modo reforçado e as extensões pesadas são bloqueadas."));
         else r.Add(new Achado(0, "Chrome e Edge ainda não estão configurados para economizar memória",
             "Clique em \"Corrigir automaticamente\". Abas paradas passam a ser congeladas e o Chrome deixa de ficar rodando depois de fechado."));
 
@@ -340,7 +427,8 @@ static class Diagnostico
         exts = LerExtensoes();
         List<Extensao> pesadas = exts.Where(e => e.Pesada).ToList();
         if (pesadas.Count > 0) r.Add(new Achado(0, pesadas.Count + " extensão(ões) que pesam e quase nunca fazem falta",
-            string.Join(", ", pesadas.Select(e => e.Nome).Distinct().ToArray()) + ". Para remover: no Chrome, clique no ícone de quebra-cabeça (ao lado da barra de endereço) > três pontinhos > Remover do Chrome."));
+            string.Join(", ", pesadas.Select(e => e.Nome).Distinct().ToArray()) + ". O \"Corrigir automaticamente\" bloqueia (o Chrome remove e não deixa instalar de novo). " +
+            "Extensões de \"proteção\" de antivírus não são o antivírus: o Windows Defender continua protegendo, e o Chrome fica com a Navegação segura reforçada."));
         if (exts.Count > 6) r.Add(new Achado(1, exts.Count + " extensões ligadas no Chrome",
             "Cada extensão gasta memória o tempo todo. Mantenha só as necessárias (ex.: assinador do PJe). Lista completa no relatório."));
         else if (pesadas.Count == 0) r.Add(new Achado(2, exts.Count + " extensão(ões) ligada(s) — tudo bem", ""));
@@ -433,6 +521,19 @@ static class Diagnostico
             }
         }
         return lista;
+    }
+
+    // nome legível da extensão (pasta Extensions\<id>), ou null
+    public static string NomeExtensao(JavaScriptSerializer js, string dirId)
+    {
+        string ver = Directory.GetDirectories(dirId).OrderByDescending(d => d).FirstOrDefault();
+        if (ver == null) return null;
+        string mf = Path.Combine(ver, "manifest.json");
+        if (!File.Exists(mf)) return null;
+        Dictionary<string, object> m = js.Deserialize<Dictionary<string, object>>(File.ReadAllText(mf));
+        string nome = m.ContainsKey("name") ? Convert.ToString(m["name"]) : null;
+        if (nome != null && nome.StartsWith("__MSG_")) nome = Traduzir(js, ver, m, nome);
+        return nome;
     }
 
     static Dictionary<string, object> LerConfigExtensoes(JavaScriptSerializer js, string perfil)
