@@ -4,6 +4,8 @@
 // SHA-256 dela). A chave vem de privado/monitor-chave.txt na hora de compilar (nunca vai para o repositório).
 //   monitorPCs/{pc}                 estado atual (a cada 60 s) + diagnóstico e hardware (a cada 10 min)
 //   monitorPCs/{pc}/amostras/{id}   histórico: pacotes de ~20 medições (10 min), uma linha de log por medição
+//   monitorComandos/{pc}            pedido do admin pelo painel ({id, acao, pedidoEm}); o app lê a cada minuto, sem
+//                                   login, executa e devolve o resultado nos campos comando* de monitorPCs/{pc}
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,7 +20,12 @@ using System.Windows.Forms;
 static class Envio
 {
     const string BASE = "https://firestore.googleapis.com/v1/projects/sistema-fb-4cce5/databases/(default)/documents/monitorPCs/";
-    public const string VERSAO = "2";
+    const string BASE_CMD = "https://firestore.googleapis.com/v1/projects/sistema-fb-4cce5/databases/(default)/documents/monitorComandos/";
+    public const string VERSAO = "3";
+    // último comando executado (fica num arquivo do usuário, para não repetir depois de reiniciar)
+    static string cmdId = null, cmdStatus = "", cmdResultado = "";
+    static DateTime cmdEm = DateTime.MinValue;
+    static string ArqCmd { get { return Path.Combine(Monitor.Pasta, "ultimo-comando.txt"); } }
     static readonly object trava = new object();
     static readonly List<string> pendentes = new List<string>();
     static bool ocupado;
@@ -55,6 +62,7 @@ static class Envio
     {
         ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; // TLS 1.2
         if (hardware == null) hardware = Monitor.Hardware();
+        try { VerComando(); } catch { }
         if ((DateTime.Now - ultimoDiag).TotalMinutes >= 10)
         {
             ultimoDiag = DateTime.Now;
@@ -93,6 +101,13 @@ static class Envio
         f["hardware"] = Str(Corta(hardware, 1500));
         f["achados"] = Arr(achados);
         f["extensoes"] = Arr(extensoes);
+        if (!string.IsNullOrEmpty(cmdId))   // só depois de executar algum comando (regras antigas não conhecem estes campos)
+        {
+            f["comandoId"] = Str(Corta(cmdId, 40));
+            f["comandoStatus"] = Str(cmdStatus);
+            f["comandoResultado"] = Str(Corta(cmdResultado, 500));
+            f["comandoEm"] = Ts(cmdEm == DateTime.MinValue ? DateTime.Now : cmdEm);
+        }
         Patch(IdPc(), f);
 
         // histórico: manda os pacotes de 20 medições já fechados
@@ -109,6 +124,65 @@ static class Envio
             lock (trava) pendentes.RemoveRange(0, Math.Min(20, pendentes.Count));
         }
         UltimoErro = "";
+    }
+
+    // ------------------------------------------------ comandos do painel
+    static void VerComando()
+    {
+        if (cmdId == null) { try { string[] l = File.ReadAllLines(ArqCmd); cmdId = l[0]; cmdStatus = l[1]; cmdResultado = l[2]; cmdEm = DateTime.Parse(l[3], System.Globalization.CultureInfo.InvariantCulture); } catch { cmdId = ""; } }
+        HttpWebRequest r = (HttpWebRequest)WebRequest.Create(BASE_CMD + IdPc());
+        r.Timeout = 15000;
+        string json;
+        try { using (WebResponse resp = r.GetResponse()) using (StreamReader sr = new StreamReader(resp.GetResponseStream())) json = sr.ReadToEnd(); }
+        catch (WebException) { return; }   // sem pedido (404) ou sem rede
+        Dictionary<string, object> d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
+        Dictionary<string, object> campos = d.ContainsKey("fields") ? d["fields"] as Dictionary<string, object> : null;
+        if (campos == null) return;
+        string id = Valor(campos, "id", "stringValue"), acao = Valor(campos, "acao", "stringValue"), quando = Valor(campos, "pedidoEm", "timestampValue");
+        if (string.IsNullOrEmpty(id) || id == cmdId) return;
+        DateTime pedido;
+        if (!DateTime.TryParse(quando, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal, out pedido)) return;
+        cmdId = id; cmdEm = DateTime.Now;
+        if ((DateTime.UtcNow - pedido).TotalHours > 24) { cmdStatus = "expirado"; cmdResultado = "Pedido de mais de 24 h atrás: não executado."; }
+        else
+        {
+            try { cmdResultado = Executar(acao); cmdStatus = "ok"; }
+            catch (Exception ex) { cmdStatus = "erro"; cmdResultado = ex.Message; }
+        }
+        try { Directory.CreateDirectory(Monitor.Pasta); File.WriteAllLines(ArqCmd, new[] { cmdId, cmdStatus, cmdResultado.Replace("\n", " "), cmdEm.ToString("o", System.Globalization.CultureInfo.InvariantCulture) }); } catch { }
+    }
+
+    static string Executar(string acao)
+    {
+        string hora = DateTime.Now.ToString("HH:mm");
+        if (acao == "otimizar")
+        {
+            double gb; bool escondido = Ajustes.ChromeEscondido(out gb);
+            int antes = Otimizacoes.Inicializacao().Count(i => i.Onde.StartsWith("usuário") && i.Dispensavel && !i.Desligado);
+            long lib = Ajustes.LimparUsuario();
+            int depois = Otimizacoes.Inicializacao().Count(i => i.Onde.StartsWith("usuário") && i.Dispensavel && !i.Desligado);
+            ultimoDiag = DateTime.MinValue;   // diagnóstico novo já nesta rodada
+            List<string> feito = new List<string>();
+            feito.Add("temporários apagados: " + Diagnostico.GB(lib / 1073741824.0));
+            if (antes > depois) feito.Add((antes - depois) + " programa(s) a menos abrindo com o Windows");
+            if (escondido && !Ajustes.ChromeEscondido(out gb)) feito.Add("Chrome escondido encerrado");
+            return "Otimizado às " + hora + " (usuário " + Environment.UserName + "): " + string.Join("; ", feito.ToArray()) + ".";
+        }
+        if (acao == "diagnostico") { ultimoDiag = DateTime.MinValue; return "Diagnóstico atualizado às " + hora + "."; }
+        if (acao == "avisar-reiniciar")
+        {
+            Monitor.MostrarAviso("Reinicie o computador",
+                "O responsável pelos computadores pediu: ao terminar o que está fazendo, salve tudo e use Iniciar > Energia > Reiniciar.");
+            return "Aviso de reiniciar mostrado na tela às " + hora + " (usuário " + Environment.UserName + ").";
+        }
+        return "Ação desconhecida: " + acao;
+    }
+
+    static string Valor(Dictionary<string, object> campos, string nome, string tipo)
+    {
+        object o; if (!campos.TryGetValue(nome, out o)) return null;
+        Dictionary<string, object> v = o as Dictionary<string, object>;
+        object x; return v != null && v.TryGetValue(tipo, out x) ? Convert.ToString(x) : null;
     }
 
     static void Patch(string caminho, Dictionary<string, object> campos)

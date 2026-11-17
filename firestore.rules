@@ -765,7 +765,7 @@ service cloud.firestore {
       allow create, update: if chaveMonitor() && pc.size() <= 50
           && request.resource.data.keys().hasOnly(['chave', 'pc', 'usuario', 'versao', 'atualizadoEm', 'ate', 'ram', 'livreGB',
                'commit', 'cpu', 'chromeMB', 'chromeN', 'top', 'cpuTop', 'travado', 'ramTotalGB', 'ligadoDias', 'ajustes',
-               'hardware', 'achados', 'extensoes'])
+               'hardware', 'achados', 'extensoes', 'comandoId', 'comandoStatus', 'comandoResultado', 'comandoEm'])
           && request.resource.data.top is list && request.resource.data.top.size() <= 10
           && request.resource.data.cpuTop is list && request.resource.data.cpuTop.size() <= 10
           && request.resource.data.achados is list && request.resource.data.achados.size() <= 20
@@ -779,6 +779,18 @@ service cloud.firestore {
             && request.resource.data.t is timestamp
             && request.resource.data.s is list && request.resource.data.s.size() <= 20;
       }
+    }
+    // Comandos do painel para cada computador (Otimizar agora / Atualizar diagnóstico / Avisar para reiniciar).
+    // Só o admin pede; o app lê sem login (por isso o pedido tem só id, ação e hora — nada sensível; a chave nunca
+    // vai aqui) e devolve o resultado em monitorPCs/{pc}. Listar, só o admin.
+    match /monitorComandos/{pc} {
+      allow get: if true;
+      allow list, delete: if isAdmin();
+      allow create, update: if isAdmin()
+          && request.resource.data.keys().hasOnly(['id', 'acao', 'pedidoEm'])
+          && request.resource.data.id is string && request.resource.data.id.size() <= 40
+          && request.resource.data.acao in ['otimizar', 'diagnostico', 'avisar-reiniciar']
+          && request.resource.data.pedidoEm == request.time;
     }
   }
 }

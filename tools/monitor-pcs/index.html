@@ -68,6 +68,10 @@
   .top b{color:var(--paper);font-weight:500}
   .selo{display:inline-flex;gap:5px;align-items:center;font-size:.78rem;border-radius:999px;padding:2px 9px;margin:8px 6px 0 0;border:1px solid}
   .selo.crit{color:var(--crit);border-color:var(--crit)} .selo.warn{color:var(--warn);border-color:var(--warn)} .selo.good{color:var(--good);border-color:var(--good)}
+  .cmds{margin:14px 0 4px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  .cmds .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .cmds .estado{font-size:.86rem;color:var(--muted);margin-top:8px;line-height:1.45}
+  .cmds .estado b{color:var(--paper);font-weight:600}
   .detalhe{margin-top:22px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px}
   .cab{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
   .filtros{display:flex;gap:6px;flex-wrap:wrap}
@@ -168,6 +172,7 @@
 
   // ---------------------------------------------------------------- estado
   let pcs = [], sel = null, periodo = 'hoje', amostras = [], carregandoDe = null;
+  let cmdAtual = null, cmdParar = null;   // pedido em monitorComandos/{pc} do computador aberto
 
   auth.onAuthStateChanged(function(user){
     if (!user) { gate.textContent = 'Faça login no Portal Fonseca e Braga.'; return; }
@@ -230,7 +235,12 @@
   }
 
   function selecionar(id){
-    sel = id; amostras = [];
+    sel = id; amostras = []; cmdAtual = null;
+    if (cmdParar) cmdParar();
+    cmdParar = db.collection('monitorComandos').doc(id).onSnapshot(function(d){
+      cmdAtual = d.exists ? d.data({ serverTimestamps:'estimate' }) : null;
+      renderComandos();
+    }, function(){ cmdAtual = null; renderComandos(); });
     renderGrade(); renderDetalhe(); carregar();
     setTimeout(function(){ const d = $('detalhe'); if (d) d.scrollIntoView({ behavior:'smooth', block:'start' }); }, 50);
   }
@@ -280,6 +290,7 @@
       '<div class="cab"><div><h2>' + esc(p.pc || p.id) + '</h2><div class="sub" style="margin:2px 0 0">' + esc(p.usuario || '') +
       ' · última medição ' + ha(p.quando) + (p.ate ? (p.ate.toDate().getFullYear() >= 2100 ? ' · instalado (monitora sempre)' : ' · monitorando até ' + dataHora(p.ate.toDate())) : '') + ' · ajustes do Chrome ' + (p.ajustes ? 'aplicados' : '<b>não aplicados</b>') + '</div></div>' +
       '<div class="filtros">' + filtro + '</div></div>' +
+      '<div class="cmds" id="cmds"></div>' +
       '<div class="legenda"><span style="--c:var(--s-ram)">Memória em uso (%)</span><span style="--c:var(--s-cpu)">Processador (%)</span><span class="tri">Janela “Não respondendo”</span></div>' +
       '<div class="grafico" id="graf"><svg id="svg" role="img" aria-label="Memória e processador ao longo do tempo"></svg><div class="dica" id="dica"></div></div>';
     if (erro) h += '<p class="vazio">' + esc(erro) + '</p>';
@@ -291,9 +302,51 @@
     h += '<div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap"><button id="fechar">Fechar</button><button class="perigo" id="remover">Remover este computador do painel</button></div></div>';
     box.innerHTML = h;
     box.querySelectorAll('[data-per]').forEach(function(b){ b.addEventListener('click', function(){ periodo = b.getAttribute('data-per'); amostras = []; renderDetalhe(); carregar(); }); });
-    $('fechar').addEventListener('click', function(){ sel = null; box.innerHTML = ''; renderGrade(); });
+    $('fechar').addEventListener('click', function(){ sel = null; if (cmdParar) { cmdParar(); cmdParar = null; } box.innerHTML = ''; renderGrade(); });
     $('remover').addEventListener('click', function(){ remover(p); });
+    renderComandos();
     desenhar();
+  }
+
+  // ---------------------------------------------------------------- comandos para o computador
+  const ACOES = {
+    'otimizar': 'Otimizar agora',
+    'diagnostico': 'Atualizar diagnóstico',
+    'avisar-reiniciar': 'Avisar para reiniciar'
+  };
+  function renderComandos(){
+    const box = $('cmds');
+    const p = pcs.find(function(x){ return x.id === sel; });
+    if (!box || !p) return;
+    let estado = '';
+    if (cmdAtual && cmdAtual.id) {
+      const nome = ACOES[cmdAtual.acao] || cmdAtual.acao;
+      const pedido = cmdAtual.pedidoEm && cmdAtual.pedidoEm.toDate ? cmdAtual.pedidoEm.toDate() : null;
+      const vivo = (Date.now() - p.quando) < VIVO_MS;
+      if (p.comandoId === cmdAtual.id) {
+        const ok = p.comandoStatus === 'ok';
+        estado = '<span style="color:' + (ok ? 'var(--good)' : 'var(--warn)') + '">' + (ok ? '✓' : '▲') + '</span> <b>' + esc(nome) + '</b> — ' + esc(p.comandoResultado || p.comandoStatus || '');
+      } else if (!vivo) {
+        estado = '▲ <b>' + esc(nome) + '</b> pedido' + (pedido ? ' ' + ha(pedido) : '') + ' — o computador está sem sinal; executa quando voltar (até 24 h).';
+      } else {
+        estado = '⏳ <b>' + esc(nome) + '</b> pedido' + (pedido ? ' ' + ha(pedido) : '') + ' — o computador executa em até 1 minuto…';
+      }
+    }
+    box.innerHTML = '<div class="linha">' + Object.keys(ACOES).map(function(a){
+        return '<button data-acao="' + a + '">' + ACOES[a] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="estado">' + (estado || 'Comandos rodam na conta de quem está usando o computador (Chrome escondido, programas que abrem com o Windows, temporários e efeitos). Precisa do Otimizador versão 3 ou mais nova.') + '</div>';
+    box.querySelectorAll('[data-acao]').forEach(function(b){
+      b.addEventListener('click', function(){ pedir(b.getAttribute('data-acao'), b); });
+    });
+  }
+  function pedir(acao, botao){
+    if (acao === 'avisar-reiniciar' && !confirm('Mostrar na tela deste computador um aviso pedindo para reiniciar?')) return;
+    botao.disabled = true;
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    db.collection('monitorComandos').doc(sel).set({ id: id, acao: acao, pedidoEm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch(function(e){ alert('Não consegui enviar o comando (as regras com monitorComandos foram publicadas?): ' + e.message); })
+      .then(function(){ botao.disabled = false; });
   }
 
   function tabelaPiores(){

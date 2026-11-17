@@ -114,6 +114,10 @@ static class Monitor
         if (!Ativo()) Process.Start(destino, "/monitor");
     }
 
+    // aviso na tela pedido pelo painel (vem de outra thread; o ícone mostra no próximo ciclo de 2 s)
+    static string avisoTitulo, avisoTexto;
+    public static void MostrarAviso(string titulo, string texto) { avisoTexto = texto; avisoTitulo = titulo; }
+
     public static void Desligar()
     {
         try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RUN, true)) if (k != null) k.DeleteValue(NOME_RUN, false); } catch { }
@@ -150,7 +154,12 @@ static class Monitor
                     try { a.Amostra(); } catch { }
                 };
                 System.Windows.Forms.Timer rapido = new System.Windows.Forms.Timer { Interval = 2000 };
-                rapido.Tick += delegate { if (parar.WaitOne(0)) { icone.Visible = false; Application.ExitThread(); } };
+                rapido.Tick += delegate
+                {
+                    if (parar.WaitOne(0)) { icone.Visible = false; Application.ExitThread(); return; }
+                    string tituloAviso = avisoTitulo;
+                    if (tituloAviso != null) { avisoTitulo = null; try { icone.ShowBalloonTip(30000, tituloAviso, avisoTexto, ToolTipIcon.Warning); } catch { } }
+                };
                 Limpar();
                 a.Amostra();
                 // instalado: 2 min depois do login aplica as otimizações deste usuário (Chrome escondido, inicialização,
