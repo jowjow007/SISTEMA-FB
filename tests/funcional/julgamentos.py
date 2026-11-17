@@ -96,12 +96,11 @@ def main():
         F.caso(G, 'membro do escritório entra e abre a ferramenta', ok and F.esperar(pm, "window.__julgamentos && window.__julgamentos.estado().equipe === true", 20000),
                'login ' + str(ok) + ' | ' + pm.url + ' | ' + pm.evaluate("document.body.innerText.slice(0, 300)").replace(chr(10), ' '))
         F.caso(G, 'lista os condomínios dos dados privados', F.esperar(pm, "document.querySelectorAll('[data-condo]').length === 2", 10000))
-        fila = ['15/11/2026 19:30', 'Sessão de julgamento — novembro de 2026']
+        fila = ['15/11/2026 19:30']
         respostas(pm, fila)
-        pm.click('#nova-sessao')
-        F.caso(G, 'cria a sessão (rascunho)', F.esperar(pm, "document.body.innerText.toLowerCase().includes('rascunho') && document.body.innerText.includes('15/11/2026 às 19h30')", 10000),
+        pm.click('#nova-ocorrencia')
+        F.caso(G, '"+ Nova ocorrência" abre o formulário (sem criar sessão na tela)', F.esperar(pm, "!!document.getElementById('ed-ocorrencia')", 10000),
                pm.evaluate("document.getElementById('app').innerText.slice(0, 300)").replace(chr(10), ' '))
-        pm.click('#novo-recurso')
         for k, v in (('ocorrencia', '900001'), ('unidade', 'Bloco 9, nº 101'), ('morador', 'Morador Fictício'), ('titulo', 'Tráfego em contramão'),
                      ('classificacao', 'Trânsito'), ('penalidade', 'Notificação + multa de R$ 100,00')):
             pm.fill('#ed-' + k, v)
@@ -125,12 +124,15 @@ def main():
         objs = F.objetos_storage(f'julgamentos/condominio-ficticio-alfa/{rec_id}/')
         F.caso(G, 'os 3 arquivos estão no Storage, na pasta do condomínio e do recurso', len(objs) == 3, str(objs))
         bloqueado = F.ler(f'recursosJulgamento/{rec_id}').get('liberado')
-        F.caso(G, 'recurso de sessão em rascunho fica fechado ao conselho', bloqueado is False)
-        # liberar ao conselho
-        pm.click(f'[data-voltar-sessao]')
-        F.esperar(pm, "!!document.getElementById('liberar')", 10000)
-        pm.click('#liberar')
-        F.caso(G, 'liberar a sessão libera também os recursos dela', F.ate(lambda: (F.ler(f'recursosJulgamento/{rec_id}') or {}).get('liberado') is True, 10))
+        F.caso(G, 'ocorrência nova fica fechada ao conselho (rascunho)', bloqueado is False)
+        # data do julgamento e liberação ficam na própria ocorrência
+        pm.click('.voltar[data-recurso]')
+        F.esperar(pm, "!!document.getElementById('oc-data')", 10000)
+        pm.click('#oc-data')
+        F.caso(G, 'marca a data do julgamento na ocorrência', F.ate(lambda: (F.ler(f'recursosJulgamento/{rec_id}') or {}).get('dataJulgamento') == '2026-11-15T19:30', 10)
+               and F.esperar(pm, "document.body.innerText.includes('15/11/2026 às 19h30')", 8000))
+        pm.click('#oc-liberar')
+        F.caso(G, 'libera a ocorrência ao conselho', F.ate(lambda: (F.ler(f'recursosJulgamento/{rec_id}') or {}).get('liberado') is True, 10))
         sid = F.ler(f'recursosJulgamento/{rec_id}')['sessaoId']
         F.esperar(pm, "document.body.innerText.includes('Recolher do conselho')", 8000); foto(pm, '1-escritorio-sessao')
 
@@ -154,13 +156,13 @@ def main():
 
         # ---------- 2. conselheira do condomínio
         b2, pc, ok = sessao('cons@exemplo.test')
-        F.caso(G, 'conselheira entra e vê a sessão liberada do condomínio dela', ok and F.esperar(pc, "document.body.innerText.includes('Sessão de julgamento — novembro de 2026')", 20000), F.telas())
+        F.caso(G, 'conselheira entra e vê a ocorrência liberada do condomínio dela', ok and F.esperar(pc, "document.body.innerText.includes('#900001') && document.body.innerText.includes('15/11/2026')", 20000), F.telas())
         t = telas_login.get('cons@exemplo.test', {})
         F.caso(G, 'conselheira entra sem pop-up da equipe (comunicados, PIX) e sem megafone, escudo e logomarcas',
                t and not t['janelas'] and not t['megafone'] and not t['escudo'] and not t['logos'], str(t))
         t = telas_login.get('membro@exemplo.test', {})
         F.caso(G, '... e a equipe continua com o comunicado, o megafone e o escudo', t and 'com-backdrop' in t['janelas'] and t['megafone'] and t['escudo'], str(t))
-        F.caso(G, 'conselheira não vê botões do escritório', pc.evaluate("!document.getElementById('nova-sessao') && !document.querySelector('[data-ir=\"conselheiros\"]')"))
+        F.caso(G, 'conselheira não vê botões do escritório', pc.evaluate("!document.getElementById('nova-ocorrencia') && !document.querySelector('[data-ir=\"conselheiros\"]')"))
         # entrada pela aba Condomínios: só o cartão das Sessões, e o botão de volta ao hub
         hub = pc.context.new_page()
         hub.goto(F.BASE + '/tools/condominios/index.html')
@@ -170,13 +172,10 @@ def main():
                hub.evaluate("[...document.querySelectorAll('.cd-card h3')].map(e => e.textContent).join(', ') + ' | nav: ' + document.querySelectorAll('#tabs-nav button').length"))
         hub.click('.cd-card')
         F.caso(G, '... o cartão abre as sessões, com o botão "← Condomínios"',
-               F.esperar(hub, "location.pathname.includes('sessoes-julgamento') && getComputedStyle(document.getElementById('voltar-condo')).display !== 'none' && document.body.innerText.includes('novembro de 2026')", 15000))
+               F.esperar(hub, "location.pathname.includes('sessoes-julgamento') && getComputedStyle(document.getElementById('voltar-condo')).display !== 'none' && document.body.innerText.includes('#900001')", 15000))
         hub.close()
         F.caso(G, 'lista abre em "Ocorrências": um card por ocorrência, com o número',
                F.esperar(pc, f"!!document.querySelector('.card-oc[data-recurso=\"{rec_id}\"] .num') && document.querySelector('.card-oc[data-recurso=\"{rec_id}\"] .num').textContent === '#900001'", 10000))
-        pc.click('[data-ver-por="sessoes"]')
-        pc.click(f'[data-sessao="{sid}"]')
-        F.esperar(pc, f"!!document.querySelector('[data-recurso=\"{rec_id}\"]')", 10000)
         pc.click(f'[data-recurso="{rec_id}"]')
         F.caso(G, 'abre o recurso no passo 1 (resumo com os dados da ocorrência)', F.esperar(pc, "document.body.innerText.includes('Bloco 9, nº 101') && document.body.innerText.includes('trafegou na contramão')", 10000))
         foto(pc, '2-conselho-resumo')
@@ -209,7 +208,7 @@ def main():
         b3.close()
 
         # ---------- 4. escritório lança a decisão e a ementa
-        F.caso(G, 'escritório vê na sessão quem já analisou', F.esperar(pm, "document.body.innerText.includes('analisado por Conselheira Fictícia Alfa')", 15000))
+        F.caso(G, 'escritório vê na ocorrência quem já analisou', F.esperar(pm, "document.body.innerText.includes('analisado por Conselheira Fictícia Alfa')", 15000))
         pm.click(f'[data-editar="{rec_id}"]')
         F.esperar(pm, "!!document.querySelector('[data-edpasso=\"3\"]')", 10000)
         pm.click('[data-edpasso="3"]')
@@ -309,8 +308,6 @@ def main():
         F.caso(G, 'recurso importado de sessão realizada aparece como "decisão a lançar"',
                (pa.goto(URL) or True) and F.esperar(pa, "document.querySelectorAll('[data-condo]').length >= 2", 15000)
                and (pa.click('[data-condo="condominio-ficticio-beta"]') or True)
-               and (pa.click('[data-ver-por="sessoes"]') or True)
-               and (pa.click('[data-sessao="condominio-ficticio-beta-set-2026"]') or True)
                and F.esperar(pa, "document.body.innerText.toLowerCase().includes('decisão a lançar')", 10000))
         pa.goto(URL)
         F.esperar(pa, "!!document.querySelector('[data-ir=\"conselheiros\"]')", 20000)

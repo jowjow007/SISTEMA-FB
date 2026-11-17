@@ -186,6 +186,7 @@
   }
   firebase.initializeApp(firebaseConfig);
   var auth = firebase.auth(), db = firebase.firestore(), storage = firebase.storage();
+  try { storage.setMaxUploadRetryTime(120000); } catch (e) {}   // envio que falha: no máx. 2 min de novas tentativas internas (a importação ainda tenta 3x)
   var FV = firebase.firestore.FieldValue, TS = firebase.firestore.Timestamp;
   var DIAS_PROVAS = 90;
   // aberta pelo cartão do hub de Condomínios (equipe, síndico e conselheiros): botão de volta ao hub
@@ -242,11 +243,18 @@
     return Object.values(sessoes).filter(function(s){ return s.condominioSlug === slug; })
       .sort(function(a, b){ return String(b.data || '9999').localeCompare(String(a.data || '9999')); });
   }
+  // cada ocorrência tem a própria data de julgamento e o próprio "realizada" (16/11/2026); sem esses campos, vale o da
+  // sessão em que ela foi importada
+  function dataDaOcorrencia(r){ return ('dataJulgamento' in r) ? (r.dataJulgamento || '') : ((sessoes[r.sessaoId] || {}).data || ''); }
+  function realizadaOc(r){
+    if (r.decisao && r.decisao.resultado) return true;
+    if (r.realizada === true || r.realizada === false) return r.realizada;
+    return !!(sessoes[r.sessaoId] || {}).realizada;
+  }
   function statusRecurso(r){
     if (r.decisao && r.decisao.resultado) return { rot: RESULTADOS[r.decisao.resultado].rot, tag: RESULTADOS[r.decisao.resultado].tag };
-    var s = sessoes[r.sessaoId];
-    if (s && s.realizada) return { rot:'Julgado — decisão a lançar', tag:'lanc' };
-    return { rot:'Aguardando a sessão', tag:'agu' };
+    if (realizadaOc(r)) return { rot:'Julgado — decisão a lançar', tag:'lanc' };
+    return { rot:'Aguardando o julgamento', tag:'agu' };
   }
   function statusSessao(s){
     if (s.realizada) return { rot:'Realizada', tag:'real' };
@@ -294,7 +302,7 @@
         juntarCondosDosDados(); limparProvasVencidas(); mostrar();
       }, function(e){ falhou(e); });
       db.collection('leiturasJulgamento').onSnapshot(function(snap){
-        leituras = {}; snap.forEach(function(d){ leituras[d.id] = d.data(); }); if (state.view === 'sessao') mostrar();
+        leituras = {}; snap.forEach(function(d){ leituras[d.id] = d.data(); }); if (state.view === 'sessao' || state.view === 'recurso' || state.view === 'lista') mostrar();
       }, function(){});
     });
   }
@@ -352,6 +360,7 @@
     if (!me) return;
     document.getElementById('gate').style.display = 'none';
     app.style.display = 'block';
+    if (state.view === 'importando' && !forcar) return;   // não apaga o registro da importação enquanto os dados chegam
     if (!forcar) {
       var foco = document.activeElement && document.activeElement.id;
       if (foco && /^(ed-|dec-|nota-)/.test(foco)) return;   // não redesenha enquanto alguém digita
@@ -395,17 +404,14 @@
         + 'O material é de uso restrito à sessão de julgamento.</div>';
     }
     h += chipsCondos();
-    h += '<div class="barra"><h2>Sessões' + (state.condo ? ' — ' + esc(nomeCondo(state.condo)) : '') + '</h2><span class="espaco"></span>'
+    h += '<div class="barra"><h2>Ocorrências' + (state.condo ? ' — ' + esc(nomeCondo(state.condo)) : '') + '</h2><span class="espaco"></span>'
       + '<button type="button" class="btn sec peq" data-ir="ementario">📚 Ementário</button>'
       + (admin ? '<button type="button" class="btn sec peq" data-ir="conselheiros">👥 Conselheiros</button>' : '')
-      + (equipe && state.condo ? '<button type="button" class="btn peq" id="nova-sessao">+ Nova sessão</button>' : '')
+      + (equipe && state.condo ? '<button type="button" class="btn peq" id="nova-ocorrencia">+ Nova ocorrência</button>' : '')
       + (admin ? '<label class="btn sec peq" style="cursor:pointer;">⬆ Importar pacote<input type="file" id="importar" webkitdirectory multiple style="display:none;"></label>' : '')
       + '</div>';
     if (equipe && !condos.length) return h + '<div class="vazio">A lista de condomínios ainda não foi carregada (Administração › dados privados).</div>';
-    var verPor = state.verPor || 'ocorrencias';
-    h += '<div class="ver-por"><button type="button" data-ver-por="ocorrencias" class="' + (verPor === 'ocorrencias' ? 'on' : '') + '">Ocorrências</button>'
-      + '<button type="button" data-ver-por="sessoes" class="' + (verPor === 'sessoes' ? 'on' : '') + '">Sessões</button></div>';
-    if (verPor === 'ocorrencias') return h + listaOcorrencias();
+    if ((state.verPor || 'ocorrencias') === 'ocorrencias') return h + listaOcorrencias();
     var lista = state.condo ? sessoesDoCondo(state.condo) : [];
     if (!lista.length) return h + '<div class="vazio">' + (equipe ? 'Nenhuma sessão cadastrada para este condomínio. Clique em "+ Nova sessão".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
     var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
@@ -430,18 +436,18 @@
     return h;
   }
   // um card por ocorrência (recurso), com o número dela; a situação vem da sessão em que ela está
-  function situacaoRecurso(r){ var s = sessoes[r.sessaoId]; return s ? situacaoSessao(s) : 'aguardando'; }
+  function situacaoRecurso(r){ return realizadaOc(r) ? 'realizadas' : (dataDaOcorrencia(r) ? 'agendadas' : 'aguardando'); }
   function listaOcorrencias(){
     var h = '';
     var todos = Object.values(recursos).filter(function(r){ return r.condominioSlug === state.condo; });
-    if (!todos.length) return '<div class="vazio">' + (equipe ? 'Nenhuma ocorrência cadastrada para este condomínio. Use "+ Nova sessão" (em Sessões) ou "⬆ Importar pacote".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
+    if (!todos.length) return '<div class="vazio">' + (equipe ? 'Nenhuma ocorrência cadastrada para este condomínio. Use "+ Nova ocorrência" ou "⬆ Importar pacote".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
     var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
     var busca = String(state.buscaOc || '').trim().toLowerCase();
     var bate = function(r){ return !busca || [r.ocorrencia, r.titulo, r.classificacao, r.unidade, r.morador].join(' ').toLowerCase().indexOf(busca) >= 0; };
     var porGrupo = { agendadas:[], aguardando:[], realizadas:[] };
     todos.forEach(function(r){ porGrupo[situacaoRecurso(r)].push(r); });
     var num = function(a, b){ return String(a.ocorrencia).localeCompare(String(b.ocorrencia), 'pt-BR', { numeric:true }); };
-    var dataSess = function(r){ return String((sessoes[r.sessaoId] || {}).data || ''); };
+    var dataSess = function(r){ return String(dataDaOcorrencia(r)); };
     porGrupo.agendadas.sort(function(a, b){ return dataSess(a).localeCompare(dataSess(b)) || num(a, b); });
     porGrupo.aguardando.sort(num);
     porGrupo.realizadas.sort(num);
@@ -465,14 +471,15 @@
   function cardOcorrencia(r){
     var s = sessoes[r.sessaoId] || {}, st = statusRecurso(r), n = (r.provas || []).length;
     var tags = '<span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>';
-    if (equipe && !s.realizada) tags += r.liberado ? '<span class="tag lib">Liberado ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
+    if (equipe && !realizadaOc(r)) tags += r.liberado ? '<span class="tag lib">Liberado ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
     if (!equipe) tags += leituras[me.uid + '_' + r.id] ? '<span class="tag canc">✔ analisado</span>' : '<span class="tag agu">a analisar</span>';
+    else { var nl = Object.values(leituras).filter(function(l){ return l.recursoId === r.id; }).length; if (nl) tags += '<span class="tag canc">✔ ' + nl + (nl === 1 ? ' analisou' : ' analisaram') + '</span>'; }
     return '<div class="card click card-oc" data-recurso="' + esc(r.id) + '">'
       + '<div class="topo"><span class="num">#' + esc(r.ocorrencia) + '</span><span class="muted small">' + n + (n === 1 ? ' arquivo' : ' arquivos') + '</span></div>'
       + '<h3>' + esc(r.titulo || r.classificacao || 'Ocorrência') + '</h3>'
       + '<div class="muted small">' + esc(r.unidade || '') + (r.morador ? ' · ' + esc(r.morador) : '') + '</div>'
       + '<div class="tags">' + tags + '</div>'
-      + '<div class="sess">' + esc(s.titulo || 'Sem sessão') + ' · ' + (s.data ? '📅 ' + esc(dataHoraBR(s.data)) : 'data a definir') + '</div></div>';
+      + '<div class="sess">' + (dataDaOcorrencia(r) ? '📅 Julgamento em ' + esc(dataHoraBR(dataDaOcorrencia(r))) : 'Julgamento: data a definir') + '</div></div>';
   }
   // realizada -> "realizadas"; com data e ainda não realizada -> "agendadas"; sem data -> "aguardando agendamento"
   function situacaoSessao(s){ return s.realizada ? 'realizadas' : (s.data ? 'agendadas' : 'aguardando'); }
@@ -539,13 +546,24 @@
   var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Fundamentos', 'Decisão'];
   function telaRecurso(){
     var r = recursos[state.recursoId], s = sessoes[r.sessaoId] || {}, st = statusRecurso(r);
-    var h = ((state.verPor || 'ocorrencias') === 'ocorrencias'
-        ? '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>'
-        : '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>')
+    var h = '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>'
       + '<div class="barra"><div><h2>Ocorrência #' + esc(r.ocorrencia) + ' — ' + esc(r.titulo || r.classificacao || '') + '</h2>'
-      + '<div class="muted small">' + esc(nomeCondo(r.condominioSlug)) + ' · ' + esc(r.unidade || '') + ' · sessão de ' + esc(dataHoraBR(s.data)) + '</div></div>'
+      + '<div class="muted small">' + esc(nomeCondo(r.condominioSlug)) + ' · ' + esc(r.unidade || '') + ' · julgamento ' + (dataDaOcorrencia(r) ? 'em ' + esc(dataHoraBR(dataDaOcorrencia(r))) : ': data a definir') + '</div></div>'
       + '<span class="espaco"></span><span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>'
       + (equipe ? '<button type="button" class="btn sec peq" data-editar="' + esc(r.id) + '">Editar</button>' : '') + '</div>';
+    if (equipe) {
+      var feita = realizadaOc(r);
+      h += '<div class="barra">'
+        + '<button type="button" class="btn sec peq" id="oc-data">📅 ' + (dataDaOcorrencia(r) ? 'Mudar a data do julgamento' : 'Marcar a data do julgamento') + '</button>'
+        + (r.liberado ? '<button type="button" class="btn sec peq" id="oc-recolher">Recolher do conselho</button>'
+                      : '<button type="button" class="btn verde peq" id="oc-liberar">✔ Liberar ao conselho</button>')
+        + (r.decisao && r.decisao.resultado ? '' : (feita ? '<button type="button" class="btn ghost peq" id="oc-desfazer">Desfazer "julgada"</button>'
+                                                          : '<button type="button" class="btn sec peq" id="oc-realizada">Marcar como julgada</button>'))
+        + '</div>';
+      var lidoPor = Object.values(leituras).filter(function(l){ return l.recursoId === r.id; });
+      if (lidoPor.length) h += '<div class="muted small" style="margin:-6px 0 12px;">✔ analisado por ' + esc(lidoPor.map(function(l){ return l.nome; }).join(', ')) + '</div>';
+      if (!r.liberado) h += '<div class="aviso">Esta ocorrência ainda é um <b>rascunho</b>: o conselho não vê. Quando o material estiver pronto, clique em <b>"Liberar ao conselho"</b>.</div>';
+    }
     if (equipe) h += '<div class="aviso">Você está vendo o recurso <b>como o conselho vê</b>.</div>';
     h += '<div class="passos">' + PASSOS.map(function(p, i){
       return '<button type="button" class="' + (i === state.passo ? 'on' : '') + '" data-passo="' + i + '"><span class="n">' + (i + 1) + '</span>' + p + '</button>';
@@ -607,8 +625,7 @@
   function telaDecisaoLeitura(r){
     var d = r.decisao;
     if (!d || !d.resultado) {
-      var s = sessoes[r.sessaoId] || {};
-      return '<div class="vazio">' + (s.realizada ? 'Sessão realizada. O escritório vai lançar aqui a decisão do conselho e a ementa.' : 'A decisão será registrada aqui pelo escritório depois da sessão de julgamento.') + '</div>';
+      return '<div class="vazio">' + (realizadaOc(r) ? 'Ocorrência julgada. O escritório vai lançar aqui a decisão do conselho e a ementa.' : 'A decisão será registrada aqui pelo escritório depois da sessão de julgamento.') + '</div>';
     }
     return '<div class="decisao"><div class="res">' + esc(RESULTADOS[d.resultado].rot) + (d.resultado === 'modulada' && d.modulacao ? ' — ' + esc(MODULACOES[d.modulacao] || '') : '') + '</div>'
       + (d.detalhe ? '<div style="margin-bottom:8px;">' + esc(d.detalhe) + '</div>' : '')
@@ -627,7 +644,8 @@
   var PASSOS_ED = ['Dados', 'Fatos e fundamentos', 'Arquivos', 'Decisão e ementa'];
   function telaEditar(){
     var r = rascunho;
-    var h = '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>'
+    var h = (r.id ? '<button type="button" class="voltar" data-recurso="' + esc(r.id) + '">← Voltar para a ocorrência</button>'
+                  : '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>')
       + '<div class="barra"><h2>' + (r.id ? 'Recurso #' + esc(r.ocorrencia) : 'Novo recurso') + '</h2><span class="espaco"></span>'
       + (r.id ? '<button type="button" class="btn sec peq" data-recurso="' + esc(r.id) + '">👁 Ver como o conselho</button>' : '')
       + (r.id ? '<button type="button" class="btn ghost peq" id="excluir-recurso">Excluir</button>' : '') + '</div>';
@@ -673,7 +691,7 @@
         return '<label class="' + (d.modulacao === k ? 'on' : '') + '"><input type="radio" name="dec-mod" value="' + k + '"' + (d.modulacao === k ? ' checked' : '') + '> ' + esc(MODULACOES[k]) + '</label>';
       }).join('') + '</div></div></div>';
       h += '<div class="campo"><label>Detalhe da decisão (opcional)</label><input id="dec-detalhe" value="' + esc(d.detalhe || '') + '" placeholder="Ex.: multa reduzida para R$ 410,85, parcelada em 3 vezes"></div>'
-        + '<div class="g2"><div class="campo"><label>Data da sessão</label><input type="date" id="dec-data" value="' + esc(d.dataSessao || String(s.data || '').slice(0, 10) || hojeISO()) + '"></div>'
+        + '<div class="g2"><div class="campo"><label>Data da sessão</label><input type="date" id="dec-data" value="' + esc(d.dataSessao || String(dataDaOcorrencia(r) || '').slice(0, 10) || hojeISO()) + '"></div>'
         + '<div class="campo"><label>Votos pela decisão</label><input type="number" min="0" id="dec-favor" value="' + esc(d.votosFavor == null ? '' : d.votosFavor) + '"></div>'
         + '<div class="campo"><label>Votos contra</label><input type="number" min="0" id="dec-contra" value="' + esc(d.votosContra == null ? '' : d.votosContra) + '"></div>'
         + '<div class="campo"><label>Abstenções</label><input type="number" min="0" id="dec-abst" value="' + esc(d.abstencoes == null ? '' : d.abstencoes) + '"></div></div>'
@@ -786,7 +804,7 @@
     if (!dec.ementa && !confirm('Salvar sem ementa? Você pode escrever depois.')) return;
     var expira = (r.decisao && r.provasExpiramEm) ? r.provasExpiramEm : TS.fromMillis(Date.now() + DIAS_PROVAS * 86400000);
     db.collection('recursosJulgamento').doc(r.id).update({ decisao:dec, provasExpiramEm:expira, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid })
-      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('sessao', { sessaoId:r.sessaoId }); })
+      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('recurso', { recursoId:r.id, passo:4 }); })
       .catch(function(e){ avisoErro('Não foi possível salvar: ' + e.message); });
   }
   function sugerirEmenta(){
@@ -938,6 +956,29 @@
     db.collection('sessoesJulgamento').doc(s.id).update({ data:m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '',
       titulo:titulo.trim(), local:local.trim() }).catch(function(e){ avisoErro(e.message); });
   }
+  // ---- ocorrência sem sessão (16/11/2026): as ocorrências novas ficam num "grupo" interno por condomínio, que não aparece
+  function novaOcorrencia(){
+    var id = state.condo + '-ocorrencias', base = { condominioSlug:state.condo, condominioNome:nomeCondo(state.condo) };
+    var pronto = sessoes[id] ? Promise.resolve() : db.collection('sessoesJulgamento').doc(id).set(Object.assign({ titulo:'Ocorrências', data:'', local:'',
+      liberada:false, realizada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid }, base), { merge:true });
+    pronto.then(function(){ if (!sessoes[id]) sessoes[id] = Object.assign({ id:id, liberada:false, realizada:false, data:'' }, base); abrirEdicao(null, id); })
+      .catch(function(e){ avisoErro('Não foi possível: ' + e.message); });
+  }
+  function dataOcorrencia(){
+    var r = recursos[state.recursoId], atual = dataDaOcorrencia(r);
+    var txt = atual ? dataBR(atual) + (atual.length > 10 ? ' ' + atual.slice(11, 16) : '') : '';
+    var data = prompt('Data e hora do julgamento (dd/mm/aaaa hh:mm). Deixe em branco para "a definir":', txt); if (data === null) return;
+    var m = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2})[:h](\d{2}))?$/);
+    if (data.trim() && !m) { alert('Use o formato dd/mm/aaaa hh:mm (ex.: 15/12/2026 19:30).'); return; }
+    var iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '';
+    db.collection('recursosJulgamento').doc(r.id).update({ dataJulgamento:iso, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }).catch(function(e){ avisoErro(e.message); });
+  }
+  function atualizarOcorrencia(campos, pergunta){
+    var r = recursos[state.recursoId];
+    if (pergunta && !confirm(pergunta)) return;
+    db.collection('recursosJulgamento').doc(r.id).update(Object.assign({ atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }, campos))
+      .catch(function(e){ avisoErro('Não foi possível: ' + e.message); });
+  }
   // liberar/recolher marca a sessão e todos os recursos dela (as regras checam o campo em cada recurso)
   function liberarSessao(liberar){
     var s = sessoes[state.sessaoId], rs = recursosDaSessao(s.id);
@@ -1046,9 +1087,10 @@
       var slug = slugify(p.condominio);
       if (!confirm('Importar ' + (p.sessoes || []).length + ' sessão(ões) e ' + (p.recursos || []).length + ' recurso(s) do ' + p.condominio + '?\n\nAs sessões entram como RASCUNHO (o conselho não vê até você liberar). Pode importar a pasta inteira de novo: o que já está no portal NÃO é alterado (sessões e textos editados pela equipe ficam como estão). Entram só os recursos novos, os campos que estavam em branco e os arquivos que ainda não foram enviados.')) return;
       var porArquivo = {}; lista.forEach(function(f){ porArquivo[(f.webkitRelativePath || f.name).slice(raiz.length)] = f; });
+      state.view = 'importando';
       app.innerHTML = '<h2>Importando…</h2><div id="imp-log" class="small" style="white-space:pre-wrap;line-height:1.6;"></div><div class="barra-up" style="height:8px;"><div id="imp-barra"></div></div>';
       var log = function(t){ var el = document.getElementById('imp-log'); if (el) el.textContent += t + '\n'; };
-      var idsSessao = {}, novosRec = {};
+      var idsSessao = {}, novosRec = {}, falhas = [];
       var total = (p.recursos || []).reduce(function(n, r){ return n + (r.arquivos || []).length; }, 0), feitos = 0;
       return (p.sessoes || []).reduce(function(pr, s){
         return pr.then(function(){
@@ -1092,17 +1134,25 @@
                     if (ja.indexOf(f.name + '|' + f.size) >= 0) return;
                     var tipo = tipoDoArquivo(f); if (!tipo) { log('  ⚠ tipo não aceito: ' + a.arquivo); return; }
                     var caminho = 'julgamentos/' + slug + '/' + id + '/' + Date.now() + '-' + f.name.replace(/[^\w.\-]+/g, '_');
-                    return new Promise(function(ok, falha){ storage.ref(caminho).put(f, { contentType:tipo }).on('state_changed', null, falha, ok); }).then(function(){
+                    var enviar = function(tent){
+                      return new Promise(function(ok, falha){ storage.ref(caminho).put(f, { contentType:tipo }).on('state_changed', null, falha, ok); })
+                        .catch(function(e){ if (tent < 3) { log('  … nova tentativa (' + (tent + 1) + 'ª): ' + a.arquivo); return new Promise(function(r){ setTimeout(r, 3000 * tent); }).then(function(){ return enviar(tent + 1); }); } throw e; });
+                    };
+                    return enviar(1).then(function(){
                       return ref.update({ provas:FV.arrayUnion({ nome:f.name, caminho:caminho, tipo:tipo, tamanho:f.size, categoria:a.categoria || 'prova', enviadoEm:Date.now() }) });
-                    });
+                    }).catch(function(e){ falhas.push('#' + r.ocorrencia + ' — ' + f.name + ' (' + (e.code || e.message) + ')'); log('  ✖ não enviado: ' + a.arquivo + ' (' + (e.code || e.message) + ')'); });
                   });
                 }, Promise.resolve());
               });
-            }).then(function(){ log('✔ recurso #' + r.ocorrencia + (novosRec[r.ocorrencia] ? ' (novo)' : ' (já existia: só o que faltava)') + ' — ' + (r.arquivos || []).length + ' arquivos'); });
+            }).then(function(){ log('✔ recurso #' + r.ocorrencia + (novosRec[r.ocorrencia] ? ' (novo)' : ' (já existia: só o que faltava)') + ' — ' + (r.arquivos || []).length + ' arquivos'); })
+              .catch(function(e){ falhas.push('#' + r.ocorrencia + ' — recurso não gravado (' + (e.code || e.message) + ')'); log('✖ recurso #' + r.ocorrencia + ' não gravado: ' + (e.code || e.message)); });
           });
         }, Promise.resolve());
-      }).then(function(){ log('\nConcluído. As sessões estão como rascunho: confira e libere ao conselho.'); state.condo = slug;
-        setTimeout(function(){ if (document.getElementById('imp-log')) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ver as sessões'; b.onclick = function(){ ir('lista'); }; app.appendChild(b); } }, 50); });
+      }).then(function(){
+        log(falhas.length ? '\n⚠ Concluído com ' + falhas.length + ' falha(s):\n' + falhas.join('\n') + '\n\nImporte a mesma pasta de novo: entra só o que faltou.'
+                          : '\nConcluído. Todas as ocorrências entraram como rascunho: confira e libere ao conselho.');
+        state.condo = slug;
+        setTimeout(function(){ if (document.getElementById('imp-log')) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ver as ocorrências'; b.onclick = function(){ ir('lista'); }; app.appendChild(b); } }, 50); });
     }).catch(function(e){ alert('Não foi possível importar: ' + e.message); ir('lista'); });
   }
 
@@ -1158,6 +1208,12 @@
       case 'nova-sessao': novaSessao(); break;
       case 'novo-recurso': abrirEdicao(null, state.sessaoId); break;
       case 'editar-sessao': editarSessao(); break;
+      case 'nova-ocorrencia': novaOcorrencia(); break;
+      case 'oc-data': dataOcorrencia(); break;
+      case 'oc-liberar': atualizarOcorrencia({ liberado:true }, 'Liberar a ocorrência #' + recursos[state.recursoId].ocorrencia + ' ao conselho?\nSíndico e conselheiros passam a ver o resumo e as provas.'); break;
+      case 'oc-recolher': atualizarOcorrencia({ liberado:false }, 'Recolher esta ocorrência? O conselho deixa de ver.'); break;
+      case 'oc-realizada': atualizarOcorrencia({ realizada:true }); break;
+      case 'oc-desfazer': atualizarOcorrencia({ realizada:false }); break;
       case 'liberar': liberarSessao(true); break;
       case 'recolher': if (confirm('Recolher esta sessão? O conselho deixa de ver os recursos.')) liberarSessao(false); break;
       case 'marcar-realizada': db.collection('sessoesJulgamento').doc(state.sessaoId).update({ realizada:true }).catch(function(e){ avisoErro(e.message); }); break;
@@ -1175,7 +1231,7 @@
         if (!confirm('Excluir o recurso #' + r.ocorrencia + ' e os arquivos dele do portal?\n(Os originais continuam no Google Drive.)')) return;
         Promise.all((r.provas || []).map(function(pv){ return storage.ref(pv.caminho).delete().catch(function(){}); }))
           .then(function(){ return db.collection('recursosJulgamento').doc(r.id).delete(); })
-          .then(function(){ ir('sessao', { sessaoId:r.sessaoId }); }).catch(function(e){ avisoErro(e.message); });
+          .then(function(){ ir('lista'); }).catch(function(e){ avisoErro(e.message); });
         break;
       case 'marcar-lido': marcarLido(); break;
     }
