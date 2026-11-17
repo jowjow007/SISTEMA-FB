@@ -36,8 +36,67 @@ static class Monitor
         return false;
     }
 
+    // ------------------------------------------------ instalação permanente (todos os usuários, inicia com o Windows)
+    const string RUN_HKLM = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    public static string PastaInstalacao { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OtimizadorChrome"); } }
+    public static string ExeInstalado { get { return Path.Combine(PastaInstalacao, "OtimizadorChrome.exe"); } }
+
+    public static bool Instalado()
+    {
+        try { using (RegistryKey k = Registry.LocalMachine.OpenSubKey(RUN_HKLM)) return k != null && k.GetValue(NOME_RUN) != null && File.Exists(ExeInstalado); }
+        catch { return false; }
+    }
+
+    // parte que precisa de administrador (roda elevada): copia o app, inicia com o Windows para todos e aplica os ajustes
+    public static bool Instalar()
+    {
+        try
+        {
+            Directory.CreateDirectory(PastaInstalacao);
+            string origem = Path.GetFullPath(Application.ExecutablePath);
+            if (!string.Equals(origem, Path.GetFullPath(ExeInstalado), StringComparison.OrdinalIgnoreCase))
+            {
+                // se uma versão antiga estiver rodando, pede para ela sair antes de trocar o arquivo
+                try { using (EventWaitHandle e = new EventWaitHandle(false, EventResetMode.ManualReset, PARAR)) e.Set(); } catch { }
+                for (int i = 0; ; i++)
+                {
+                    try { File.Copy(origem, ExeInstalado, true); break; }
+                    catch (IOException) { if (i >= 20) throw; Thread.Sleep(500); }
+                }
+            }
+            using (RegistryKey k = Registry.LocalMachine.CreateSubKey(RUN_HKLM)) k.SetValue(NOME_RUN, "\"" + ExeInstalado + "\" /monitor");
+            Ajustes.Aplicar();
+            return true;
+        }
+        catch { return false; }
+    }
+
+    public static bool Desinstalar()
+    {
+        try
+        {
+            using (RegistryKey k = Registry.LocalMachine.OpenSubKey(RUN_HKLM, true)) if (k != null) k.DeleteValue(NOME_RUN, false);
+            try { using (EventWaitHandle e = new EventWaitHandle(false, EventResetMode.ManualReset, PARAR)) e.Set(); } catch { }
+            Thread.Sleep(3000);
+            try { File.Delete(ExeInstalado); } catch { }
+            return true;
+        }
+        catch { return false; }
+    }
+
+    // parte do usuário, depois de instalar: tira o monitor temporário antigo e liga o instalado nesta sessão
+    public static void IniciarInstalado()
+    {
+        try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RUN, true)) if (k != null) k.DeleteValue(NOME_RUN, false); } catch { }
+        try { File.Delete(ArqFim); } catch { }
+        for (int i = 0; i < 10 && Ativo(); i++) Thread.Sleep(500);   // espera a versão antiga sair
+        try { using (EventWaitHandle e = new EventWaitHandle(false, EventResetMode.ManualReset, PARAR)) e.Reset(); } catch { }
+        try { Process.Start(ExeInstalado, "/monitor"); } catch { }
+    }
+
     public static DateTime? Fim()
     {
+        if (Instalado()) return DateTime.MaxValue;   // instalado: monitora sempre
         try { return DateTime.ParseExact(File.ReadAllText(ArqFim).Trim(), "yyyy-MM-dd HH:mm", INV); } catch { return null; }
     }
 
@@ -72,11 +131,11 @@ static class Monitor
                 parar.Reset();
                 NotifyIcon icone = new NotifyIcon();
                 try { icone.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { icone.Icon = SystemIcons.Information; }
-                icone.Text = "Monitorando a memória do computador";
+                icone.Text = "Otimizador do Chrome";
                 icone.Visible = true;
                 ContextMenuStrip menu = new ContextMenuStrip();
                 menu.Items.Add("Abrir o Otimizador", null, delegate { try { Process.Start(Application.ExecutablePath); } catch { } });
-                menu.Items.Add("Parar o monitoramento", null, delegate { Desligar(); });
+                if (!Instalado()) menu.Items.Add("Parar o monitoramento", null, delegate { Desligar(); });
                 icone.ContextMenuStrip = menu;
                 icone.DoubleClick += delegate { try { Process.Start(Application.ExecutablePath); } catch { } };
 

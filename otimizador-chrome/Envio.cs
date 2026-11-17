@@ -76,7 +76,8 @@ static class Envio
         f["usuario"] = Str(Environment.UserName);
         f["versao"] = Str(VERSAO);
         f["atualizadoEm"] = Ts(DateTime.Now);
-        f["ate"] = Ts(fim ?? DateTime.Now);
+        // instalado (monitora sempre) vai como 01/01/2100 — o painel mostra "instalado"
+        f["ate"] = Ts(fim == null ? DateTime.Now : fim.Value > DateTime.Now.AddYears(10) ? new DateTime(2100, 1, 1) : fim.Value);
         f["ram"] = Int(a.Ram);
         f["livreGB"] = Dbl(a.Livre);
         f["commit"] = Int(a.Commit);

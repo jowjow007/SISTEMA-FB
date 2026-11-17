@@ -32,6 +32,8 @@ static class Programa
         if (a == "/aplicar") return Ajustes.Aplicar() ? 0 : 1;
         if (a == "/desfazer") return Ajustes.Desfazer() ? 0 : 1;
         if (a == "/monitor") { Monitor.Rodar(); return 0; }
+        if (a == "/instalar") return Monitor.Instalar() ? 0 : 1;        // precisa de administrador
+        if (a == "/desinstalar") return Monitor.Desinstalar() ? 0 : 1;  // precisa de administrador
         if (a == "/testar-envio") { string res = Envio.Testar(); if (args.Length > 1) File.WriteAllText(args[1], res, Encoding.UTF8); return res.StartsWith("OK") ? 0 : 1; }
         if (a == "/relatorio" && args.Length > 1)
         {   // grava o relatório completo num arquivo de texto (sem janela)
@@ -424,7 +426,7 @@ class Janela : Form
         Text = "Otimizador do Chrome";
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 10f);
-        ClientSize = new Size(1000, 680);
+        ClientSize = new Size(1080, 680);
         MinimumSize = new Size(640, 480);
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = Color.White;
@@ -438,28 +440,25 @@ class Janela : Form
         meio.Controls.Add(caixa);
 
         FlowLayoutPanel botoes = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 70, Padding = new Padding(14, 12, 14, 12), BackColor = Color.FromArgb(245, 246, 248), FlowDirection = FlowDirection.LeftToRight };
-        corrigir = Botao("Corrigir automaticamente", 240, true);
-        monitorar = Botao("Monitorar travamentos", 200, false);
-        copiar = Botao("Gerar relatório", 150, false);
-        verificar = Botao("Verificar de novo", 150, false);
-        desfazer = Botao("Desfazer ajustes", 150, false);
+        corrigir = Botao("Corrigir automaticamente", 230, true);
+        monitorar = Botao("Instalar neste computador", 250, false);
+        copiar = Botao("Gerar relatório", 160, false);
+        verificar = Botao("Verificar de novo", 160, false);
+        desfazer = Botao("Desfazer ajustes", 160, false);
         botoes.Controls.AddRange(new Control[] { corrigir, monitorar, copiar, verificar, desfazer });
         monitorando = new Label { Dock = DockStyle.Bottom, Height = 30, Padding = new Padding(18, 6, 16, 0), ForeColor = Color.FromArgb(29, 78, 216), Text = "" };
 
         monitorar.Click += delegate
         {
-            if (Monitor.Ativo())
+            if (Monitor.Instalado())
             {
-                if (MessageBox.Show("Parar o monitoramento? (os dados já anotados continuam no relatório)", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-                Monitor.Desligar(); System.Threading.Thread.Sleep(2500);
+                if (MessageBox.Show("Desinstalar o Otimizador deste computador?\n\nO monitoramento para e o computador sai do Painel do portal (os ajustes do Chrome continuam; use \"Desfazer ajustes\" se quiser tirar).",
+                    Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                Elevar("/desinstalar", "Desinstalado. Este computador não é mais monitorado.");
             }
             else
-            {
-                Monitor.Ligar(); System.Threading.Thread.Sleep(1500);
-                MessageBox.Show("Monitoramento ligado por " + Monitor.DIAS + " dias.\n\nPode fechar esta janela e trabalhar normalmente — ele fica num ícone perto do relógio e volta sozinho se o computador reiniciar.\n\n" +
-                    "Quando o computador travar, só continue trabalhando. Depois de alguns dias, abra este app e clique em \"Gerar relatório\".", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            AtualizarMonitor();
+                Elevar("/instalar", "Instalado!\n\nA partir de agora o Otimizador abre sozinho toda vez que qualquer pessoa entrar no Windows, monitora o computador o tempo todo e envia para o Painel dos Computadores do portal. " +
+                    "Os ajustes do Chrome também foram aplicados.\n\nNinguém precisa fazer mais nada. Pode fechar esta janela.");
         };
 
         corrigir.Click += delegate { Elevar("/aplicar", "Pronto! Ajustes aplicados.\n\nFeche o Chrome por completo e abra de novo para valer tudo."); };
@@ -533,10 +532,10 @@ class Janela : Form
 
     void AtualizarMonitor()
     {
-        bool ativo = Monitor.Ativo();
-        DateTime? fim = Monitor.Fim();
-        monitorar.Text = ativo ? "Parar monitoramento" : "Monitorar travamentos";
-        monitorando.Text = ativo ? "● Monitorando este computador" + (fim != null ? " até " + fim.Value.ToString("dd/MM HH:mm") : "") + " — pode fechar esta janela." : "";
+        bool inst = Monitor.Instalado(), ativo = Monitor.Ativo();
+        monitorar.Text = inst ? "Desinstalar" : "Instalar neste computador";
+        monitorando.Text = inst ? "● Instalado: monitora sempre e abre sozinho com o Windows" + (ativo ? "" : " (começa a medir no próximo login)") + (Envio.Ligado ? " — enviando ao Painel do portal." : ".")
+                         : ativo ? "● Monitorando este computador por alguns dias — pode fechar esta janela." : "";
     }
 
     void Escrever(string t, Color c, bool negrito)
@@ -572,7 +571,8 @@ class Janela : Form
                 return;
             }
         }
-        if (ok && arg == "/aplicar") Ajustes.LimparUsuario();
+        if (ok && (arg == "/aplicar" || arg == "/instalar")) Ajustes.LimparUsuario();
+        if (ok && arg == "/instalar") Monitor.IniciarInstalado();
         if (ok) MessageBox.Show(okMsg, Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
         else MessageBox.Show("Não consegui gravar os ajustes. Chame o responsável pelos computadores.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         Rodar();
