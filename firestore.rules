@@ -752,5 +752,33 @@ service cloud.firestore {
                     && (podeSessoes() || doConselho(request.resource.data.condominioSlug));
       allow update, delete: if false;
     }
+    // Monitor dos computadores do escritório (16/11/2026): o OtimizadorChrome.exe grava sem login (REST), só com a
+    // chave do escritório embutida no app (privado/monitor-chave.txt, fora do repositório). Aqui fica só o SHA-256
+    // dela. Só o admin lê e apaga (painel tools/monitor-pcs). Gravação com formato e tamanhos travados.
+    function chaveMonitor() {
+      return request.resource.data.chave is string && request.resource.data.chave.size() <= 100
+          && hashing.sha256(request.resource.data.chave).toHexString().lower()
+             == '55d6202d35ea867c010f302ac94a109a5668f3cf224618a6669fa45814856320';
+    }
+    match /monitorPCs/{pc} {
+      allow read, delete: if isAdmin();
+      allow create, update: if chaveMonitor() && pc.size() <= 50
+          && request.resource.data.keys().hasOnly(['chave', 'pc', 'usuario', 'versao', 'atualizadoEm', 'ate', 'ram', 'livreGB',
+               'commit', 'cpu', 'chromeMB', 'chromeN', 'top', 'cpuTop', 'travado', 'ramTotalGB', 'ligadoDias', 'ajustes',
+               'hardware', 'achados', 'extensoes'])
+          && request.resource.data.top is list && request.resource.data.top.size() <= 10
+          && request.resource.data.cpuTop is list && request.resource.data.cpuTop.size() <= 10
+          && request.resource.data.achados is list && request.resource.data.achados.size() <= 20
+          && request.resource.data.extensoes is list && request.resource.data.extensoes.size() <= 40
+          && request.resource.data.hardware is string && request.resource.data.hardware.size() <= 1500
+          && request.resource.data.atualizadoEm is timestamp;
+      match /amostras/{id} {
+        allow read, delete: if isAdmin();
+        allow create, update: if chaveMonitor() && id.size() <= 20
+            && request.resource.data.keys().hasOnly(['chave', 't', 's'])
+            && request.resource.data.t is timestamp
+            && request.resource.data.s is list && request.resource.data.s.size() <= 20;
+      }
+    }
   }
 }
