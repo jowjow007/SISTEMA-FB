@@ -2271,6 +2271,63 @@ setTipo(currentTipo);
    renderizamos página por página com html2canvas e colamos cada uma em sua própria
    página do PDF — evita a heurística de "onde cortar" do html2pdf.js, que fatiava a
    pilha inteira de páginas por altura e produzia cortes/espaços em branco errados. */
+/* PDF abaixo de 10 MB (limite do ZapSign para assinatura), sem perder nitidez (16/11/2026).
+   As páginas de texto têm poucas cores (preto, vinho, cinza do timbrado e o antisserrilhado das letras). Elas viram
+   uma imagem de PALETA com as 256 cores mais usadas da página: cada pixel continua na mesma resolução (scale 4), e
+   nenhum muda mais que 8/255 em nenhum canal (invisível). Fica com ~1/3 do tamanho do PNG colorido. Se a página
+   tiver cores demais para isso (foto etc.), volta para o PNG colorido de antes. */
+const PALETA_MAX_DIF = 8;
+async function pngPaleta(canvas){
+  if(typeof CompressionStream === 'undefined') return null;
+  const W = canvas.width, H = canvas.height;
+  const px = canvas.getContext('2d').getImageData(0, 0, W, H).data;
+  const freq = new Map();
+  for(let i = 0; i < px.length; i += 4){ const c = (px[i] << 16) | (px[i+1] << 8) | px[i+2]; freq.set(c, (freq.get(c) || 0) + 1); }
+  // paleta: as cores mais usadas da página e, depois, sempre a cor que ainda está MAIS LONGE da paleta
+  // (assim o pior pixel fica o mais perto possível do original); distância = maior diferença entre os canais
+  const cores = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  const dist = (a, b) => Math.max(Math.abs((a >> 16) - (b >> 16)), Math.abs(((a >> 8) & 255) - ((b >> 8) & 255)), Math.abs((a & 255) - (b & 255)));
+  let pal = null, idx = null, pior = Infinity;
+  for(const base of [128, 64]){
+    const p = cores.slice(0, Math.min(base, cores.length));
+    const d = new Int16Array(cores.length), ix = new Uint16Array(cores.length);
+    for(let i = 0; i < cores.length; i++){ let md = 999, mk = 0; for(let k = 0; k < p.length; k++){ const dd = dist(cores[i], p[k]); if(dd < md){ md = dd; mk = k; if(!dd) break; } } d[i] = md; ix[i] = mk; }
+    while(p.length < 256 && p.length < cores.length){
+      let longe = 0; for(let i = 1; i < cores.length; i++) if(d[i] > d[longe]) longe = i;
+      if(!d[longe]) break;
+      const k = p.length; p.push(cores[longe]);
+      for(let i = 0; i < cores.length; i++){ const dd = dist(cores[i], cores[longe]); if(dd < d[i]){ d[i] = dd; ix[i] = k; } }
+    }
+    let m = 0; for(let i = 0; i < cores.length; i++) if(d[i] > m) m = d[i];
+    if(m < pior){ pior = m; pal = p; idx = ix; }
+    if(pior <= PALETA_MAX_DIF) break;
+  }
+  if(pior > PALETA_MAX_DIF) return null;
+  const idxDe = new Map(); cores.forEach((c, i) => idxDe.set(c, idx[i]));
+  const bruto = new Uint8Array((W + 1) * H);   // cada linha: filtro 0 + índices
+  for(let y = 0, o = 0, i = 0; y < H; y++){ bruto[o++] = 0; for(let x = 0; x < W; x++, i += 4) bruto[o++] = idxDe.get((px[i] << 16) | (px[i+1] << 8) | px[i+2]); }
+  const zlib = new Uint8Array(await new Response(new Blob([bruto]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+  const plte = new Uint8Array(pal.length * 3); pal.forEach((p, k) => { plte[3*k] = p >> 16; plte[3*k+1] = (p >> 8) & 255; plte[3*k+2] = p & 255; });
+  const ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer); dv.setUint32(0, W); dv.setUint32(4, H); ihdr[8] = 8; ihdr[9] = 3;   // 8 bits, paleta
+  const partes = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), pedacoPng('IHDR', ihdr), pedacoPng('PLTE', plte), pedacoPng('IDAT', zlib), pedacoPng('IEND', new Uint8Array(0))];
+  const tot = partes.reduce((n, a) => n + a.length, 0), png = new Uint8Array(tot); let pos = 0;
+  partes.forEach(a => { png.set(a, pos); pos += a.length; });
+  return png;
+}
+let TAB_CRC = null;
+function crc32(bytes){
+  if(!TAB_CRC){ TAB_CRC = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; TAB_CRC[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF; for(let i = 0; i < bytes.length; i++) c = TAB_CRC[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function pedacoPng(tipo, dados){
+  const out = new Uint8Array(12 + dados.length), dv = new DataView(out.buffer);
+  dv.setUint32(0, dados.length);
+  for(let i = 0; i < 4; i++) out[4 + i] = tipo.charCodeAt(i);
+  out.set(dados, 8);
+  dv.setUint32(8 + dados.length, crc32(out.subarray(4, 8 + dados.length)));
+  return out;
+}
 async function gerarPDFdeDados(d, filename){
   const blocks = buildDocumento(d);
   const offscreen = document.createElement('div');
@@ -2291,7 +2348,12 @@ async function gerarPDFdeDados(d, filename){
       const canvas = await html2canvas(pages[i], {scale:4, useCORS:true, backgroundColor:'#ffffff'});
       if(i>0) pdf.addPage('a4','portrait');
       if(ehCapa) pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
-      else pdf.addImage(canvas,'PNG',0,0,210,297,undefined,'FAST');
+      else {
+        let png = null;
+        try { png = await pngPaleta(canvas); } catch(e){ png = null; }
+        if(png) pdf.addImage(png,'PNG',0,0,210,297,'pag'+i,'NONE');
+        else pdf.addImage(canvas,'PNG',0,0,210,297,undefined,'FAST');
+      }
     }
     salvarPDF(pdf, filename);
   } finally {
