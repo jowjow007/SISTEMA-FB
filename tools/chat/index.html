@@ -1785,7 +1785,7 @@
           (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>'
             : m.transcricaoStatus === 'vazio' ? '<div class="msg-transc-st">sem fala para transcrever</div>'
             : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
-            : '<button type="button" class="msg-transc-btn" data-transc="' + m.id + '">' + (m.transcricaoStatus === 'falhou' ? 'A transcrição falhou · tentar de novo' : 'Transcrever') + '</button>') + '</div>';
+            : '<button type="button" class="msg-transc-btn" data-transc="' + m.id + '">' + escapeHtml(rotuloTransc(m)) + '</button>') + '</div>';
       }
       if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
       out += '</div>';
@@ -3120,7 +3120,9 @@
         generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } };
       var ctl = window.AbortController ? new AbortController() : null; var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 240000);
       return fetch(GEMINI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r[1] }, body: JSON.stringify(corpo), signal: ctl ? ctl.signal : undefined })
-        .then(function(resp){ clearTimeout(to); return resp.json().then(function(d){ if (!resp.ok) throw new Error((d && (d.error && (d.error.message || d.error))) || ('HTTP ' + resp.status)); return d; }); })
+        .then(function(resp){ clearTimeout(to); return resp.text().then(function(tx){ var d = null; try { d = JSON.parse(tx); } catch (e) {}
+          if (!resp.ok || !d) throw new Error((d && d.error && (d.error.message || d.error)) || ('HTTP ' + resp.status + (resp.status === 413 ? ' (áudio grande demais)' : resp.status === 429 ? ' (limite de uso do Gemini)' : '')));
+          return d; }); })
         .then(function(d){ var c = d.candidates && d.candidates[0], ps = c && c.content && c.content.parts || [];
           var t = ps.map(function(x){ return x.text || ''; }).join('').trim(); return t && t !== '[sem fala]' ? t.slice(0, 8000) : null; });
     });
@@ -3145,17 +3147,34 @@
     });
   }
   // transcreve e grava na mensagem já enviada (regras: só os campos da transcrição, e só em mensagem de áudio)
-  var transcrevendoIds = {};
+  var transcrevendoIds = {}, errosTransc = {};
+  // motivo legível da falha (fica só nesta tela; o banco guarda apenas "falhou")
+  function motivoTransc(e){
+    var s = String((e && (e.message || e)) || '');
+    if (e && e.name === 'AbortError') return 'demorou demais para responder';
+    if (/limite di[aá]rio/i.test(s)) return 'limite diário do Gemini atingido (volta amanhã)';
+    if (/failed to fetch|networkerror|load failed/i.test(s)) return 'sem conexão com o serviço de transcrição';
+    if (/permission|insufficient/i.test(s)) return 'sem permissão para gravar a transcrição';
+    if (/decod|AudioContext|EncodingError/i.test(s)) return 'o navegador não conseguiu ler o áudio';
+    return s.slice(0, 140) || 'erro desconhecido';
+  }
+  function rotuloTransc(m){
+    if (errosTransc[m.id]) return 'A transcrição falhou (' + errosTransc[m.id] + ') · tentar de novo';
+    return m.transcricaoStatus === 'falhou' ? 'A transcrição falhou · tentar de novo' : 'Transcrever';
+  }
   function transcreverMensagem(conversaId, msgId, blob, mime){
-    if (transcrevendoIds[msgId]) return; transcrevendoIds[msgId] = true;
+    if (transcrevendoIds[msgId]) return Promise.resolve(); transcrevendoIds[msgId] = true; delete errosTransc[msgId]; redesenharTransc(conversaId);
     var ref = db.collection('conversas').doc(conversaId).collection('mensagens').doc(msgId);
     var obter = blob ? Promise.resolve(blob) : ref.get().then(function(d){ var m = d.data() || {}; mime = m.audioTipo || 'audio/webm';
       return storage.refFromURL(m.audioUrl).getBlob ? storage.refFromURL(m.audioUrl).getBlob() : fetch(m.audioUrl).then(function(r){ return r.blob(); }); });
     return obter.then(function(b){ return transcreverAudio(b, mime); })
       .then(function(t){ return ref.update({ transcricao: t || null, transcricaoStatus: t ? 'ok' : 'vazio' }); })
-      .catch(function(e){ console.warn('transcrição', e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
-      .then(function(){ delete transcrevendoIds[msgId]; });
+      .catch(function(e){ console.warn('transcrição', e); errosTransc[msgId] = motivoTransc(e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
+      .then(function(){ delete transcrevendoIds[msgId]; redesenharTransc(conversaId); });
   }
+  // o estado "transcrevendo" e o motivo da falha não vêm do banco: sem isto, uma nova falha (status já "falhou")
+  // deixava a mensagem presa em "transcrevendo…"
+  function redesenharTransc(conversaId){ if (conversaId === activeId) try { renderMensagens(); } catch (e) {} }
   els.msgList.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('[data-transc]'); if (!b || !activeId) return;
     b.disabled = true; b.textContent = 'Transcrevendo…';
