@@ -5,6 +5,7 @@ rules_version = '2';
 //   chat/{conversaId}/{uid}/{arquivo}  — formato novo: só quem participa daquela conversa lê ou envia;
 //   chat/{uid}/{arquivo}               — formato antigo (antes de 01/11/2026): só o próprio autor lê pelo SDK;
 //   condominiosDocs/{slug}/convencao.pdf|regimento.pdf — convenção e regimento dos condomínios (16/11/2026): equipe lê, admin envia;
+//   instaladores/Instalador FB.exe — instalador do sistema do escritório (18/11/2026): equipe baixa, admin envia;
 //   julgamentos/{condominio}/{recursoId}/{arquivo} — provas das Sessões de Julgamento (04/11/2026): a equipe envia;
 //     síndico e conselheiros do condomínio leem enquanto o recurso está liberado e o prazo das provas não venceu.
 // ATENÇÃO: links de download já emitidos (getDownloadURL, gravados nas mensagens) carregam um token e
@@ -83,6 +84,18 @@ service firebase.storage {
                             && arquivo in ['convencao.pdf', 'regimento.pdf']
                             && request.resource.size <= 60 * 1024 * 1024
                             && request.resource.contentType == 'application/pdf';
+      allow delete: if ativo() && cadastro().get('role', '') == 'admin';
+    }
+
+    // Instalador do sistema do escritório (18/11/2026): "Instalador FB.exe" = app do Portal + Verificador do computador.
+    // Leva a chave do Painel dos Computadores, por isso fica aqui e não em baixar/ (público): só a equipe lê;
+    // só o admin envia ou troca; um arquivo só, até 50 MB.
+    match /instaladores/{arquivo} {
+      allow read: if equipe();
+      allow create, update: if ativo() && cadastro().get('role', '') == 'admin'
+                            && arquivo == 'Instalador FB.exe'
+                            && request.resource.size <= 50 * 1024 * 1024
+                            && request.resource.contentType == 'application/octet-stream';
       allow delete: if ativo() && cadastro().get('role', '') == 'admin';
     }
 

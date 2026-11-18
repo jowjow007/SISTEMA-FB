@@ -1409,7 +1409,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v263</span>
+      <span class="version-tag">v264</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1879,6 +1879,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="firebase-config.js"></script>
 <script src="autorizacao-restrita.js"></script>
 <script src="admin-config.js"></script>
@@ -4172,6 +4173,115 @@
     return l.indexOf('perfil') !== -1 || l.indexOf('anivers') !== -1 || l.indexOf('sugest') !== -1;
   }
 
+  // ---------- Baixar o sistema do escritório (Instalador FB.exe = app do Portal + Verificador do computador) ----------
+  // O instalador leva a chave do Painel dos Computadores, por isso NÃO fica em baixar/ (público): fica no Storage
+  // (instaladores/Instalador FB.exe), que só a equipe ativa lê (storage.rules): o link só é entregue a quem passa
+  // pela regra, e o arquivo é baixado pela página (fetch → blob). Só o admin envia a versão nova.
+  const INSTALADOR_CAMINHO = 'instaladores/Instalador FB.exe';
+  // o SDK do Storage é carregado no <head> (junto com Auth e Firestore)
+  function carregarStorage(){
+    try { return Promise.resolve(firebase.storage()); } catch (e) { return Promise.reject(e); }
+  }
+  function tamanhoLegivel(n){ return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function motivoInstalador(e){
+    const c = (e && e.code) || '';
+    if (c.indexOf('object-not-found') !== -1) return 'o instalador ainda não foi enviado ao portal. Peça ao administrador.';
+    if (c.indexOf('unauthorized') !== -1) return 'sem permissão para baixar (a regra do Storage ainda não foi publicada ou sua conta não é da equipe).';
+    if (c.indexOf('retry-limit') !== -1 || /conex|network|fetch/i.test((e && e.message) || '')) return 'sem conexão. Tente de novo em instantes.';
+    return ((e && e.message) || 'erro desconhecido').slice(0, 160);
+  }
+  function abrirInstaladorFB(){
+    const ehAdmin = currentProfile && currentProfile.role === 'admin';
+    let bd = document.getElementById('instalador-fb-bd');
+    if (bd) bd.remove();
+    bd = document.createElement('div');
+    bd.id = 'instalador-fb-bd';
+    bd.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(10,6,6,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+    bd.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="inst-fb-tit" style="width:min(540px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel,#211918);color:var(--paper,#ece6e1);border:1px solid var(--line,rgba(236,230,225,.2));border-radius:14px;padding:22px;font:14px/1.55 Segoe UI,system-ui,sans-serif;">' +
+      '<h3 id="inst-fb-tit" style="margin:0 0 8px;font-size:1.05rem;">Baixar o sistema do escritório</h3>' +
+      '<p style="margin:0 0 8px;color:var(--muted,#c9bdb8);">Um instalador só, para usar em cada computador do escritório (por exemplo, depois de formatar). Ele coloca:</p>' +
+      '<ul style="margin:0 0 10px 18px;padding:0;"><li><b>Portal FB</b>: o app do portal, com atalho na área de trabalho. Depois ele se atualiza sozinho.</li>' +
+      '<li><b>Verificador do computador</b> (Otimizador de PC): deixa o computador leve e mostra a situação dele no Painel dos Computadores.</li></ul>' +
+      '<p style="margin:0 0 4px;font-weight:600;">Como instalar</p>' +
+      '<ol style="margin:0 0 10px 18px;padding:0;"><li>Clique em <b>Baixar o instalador</b> e abra o arquivo <b>Instalador FB</b> quando o download terminar.</li>' +
+      '<li>Se o Windows avisar, clique em <b>Mais informações › Executar assim mesmo</b>.</li>' +
+      '<li>Quando o Windows perguntar se o app pode fazer alterações, clique em <b>Sim</b> (é preciso ser administrador do computador).</li></ol>' +
+      '<p style="margin:0 0 12px;color:var(--muted,#9c908b);font-size:12.5px;">Uso interno: não envie este arquivo para fora do escritório.</p>' +
+      '<p id="inst-fb-info" style="margin:0 0 10px;color:var(--muted,#9c908b);font-size:12.5px;">Verificando o instalador…</p>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
+      '<button type="button" id="inst-fb-fechar" class="btn secondary small">Fechar</button>' +
+      '<button type="button" id="inst-fb-baixar" class="btn small" disabled>Baixar o instalador</button></div>' +
+      (ehAdmin ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line,rgba(236,230,225,.2));">' +
+        '<p style="margin:0 0 6px;font-weight:600;">Administrador: enviar versão nova</p>' +
+        '<p style="margin:0 0 8px;color:var(--muted,#9c908b);font-size:12.5px;">Escolha o <b>Instalador FB.exe</b> gerado por <code>otimizador-pc\\compilar.ps1</code> (pasta <code>otimizador-pc\\dist</code>). Ele substitui o atual para todos.</p>' +
+        '<input type="file" id="inst-fb-arquivo" accept=".exe" style="max-width:100%;"> ' +
+        '<button type="button" id="inst-fb-enviar" class="btn secondary small" style="margin-top:8px;">Enviar</button>' +
+        '<p id="inst-fb-envio" style="margin:8px 0 0;font-size:12.5px;"></p></div>' : '') +
+      '</div>';
+    document.body.appendChild(bd);
+    const info = document.getElementById('inst-fb-info'), baixar = document.getElementById('inst-fb-baixar');
+    function fechar(){ bd.remove(); document.removeEventListener('keydown', esc); }
+    function esc(e){ if (e.key === 'Escape') fechar(); }
+    document.addEventListener('keydown', esc);
+    document.getElementById('inst-fb-fechar').onclick = fechar;
+    bd.addEventListener('click', function(e){ if (e.target === bd) fechar(); });
+
+    function atualizarInfo(){
+      info.textContent = 'Verificando o instalador…';
+      return carregarStorage().then(function(st){ return st.ref(INSTALADOR_CAMINHO).getMetadata(); }).then(function(md){
+        const quando = md.updated ? new Date(md.updated).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        info.textContent = 'Versão disponível: enviada em ' + quando + ' · ' + tamanhoLegivel(md.size || 0);
+        baixar.disabled = false;
+      }).catch(function(e){ info.textContent = 'Não dá para baixar agora: ' + motivoInstalador(e); baixar.disabled = true; });
+    }
+    atualizarInfo();
+
+    baixar.onclick = function(){
+      baixar.disabled = true; baixar.textContent = 'Baixando…';
+      carregarStorage().then(function(st){ return st.ref(INSTALADOR_CAMINHO).getDownloadURL(); }).then(function(u){
+        return fetch(u).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); });
+      }).then(function(blob){
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'Instalador FB.exe';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        baixar.textContent = 'Baixado ✓';
+        info.textContent = 'Pronto. Abra o arquivo "Instalador FB" na lista de downloads.';
+        setTimeout(function(){ baixar.disabled = false; baixar.textContent = 'Baixar o instalador'; }, 4000);
+      }).catch(function(e){
+        console.warn('instalador', e);
+        baixar.disabled = false; baixar.textContent = 'Baixar o instalador';
+        info.textContent = 'O download falhou: ' + motivoInstalador(e);
+      });
+    };
+
+    if (ehAdmin) {
+      const enviar = document.getElementById('inst-fb-enviar'), msg = document.getElementById('inst-fb-envio');
+      enviar.onclick = function(){
+        const arq = document.getElementById('inst-fb-arquivo').files[0];
+        if (!arq) { msg.textContent = 'Escolha o arquivo primeiro.'; return; }
+        if (!/\.exe$/i.test(arq.name)) { msg.textContent = 'Tem que ser o arquivo .exe do instalador.'; return; }
+        if (arq.size > 50 * 1024 * 1024) { msg.textContent = 'Arquivo grande demais (máximo 50 MB).'; return; }
+        if (!confirm('Substituir o instalador para todos pelo arquivo "' + arq.name + '" (' + tamanhoLegivel(arq.size) + ')?')) return;
+        enviar.disabled = true; msg.textContent = 'Enviando…';
+        carregarStorage().then(function(st){
+          const tarefa = st.ref(INSTALADOR_CAMINHO).put(arq, { contentType: 'application/octet-stream', customMetadata: { nomeOriginal: arq.name.slice(0, 100) } });
+          tarefa.on('state_changed', function(s){ if (s.totalBytes) msg.textContent = 'Enviando… ' + Math.round(100 * s.bytesTransferred / s.totalBytes) + '%'; });
+          return tarefa;
+        }).then(function(){
+          msg.textContent = 'Enviado ✓. A equipe já baixa esta versão.';
+          enviar.disabled = false;
+          atualizarInfo();
+        }).catch(function(e){
+          console.warn('instalador envio', e);
+          enviar.disabled = false;
+          msg.textContent = 'O envio falhou: ' + motivoInstalador(e);
+        });
+      };
+    }
+  }
+
   function renderUserMenu(menuTabs){
     els.userMenuDropdown.innerHTML = '';
 
@@ -4226,6 +4336,15 @@
       abrirDownloadLogo();
     });
     if (!ehContaCliente(currentProfile.role)) els.userMenuDropdown.appendChild(logoBtn);   // material interno da equipe
+
+    // instalador completo (app do Portal + Verificador do computador): só equipe, nunca cliente
+    if (!ehContaCliente(currentProfile.role)) {
+      const instBtn = document.createElement('button');
+      instBtn.type = 'button';
+      instBtn.innerHTML = iconeSvg('download') + '<span>Baixar o sistema do escritório</span>';
+      instBtn.addEventListener('click', function(){ closeUserMenu(); abrirInstaladorFB(); });
+      els.userMenuDropdown.appendChild(instBtn);
+    }
 
     const divLogo = document.createElement('div');
     divLogo.className = 'user-menu-divider';
