@@ -1293,9 +1293,16 @@
     return (Date.now() - p.lastActive.toMillis()) < 70000;
   }
 
+  function atualizarPresenca(){
+    Array.prototype.forEach.call(document.querySelectorAll('.presence-dot[data-pres]'), function(el){
+      var on = estaOnline(el.getAttribute('data-pres'));
+      if (el.classList.contains('online') !== on) el.classList.toggle('online', on);
+    });
+  }
+
   function dotHtml(uid){
     if (!uid) return '';
-    return '<span class="presence-dot' + (estaOnline(uid) ? ' online' : '') + '"></span>';
+    return '<span class="presence-dot' + (estaOnline(uid) ? ' online' : '') + '" data-pres="' + escapeHtml(uid) + '"></span>';
   }
 
   function avatarHtml(nomeParaIniciais, fotoBase64, isGroup, uid){
@@ -1419,17 +1426,31 @@
     }
   }
 
+  var htmlConvList = '', convListApertada = false, convListPendente = false;
+  function soltarConvList(){
+    if (!convListApertada) return;
+    convListApertada = false;
+    // depois do click (que vem logo após soltar) — senão o refazer ainda engoliria o clique
+    if (convListPendente){ convListPendente = false; setTimeout(renderConvList, 0); }
+  }
+  document.getElementById('conv-list').addEventListener('pointerdown', function(){ convListApertada = true; });
+  ['pointerup', 'pointercancel'].forEach(function(t){ document.addEventListener(t, soltarConvList, true); });
+  window.addEventListener('blur', soltarConvList);
   function renderConvList(){
     renderTagFilterRow();
     renderArquivadasToggle();
     var lista = conversaOrdenada();
+    // botão do mouse/dedo apertado na lista: refazer agora trocaria o item entre o apertar e o soltar e o clique
+    // se perderia (a conversa "não abre"); refaz ao soltar
+    if (convListApertada){ convListPendente = true; return; }
     if (!lista.length){
+      htmlConvList = '';
       els.convList.innerHTML = '<div class="conv-empty">' + (verArquivadas
         ? 'Nenhuma conversa arquivada.'
         : 'Nenhuma conversa ainda. Toque em "+" para começar.') + '</div>';
       return;
     }
-    els.convList.innerHTML = lista.map(function(c){
+    var html = lista.map(function(c){
       var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
       var fixada = tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada;
       var naoLidas = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
@@ -1463,6 +1484,10 @@
       out += '</div>';
       return out;
     }).join('');
+    // nada mudou na lista (o mais comum): não refaz os itens nem redecodifica as fotos
+    if (html === htmlConvList && els.convList.querySelector('.conv-item')){ atualizarPresenca(); return; }
+    htmlConvList = html;
+    els.convList.innerHTML = html;
 
     Array.prototype.forEach.call(els.convList.querySelectorAll('.conv-item'), function(el){
       var id = el.getAttribute('data-id');
@@ -3189,12 +3214,21 @@
   function iniciarListeners(){
     atualizarBotaoNotif();
 
+    // cada pessoa com o portal aberto grava lastActive a cada 25 s: com a equipe toda conectada, isto dispara
+    // várias vezes por segundo. Só nome ou foto mudados redesenham; o "online" só acende/apaga as bolinhas
+    // (antes a lista era refeita a cada vez: tela engasgando e clique perdido ao abrir uma conversa)
     db.collection('perfis').onSnapshot(function(snap){
+      var antes = perfis, mudouVisual = false;
       perfis = {};
-      snap.docs.forEach(function(d){ perfis[d.id] = d.data(); });
-      renderConvList();
-      if (activeId) agendarRender();
+      snap.docs.forEach(function(d){
+        var p = perfis[d.id] = d.data(), a = antes[d.id];
+        if (!a || (a.displayName || '') !== (p.displayName || '') || (a.photoBase64 || '') !== (p.photoBase64 || '')) mudouVisual = true;
+      });
+      if (Object.keys(antes).some(function(u){ return !perfis[u]; })) mudouVisual = true;
+      if (mudouVisual){ renderConvList(); if (activeId) agendarRender(); }
+      else atualizarPresenca();
     });
+    setInterval(atualizarPresenca, 20000);   // quem parou de marcar presença apaga sem precisar de novo aviso
 
     db.collection('conversas').where('participantes', 'array-contains', myUid).onSnapshot(function(snap){
       conversas = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
