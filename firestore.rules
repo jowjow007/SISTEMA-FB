@@ -405,13 +405,18 @@ service cloud.firestore {
 
     // Conferência de e-mails (tools/conferencia-emails): o robô (conta de serviço, fora destas regras) cria
     // e atualiza os documentos. O admin vê todos, troca o responsável, ignora e reabre; cada responsável
-    // vê só os seus e pode apenas marcar como respondido.
+    // vê só os seus e pode apenas marcar como respondido. coResponsaveis (lista gravada pelo robô): quem divide
+    // a caixa com o responsável (piloto do jurídico, 19/11/2026) vê e marca do mesmo jeito.
+    function respConferencia(d) {
+      return d.responsavelEmail == request.auth.token.email
+          || request.auth.token.email in d.get('coResponsaveis', []);
+    }
     match /emailsConferencia/{docId} {
       allow read: if isAdmin()
-                  || (isAtivo() && resource.data.responsavelEmail == request.auth.token.email);
+                  || (isAtivo() && respConferencia(resource.data));
       allow update: if isAdmin()
                     || (isAtivo()
-                        && resource.data.responsavelEmail == request.auth.token.email
+                        && respConferencia(resource.data)
                         && resource.data.status == 'pendente'
                         && request.resource.data.status == 'respondido'
                         && request.resource.data.respondidoModo == 'manual'
@@ -435,7 +440,7 @@ service cloud.firestore {
       allow read: if isDonoConferencia();
       allow create, update: if isDonoConferencia()
                             || (isAtivo()
-                                && get(/databases/$(database)/documents/emailsConferencia/$(docId)).data.responsavelEmail == request.auth.token.email
+                                && respConferencia(get(/databases/$(database)/documents/emailsConferencia/$(docId)).data)
                                 && request.resource.data.notaPor == request.auth.token.email
                                 && request.resource.data.notaEm == request.time
                                 && (resource == null

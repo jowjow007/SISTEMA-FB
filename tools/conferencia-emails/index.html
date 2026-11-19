@@ -457,7 +457,17 @@
     const p = equipe.find(function(x){ return x.email === email; });
     if (p) return p.nome;
     const m = todos.find(function(x){ return x.responsavelEmail === email && x.responsavelNome; });
-    return m ? m.responsavelNome : email;
+    if (m) return m.responsavelNome;
+    const c = todos.find(function(x){ return (x.coResponsaveis || []).indexOf(email) >= 0 && x.coResponsaveisNomes; });
+    return c ? (c.coResponsaveisNomes[c.coResponsaveis.indexOf(email)] || email) : email;
+  }
+  // responsável principal + quem divide a caixa com ele (coResponsaveis, ex.: jurídico no piloto de 19/11/2026)
+  function respsDe(m){
+    return [m.responsavelEmail].concat(m.coResponsaveis || []).filter(function(e, i, a){ return e && a.indexOf(e) === i; });
+  }
+  function nomesResp(m){
+    const n = respsDe(m).map(nomeDe);
+    return n.length > 1 ? n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1] : (n[0] || '');
   }
   function st(m){
     if (m.status === 'respondido') return m.respondidoModo === 'manual' ? 'manual' : 'respondido';
@@ -502,7 +512,7 @@
     if (!lado) {
       lado = m.status === 'respondido'
         ? '<div class="bolha resp"><div class="rot">✉️ Resposta · ' + escapeHtml(nomeDe(m.respondidoPor)) + '</div><i>O robô ainda vai buscar o texto desta resposta (próxima conferência).</i></div>'
-        : '<div class="bolha falta"><div class="rot">' + (m.status === 'ignorado' ? 'Ignorado' : '⏳ Ainda sem resposta') + '</div><i>Responsável: ' + escapeHtml(nomeDe(m.responsavelEmail)) + '</i></div>';
+        : '<div class="bolha falta"><div class="rot">' + (m.status === 'ignorado' ? 'Ignorado' : '⏳ Ainda sem resposta') + '</div><i>Responsável: ' + escapeHtml(nomesResp(m)) + '</i></div>';
     }
     return '<div class="conversa">' + recebido + '<div style="display:flex;flex-direction:column;gap:10px">' + lado + '</div></div>';
   }
@@ -519,7 +529,7 @@
       if (filtroSt === 'respondidos' && s !== 'respondido' && s !== 'manual') return false;
       if (filtroSt === 'ignorados' && s !== 'ignorado') return false;
       if (filtroCaixa && m.caixa !== filtroCaixa) return false;
-      if (filtroResp && m.responsavelEmail !== filtroResp) return false;
+      if (filtroResp && respsDe(m).indexOf(filtroResp) < 0) return false;
       if (busca && norm(m.assunto + ' ' + m.deNome + ' ' + m.deEmail + ' ' + m.trecho).indexOf(busca) < 0) return false;
       return true;
     }).sort(function(a, b){
@@ -551,7 +561,7 @@
       }).join('');
     if (eu.admin) {
       const resps = [];
-      base.forEach(function(m){ if (m.responsavelEmail && resps.indexOf(m.responsavelEmail) < 0) resps.push(m.responsavelEmail); });
+      base.forEach(function(m){ respsDe(m).forEach(function(e){ if (resps.indexOf(e) < 0) resps.push(e); }); });
       f += '<select id="filtro-resp"><option value="">Todos os responsáveis</option>' + resps.map(function(e){
         return '<option value="' + escapeHtml(e) + '"' + (filtroResp === e ? ' selected' : '') + '>' + escapeHtml(nomeDe(e)) + '</option>';
       }).join('') + '</select>';
@@ -581,7 +591,7 @@
         bts += '<button type="button" class="bt" data-reabrir="' + m.id + '">Reabrir</button>';
       }
       // o responsável já aparece no seletor enquanto o e-mail está aberto
-      const para = eu.admin && !resp && m.responsavelEmail ? ' · responsável: <b>' + escapeHtml(nomeDe(m.responsavelEmail)) + '</b>' : '';
+      const para = m.responsavelEmail && (eu.admin ? !resp : respsDe(m).length > 1) ? ' · responsável: <b>' + escapeHtml(nomesResp(m)) + '</b>' : '';
       return '<div class="mail ' + s + '">' +
         '<div><div class="linha1"><span class="caixa ' + escapeHtml(m.caixa) + '">' + escapeHtml(CAIXAS[m.caixa] || m.caixa) + '</span>' +
           '<span class="assunto">' + escapeHtml(m.assunto) + '</span></div>' +
@@ -693,7 +703,7 @@
           '<span class="assunto">' + marca(m.assunto, q) + '</span></div>' +
           '<div class="de"><a class="rem" data-rem="' + escapeHtml(m.deEmail) + '" title="Ver todos os e-mails deste remetente">' + marca(m.deNome, q) +
             (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + marca(m.deEmail, q) + '&gt;' : '') + '</a> · recebido ' + dataHora(data(m.recebidoEm)) +
-            ' · responsável: <b>' + escapeHtml(nomeDe(m.responsavelEmail)) + '</b></div></div>' +
+            ' · responsável: <b>' + escapeHtml(nomesResp(m)) + '</b></div></div>' +
         '<div class="lado"><span class="st ' + s + '">' + textoStatus(m) + '</span><div class="bts">' +
           '<button type="button" class="bt" data-conv="' + m.id + '">' + (aberto ? '💬 Ocultar conversa' : '💬 Ver conversa') + '</button>' +
           '<a class="bt" href="' + escapeHtml(linkGmail(m)) + '" target="_blank" rel="noopener">Abrir no Gmail ↗</a></div></div>' +
@@ -993,7 +1003,7 @@
     const emails = L.map(function(m){
       const t = textos[m.id] || {};
       return { 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa, 'Remetente': m.deNome, 'E-mail do remetente': m.deEmail,
-        'Assunto': m.assunto, 'Responsável': nomeDe(m.responsavelEmail), 'Situação': situacao(m),
+        'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Situação': situacao(m),
         'Respondido por': m.respondidoPor ? nomeDe(m.respondidoPor) : '', 'Respondido em': dataHora(data(m.respondidoEm)),
         'Tempo de resposta': duracao(horasResposta(m)), 'E-mail recebido': t.recebidoTexto || m.trecho || '',
         'Resposta': t.respostaTexto || '', 'Anotação (marcado à mão)': t.nota || '' };
@@ -1002,7 +1012,7 @@
     L.forEach(function(m){
       const s = st(m), t = textos[m.id] || {}, h = horasResposta(m);
       const add = function(tipo, det){ atencao.push({ 'Ponto de atenção': tipo, 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa,
-        'Remetente': m.deNome + ' <' + m.deEmail + '>', 'Assunto': m.assunto, 'Responsável': nomeDe(m.responsavelEmail), 'Detalhe': det }); };
+        'Remetente': m.deNome + ' <' + m.deEmail + '>', 'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Detalhe': det }); };
       if (s === 'atrasado' || s === 'pendente') add('Sem resposta', 'Aguardando há ' + idade(horasDesde(data(m.recebidoEm))).replace('há ', ''));
       if (s === 'manual' && !t.respostaTexto) add('Marcado à mão sem resposta no Gmail', t.nota ? 'Anotação: ' + t.nota : 'Sem anotação');
       if (s === 'ignorado') add('Ignorado', 'Tirado da conferência no portal');
@@ -1166,7 +1176,15 @@
       const desde = new Date(Date.now() - DIAS_VISAO_ADMIN * 864e5);
       db.collection('emailsConferencia').where('recebidoEm', '>=', desde).onSnapshot(aoMudar, aoErro);
     } else {
-      db.collection('emailsConferencia').where('responsavelEmail', '==', eu.email).onSnapshot(aoMudar, aoErro);
+      // os seus + os da caixa que divide com outra pessoa (coResponsaveis); as duas listas viram uma só
+      const partes = { a: [], b: [] };
+      const juntar = function(k){ return function(snap){
+        partes[k] = snap.docs;
+        const vistos = {};
+        aoMudar({ docs: partes.a.concat(partes.b).filter(function(d){ if (vistos[d.id]) return false; vistos[d.id] = true; return true; }) });
+      }; };
+      db.collection('emailsConferencia').where('responsavelEmail', '==', eu.email).onSnapshot(juntar('a'), aoErro);
+      db.collection('emailsConferencia').where('coResponsaveis', 'array-contains', eu.email).onSnapshot(juntar('b'), aoErro);
     }
     db.collection('emailsConferenciaMeta').doc('ultima').onSnapshot(function(d){ meta = d.exists ? d.data() : null; renderSub(); }, function(){});
     if (eu.admin) {

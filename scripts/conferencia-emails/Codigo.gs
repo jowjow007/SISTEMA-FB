@@ -21,17 +21,21 @@ var CONFIG = {
   // Ordem importa: um e-mail endereçado ao condomínio e ao Jonathan entra como "condominio".
   caixas: [
     { id: 'condominio', endereco: 'condominio@fonsecaebraga.com.br', responsavel: 'yasmin@fonsecaebraga.com.br' },
-    { id: 'juridico',   endereco: 'juridico@fonsecaebraga.com.br',   responsavel: 'avsoares@fonsecaebraga.com.br' },
+    // coResponsaveis: também veem e podem marcar os e-mails desta caixa (piloto do jurídico com a Dra. Micaela, 19/11/2026)
+    { id: 'juridico',   endereco: 'juridico@fonsecaebraga.com.br',   responsavel: 'avsoares@fonsecaebraga.com.br',
+      coResponsaveis: ['micaela@fonsecaebraga.com.br'] },
     { id: 'meu',        endereco: 'jonathan@fonsecaebraga.com.br',   responsavel: 'jonathan@fonsecaebraga.com.br' }
   ],
   nomes: {
     'jonathan@fonsecaebraga.com.br': 'Jonathan Fonseca',
     'yasmin@fonsecaebraga.com.br': 'Dra. Yasmin',
-    'avsoares@fonsecaebraga.com.br': 'Ana Vitória'
+    'avsoares@fonsecaebraga.com.br': 'Ana Vitória',
+    'micaela@fonsecaebraga.com.br': 'Dra. Micaela'
   },
   // Únicas caixas que o robô abre. Responsável fora desta lista: só vale a resposta vista na caixa principal
   // (ou o botão "Marcar respondido" no portal).
-  caixasLiberadas: ['jonathan@fonsecaebraga.com.br', 'yasmin@fonsecaebraga.com.br', 'avsoares@fonsecaebraga.com.br'],
+  caixasLiberadas: ['jonathan@fonsecaebraga.com.br', 'yasmin@fonsecaebraga.com.br', 'avsoares@fonsecaebraga.com.br',
+                    'micaela@fonsecaebraga.com.br'],
   diasNovos: 7,        // e-mails recebidos nos últimos N dias entram na conferência
   diasAcompanhar: 30,  // por quanto tempo se continua procurando a resposta
   // As abas do Gmail (Social, Atualizações…) NÃO entram no filtro: nesta caixa elas recebem e-mails de verdade.
@@ -161,7 +165,7 @@ function registrarNovos() {
   });
   manter.forEach(function(x) {
     var m = x.m, c = x.c;
-    var resp = c.caixa.responsavel;
+    var resp = c.caixa.responsavel, co = (c.caixa.coResponsaveis || []).filter(function(u) { return u !== resp; });
     textos.push({ id: m.id, dados: { recebidoTexto: corpos[m.id] || limparTrecho(m.snippet), criadoEm: new Date() } });
     novos.push({ id: m.id, dados: {
       caixa: c.caixa.id,
@@ -175,6 +179,8 @@ function registrarNovos() {
       threadId: m.threadId,
       responsavelEmail: resp,
       responsavelNome: CONFIG.nomes[resp] || resp,
+      coResponsaveis: co,
+      coResponsaveisNomes: co.map(function(u) { return CONFIG.nomes[u] || u; }),
       status: 'pendente',
       textos: false,
       criadoEm: new Date()
@@ -210,8 +216,9 @@ function acharResposta(d) {
   var achou = respostaNoFio(CONFIG.caixaPrincipal, d.threadId, recebido);
   if (achou) { achou.usuario = CONFIG.caixaPrincipal; return achou; }
   if (!d.messageId) return null;
-  var padrao = CONFIG.caixas.filter(function(cx) { return cx.id === d.caixa; }).map(function(cx) { return cx.responsavel; });
-  var outros = [d.responsavelEmail].concat(padrao).filter(function(u, i, a) {
+  var padrao = [];
+  CONFIG.caixas.forEach(function(cx) { if (cx.id === d.caixa) padrao = padrao.concat([cx.responsavel], cx.coResponsaveis || []); });
+  var outros = [d.responsavelEmail].concat(d.coResponsaveis || [], padrao).filter(function(u, i, a) {
     return u && u !== CONFIG.caixaPrincipal && a.indexOf(u) === i && CONFIG.caixasLiberadas.indexOf(u) >= 0;
   });
   for (var i = 0; i < outros.length; i++) {
@@ -504,6 +511,7 @@ function paraFs(v) {
   if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (typeof v === 'boolean') return { booleanValue: v };
   if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: v.length ? { values: v.map(paraFs) } : {} };
   return { stringValue: String(v) };
 }
 
@@ -513,6 +521,7 @@ function deFs(v) {
   if ('booleanValue' in v) return v.booleanValue;
   if ('integerValue' in v) return +v.integerValue;
   if ('doubleValue' in v) return v.doubleValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(deFs);
   return null;
 }
 
