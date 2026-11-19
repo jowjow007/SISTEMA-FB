@@ -405,11 +405,50 @@ service cloud.firestore {
 
     // Conferência de e-mails (tools/conferencia-emails): o robô (conta de serviço, fora destas regras) cria
     // e atualiza os documentos. O admin vê todos, troca o responsável, ignora e reabre; cada responsável
-    // vê só os seus e pode apenas marcar como respondido. coResponsaveis (lista gravada pelo robô): quem divide
-    // a caixa com o responsável (piloto do jurídico, 19/11/2026) vê e marca do mesmo jeito.
+    // vê só os seus e, enquanto o e-mail está aberto, pode: marcar como respondido; ignorar (com justificativa
+    // obrigatória, v267); ou enviar para outro colega (v267) — o envio fica registrado em emailsConferenciaEnvios
+    // na mesma gravação. coResponsaveis (lista gravada pelo robô): quem divide a caixa com o responsável
+    // (piloto do jurídico, 19/11/2026) vê e age do mesmo jeito.
     function respConferencia(d) {
       return d.responsavelEmail == request.auth.token.email
           || request.auth.token.email in d.get('coResponsaveis', []);
+    }
+    function confMarcarRespondido() {
+      return request.resource.data.status == 'respondido'
+          && request.resource.data.respondidoModo == 'manual'
+          && request.resource.data.respondidoPor == request.auth.token.email
+          && request.resource.data.respondidoEm == request.time
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'respondidoModo', 'respondidoPor', 'respondidoEm']);
+    }
+    function confIgnorar() {
+      return request.resource.data.status == 'ignorado'
+          && request.resource.data.ignoradoPor == request.auth.token.email
+          && request.resource.data.ignoradoEm == request.time
+          && request.resource.data.ignoradoMotivo is string
+          && request.resource.data.ignoradoMotivo.size() >= 5
+          && request.resource.data.ignoradoMotivo.size() <= 1000
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'ignoradoPor', 'ignoradoEm', 'ignoradoMotivo']);
+    }
+    // Enviar para outro colega: o e-mail passa a ser só dele (a lista de quem divide é zerada) e o registro do
+    // envio (emailsConferenciaEnvios/{envioId}) tem de existir ao fim da mesma gravação, apontando para cá.
+    function confEnviar(docId) {
+      let novo = request.resource.data;
+      let envio = getAfter(/databases/$(database)/documents/emailsConferenciaEnvios/$(novo.envioId)).data;
+      return novo.status == 'pendente'
+          && novo.responsavelEmail is string
+          && novo.responsavelEmail.matches('[a-z0-9._%+-]+@fonsecaebraga[.]com[.]br')
+          && novo.responsavelNome is string && novo.responsavelNome.size() <= 120
+          && novo.coResponsaveis == [] && novo.coResponsaveisNomes == []
+          && novo.atribuidoPor == request.auth.token.email
+          && novo.atribuidoEm == request.time
+          && novo.envioId is string
+          && novo.diff(resource.data).affectedKeys()
+               .hasOnly(['responsavelEmail', 'responsavelNome', 'coResponsaveis', 'coResponsaveisNomes', 'atribuidoPor', 'atribuidoEm', 'envioId'])
+          && envio.emailId == docId
+          && envio.porEmail == request.auth.token.email
+          && envio.paraEmail == novo.responsavelEmail;
     }
     match /emailsConferencia/{docId} {
       allow read: if isAdmin()
@@ -418,13 +457,30 @@ service cloud.firestore {
                     || (isAtivo()
                         && respConferencia(resource.data)
                         && resource.data.status == 'pendente'
-                        && request.resource.data.status == 'respondido'
-                        && request.resource.data.respondidoModo == 'manual'
-                        && request.resource.data.respondidoPor == request.auth.token.email
-                        && request.resource.data.respondidoEm == request.time
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['status', 'respondidoModo', 'respondidoPor', 'respondidoEm']));
+                        && (confMarcarRespondido() || confIgnorar() || confEnviar(docId)));
       allow create, delete: if false;
+    }
+    // Registro de cada "Enviar para…" (aba Enviados): quem enviou e quem recebeu leem; o admin lê todos.
+    // Só é criado junto com a troca do responsável (conferida com getAfter dos dois lados); nunca muda nem some.
+    match /emailsConferenciaEnvios/{envioId} {
+      allow read: if isAdmin()
+                  || (isAtivo() && (resource.data.porEmail == request.auth.token.email
+                                    || resource.data.paraEmail == request.auth.token.email));
+      allow create: if isAtivo()
+                    && request.resource.data.keys().hasOnly(['emailId', 'porEmail', 'porNome', 'paraEmail', 'paraNome', 'em', 'recado',
+                                                              'assunto', 'remetente', 'remetenteEmail', 'caixa', 'recebidoEm'])
+                    && request.resource.data.keys().hasAll(['emailId', 'porEmail', 'paraEmail', 'em'])
+                    && request.resource.data.porEmail == request.auth.token.email
+                    && request.resource.data.em == request.time
+                    && request.resource.data.get('recado', '') is string
+                    && request.resource.data.get('recado', '').size() <= 1000
+                    && request.resource.data.get('porNome', '') is string && request.resource.data.get('porNome', '').size() <= 120
+                    && request.resource.data.get('paraNome', '') is string && request.resource.data.get('paraNome', '').size() <= 120
+                    && request.resource.data.get('assunto', '') is string && request.resource.data.get('assunto', '').size() <= 1000
+                    && (isAdmin() || respConferencia(get(/databases/$(database)/documents/emailsConferencia/$(request.resource.data.emailId)).data))
+                    && getAfter(/databases/$(database)/documents/emailsConferencia/$(request.resource.data.emailId)).data.get('envioId', '') == envioId
+                    && getAfter(/databases/$(database)/documents/emailsConferencia/$(request.resource.data.emailId)).data.responsavelEmail == request.resource.data.paraEmail;
+      allow update, delete: if false;
     }
     // Resumo da última rodada do robô (data/hora mostrada a todos na aba; contagens e erro só aparecem para admin).
     match /emailsConferenciaMeta/{docId} {
