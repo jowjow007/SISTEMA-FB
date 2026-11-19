@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("267.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("267.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("268.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("268.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "267";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "268";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -73,6 +73,12 @@ namespace PortalFB
                     string modo = args.Length > 0 ? args[0] : "";
                     Instalar(eu, modo == "--atualizar" || modo == "--atualizar-silencioso", modo == "--atualizar");
                     return;
+                }
+                // reaberto pelo vigia (a janela travou): dá tempo para o motor antigo do Edge terminar de sair
+                if (args.Length > 0 && args[0] == "--reiniciar")
+                {
+                    if (args.Length > 1) int.TryParse(args[1], out Reinicios);
+                    Thread.Sleep(4000);
                 }
                 // atualização baixada e ainda não aplicada (o computador foi desligado com o app aberto): aplica agora
                 if (AplicarPendente(true)) return;
@@ -137,6 +143,57 @@ namespace PortalFB
         public static void AbrirFora(string url)
         {
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+        }
+
+        // ---------- vigia de travamento ----------
+        // 18 e 19/11/2026: a janela ficou "Não está respondendo" esperando o motor do Edge (relatório do Windows
+        // AppHangXProcB1, "Waiting on msedgewebview2.exe") e nada destravava — nem fechar e abrir de novo, porque o app
+        // novo reaproveita o motor que ficou preso (mesma pasta de dados). Uma linha separada pergunta à janela a cada
+        // poucos segundos se ela está viva; ~45 s sem resposta: encerra o motor preso, abre o app de novo e anota em
+        // travamentos.txt. Tudo do portal fica no servidor, então reabrir não perde nada. Com o computador suspenso
+        // a linha também para, então a suspensão não conta como travamento. Até 3 reaberturas seguidas (< 10 min).
+#if TESTE
+        const int VIGIA_INTERVALO = 2000, VIGIA_FALTAS = 5;
+#else
+        const int VIGIA_INTERVALO = 5000, VIGIA_FALTAS = 9;
+#endif
+        public static int Reinicios;          // quantas vezes seguidas o vigia já reabriu o app
+        public static int PidMotor;           // processo principal do motor do Edge desta janela
+        public static readonly string ArqTravamentos = Path.Combine(Pasta, "travamentos.txt");
+
+        public static void Vigiar(Form janela)
+        {
+            var t = new Thread(delegate ()
+            {
+                int faltas = 0;
+                while (true)
+                {
+                    var viva = new int[1];
+                    try { janela.BeginInvoke((Action)delegate { Interlocked.Exchange(ref viva[0], 1); }); }
+                    catch { return; }   // janela já fechada
+                    Thread.Sleep(VIGIA_INTERVALO);
+                    if (Saindo || janela.IsDisposed) return;
+                    if (Interlocked.CompareExchange(ref viva[0], 0, 0) == 1) { faltas = 0; continue; }
+                    if (++faltas < VIGIA_FALTAS) continue;
+                    bool seguido = (DateTime.Now - Process.GetCurrentProcess().StartTime).TotalMinutes < 10;
+                    int proximo = seguido ? Reinicios + 1 : 1;
+                    bool reabre = proximo <= 3;
+                    try
+                    {
+                        File.AppendAllText(ArqTravamentos, DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss") + "  v" + VERSAO +
+                            "  janela sem responder ~" + (VIGIA_INTERVALO * VIGIA_FALTAS / 1000) + " s" +
+                            (reabre ? "; motor do Edge encerrado e app reaberto (" + proximo + "ª seguida)" : "; já reabriu 3 vezes seguidas, não reabre mais") + "\r\n");
+                    }
+                    catch { }
+                    if (!reabre) { faltas = int.MinValue / 2; continue; }
+                    Saindo = true;
+                    try { if (PidMotor > 0) Process.GetProcessById(PidMotor).Kill(); } catch { }
+                    try { Process.Start(new ProcessStartInfo(ExeInstalado, "--reiniciar " + proximo) { UseShellExecute = true }); } catch { }
+                    try { Process.GetCurrentProcess().Kill(); } catch { }
+                    return;
+                }
+            }) { IsBackground = true, Name = "vigia" };
+            t.Start();
         }
 
         // ---------- atualização automática (silenciosa) ----------
@@ -513,6 +570,11 @@ namespace PortalFB
             web.CoreWebView2.PermissionRequested += Permissao;
             web.CoreWebView2.WindowCloseRequested += delegate { if (!principal) Close(); };
             web.CoreWebView2.WebMessageReceived += MensagemDaPagina;
+            if (principal)
+            {
+                try { Programa.PidMotor = (int)web.CoreWebView2.BrowserProcessId; } catch { }
+                Programa.Vigiar(this);
+            }
         }
 
         // botão "Atualizar o app" do portal: o próprio app baixa a versão nova (confere o SHA-256), fecha e reabre já
@@ -530,6 +592,9 @@ namespace PortalFB
                 return;
             }
             if (msg == "piscar") { if (principal) SeloNaBarra.Piscar(this); return; }
+#if TESTE
+            if (msg == "teste-travar") { Thread.Sleep(60000); return; }   // só no teste automático: simula a janela presa
+#endif
             if (msg != "atualizar-agora") return;
             var wv = web.CoreWebView2;
             ThreadPool.QueueUserWorkItem(delegate

@@ -112,6 +112,26 @@ try {
   Ok ([bool](ProcessosTeste | Where-Object { $_.Path -eq $inst -and $_.MainWindowTitle -eq 'Portal teste' })) 'reabriu sozinho já na v211, com a página carregada'
   Ok (@(ProcessosTeste | Where-Object { $_.MainWindowHandle -ne 0 }).Count -eq 1) 'uma janela só (a antiga fechou)'
   Ok (@(Get-ChildItem "$env:USERPROFILE\Downloads" -Filter '*Instalador*' -ErrorAction SilentlyContinue).Count -eq $antes) 'nenhum instalador foi parar em Downloads'
+
+  Write-Host "5) Vigia: janela presa (simulada) -> encerra o motor e reabre sozinho"
+  ProcessosTeste | Stop-Process -Force; Start-Sleep 3
+  # a página pede ao app (só na versão TESTE) para prender a janela por 60 s, uma única vez
+  [IO.File]::WriteAllText((Join-Path $site 'index.html'), '<!doctype html><meta charset="utf-8"><title>Portal teste</title><body><h1>Portal de teste</h1><script>if (!localStorage.getItem("travou")) { localStorage.setItem("travou", "1"); setTimeout(function(){ chrome.webview.postMessage("teste-travar"); }, 1500); }</script>')
+  $log = Join-Path $pastaTeste 'travamentos.txt'
+  Remove-Item $log -ErrorAction SilentlyContinue
+  Start-Process $inst | Out-Null
+  for ($i = 0; $i -lt 30 -and -not (ProcessosTeste | Where-Object { $_.MainWindowTitle -eq 'Portal teste' }); $i++) { Start-Sleep 1 }
+  $antigo = (ProcessosTeste | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1).Id
+  Ok ([bool]$antigo) 'app aberto com a página'
+  Start-Sleep 5
+  Ok (-not (Get-Process -Id $antigo).Responding) 'janela presa ("Não está respondendo")'
+  for ($i = 0; $i -lt 45 -and -not (ProcessosTeste | Where-Object { $_.Id -ne $antigo -and $_.MainWindowTitle -eq 'Portal teste' }); $i++) { Start-Sleep 1 }
+  Ok (-not (Get-Process -Id $antigo -ErrorAction SilentlyContinue)) 'o app preso foi encerrado'
+  Ok ([bool](ProcessosTeste | Where-Object { $_.Id -ne $antigo -and $_.MainWindowTitle -eq 'Portal teste' })) 'reabriu sozinho e carregou a página'
+  Ok ((Test-Path $log) -and ((Get-Content $log -Raw) -match 'reaberto \(1')) 'travamento anotado em travamentos.txt'
+  Start-Sleep 12
+  $novo = ProcessosTeste | Where-Object { $_.MainWindowHandle -ne 0 }
+  Ok (@($novo).Count -eq 1 -and $novo.Responding) 'o app reaberto continua respondendo (não reabriu de novo)'
 }
 finally {
   Limpar
