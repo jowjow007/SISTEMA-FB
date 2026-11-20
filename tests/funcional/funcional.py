@@ -82,7 +82,8 @@ class Site(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         caminho = urllib.parse.urlparse(self.path).path
-        if caminho.startswith('/tools/') and self.headers.get('Sec-Fetch-Dest') == 'iframe':
+        livres = [x for x in os.environ.get('IFRAME_OK', '').split(',') if x]   # ex.: IFRAME_OK=/tools/agenda-teste/ (teste do sino/link)
+        if caminho.startswith('/tools/') and self.headers.get('Sec-Fetch-Dest') == 'iframe' and not any(caminho.startswith(x) for x in livres):
             # as abas abrem a ferramenta num iframe; no teste cada ferramenta abre na própria página
             return self._enviar('<html><body>ferramenta desativada no iframe durante o teste</body></html>'.encode(), 'text/html; charset=utf-8')
         if caminho == '/tools/assistente-ia/gemini-config.js':

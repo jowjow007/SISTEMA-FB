@@ -58,7 +58,11 @@ with sync_playwright() as p:
     ok(len(F.listar('agTeste_clientes')) == 1 and len(F.listar('agTeste_casos')) == 1, 'cliente e processo gravados a partir da publicação')
     a.click('#k-x'); a.wait_for_timeout(300)
     a.locator('.pub', has_text='contestação').locator('[data-pub-prazo]').click(); a.wait_for_timeout(400)
-    a.select_option('#fa-resp', U['ana']); a.click('#fa-salvar'); a.wait_for_timeout(1500)
+    a.select_option('#fa-resp', U['ana'])
+    a.click('#fa-salvar'); a.wait_for_timeout(300)
+    ok('ao menos uma tarefa' in a.inner_text('#fa-av'), 'prazo sem tarefa não salva')
+    a.click('#fa-tar-add'); a.fill('#ft-tit', 'Ler a contestação (teste)'); a.click('#ft-ok'); a.wait_for_timeout(200)
+    a.click('#fa-salvar'); a.wait_for_timeout(1500)
     ats = F.listar('agTeste_atividades'); pz = [x for x in ats if x[1].get('tipo') == 'prazo']
     ok(len(pz) == 1 and pz[0][1].get('responsavel') == U['ana'] and pz[0][1].get('pubId'), 'prazo criado para a Ana, ligado à publicação')
     pubs = dict(F.listar('agTeste_publicacoes'))
@@ -73,7 +77,7 @@ with sync_playwright() as p:
     t.locator('.linha').first.click(); t.wait_for_timeout(400)
     t.click('#nt-abrir'); t.fill('#nt-tit', 'Buscar documentos (teste)'); t.click('#nt-salvar'); t.wait_for_timeout(1200)
     t.click('[data-aba="comentarios"]'); t.fill('[data-cm-txt]', 'Comentário da Ana (teste).'); t.click('[data-cm-env]'); t.wait_for_timeout(1500)
-    ok(len([x for x in F.listar('agTeste_atividades') if x[1].get('tipo') == 'tarefa']) == 1, 'Ana cria tarefa encadeada')
+    ok(len([x for x in F.listar('agTeste_atividades') if x[1].get('tipo') == 'tarefa']) == 2, 'Ana cria tarefa encadeada (além da tarefa criada junto com o prazo)')
     # admin vê ao vivo
     a.click('#subnav button[data-sub="agenda"]'); a.wait_for_timeout(300)
     a.click('#f-resp'); a.click('#pp-todas'); a.click('#pp-ok'); a.wait_for_timeout(1500)

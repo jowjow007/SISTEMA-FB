@@ -1149,6 +1149,13 @@
     u = String(u || '');
     return /^(https:\/\/|data:(image\/|application\/|text\/plain)|blob:|http:\/\/(127\.0\.0\.1|localhost)[:\/])/i.test(u) ? escapeHtml(u) : '';
   }
+  // Link de prazo/tarefa da Agenda (portal/?agenda=ID): abre a Agenda aqui mesmo no portal, sem nova aba
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a.msg-link[href]'); if (!a || window.parent === window) return;
+    var id = ''; try { var u = new URL(a.getAttribute('href'), location.href); if (u.origin === location.origin) id = u.searchParams.get('agenda') || ''; } catch (er) {}
+    if (!id) return;
+    e.preventDefault(); e.stopPropagation(); window.parent.postMessage({fbAbrirAgenda:id}, location.origin);
+  }, true);
   // Escapa o texto e envolve URLs em links clicáveis
   var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
   function linkify(s){

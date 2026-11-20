@@ -133,6 +133,33 @@ service cloud.firestore {
       allow read, create, update: if agendaTeste();
       allow delete: if isAdmin();
     }
+    // Números dos cadastros (20/11/2026): Cli- (série 'cli') e Prc-/Cas- (série 'proc', a mesma para processos e casos).
+    // Cada número sai de uma transação que sobe o contador de 1 em 1; o admin pode criar o contador e reservar um bloco
+    // (numerar os cadastros antigos). Nunca desce nem some: dois cadastros ao mesmo tempo não recebem o mesmo número.
+    match /agTeste_contadores/{serie} {
+      allow read: if agendaTeste();
+      allow create: if isAdmin() && serie in ['cli', 'proc'] && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n is int && request.resource.data.n >= 0;
+      allow update: if agendaTeste() && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n is int
+                    && (request.resource.data.n == resource.data.n + 1 || (isAdmin() && request.resource.data.n > resource.data.n));
+      allow delete: if false;
+    }
+    // @menções nos comentários da Agenda (20/11/2026): aviso no sino do topo do portal. Quem comenta cria o aviso em seu
+    // próprio nome; só a pessoa chamada lê, marca como lido ou apaga (o admin também lê e apaga).
+    match /agTeste_mencoes/{id} {
+      allow read: if isAdmin() || (isAtivo() && resource.data.para == request.auth.uid);
+      allow create: if agendaTeste()
+                    && request.resource.data.keys().hasOnly(['para', 'de', 'deNome', 'atividadeId', 'tipo', 'titulo', 'doPrazo', 'trecho', 'em', 'lida'])
+                    && request.resource.data.keys().hasAll(['para', 'de', 'atividadeId', 'em', 'lida'])
+                    && request.resource.data.de == request.auth.uid && request.resource.data.para is string && request.resource.data.para != request.auth.uid
+                    && request.resource.data.atividadeId is string && request.resource.data.atividadeId.size() <= 200
+                    && request.resource.data.get('trecho', '').size() <= 300 && request.resource.data.get('titulo', '').size() <= 200
+                    && request.resource.data.get('doPrazo', '').size() <= 200 && request.resource.data.get('deNome', '').size() <= 120
+                    && request.resource.data.em == request.time && request.resource.data.lida == false;
+      allow update: if isAtivo() && resource.data.para == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida', 'lidaEm'])
+                    && request.resource.data.lida == true && request.resource.data.lidaEm == request.time;
+      allow delete: if isAdmin() || (isAtivo() && resource.data.para == request.auth.uid);
+    }
     match /agTeste_config/{id} {
       allow read: if agendaTeste();
       allow write: if isAdmin()

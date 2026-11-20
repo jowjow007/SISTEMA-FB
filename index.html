@@ -1014,6 +1014,19 @@
 
   /* ---------- Comunicados (pop-up obrigatório + histórico do megafone) ---------- */
   #comunicados-btn{position:relative;overflow:visible;}
+  /* sino: @menções nos comentários da Agenda */
+  #mencoes-btn{position:relative;overflow:visible;}
+  .men-qtd{position:absolute;top:-4px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e0483d;color:#fff;font-size:.62rem;font-weight:800;line-height:17px;text-align:center;display:none;box-shadow:0 0 0 2px var(--panel);}
+  .men-qtd.show{display:block;}
+  .men-dropdown{width:min(380px,92vw);max-height:70vh;overflow:auto;padding:6px;}
+  .men-dropdown .men-tit{display:flex;justify-content:space-between;align-items:center;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px 8px;font-weight:700;}
+  .men-dropdown .men-tit button{width:auto;padding:2px 6px;font-size:.72rem;text-transform:none;letter-spacing:0;color:#5aa9ff;}
+  .men-item{display:block !important;padding:9px 10px !important;border-radius:8px;line-height:1.35;}
+  .men-item.nova{background:rgba(90,169,255,.08);}
+  .men-item .q{font-size:.72rem;color:var(--muted);display:block;}
+  .men-item .t{font-size:.84rem;font-weight:700;display:block;margin:2px 0;}
+  .men-item .x{font-size:.78rem;color:var(--muted);display:block;white-space:pre-wrap;word-break:break-word;}
+  .men-vazio{padding:16px 12px;font-size:.8rem;color:var(--muted);text-align:center;}
   #com-backdrop{z-index:70;}
   #com-backdrop .modal-box{width:min(560px,100%);max-width:100%;box-sizing:border-box;max-height:90vh;overflow-y:auto;display:block;padding:22px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.45);}
   .com-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
@@ -1405,11 +1418,13 @@
       <button type="button" class="user-menu-btn" id="sistemas-status-btn" title="Sistemas liberados para você" aria-haspopup="true" aria-expanded="false"></button>
       <div class="user-menu-dropdown sistemas-status-dropdown" id="sistemas-status-dropdown"></div>
       <button type="button" class="user-menu-btn" id="comunicados-btn" title="Comunicados do escritório" aria-label="Comunicados do escritório"><svg viewBox="0 0 24 24"><path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l6.5 4V5.5l-6.5 4H4a1 1 0 0 0-1 1z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg><span class="gear-notif-dot" id="comunicados-dot"></span></button>
+      <button type="button" class="user-menu-btn" id="mencoes-btn" title="Onde chamaram você na Agenda" aria-label="Menções na Agenda" aria-haspopup="true" aria-expanded="false" style="display:none;"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z"></path><path d="M10 20.5a2.2 2.2 0 0 0 4 0"></path></svg><span class="men-qtd" id="mencoes-qtd"></span></button>
+      <div class="user-menu-dropdown men-dropdown" id="mencoes-dropdown"></div>
       <button type="button" class="user-menu-btn" id="user-menu-btn" title="Perfil e configurações" aria-haspopup="true" aria-expanded="false"></button>
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v269</span>
+      <span class="version-tag">v270</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2674,6 +2689,7 @@
     // agendado à parte: uma falha em outra inicialização abaixo não impede o comunicado obrigatório.
     // Depois dos comunicados pendentes, vêm os cards de aniversário/tempo de escritório.
     setTimeout(iniciarComunicados, 0);
+    setTimeout(iniciarMencoes, 0);
     // contrato de associação: associado com contrato para assinar só usa o Portal depois de assinar (contrato-associacao.js)
     setTimeout(function(){ if (window.FBContratoAssociacao) window.FBContratoAssociacao.verificar({ db: db, auth: auth, perfil: currentProfile }); }, 0);
     setTimeout(verificarDadosBancarios, 0);   // pop-up da chave PIX (espera os comunicados fecharem)
@@ -2982,6 +2998,81 @@
     if (bd){ bd.classList.remove('show'); bd.querySelectorAll('.com-video-player').forEach(function(p){ p.remove(); }); }
   }
   function comFmtSeg(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  // ---------- Sino: onde chamaram você (@) nos comentários da Agenda ----------
+  // Os avisos ficam em agTeste_mencoes (quem comenta cria; só a pessoa chamada lê e marca como lido).
+  let menNovas = [], menLidas = [], menOuvindo = null;
+  const AGENDA_TAB_ID = 'agenda-teste';
+  function temAgenda(){ return !!currentProfile && (currentProfile.role === 'admin' || (currentProfile.tabs || []).indexOf(AGENDA_TAB_ID) !== -1); }
+  function menQuando(t){ const d = t && t.toDate ? t.toDate() : null; if (!d) return '';
+    const hoje = new Date(); const mesmo = d.toDateString() === hoje.toDateString();
+    return mesmo ? 'hoje, ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
+  function menOrdenar(l){ return l.sort(function(a, b){ return ((b.em && b.em.toMillis ? b.em.toMillis() : 0) - (a.em && a.em.toMillis ? a.em.toMillis() : 0)); }); }
+  function menItem(m, nova){
+    const tp = {prazo:'Prazo', tarefa:'Tarefa', audiencia:'Audiência', compromisso:'Compromisso'}[m.tipo] || 'Atividade';
+    return '<button type="button" class="men-item' + (nova ? ' nova' : '') + '" data-men="' + escapeHtml(m.id) + '" data-at="' + escapeHtml(m.atividadeId) + '">'
+      + '<span class="q"><b>' + escapeHtml(m.deNome || 'Alguém') + '</b> chamou você · ' + escapeHtml(menQuando(m.em)) + '</span>'
+      + '<span class="t">' + escapeHtml(tp + ': ' + (m.titulo || '')) + '</span>' + (m.doPrazo ? '<span class="q">do prazo ' + escapeHtml(m.doPrazo) + '</span>' : '')
+      + '<span class="x">' + escapeHtml(m.trecho || '') + '</span></button>';
+  }
+  function menDesenhar(){
+    const q = document.getElementById('mencoes-qtd'), dd = document.getElementById('mencoes-dropdown');
+    q.textContent = menNovas.length > 99 ? '99+' : String(menNovas.length); q.classList.toggle('show', menNovas.length > 0);
+    document.getElementById('mencoes-btn').title = menNovas.length ? menNovas.length + ' menção(ões) nova(s) na Agenda' : 'Onde chamaram você na Agenda';
+    dd.innerHTML = '<div class="men-tit"><span>Chamaram você na Agenda</span>' + (menNovas.length ? '<button type="button" id="men-todas">marcar todas como lidas</button>' : '') + '</div>'
+      + (menNovas.length ? menNovas.map(function(m){ return menItem(m, true); }).join('') : '<div class="men-vazio">Nenhuma menção nova.</div>')
+      + (menLidas.length ? '<div class="men-tit" style="margin-top:6px;"><span>Já lidas</span></div>' + menLidas.slice(0, 15).map(function(m){ return menItem(m, false); }).join('') : '');
+    dd.querySelectorAll('[data-men]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); const id = b.getAttribute('data-men');
+      if (menNovas.some(function(m){ return m.id === id; })) menMarcar([id]);
+      menFechar(); abrirAtividadeAgenda(b.getAttribute('data-at')); }; });
+    const t = document.getElementById('men-todas'); if (t) t.onclick = function(e){ e.stopPropagation(); menMarcar(menNovas.map(function(m){ return m.id; })); };
+  }
+  function menMarcar(ids){
+    const lote = db.batch();
+    ids.forEach(function(id){ lote.update(db.collection('agTeste_mencoes').doc(id), {lida:true, lidaEm:firebase.firestore.FieldValue.serverTimestamp()}); });
+    lote.commit().catch(function(e){ console.error(e); });
+  }
+  function menFechar(){ const dd = document.getElementById('mencoes-dropdown'), b = document.getElementById('mencoes-btn'); dd.classList.remove('open'); b.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+  function iniciarMencoes(){
+    const b = document.getElementById('mencoes-btn');
+    if (!temAgenda() || ehContaCliente(currentProfile.role)) { b.style.display = 'none'; if (menOuvindo) { menOuvindo(); menOuvindo = null; } return; }
+    b.style.display = '';
+    if (menOuvindo) return;
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); closeUserMenu(); closeSistemasStatus();
+      const dd = document.getElementById('mencoes-dropdown'), abre = !dd.classList.contains('open');
+      if (!abre) return menFechar();
+      dd.classList.add('open'); b.classList.add('open'); b.setAttribute('aria-expanded', 'true'); menDesenhar();
+      db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', true).limit(100).get()
+        .then(function(s){ menLidas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); }).catch(function(){});
+    });
+    document.addEventListener('click', function(e){ if (!e.target.closest || !e.target.closest('#mencoes-dropdown, #mencoes-btn')) menFechar(); });
+    els.userMenuBtn.addEventListener('click', menFechar); els.sistemasStatusBtn.addEventListener('click', menFechar);
+    menOuvindo = db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', false)
+      .onSnapshot(function(s){ menNovas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); },
+        function(e){ console.warn('menções:', e.code || e); });
+  }
+  // abre a aba Agenda já com a atividade aberta (sino, link ?agenda=ID, link clicado no Chat)
+  function abrirAtividadeAgenda(id){
+    if (!id) return;
+    const t = tabsCatalog.find(function(x){ return x.id === AGENDA_TAB_ID && (currentProfile.role === 'admin' || (currentProfile.tabs || []).indexOf(x.id) !== -1); });
+    if (!t) { alert('Você ainda não tem acesso à Agenda. Peça ao administrador para liberar a aba.'); return; }
+    selectTab(t.id);
+    (function tentar(n){ let w = null; try { w = iframes[t.id] && iframes[t.id].contentWindow; } catch(e) {}
+      if (w && w.__agenda && typeof w.__agenda.abrirPorId === 'function') { w.__agenda.abrirPorId(id); return; }
+      if (n < 80) setTimeout(function(){ tentar(n + 1); }, 250); })(0);
+  }
+  let agendaDoLinkTratada = false;
+  function abrirAgendaDoLink(){
+    if (agendaDoLinkTratada) return;
+    let id = null; try { id = new URLSearchParams(location.search).get('agenda'); } catch(e) {}
+    agendaDoLinkTratada = true; if (!id) return;
+    try { const u = new URL(location.href); u.searchParams.delete('agenda'); history.replaceState(null, '', u.pathname + u.search + location.hash); } catch(e) {}
+    abrirAtividadeAgenda(id);
+  }
+  window.addEventListener('message', function(ev){
+    if (ev.origin !== location.origin || !ev.data || typeof ev.data.fbAbrirAgenda !== 'string') return;
+    abrirAtividadeAgenda(ev.data.fbAbrirAgenda.slice(0, 200));
+  });
   function iniciarComunicados(){
     if (currentProfile && ehContaCliente(currentProfile.role)) { document.getElementById('comunicados-btn').style.display = 'none'; return; }
     document.getElementById('comunicados-btn').onclick = comAbrirHistorico;
@@ -4554,6 +4645,7 @@
     }
     agendarPreloadAbas(allowed);
     abrirTarefaDoLink();
+    abrirAgendaDoLink();
 
     applySearchFilter();
   }
