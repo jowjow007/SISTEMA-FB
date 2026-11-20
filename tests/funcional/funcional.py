@@ -297,6 +297,16 @@ def dar_ciencia(pg):
     return registrados
 
 
+def fechar_lembrete_diretoria(pg, ms=6000):
+    """Admin: a partir de 25/01 o portal lembra de fixar a remuneração da Diretoria do ano (contrato-associacao.js,
+    janela #ca-bd que cobre a tela). Esse lembrete tem teste próprio (tests/contrato-associacao); aqui só é fechado,
+    como a pessoa faria ("Entendi")."""
+    if esperar(pg, "!!document.getElementById('ca-ok-lembrete')", ms):
+        pg.click('#ca-ok-lembrete'); pg.wait_for_timeout(300)
+        return True
+    return False
+
+
 def sdk(pg, js):
     """Executa uma chamada direta ao SDK do Firebase na página (sem a interface). Devolve 'ok' ou o código do erro.
     Se a página recarregar no meio (a conta dela caiu ou mudou: firebase-config.js recarrega), devolve
@@ -444,6 +454,7 @@ def main():
                 pg.wait_for_timeout(2500)
                 n = dar_ciencia(pg)
                 if n: ciencias.append((email, n))
+                fechar_lembrete_diretoria(pg, 1500)
             if not ok:
                 foto = os.path.join(os.environ.get('SAIDA_TESTE', AQUI), 'falha-login-' + email.split('@')[0] + '.png')
                 try: pg.screenshot(path=foto)
@@ -455,7 +466,13 @@ def main():
             try:
                 fn()
             except Exception as e:
-                caso(nome, 'BLOCO INTERROMPIDO', False, str(e).split(chr(10))[0][:160] + ' | tela: ' + telas())
+                # motivo completo do Playwright (ex.: "intercepts pointer events", "not visible") + foto de cada página aberta
+                motivo = [l.strip() for l in str(e).split(chr(10)) if any(x in l for x in ('intercepts', 'not visible', 'not enabled', 'not stable', 'detached', 'waiting for'))][:4]
+                for i, ctx in enumerate(_ctxs):
+                    for j, pg in enumerate(ctx.pages):
+                        try: pg.screenshot(path=os.path.join(os.environ.get('SAIDA_TESTE', AQUI), 'bloco-%s-%d-%d.png' % (nome.split('.')[0], i, j)))
+                        except Exception: pass
+                caso(nome, 'BLOCO INTERROMPIDO', False, str(e).split(chr(10))[0][:160] + ' | ' + ' / '.join(motivo)[:400] + ' | tela: ' + telas())
 
         # ===== 1. Hoje (regras de produção): o que a própria pessoa consegue gravar no próprio cadastro
         def b1():
@@ -519,6 +536,7 @@ def main():
             # Administração › Usuários › Editar abas: áreas restritas fora do "Selecionar todas" e liberadas só com a senha
             pi = ctx.new_page(); pi.on('dialog', aceitar); pi.goto(BASE + '/index.html')
             esperar(pi, "document.getElementById('app-screen').style.display === 'flex' && document.querySelectorAll('#users-tbody tr').length >= 5", 30000)
+            fechar_lembrete_diretoria(pi)
             pi.evaluate(f"window.__editUserTabs('{U['membro']}')")
             esperar(pi, "document.getElementById('edit-tabs-backdrop').classList.contains('show') && document.querySelectorAll('.edit-restrita-cb').length > 0", 15000)
             caso(G, 'Editar abas: áreas restritas num bloco próprio (Contratos, Números › Clientes/Juízo/Efetividade, Gestão › Colaboradores)',
