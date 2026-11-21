@@ -820,6 +820,48 @@ table.data-table td.num{font-variant-numeric:tabular-nums}
     hubView.querySelector('.hub-grid').classList.toggle('c4', visiveis >= 4);
   }
   hubView.addEventListener('click', openFromHub);
+
+  // ---------- versão nova: cada módulo (Colaboradores, Holerites, Compras, Patrimônio, Senhas) é um item da barra lateral ----------
+  // Abre direto o módulo, sem o "← Início" e sem as abas dos outros módulos. As permissões são as mesmas da tela de cartões.
+  let fbPermsProntas = false, fbModulo = '';
+  function fbBase(id){ return String(id || '').split('.')[0]; }
+  function fbModuloDisponivel(base){
+    if (base === 'colaboradores') return podeColaboradores && ATIVAS.some(function(t){ return t.id === 'colaboradores'; });
+    if (base === 'holerites') return temAcesso('lancarHolerites') && ATIVAS.some(function(t){ return t.id === 'holerites'; });
+    if (base === 'senhas') return ATIVAS.some(function(t){ return t.type === 'senhas' && temAcesso(t.perm); });
+    if (base === 'compras' || base === 'patrimonio') return ATIVAS.some(function(t){ return t.id === base; });
+    return false;
+  }
+  function fbFiltrarNav(){
+    Array.prototype.forEach.call(nav.children, function(b){
+      if (b === backBtn) { b.style.display = fbModulo ? 'none' : ''; return; }
+      const t = ATIVAS.filter(function(x){ return x.id === b.dataset.subtabId; })[0];
+      if (!fbModulo || !t) return;
+      const mostra = fbModulo === 'senhas' ? (t.type === 'senhas' && temAcesso(t.perm)) : (t.id === fbModulo && !t.interna && t.type !== 'senhas');
+      b.style.display = mostra ? '' : 'none';
+    });
+  }
+  window.fbNav = {
+    disponivel: function(id){ return fbPermsProntas ? fbModuloDisponivel(fbBase(id)) : null; },
+    abrir: function(id){
+      const base = fbBase(id);
+      if (!fbPermsProntas || !fbModuloDisponivel(base)) return false;
+      let destino = base;
+      if (base === 'senhas') destino = ATIVAS.filter(function(t){ return t.type === 'senhas' && temAcesso(t.perm); })[0].id;
+      fbModulo = base;
+      hubView.style.display = 'none'; panelsEl.style.display = ''; nav.style.display = '';
+      selectSubtab(destino);
+      fbFiltrarNav();
+      return true;
+    },
+    atual: function(){
+      if (!fbModulo) return '';
+      const ativo = nav.querySelector('button.active');
+      const id = ativo ? ativo.dataset.subtabId : '';
+      if (fbModulo === 'colaboradores' && (id === 'pagamentos' || id === 'holerites')) return 'colaboradores';
+      return fbModulo;
+    }
+  };
   hubView.addEventListener('keydown', function(e){
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFromHub(e); }
   });
@@ -3600,6 +3642,7 @@ table.data-table td.num{font-variant-numeric:tabular-nums}
       }).catch(function(){ /* regra ainda não publicada: fica sem permissões extras */ });
     }).then(function(){
       aplicarPermissoesNaTela();
+      fbPermsProntas = true;
       preencherAcoesColab();
       if (podeCadastrarPat()) ouvirDevolucoesPendentes();
       marcarPerfilPronto();

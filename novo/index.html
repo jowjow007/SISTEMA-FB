@@ -1206,7 +1206,7 @@
 </style>
 <meta name="robots" content="noindex,nofollow">
 <script>window.__vgUrlLocal=function(u){u=String(u||'');var m=/^(?:https?:\/\/([^\/]+))?(?:\/[^?#]*?)?\/?(tools\/.*)$/i.exec(u);if(!m)return u;var host=(m[1]||'').toLowerCase();if(!host||host===location.host.toLowerCase()||/fonsecaebraga\.com\.br$|github\.io$/.test(host))return m[2];return u;};</script>
-<link rel="stylesheet" href="assets/layout-visao-geral.css?v=9">
+<link rel="stylesheet" href="assets/layout-visao-geral.css?v=10">
 </head>
 <body>
 
@@ -4241,13 +4241,39 @@
     });
   }
 
+  window.__fbPortal = {
+    selectTab: function(id, opts){ selectTab(id, opts || {}); },
+    perfil: function(){ return currentProfile; },
+    abas: function(){ return tabsCatalog.slice(); },
+    permitida: function(id){ return id === '__admin__' ? !!(currentProfile && currentProfile.role === 'admin') : !!(currentProfile && (currentProfile.tabs || []).indexOf(id) !== -1 && tabsCatalog.some(function(t){ return t.id === id; })); },
+    // mesma regra de subabasPermitidas: restritas só com liberação explícita (ou admin); comuns, todas sem escolha salva
+    subabaPermitida: function(tabId, subId){
+      const t = tabsCatalog.find(function(x){ return x.id === tabId; });
+      if (!t || !currentProfile) return false;
+      const ehAdmin = currentProfile.role === 'admin', salvas = currentProfile.subtabs && currentProfile.subtabs[tabId];
+      if (subabaRestrita(tabId, subId)) return ehAdmin || (salvas || []).indexOf(subId) !== -1;
+      if (!salvas || !t.subtabs || !t.subtabs.some(function(s){ return s.id === subId; })) return true;
+      return salvas.indexOf(subId) !== -1;
+    },
+    quadro: function(id){ const t = tabsCatalog.find(function(x){ return x.id === id; }); return t ? ensureIframe(t) : null; },
+    quadroSeExistir: function(id){ return iframes[id] || null; },
+    icone: function(rotulo){ try { return iconeSvg(escolherIcone(rotulo)); } catch(e) { return ''; } },
+    ativa: function(){ return activeTabId; },
+    slug: function(id){ return tabSlugs[id] || ''; },
+    fecharMenuMobile: function(){ fecharMenuMobile(); }
+  };
   function acharTabPermitida(regraFn){
     const allowed = tabsCatalog.filter(function(t){ return (currentProfile.tabs || []).indexOf(t.id) !== -1; });
     return allowed.find(function(t){ return regraFn((t.label || '').toLowerCase()); });
   }
+  // versão nova: o endereço pode levar o destino interno ("#documentos/procuracao")
+  function lerHashAba(){
+    const h = decodeURIComponent(location.hash.slice(1)), i = h.indexOf('/');
+    return { tabId: slugToTabId[i >= 0 ? h.slice(0, i) : h] || (h === 'inicio' ? '__home__' : null), destino: i >= 0 ? h.slice(i + 1) : '' };
+  }
   window.addEventListener('popstate', function(){
-    const hashTabId = slugToTabId[decodeURIComponent(location.hash.slice(1))];
-    if (hashTabId) selectTab(hashTabId, { replaceHistory: true });
+    const r = lerHashAba();
+    if (r.tabId) selectTab(r.tabId, { replaceHistory: true, destino: r.destino, origem: 'historico' });
   });
   els.mbnHome.addEventListener('click', function(){ selectTab('__home__'); });
   els.mbnPerfil.addEventListener('click', function(){
@@ -4420,6 +4446,7 @@
     els.userMenuDropdown.appendChild(divTheme);
 
     menuTabs.forEach(function(t){
+      if (/anivers|sugest/i.test(t.label || '')) return;   // versão nova: ficam na barra lateral (Escritório)
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.tabId = t.id;
@@ -4518,7 +4545,7 @@
       b.querySelector('.mm-sel').textContent = rotTema();
     }, '<span class="mm-sel">' + rotTema() + '</span>');
     // Perfil e Aniversariantes já estão na barra de baixo
-    menuTabs.filter(function(t){ const l = (t.label || '').toLowerCase(); return l.indexOf('perfil') === -1 && l.indexOf('anivers') === -1; })
+    menuTabs.filter(function(t){ const l = (t.label || '').toLowerCase(); return l.indexOf('perfil') === -1 && l.indexOf('anivers') === -1 && l.indexOf('sugest') === -1; })
       .forEach(function(t){ item(escolherIcone(t.label), t.label, function(){ fecharMenuMobile(); selectTab(t.id); }); });
     item('shieldcheck', 'Sistemas liberados', function(){ fecharMenuMobile(); setTimeout(function(){ els.sistemasStatusBtn.click(); }, 0); });
     if (currentProfile && currentProfile.tipoColaborador === 'clt') item('download', 'Meus holerites', function(){ fecharMenuMobile(); abrirMeusHolerites(); });
@@ -4631,9 +4658,10 @@
       slugToTabId[slug] = t.id;
     });
 
+    let destinoInicial = '';
     if (!activeTabId && location.hash.length > 1) {
-      const hashTabId = slugToTabId[decodeURIComponent(location.hash.slice(1))];
-      if (hashTabId) activeTabId = hashTabId;
+      const r = lerHashAba();
+      if (r.tabId) { activeTabId = r.tabId; destinoInicial = r.destino; }
     }
 
     if (allowed.length === 0 && currentProfile.role !== 'admin') {
@@ -4699,7 +4727,7 @@
 
     // Mantém seleção atual (ou seleciona a primeira aba disponível / início no celular)
     if (activeTabId && (activeTabId === '__admin__' || activeTabId === '__home__' || allowed.some(function(t){return t.id===activeTabId;}))) {
-      selectTab(activeTabId, { replaceHistory: true });
+      selectTab(activeTabId, { replaceHistory: true, destino: destinoInicial || (window.__fbNovoDestinoAtual ? window.__fbNovoDestinoAtual(activeTabId) : ''), origem: 'inicio' });
     } else if (isMobileViewport() || document.querySelector('link[href*="layout-visao-geral"]')) {   // versão nova: abre na Visão geral
       selectTab('__home__', { replaceHistory: true });
     } else if (allowed.length > 0) {
@@ -4961,7 +4989,7 @@
     activeTabId = tabId;
     const slug = tabSlugs[tabId];
     if (slug) {
-      const newHash = '#' + slug;
+      const newHash = '#' + slug + (opts.destino ? '/' + opts.destino : '');
       if (location.hash !== newHash) {
         if (opts.replaceHistory) history.replaceState(null, '', newHash);
         else history.pushState(null, '', newHash);
@@ -5002,9 +5030,9 @@
     if (tabId === '__admin__' || tabId === '__home__') return;
 
     const t = tAtual;
-    if (!t) return;
-    ensureIframe(t);
-    iframes[tabId].classList.add('active');
+    if (t) { ensureIframe(t); iframes[tabId].classList.add('active'); }
+    // versão nova: a barra lateral nova abre o destino interno (sub-aba) e marca o item certo
+    if (window.__fbNovoAposAbrir) { try { window.__fbNovoAposAbrir(tabId, opts.destino || '', opts.origem || ''); } catch(e) { console.error(e); } }
   }
 
   // Rodinha do mouse sobre um bloco que só rola para o lado (Kanban, faixas de sub-abas,
@@ -6173,7 +6201,7 @@
   });
 })();
 </script>
-<script src="assets/layout-visao-geral.js?v=6"></script>
-<script src="assets/layout-subabas.js?v=6"></script>
+<script src="assets/layout-visao-geral.js?v=8"></script>
+<script src="assets/layout-menu.js?v=5"></script>
 </body>
 </html>

@@ -15,12 +15,6 @@
     tarefa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>',
     megafone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l6.5 4V5.5l-6.5 4H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>'
   };
-  var GRUPOS = [
-    { id: 'escritorio', rot: 'Escritório', chaves: ['chat', 'organograma', 'sugest', 'anota', 'treinament', 'pop', 'noticia', 'sistema', 'comunicad', 'perfil', 'aniversar'] },
-    { id: 'juridico', rot: 'Jurídico', chaves: ['formatador', 'petic', 'document', 'contrato', 'e-mail', 'email', 'assistente', 'matriz', 'agenda', 'prazo', 'djen', 'public', 'calcul'] },
-    { id: 'condominios', rot: 'Condomínios', chaves: ['condom', 'sessoes', 'julgament'] },
-    { id: 'gestao', rot: 'Gestão', chaves: ['gestao', 'numero', 'remunera', 'cobranc', 'financ', 'patrimo', 'segur', 'pagament', 'administra'] }
-  ];
   var MEDIA = window.matchMedia('(min-width: 861px)');
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -50,6 +44,7 @@
     document.body.appendChild(sel);
   }
   function atualizarOnde() {
+    if (window.__fbMenuOnde) return window.__fbMenuOnde();   // a barra lateral nova mostra "Ferramenta › destino"
     var onde = $('vg-onde'); if (!onde) return;
     var home = $('mobile-home');
     var ativo = document.querySelector('#tabstrip-list .tab-btn.active span');
@@ -57,47 +52,7 @@
     var vh = document.querySelector('.vg-home'); if (vh) vh.classList.toggle('fora', !(home && home.classList.contains('active')));
   }
 
-  // ---------------------------------------------------------------- menu lateral em seções
-  var agrupando = false;
-  function grupoDe(rotulo) {
-    var n = norm(rotulo);
-    for (var i = 0; i < GRUPOS.length; i++) if (GRUPOS[i].chaves.some(function (k) { return n.indexOf(k) >= 0; })) return GRUPOS[i];
-    return { id: 'outras', rot: 'Outras ferramentas' };
-  }
-  function agrupar() {
-    var lista = $('tabstrip-list'); if (!lista || agrupando) return;
-    var botoes = Array.prototype.filter.call(lista.querySelectorAll('.tab-btn'), function (b) { return !b.closest('.subaba-gaveta'); });
-    if (!botoes.length || lista.querySelector(':scope > .tab-btn') === null) return;   // já agrupado
-    agrupando = true;
-    var abertos = lerLS('vg-grupos-abertos', null);
-    var ordem = GRUPOS.concat([{ id: 'outras', rot: 'Outras ferramentas' }]);
-    var blocos = {};
-    ordem.forEach(function (g) {
-      var d = document.createElement('div'); d.className = 'vg-grupo'; d.dataset.grupo = g.id;
-      d.innerHTML = '<button type="button" class="vg-grupo-cab"><span>' + esc(g.rot) + '</span>' + IC.seta + '</button><div class="vg-grupo-itens"></div>';
-      d.querySelector('.vg-grupo-cab').addEventListener('click', function () {
-        d.classList.toggle('aberto');
-        var est = {}; lista.querySelectorAll('.vg-grupo').forEach(function (x) { est[x.dataset.grupo] = x.classList.contains('aberto'); });
-        gravarLS('vg-grupos-abertos', est);
-      });
-      blocos[g.id] = d;
-    });
-    botoes.forEach(function (b) {
-      var rot = (b.querySelector('span') || b).textContent;
-      var g = grupoDe(rot), alvo = blocos[g.id].querySelector('.vg-grupo-itens');
-      var prox = b.nextElementSibling;
-      alvo.appendChild(b);
-      if (prox && prox.classList && prox.classList.contains('subaba-gaveta')) alvo.appendChild(prox);
-    });
-    ordem.forEach(function (g, i) {
-      var d = blocos[g.id];
-      if (!d.querySelector('.tab-btn')) return;
-      var temAtivo = !!d.querySelector('.tab-btn.active');
-      if (abertos ? (abertos[g.id] || temAtivo) : (i === 0 || temAtivo)) d.classList.add('aberto');
-      lista.appendChild(d);
-    });
-    agrupando = false;
-  }
+  // ---------------------------------------------------------------- menu lateral (Visão geral + rodapé; categorias em layout-menu.js)
   function montarMenu() {
     var ts = $('tabstrip'), lista = $('tabstrip-list');
     if (!ts || !lista) return;
@@ -106,19 +61,8 @@
       h.addEventListener('click', function () { var b = $('mbn-home'); if (b) b.click(); });
       ts.insertBefore(h, lista);
     }
-    new MutationObserver(function () { if (!agrupando) { agrupar(); atualizarOnde(); } }).observe(lista, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-    agrupar();
-    // busca: abre todas as seções enquanto houver texto
-    ['global-search', 'drawer-global-search'].forEach(function (id) {
-      var inp = $(id); if (!inp) return;
-      inp.addEventListener('input', function () {
-        var q = inp.value.trim();
-        lista.querySelectorAll('.vg-grupo').forEach(function (g) {
-          if (q) g.classList.add('aberto');
-          g.style.display = q && !g.querySelector('.tab-btn:not(.search-hidden)') ? 'none' : '';
-        });
-      });
-    });
+    // as categorias, a ordem e os favoritos da barra lateral ficam em assets/layout-menu.js (configuração explícita)
+    new MutationObserver(function () { atualizarOnde(); }).observe(lista, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     // rodapé: quadro de situação + mini indicadores
     var rodape = $('theme-toggle-row');
     if (rodape && !rodape.querySelector('.vg-situacao')) {
@@ -326,7 +270,7 @@
         if (perfil.role === 'cliente' || perfil.role === 'conselheiro' || perfil.role === 'sindico') return;   // clientes: tela de sempre
         carregar(db, user, perfil);
         if (D.aplicar) D.aplicar();
-      });
+      }).catch(function (e) { console.warn('visão geral: cadastro indisponível agora', e && e.message); });
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();

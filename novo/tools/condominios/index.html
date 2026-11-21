@@ -351,11 +351,11 @@ if (fbReady){
         dadosCondoStatus = 'sem-acesso';
         db.collection('condoAprovadores').where('aprovadorUid', '==', user.uid).limit(1).get()
           .then(function(s){ souAprovador = !s.empty; }).catch(function(){ souAprovador = false; })
-          .then(function(){ if (!secaoPermitida(state.section)) state.section = 'inicio'; render(); onAuthResolved(); });
+          .then(function(){ fbPermsProntas = true; if (!secaoPermitida(state.section)) state.section = 'inicio'; render(); onAuthResolved(); });
         return;
       }
       carregarDadosPrivadosCondo();
-      calcularPodeSessoes().then(function(pode){ podeSessoesEquipe = pode; if (state.section === 'inicio') render(); });
+      calcularPodeSessoes().then(function(pode){ podeSessoesEquipe = pode; fbPermsProntas = true; if (state.section === 'inicio' || state.grupo) render(); });
       if (!secaoPermitida(state.section)) state.section = 'inicio';
       if (state.section === 'inicio') render();
       onAuthResolved();
@@ -575,9 +575,79 @@ function setGerarView(v){
   else loadMinhasNotificacoes();
 }
 
+/* ---------- versão nova: grupos abertos pela barra lateral do portal ----------
+   Cada item da barra lateral (Consultar Clientes, Gerar Notificação, Relatórios Condominiais, Procedimentos do setor,
+   Sessões de Julgamento) abre esta página só com as abas do seu grupo. As permissões são as mesmas de sempre
+   (secaoPermitida / subabaLiberada). */
+var fbPermsProntas = false;
+var FB_GRUPOS = {
+  consultar:     [['consultar', 'condominios:grid', 'Clientes'], ['consultar.calculadoras', 'condominios:calc', 'Calculadoras']],
+  notificacao:   [['notificacao', 'gerar-notificacao:compor', 'Compor notificação'], ['notificacao.prontas', 'gerar-notificacao:aprovacao', 'Notificações prontas'],
+                  ['notificacao.padrao', 'notificacoes', 'Padrão de Notificações'], ['notificacao.nomenclatura', 'nomenclatura', 'Nomenclatura do setor']],
+  relatorios:    [['relatorios', 'relatorios-condominiais', 'Relatórios Condominiais']],
+  procedimentos: [['procedimentos', 'comece', 'Comece por Aqui'], ['procedimentos.pops', 'pops', 'POPs do setor'], ['procedimentos.astrea', 'astrea', 'ASTREA'],
+                  ['procedimentos.brcondos', 'brcondos', 'BRCondos'], ['procedimentos.almahcondos', 'almahcondos', 'AlmahCondos'], ['procedimentos.fluxos', 'fluxos', 'Fluxos']]
+};
+function fbItem(id){ var g = FB_GRUPOS[id.split('.')[0]]; return g ? g.filter(function(x){ return x[0] === id; })[0] : null; }
+function fbSecaoLiberada(chave){
+  var s = chave.split(':')[0];
+  if (ehContaCliente()) return s === 'gerar-notificacao' && chave.split(':')[1] === 'aprovacao' && souAprovador;
+  return subabaLiberada(s);
+}
+function fbIr(chave){
+  var p = chave.split(':'), s = p[0], v = p[1];
+  if (s === 'condominios') { go('condominios'); if (v === 'calc') setCondoView('calc'); }
+  else if (s === 'gerar-notificacao') { if (state.section !== 'gerar-notificacao') go('gerar-notificacao'); setGerarView(v || 'compor'); }
+  else go(s);
+}
+function fbChaveAtual(){
+  var s = state.section;
+  if (s === 'condominios') return 'condominios:' + (state.condoView === 'calc' ? 'calc' : 'grid');
+  if (s === 'gerar-notificacao') return 'gerar-notificacao:' + (state.gerarView === 'aprovacao' ? 'aprovacao' : 'compor');
+  return s;
+}
+window.fbNav = {
+  disponivel: function(id){
+    if (!currentProfile || !authChecked) return null;
+    // Sessões depende da liberação que chega depois (calcularPodeSessoes); os demais itens já podem ser respondidos
+    if (id.split('.')[0] === 'sessoes') return !fbPermsProntas ? null : (ehContaCliente() ? true : podeSessoesEquipe);
+    if (ehContaCliente() && !fbPermsProntas) return null;
+    var g = FB_GRUPOS[id.split('.')[0]]; if (!g) return false;
+    if (id.indexOf('.') < 0) return g.some(function(x){ return fbSecaoLiberada(x[1]); });
+    var it = fbItem(id); return !!it && fbSecaoLiberada(it[1]);
+  },
+  abrir: function(id){
+    if (this.disponivel(id) !== true) return false;
+    var grupo = id.split('.')[0];
+    // endereço completo: chamado pela página principal, um endereço relativo seria resolvido a partir dela
+    if (grupo === 'sessoes') { location.href = new URL('../sessoes-julgamento/index.html', location.href).href + location.search; return true; }
+    state.grupo = grupo;
+    var it = fbItem(id);
+    if (!it || !fbSecaoLiberada(it[1])) it = FB_GRUPOS[grupo].filter(function(x){ return fbSecaoLiberada(x[1]); })[0];
+    fbIr(it[1]);
+    return true;
+  },
+  atual: function(){
+    if (!state.grupo) return '';
+    var c = fbChaveAtual(), it = FB_GRUPOS[state.grupo].filter(function(x){ return x[1] === c; })[0];
+    return it ? it[0] : state.grupo;
+  }
+};
+
 /* ---------- render ---------- */
 function renderNav(){
   var nav = document.getElementById('tabs-nav');
+  if (state.grupo && FB_GRUPOS[state.grupo]) {
+    // aberto pela barra lateral da versão nova: só as abas do grupo (sem "← Início")
+    var atual = fbChaveAtual();
+    nav.innerHTML = FB_GRUPOS[state.grupo].filter(function(x){ return fbSecaoLiberada(x[1]); }).map(function(x){
+      return '<button type="button" class="' + (x[1] === atual ? 'active' : '') + '" data-fb-item="' + x[0] + '" data-fb-chave="' + x[1] + '">' + x[2] + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+      b.addEventListener('click', function(){ fbIr(b.getAttribute('data-fb-chave')); });
+    });
+    return;
+  }
   // "← Início" volta para os cards (como em Gestão e Treinamentos); o Início não aparece como aba
   nav.innerHTML = '<button type="button" class="voltar-inicio" data-s="inicio">← Início</button>'
     + SECTIONS.filter(function(s){ return s.id !== 'inicio' && !ehContaCliente() && subabaLiberada(s.id); }).map(function(s){
@@ -839,7 +909,9 @@ function viewPops(){
       }).join('') + '</div>';
 }
 
+// aberto pela barra lateral da versão nova: as abas do grupo já estão no topo; o seletor interno repetiria as mesmas opções
 function gerarSubnav(active){
+  if (state.grupo) return '';
   return '<div class="condo-subnav">'
     + '<button type="button" class="'+(active==='compor'?'active':'')+'" data-gerarview="compor">Gerar Notificação</button>'
     + '<button type="button" class="'+(active==='aprovacao'?'active':'')+'" data-gerarview="aprovacao">Notificações Prontas</button>'
@@ -847,6 +919,7 @@ function gerarSubnav(active){
 }
 
 function condoSubnav(active){
+  if (state.grupo) return '';
   return '<div class="condo-subnav">'
     + '<button type="button" class="'+(active==='grid'?'active':'')+'" data-condoview="grid">Clientes</button>'
     + '<button type="button" class="'+(active==='calc'?'active':'')+'" data-condoview="calc">Calculadoras</button>'
