@@ -1106,6 +1106,7 @@
   /* ---------- CELULAR ---------- */
   .mobile-menu-btn{display:none;}
   #tabstrip-backdrop{display:none;}
+  #mobile-mais{display:none;}
   @media (max-width: 860px){
     #login-screen .brand-logo{height:56px;}
     #login-screen .logo-shine-copy{height:56px;}
@@ -1123,7 +1124,27 @@
     #topbar .logo-shine-copy{display:block;height:38px;}
     #topbar .search-box{display:none;}
     #topbar .user-info{display:none;}
-    #topbar .user-menu-wrap{display:none;}
+    /* v271: no celular o topo mostra o megafone (comunicados) e o sino (menções), ao lado do botão redondo;
+       o resto da engrenagem fica em "Mais opções", no menu */
+    #topbar .user-menu-wrap{display:flex;position:absolute;right:52px;top:calc(14px + env(safe-area-inset-top));gap:4px;align-items:center;z-index:3;}
+    #topbar .user-menu-wrap > .user-info, #topbar #sistemas-status-btn, #topbar #user-menu-btn{display:none !important;}
+    #topbar #comunicados-btn, #topbar #mencoes-btn{width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+    #topbar #mencoes-btn[style*="display: none"], #topbar #mencoes-btn[style*="display:none"]{display:none !important;}
+    #topbar .user-menu-dropdown{position:fixed;top:calc(64px + env(safe-area-inset-top));left:10px;right:10px;min-width:0;width:auto;max-height:72vh;overflow-y:auto;}
+    #topbar .brand-logo, #topbar .logo-shine-copy{height:30px !important;}
+    @media (max-width: 370px){ #topbar .brand-logo, #topbar .logo-shine-copy{height:25px !important;} }
+    #mobile-mais{display:block;margin:0 0 8px;padding:0 0 6px;border-bottom:1px solid var(--line);}
+    #mobile-mais button.mm-tit{min-height:38px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;justify-content:space-between;}
+    #mobile-mais .mm-seta{transition:transform .15s;}
+    #mobile-mais.aberto .mm-seta{transform:rotate(90deg);}
+    #mobile-mais .mm-itens{display:none;}
+    #mobile-mais.aberto .mm-itens{display:block;}
+    #mobile-mais .mm-ic{width:18px;height:18px;flex:0 0 18px;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;}
+    #mobile-mais .mm-ic > *{max-width:18px;max-height:18px;}
+    #mobile-mais button{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--paper);font:inherit;font-size:.86rem;text-align:left;cursor:pointer;}
+    #mobile-mais button:active{background:var(--panel-2);}
+    #mobile-mais button svg{width:17px;height:17px;flex:0 0 auto;opacity:.85;}
+    #mobile-mais .mm-sel{margin-left:auto;font-size:.75rem;color:var(--muted);}
     #topbar .spacer{display:none;}
     #topbar .logout-wrap{margin-left:4px;}
     #topbar .version-tag{display:none;}
@@ -1424,7 +1445,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v270</span>
+      <span class="version-tag">v271</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1439,6 +1460,7 @@
       </button>
       <div id="tabstrip-list"></div>
       <div id="theme-toggle-row">
+        <div id="mobile-mais" aria-label="Mais opções"></div>
         <button type="button" class="btn secondary small" id="mobile-logout-btn">Sair</button>
         <div class="company-badge-wrap">
           <button type="button" class="globe-pill" id="company-badge-btn" title="">
@@ -4462,6 +4484,42 @@
       auth.signOut();
     });
     els.userMenuDropdown.appendChild(sairBtn);
+    renderMobileMais(menuTabs);
+  }
+
+  // v271: no celular a engrenagem não aparece; estes são os mesmos itens dela, no menu (☰)
+  function renderMobileMais(menuTabs){
+    const box = document.getElementById('mobile-mais');
+    if (!box) return;
+    // recolhido por padrão: um toque em "Mais opções" abre (assim a lista de abas não fica espremida)
+    box.innerHTML = '<button type="button" class="mm-tit" aria-expanded="false"><span>Mais opções</span><span class="mm-seta">▸</span></button><div class="mm-itens"></div>';
+    const lista = box.querySelector('.mm-itens');
+    box.querySelector('.mm-tit').addEventListener('click', function(e){
+      e.stopPropagation();
+      const aberto = box.classList.toggle('aberto');
+      this.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    });
+    const LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+    function item(icone, texto, acao, extra){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = '<span class="mm-ic">' + (icone === 'lua' ? LUA : iconeSvg(icone)) + '</span><span>' + escapeHtml(texto) + '</span>' + (extra || '');
+      b.addEventListener('click', function(e){ e.stopPropagation(); acao(b); });
+      lista.appendChild(b);
+      return b;
+    }
+    const rotTema = function(){ return currentTheme === 'light' ? '☀️ claro' : '🌙 escuro'; };
+    item('lua', 'Tema', function(b){
+      applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+      b.querySelector('.mm-sel').textContent = rotTema();
+    }, '<span class="mm-sel">' + rotTema() + '</span>');
+    // Perfil e Aniversariantes já estão na barra de baixo
+    menuTabs.filter(function(t){ const l = (t.label || '').toLowerCase(); return l.indexOf('perfil') === -1 && l.indexOf('anivers') === -1; })
+      .forEach(function(t){ item(escolherIcone(t.label), t.label, function(){ fecharMenuMobile(); selectTab(t.id); }); });
+    item('shieldcheck', 'Sistemas liberados', function(){ fecharMenuMobile(); setTimeout(function(){ els.sistemasStatusBtn.click(); }, 0); });
+    if (currentProfile && currentProfile.tipoColaborador === 'clt') item('download', 'Meus holerites', function(){ fecharMenuMobile(); abrirMeusHolerites(); });
+    if (!ehContaCliente(currentProfile.role)) item('download', 'Logomarcas e papéis de parede', function(){ fecharMenuMobile(); abrirDownloadLogo(); });
+    if (currentProfile && currentProfile.role === 'admin') item('grid', 'Versão nova (teste)', function(){ location.href = '/novo/'; });
   }
 
   function slugify(s){
