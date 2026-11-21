@@ -121,9 +121,50 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
 .lido{display:inline-flex;align-items:center;gap:6px;font-size:.78rem}
 @media (max-width:640px){main{padding:16px 14px 60px}
 .linha{flex-wrap:wrap}}
+/* regras do portal atual (posteriores a 07/11/2026), trazidas para a versão nova */
+/* lista de sessões (16/11/2026): filtro por situação, grupos e um card por sessão com a data em destaque */
+  .filtros-sessao{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;}
+.filtros-sessao button{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:22px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.86rem;cursor:pointer;}
+.filtros-sessao button .n{font-size:.74rem;font-weight:700;background:var(--panel-3);border-radius:10px;padding:1px 8px;}
+.filtros-sessao button.on{background:var(--red);border-color:var(--red);color:#fff;}
+.filtros-sessao button.on .n{background:rgba(255,255,255,.22);}
+.grupo-sessao{margin:4px 0 10px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px;}
+.grupo-sessao::after{content:"";flex:1;height:1px;background:var(--line-strong);}
+.grid-sessoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:24px;}
+.card-sessao{display:flex;gap:14px;align-items:stretch;padding:14px;}
+.card-sessao .dia{flex:0 0 64px;border-radius:12px;background:var(--panel-3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px 4px;line-height:1.15;}
+.card-sessao .dia b{font-size:1.6rem;font-family:var(--font-display);}
+.card-sessao .dia span{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.card-sessao .dia.agendada{background:var(--ds-info-bg);}
+.card-sessao .dia.agendada b{color:var(--blue);}
+.card-sessao .dia.sem{background:var(--ds-warn-bg);}
+.card-sessao .dia.sem b{color:var(--amber);}
+.card-sessao .dia.feita{background:var(--ds-hover);}
+.card-sessao .dia.feita b{color:var(--gold);}
+.card-sessao .corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+.card-sessao h3{margin:2px 0 0;font-size:.98rem;line-height:1.3;}
+.card-sessao .tags{display:flex;gap:6px;flex-wrap:wrap;}
+.card-sessao .prog{margin-top:4px;}
+.card-sessao .abrir{margin-top:6px;font-size:.78rem;color:var(--gold);font-weight:600;}
+/* um card por ocorrência (16/11/2026) */
+  .ver-por{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin:0 0 14px;}
+.ver-por button{padding:8px 16px;border:none;background:var(--panel-2);color:var(--muted);font:inherit;font-size:.84rem;font-weight:600;cursor:pointer;}
+.ver-por button.on{background:var(--ds-pri);color:var(--ds-pri-tx);}
+.busca-oc{margin:0 0 14px;max-width:420px;}
+.busca-oc input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.9rem;}
+.grid-oc{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
+.card-oc{display:flex;flex-direction:column;gap:5px;padding:14px 15px;}
+.card-oc .topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-oc .num{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:var(--gold);letter-spacing:.02em;}
+.card-oc h3{margin:0;font-size:.95rem;line-height:1.3;}
+.card-oc .sess{font-size:.76rem;color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:auto;}
+.card-oc .tags{display:flex;gap:6px;flex-wrap:wrap;}
+.seletor-condo{display:flex;align-items:center;gap:10px;margin:0 0 16px;flex-wrap:wrap;}
+.seletor-condo label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.seletor-condo select{min-width:280px;max-width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font:inherit;font-size:.92rem;}
 </style>
-<link rel="stylesheet" href="../../assets/ds-teste.css?v=7">
-<script src="../../assets/ds-teste.js?v=7" defer></script>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=8">
+<script src="../../assets/ds-teste.js?v=8" defer></script>
 </head>
 <body>
 <header>
@@ -157,6 +198,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
   }
   firebase.initializeApp(firebaseConfig);
   var auth = firebase.auth(), db = firebase.firestore(), storage = firebase.storage();
+  try { storage.setMaxUploadRetryTime(120000); } catch (e) {}   // envio que falha: no máx. 2 min de novas tentativas internas (a importação ainda tenta 3x)
   var FV = firebase.firestore.FieldValue, TS = firebase.firestore.Timestamp;
   var DIAS_PROVAS = 90;
   // aberta pelo cartão do hub de Condomínios (equipe, síndico e conselheiros): botão de volta ao hub
@@ -213,11 +255,18 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     return Object.values(sessoes).filter(function(s){ return s.condominioSlug === slug; })
       .sort(function(a, b){ return String(b.data || '9999').localeCompare(String(a.data || '9999')); });
   }
+  // cada ocorrência tem a própria data de julgamento e o próprio "realizada" (16/11/2026); sem esses campos, vale o da
+  // sessão em que ela foi importada
+  function dataDaOcorrencia(r){ return ('dataJulgamento' in r) ? (r.dataJulgamento || '') : ((sessoes[r.sessaoId] || {}).data || ''); }
+  function realizadaOc(r){
+    if (r.decisao && r.decisao.resultado) return true;
+    if (r.realizada === true || r.realizada === false) return r.realizada;
+    return !!(sessoes[r.sessaoId] || {}).realizada;
+  }
   function statusRecurso(r){
     if (r.decisao && r.decisao.resultado) return { rot: RESULTADOS[r.decisao.resultado].rot, tag: RESULTADOS[r.decisao.resultado].tag };
-    var s = sessoes[r.sessaoId];
-    if (s && s.realizada) return { rot:'Julgado — decisão a lançar', tag:'lanc' };
-    return { rot:'Aguardando a sessão', tag:'agu' };
+    if (realizadaOc(r)) return { rot:'Julgado — decisão a lançar', tag:'lanc' };
+    return { rot:'Aguardando o julgamento', tag:'agu' };
   }
   function statusSessao(s){
     if (s.realizada) return { rot:'Realizada', tag:'real' };
@@ -265,7 +314,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
         juntarCondosDosDados(); limparProvasVencidas(); mostrar();
       }, function(e){ falhou(e); });
       db.collection('leiturasJulgamento').onSnapshot(function(snap){
-        leituras = {}; snap.forEach(function(d){ leituras[d.id] = d.data(); }); if (state.view === 'sessao') mostrar();
+        leituras = {}; snap.forEach(function(d){ leituras[d.id] = d.data(); }); if (state.view === 'sessao' || state.view === 'recurso' || state.view === 'lista') mostrar();
       }, function(){});
     });
   }
@@ -323,6 +372,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     if (!me) return;
     document.getElementById('gate').style.display = 'none';
     app.style.display = 'block';
+    if (state.view === 'importando' && !forcar) return;   // não apaga o registro da importação enquanto os dados chegam
     if (!forcar) {
       var foco = document.activeElement && document.activeElement.id;
       if (foco && /^(ed-|dec-|nota-)/.test(foco)) return;   // não redesenha enquanto alguém digita
@@ -343,6 +393,15 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
 
   function chipsCondos(){
     if (condos.length <= 1 && !equipe) return '';
+    // muitos condomínios: uma lista de escolha em vez de uma fileira de botões
+    if (condos.length > 4) {
+      return '<div class="seletor-condo"><label for="sel-condo">Condomínio</label><select id="sel-condo">' + condos.map(function(c){
+        var porOc = (state.verPor || 'ocorrencias') === 'ocorrencias';
+        var n = porOc ? Object.values(recursos).filter(function(r){ return r.condominioSlug === c.slug; }).length : sessoesDoCondo(c.slug).length;
+        var rot = porOc ? (n === 1 ? ' ocorrência)' : ' ocorrências)') : (n === 1 ? ' sessão)' : ' sessões)');
+        return '<option value="' + esc(c.slug) + '"' + (c.slug === state.condo ? ' selected' : '') + '>' + esc(c.nome) + (n ? ' (' + n + rot : '') + '</option>';
+      }).join('') + '</select></div>';
+    }
     return '<div class="chips">' + condos.map(function(c){
       return '<button type="button" class="chip' + (c.slug === state.condo ? ' on' : '') + '" data-condo="' + esc(c.slug) + '">' + esc(c.nome) + '</button>';
     }).join('') + '</div>';
@@ -353,33 +412,112 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     if (!equipe) {
       var c = condos.find(function(x){ return x.slug === state.condo; }) || condos[0];
       h += '<div class="aviso">Olá, ' + esc(me.nome.split(' ')[0]) + '! Aqui estão os recursos que o conselho do <b>' + esc(c.nome) + '</b> vai julgar. '
-        + 'Abra cada um e siga os passos: <b>resumo → provas → alegações do morador → fundamentos</b>. Ao terminar, marque "Analisei este recurso". '
+        + 'Abra cada um e siga os passos: <b>resumo → provas → alegações do morador</b>. Ao terminar, marque "Analisei este recurso". '
         + 'O material é de uso restrito à sessão de julgamento.</div>';
     }
     h += chipsCondos();
-    h += '<div class="barra"><h2>Sessões' + (state.condo ? ' — ' + esc(nomeCondo(state.condo)) : '') + '</h2><span class="espaco"></span>'
+    h += '<div class="barra"><h2>Ocorrências' + (state.condo ? ' — ' + esc(nomeCondo(state.condo)) : '') + '</h2><span class="espaco"></span>'
       + '<button type="button" class="btn sec peq" data-ir="ementario">📚 Ementário</button>'
       + (admin ? '<button type="button" class="btn sec peq" data-ir="conselheiros">👥 Conselheiros</button>' : '')
-      + (equipe && state.condo ? '<button type="button" class="btn peq" id="nova-sessao">+ Nova sessão</button>' : '')
+      + (equipe && state.condo ? '<button type="button" class="btn peq" id="nova-ocorrencia">+ Nova ocorrência</button>' : '')
       + (admin ? '<label class="btn sec peq" style="cursor:pointer;">⬆ Importar pacote<input type="file" id="importar" webkitdirectory multiple style="display:none;"></label>' : '')
       + '</div>';
     if (equipe && !condos.length) return h + '<div class="vazio">A lista de condomínios ainda não foi carregada (Administração › dados privados).</div>';
+    if ((state.verPor || 'ocorrencias') === 'ocorrencias') return h + listaOcorrencias();
     var lista = state.condo ? sessoesDoCondo(state.condo) : [];
     if (!lista.length) return h + '<div class="vazio">' + (equipe ? 'Nenhuma sessão cadastrada para este condomínio. Clique em "+ Nova sessão".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
-    h += '<div class="grid">' + lista.map(function(s){
-      var rs = recursosDaSessao(s.id), st = statusSessao(s);
-      var julgados = rs.filter(function(r){ return r.decisao && r.decisao.resultado; }).length;
-      var lidos = rs.filter(function(r){ return leituras[me.uid + '_' + r.id]; }).length;
-      var pct = rs.length ? Math.round(100 * (equipe ? julgados : lidos) / rs.length) : 0;
-      return '<div class="card click" data-sessao="' + esc(s.id) + '">'
-        + '<span class="tag ' + st.tag + '">' + esc(equipe ? st.rot : (s.realizada ? 'Realizada' : 'Próxima sessão')) + '</span>'
-        + '<h3 style="margin-top:8px;">' + esc(s.titulo || 'Sessão de julgamento') + '</h3>'
-        + '<div class="muted small">📅 ' + esc(dataHoraBR(s.data)) + (s.local ? ' · ' + esc(s.local) : '') + '</div>'
-        + '<div class="small" style="margin-top:8px;">' + rs.length + (rs.length === 1 ? ' recurso' : ' recursos') + ' · '
-        + (equipe ? julgados + ' com decisão lançada' : lidos + ' analisado' + (lidos === 1 ? '' : 's') + ' por você') + '</div>'
-        + '<div class="prog"><div style="width:' + pct + '%"></div></div></div>';
+    var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
+    var porGrupo = { agendadas:[], aguardando:[], realizadas:[] };
+    lista.forEach(function(s){ porGrupo[situacaoSessao(s)].push(s); });
+    porGrupo.agendadas.sort(function(a, b){ return String(a.data).localeCompare(String(b.data)); });   // a mais próxima primeiro
+    porGrupo.realizadas.sort(function(a, b){ return String(b.data || '').localeCompare(String(a.data || '')) || String(b.titulo || '').localeCompare(String(a.titulo || ''), 'pt-BR'); });
+    var filtro = state.filtroSessao || 'todas';
+    h += '<div class="filtros-sessao">' + [{ id:'todas', rot:'Todas', n:lista.length }].concat(GRUPOS.map(function(g){ return { id:g.id, rot:g.rot, n:porGrupo[g.id].length }; })).map(function(f){
+      return '<button type="button" data-filtro-sessao="' + f.id + '" class="' + (filtro === f.id ? 'on' : '') + '">' + esc(f.rot) + ' <span class="n">' + f.n + '</span></button>';
     }).join('') + '</div>';
+    var algum = false;
+    GRUPOS.forEach(function(g){
+      if (filtro !== 'todas' && filtro !== g.id) return;
+      var gs = porGrupo[g.id];
+      if (!gs.length) return;
+      algum = true;
+      if (filtro === 'todas') h += '<div class="grupo-sessao">' + esc(g.rot) + ' · ' + gs.length + '</div>';
+      h += '<div class="grid-sessoes">' + gs.map(cardSessao).join('') + '</div>';
+    });
+    if (!algum) h += '<div class="vazio">' + ({ agendadas:'Nenhuma sessão agendada.', aguardando:'Nenhuma sessão aguardando agendamento.', realizadas:'Nenhuma sessão realizada ainda.' }[filtro] || 'Nenhuma sessão.') + '</div>';
     return h;
+  }
+  // um card por ocorrência (recurso), com o número dela; a situação vem da sessão em que ela está
+  function situacaoRecurso(r){ return realizadaOc(r) ? 'realizadas' : (dataDaOcorrencia(r) ? 'agendadas' : 'aguardando'); }
+  function listaOcorrencias(){
+    var h = '';
+    var todos = Object.values(recursos).filter(function(r){ return r.condominioSlug === state.condo; });
+    if (!todos.length) return '<div class="vazio">' + (equipe ? 'Nenhuma ocorrência cadastrada para este condomínio. Use "+ Nova ocorrência" ou "⬆ Importar pacote".' : 'Nenhuma sessão de julgamento liberada para o conselho no momento.') + '</div>';
+    var GRUPOS = [{ id:'agendadas', rot:'Agendadas' }, { id:'aguardando', rot:'Aguardando agendamento' }, { id:'realizadas', rot:'Realizadas' }];
+    var busca = String(state.buscaOc || '').trim().toLowerCase();
+    var bate = function(r){ return !busca || [r.ocorrencia, r.titulo, r.classificacao, r.unidade, r.morador].join(' ').toLowerCase().indexOf(busca) >= 0; };
+    var porGrupo = { agendadas:[], aguardando:[], realizadas:[] };
+    todos.forEach(function(r){ porGrupo[situacaoRecurso(r)].push(r); });
+    var num = function(a, b){ return String(a.ocorrencia).localeCompare(String(b.ocorrencia), 'pt-BR', { numeric:true }); };
+    var dataSess = function(r){ return String(dataDaOcorrencia(r)); };
+    porGrupo.agendadas.sort(function(a, b){ return dataSess(a).localeCompare(dataSess(b)) || num(a, b); });
+    porGrupo.aguardando.sort(num);
+    porGrupo.realizadas.sort(num);
+    var filtro = state.filtroSessao || 'todas';
+    h += '<div class="filtros-sessao">' + [{ id:'todas', rot:'Todas', n:todos.length }].concat(GRUPOS.map(function(g){ return { id:g.id, rot:g.rot, n:porGrupo[g.id].length }; })).map(function(f){
+      return '<button type="button" data-filtro-sessao="' + f.id + '" class="' + (filtro === f.id ? 'on' : '') + '">' + esc(f.rot) + ' <span class="n">' + f.n + '</span></button>';
+    }).join('') + '</div>';
+    h += '<div class="busca-oc"><input id="ed-busca-oc" placeholder="Procurar: número da ocorrência, assunto, unidade…" value="' + esc(state.buscaOc || '') + '" autocomplete="off"></div>';
+    var algum = false;
+    GRUPOS.forEach(function(g){
+      if (filtro !== 'todas' && filtro !== g.id) return;
+      var gs = porGrupo[g.id].filter(bate);
+      if (!gs.length) return;
+      algum = true;
+      if (filtro === 'todas') h += '<div class="grupo-sessao">' + esc(g.rot) + ' · ' + gs.length + '</div>';
+      h += '<div class="grid-oc">' + gs.map(cardOcorrencia).join('') + '</div>';
+    });
+    if (!algum) h += '<div class="vazio">' + (busca ? 'Nenhuma ocorrência com "' + esc(state.buscaOc) + '".' : ({ agendadas:'Nenhuma ocorrência em sessão agendada.', aguardando:'Nenhuma ocorrência aguardando agendamento.', realizadas:'Nenhuma ocorrência julgada ainda.' }[filtro] || 'Nenhuma ocorrência.')) + '</div>';
+    return h;
+  }
+  function cardOcorrencia(r){
+    var s = sessoes[r.sessaoId] || {}, st = statusRecurso(r), n = (r.provas || []).length;
+    var tags = '<span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>';
+    if (equipe && !realizadaOc(r)) tags += r.liberado ? '<span class="tag lib">Liberado ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
+    if (!equipe) tags += leituras[me.uid + '_' + r.id] ? '<span class="tag canc">✔ analisado</span>' : '<span class="tag agu">a analisar</span>';
+    else { var nl = Object.values(leituras).filter(function(l){ return l.recursoId === r.id; }).length; if (nl) tags += '<span class="tag canc">✔ ' + nl + (nl === 1 ? ' analisou' : ' analisaram') + '</span>'; }
+    return '<div class="card click card-oc" data-recurso="' + esc(r.id) + '">'
+      + '<div class="topo"><span class="num">#' + esc(r.ocorrencia) + '</span><span class="muted small">' + n + (n === 1 ? ' arquivo' : ' arquivos') + '</span></div>'
+      + '<h3>' + esc(r.titulo || r.classificacao || 'Ocorrência') + '</h3>'
+      + '<div class="muted small">' + esc(r.unidade || '') + (r.morador ? ' · ' + esc(r.morador) : '') + '</div>'
+      + '<div class="tags">' + tags + '</div>'
+      + '<div class="sess">' + (dataDaOcorrencia(r) ? '📅 Julgamento em ' + esc(dataHoraBR(dataDaOcorrencia(r))) : 'Julgamento: data a definir') + '</div></div>';
+  }
+  // realizada -> "realizadas"; com data e ainda não realizada -> "agendadas"; sem data -> "aguardando agendamento"
+  function situacaoSessao(s){ return s.realizada ? 'realizadas' : (s.data ? 'agendadas' : 'aguardando'); }
+  var MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function cardSessao(s){
+    var rs = recursosDaSessao(s.id), sit = situacaoSessao(s);
+    var julgados = rs.filter(function(r){ return r.decisao && r.decisao.resultado; }).length;
+    var lidos = rs.filter(function(r){ return leituras[me.uid + '_' + r.id]; }).length;
+    var pct = rs.length ? Math.round(100 * (equipe ? julgados : lidos) / rs.length) : 0;
+    var p = String(s.data || '').slice(0, 10).split('-'), hora = String(s.data || '').slice(11, 16);
+    var dia = p.length === 3
+      ? '<div class="dia ' + (sit === 'realizadas' ? 'feita' : 'agendada') + '"><b>' + esc(p[2]) + '</b><span>' + (MESES_CURTOS[parseInt(p[1], 10) - 1] || '') + '/' + esc(p[0].slice(2)) + '</span>' + (hora ? '<span>' + esc(hora.replace(':', 'h')) + '</span>' : '') + '</div>'
+      : '<div class="dia ' + (sit === 'realizadas' ? 'feita' : 'sem') + '"><b>' + (sit === 'realizadas' ? '✓' : '?') + '</b><span>' + (sit === 'realizadas' ? 'sem data' : 'a agendar') + '</span></div>';
+    var rotSit = { realizadas:'Realizada', agendadas:'Agendada', aguardando:'Aguardando agendamento' }[sit];
+    var tagSit = { realizadas:'real', agendadas:'lib', aguardando:'agu' }[sit];
+    var tags = '<span class="tag ' + tagSit + '">' + rotSit + '</span>';
+    if (equipe && !s.realizada) tags += s.liberada ? '<span class="tag lib">Liberada ao conselho</span>' : '<span class="tag rasc">Rascunho</span>';
+    if (equipe && s.realizada && rs.length && julgados < rs.length) tags += '<span class="tag lanc">' + (rs.length - julgados) + ' a lançar</span>';
+    return '<div class="card click card-sessao" data-sessao="' + esc(s.id) + '">' + dia
+      + '<div class="corpo"><div class="tags">' + tags + '</div>'
+      + '<h3>' + esc(s.titulo || 'Sessão de julgamento') + '</h3>'
+      + '<div class="muted small">' + (s.data ? '📅 ' + esc(dataHoraBR(s.data)) : 'Data a definir') + (s.local ? ' · ' + esc(s.local) : '') + '</div>'
+      + '<div class="small">' + rs.length + (rs.length === 1 ? ' recurso' : ' recursos') + ' · '
+      + (equipe ? julgados + ' com decisão lançada' : lidos + ' analisado' + (lidos === 1 ? '' : 's') + ' por você') + '</div>'
+      + '<div class="prog"><div style="width:' + pct + '%"></div></div>'
+      + '<span class="abrir">Abrir sessão →</span></div></div>';
   }
 
   function telaSessao(){
@@ -417,14 +555,27 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     return h;
   }
 
-  var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Fundamentos', 'Decisão'];
+  var PASSOS = ['Resumo', 'Provas', 'Alegações do morador', 'Decisão'];   // sem "Fundamentos" (16/11/2026, a pedido do escritório)
   function telaRecurso(){
     var r = recursos[state.recursoId], s = sessoes[r.sessaoId] || {}, st = statusRecurso(r);
-    var h = '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>'
+    var h = '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>'
       + '<div class="barra"><div><h2>Ocorrência #' + esc(r.ocorrencia) + ' — ' + esc(r.titulo || r.classificacao || '') + '</h2>'
-      + '<div class="muted small">' + esc(nomeCondo(r.condominioSlug)) + ' · ' + esc(r.unidade || '') + ' · sessão de ' + esc(dataHoraBR(s.data)) + '</div></div>'
+      + '<div class="muted small">' + esc(nomeCondo(r.condominioSlug)) + ' · ' + esc(r.unidade || '') + ' · julgamento ' + (dataDaOcorrencia(r) ? 'em ' + esc(dataHoraBR(dataDaOcorrencia(r))) : ': data a definir') + '</div></div>'
       + '<span class="espaco"></span><span class="tag ' + st.tag + '">' + esc(st.rot) + '</span>'
       + (equipe ? '<button type="button" class="btn sec peq" data-editar="' + esc(r.id) + '">Editar</button>' : '') + '</div>';
+    if (equipe) {
+      var feita = realizadaOc(r);
+      h += '<div class="barra">'
+        + '<button type="button" class="btn sec peq" id="oc-data">📅 ' + (dataDaOcorrencia(r) ? 'Mudar a data do julgamento' : 'Marcar a data do julgamento') + '</button>'
+        + (r.liberado ? '<button type="button" class="btn sec peq" id="oc-recolher">Recolher do conselho</button>'
+                      : '<button type="button" class="btn verde peq" id="oc-liberar">✔ Liberar ao conselho</button>')
+        + (r.decisao && r.decisao.resultado ? '' : (feita ? '<button type="button" class="btn ghost peq" id="oc-desfazer">Desfazer "julgada"</button>'
+                                                          : '<button type="button" class="btn sec peq" id="oc-realizada">Marcar como julgada</button>'))
+        + '</div>';
+      var lidoPor = Object.values(leituras).filter(function(l){ return l.recursoId === r.id; });
+      if (lidoPor.length) h += '<div class="muted small" style="margin:-6px 0 12px;">✔ analisado por ' + esc(lidoPor.map(function(l){ return l.nome; }).join(', ')) + '</div>';
+      if (!r.liberado) h += '<div class="aviso">Esta ocorrência ainda é um <b>rascunho</b>: o conselho não vê. Quando o material estiver pronto, clique em <b>"Liberar ao conselho"</b>.</div>';
+    }
     if (equipe) h += '<div class="aviso">Você está vendo o recurso <b>como o conselho vê</b>.</div>';
     h += '<div class="passos">' + PASSOS.map(function(p, i){
       return '<button type="button" class="' + (i === state.passo ? 'on' : '') + '" data-passo="' + i + '"><span class="n">' + (i + 1) + '</span>' + p + '</button>';
@@ -438,14 +589,11 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
         + campoFicha('Pedido de recurso', dataBR(r.dataRecurso)) + campoFicha('Quem pediu a abertura', r.quemAbriu) + '</div>';
       h += r.fatos ? '<h3>Dos fatos</h3><div class="texto">' + esc(r.fatos) + '</div>' : '';
       h += r.historicoUnidade ? '<h3>Histórico da unidade</h3><div class="texto">' + esc(r.historicoUnidade) + '</div>' : '';
+      h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
     } else if (p === 1) {
       h += telaProvas(r);
     } else if (p === 2) {
       h += r.alegacoes ? '<div class="texto">' + esc(r.alegacoes) + '</div>' : '<div class="vazio">O escritório ainda não resumiu as alegações do morador. Veja o recurso dele nas provas (categoria "Recurso do morador").</div>';
-    } else if (p === 3) {
-      h += r.fundamentos ? '<h3>Fundamentos da penalidade</h3><div class="texto">' + esc(r.fundamentos) + '</div>' : '';
-      h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
-      if (!r.fundamentos && !r.observacoes) h += '<div class="vazio">Sem fundamentos cadastrados.</div>';
     } else {
       h += telaDecisaoLeitura(r);
     }
@@ -486,8 +634,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
   function telaDecisaoLeitura(r){
     var d = r.decisao;
     if (!d || !d.resultado) {
-      var s = sessoes[r.sessaoId] || {};
-      return '<div class="vazio">' + (s.realizada ? 'Sessão realizada. O escritório vai lançar aqui a decisão do conselho e a ementa.' : 'A decisão será registrada aqui pelo escritório depois da sessão de julgamento.') + '</div>';
+      return '<div class="vazio">' + (realizadaOc(r) ? 'Ocorrência julgada. O escritório vai lançar aqui a decisão do conselho e a ementa.' : 'A decisão será registrada aqui pelo escritório depois da sessão de julgamento.') + '</div>';
     }
     return '<div class="decisao"><div class="res">' + esc(RESULTADOS[d.resultado].rot) + (d.resultado === 'modulada' && d.modulacao ? ' — ' + esc(MODULACOES[d.modulacao] || '') : '') + '</div>'
       + (d.detalhe ? '<div style="margin-bottom:8px;">' + esc(d.detalhe) + '</div>' : '')
@@ -506,7 +653,8 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
   var PASSOS_ED = ['Dados', 'Fatos e fundamentos', 'Arquivos', 'Decisão e ementa'];
   function telaEditar(){
     var r = rascunho;
-    var h = '<button type="button" class="voltar" data-voltar-sessao="' + esc(r.sessaoId) + '">← Voltar para a sessão</button>'
+    var h = (r.id ? '<button type="button" class="voltar" data-recurso="' + esc(r.id) + '">← Voltar para a ocorrência</button>'
+                  : '<button type="button" class="voltar" data-ir="lista">← Voltar para as ocorrências</button>')
       + '<div class="barra"><h2>' + (r.id ? 'Recurso #' + esc(r.ocorrencia) : 'Novo recurso') + '</h2><span class="espaco"></span>'
       + (r.id ? '<button type="button" class="btn sec peq" data-recurso="' + esc(r.id) + '">👁 Ver como o conselho</button>' : '')
       + (r.id ? '<button type="button" class="btn ghost peq" id="excluir-recurso">Excluir</button>' : '') + '</div>';
@@ -552,7 +700,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
         return '<label class="' + (d.modulacao === k ? 'on' : '') + '"><input type="radio" name="dec-mod" value="' + k + '"' + (d.modulacao === k ? ' checked' : '') + '> ' + esc(MODULACOES[k]) + '</label>';
       }).join('') + '</div></div></div>';
       h += '<div class="campo"><label>Detalhe da decisão (opcional)</label><input id="dec-detalhe" value="' + esc(d.detalhe || '') + '" placeholder="Ex.: multa reduzida para R$ 410,85, parcelada em 3 vezes"></div>'
-        + '<div class="g2"><div class="campo"><label>Data da sessão</label><input type="date" id="dec-data" value="' + esc(d.dataSessao || String(s.data || '').slice(0, 10) || hojeISO()) + '"></div>'
+        + '<div class="g2"><div class="campo"><label>Data da sessão</label><input type="date" id="dec-data" value="' + esc(d.dataSessao || String(dataDaOcorrencia(r) || '').slice(0, 10) || hojeISO()) + '"></div>'
         + '<div class="campo"><label>Votos pela decisão</label><input type="number" min="0" id="dec-favor" value="' + esc(d.votosFavor == null ? '' : d.votosFavor) + '"></div>'
         + '<div class="campo"><label>Votos contra</label><input type="number" min="0" id="dec-contra" value="' + esc(d.votosContra == null ? '' : d.votosContra) + '"></div>'
         + '<div class="campo"><label>Abstenções</label><input type="number" min="0" id="dec-abst" value="' + esc(d.abstencoes == null ? '' : d.abstencoes) + '"></div></div>'
@@ -665,7 +813,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     if (!dec.ementa && !confirm('Salvar sem ementa? Você pode escrever depois.')) return;
     var expira = (r.decisao && r.provasExpiramEm) ? r.provasExpiramEm : TS.fromMillis(Date.now() + DIAS_PROVAS * 86400000);
     db.collection('recursosJulgamento').doc(r.id).update({ decisao:dec, provasExpiramEm:expira, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid })
-      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('sessao', { sessaoId:r.sessaoId }); })
+      .then(function(){ rascunho.decisao = dec; alert('Decisão salva. O conselho já vê o resultado e a ementa.'); ir('recurso', { recursoId:r.id, passo:3 }); })
       .catch(function(e){ avisoErro('Não foi possível salvar: ' + e.message); });
   }
   function sugerirEmenta(){
@@ -743,7 +891,8 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
       setTimeout(function(){ mostrar(true); }, 0);
       db.collection('acessosProvasJulgamento').add({ uid:me.uid, nome:me.nome, recursoId:r.id, condominioSlug:r.condominioSlug, arquivo:caminho, em:FV.serverTimestamp() }).catch(function(){});
     }).catch(function(e){
-      if (botao) { botao.disabled = false; botao.textContent = 'Não foi possível abrir: ' + e.message; }
+      var msg = /failed to fetch|networkerror|load failed/i.test(e.message || '') ? 'o Storage ainda não autoriza o portal a ler arquivos (CORS). Avise o administrador.' : e.message;
+      if (botao) { botao.disabled = false; botao.textContent = 'Não foi possível abrir: ' + msg; }
     });
   }
 
@@ -816,6 +965,29 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     var local = prompt('Local (opcional):', s.local || ''); if (local === null) return;
     db.collection('sessoesJulgamento').doc(s.id).update({ data:m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '',
       titulo:titulo.trim(), local:local.trim() }).catch(function(e){ avisoErro(e.message); });
+  }
+  // ---- ocorrência sem sessão (16/11/2026): as ocorrências novas ficam num "grupo" interno por condomínio, que não aparece
+  function novaOcorrencia(){
+    var id = state.condo + '-ocorrencias', base = { condominioSlug:state.condo, condominioNome:nomeCondo(state.condo) };
+    var pronto = sessoes[id] ? Promise.resolve() : db.collection('sessoesJulgamento').doc(id).set(Object.assign({ titulo:'Ocorrências', data:'', local:'',
+      liberada:false, realizada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid }, base), { merge:true });
+    pronto.then(function(){ if (!sessoes[id]) sessoes[id] = Object.assign({ id:id, liberada:false, realizada:false, data:'' }, base); abrirEdicao(null, id); })
+      .catch(function(e){ avisoErro('Não foi possível: ' + e.message); });
+  }
+  function dataOcorrencia(){
+    var r = recursos[state.recursoId], atual = dataDaOcorrencia(r);
+    var txt = atual ? dataBR(atual) + (atual.length > 10 ? ' ' + atual.slice(11, 16) : '') : '';
+    var data = prompt('Data e hora do julgamento (dd/mm/aaaa hh:mm). Deixe em branco para "a definir":', txt); if (data === null) return;
+    var m = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2})[:h](\d{2}))?$/);
+    if (data.trim() && !m) { alert('Use o formato dd/mm/aaaa hh:mm (ex.: 15/12/2026 19:30).'); return; }
+    var iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '';
+    db.collection('recursosJulgamento').doc(r.id).update({ dataJulgamento:iso, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }).catch(function(e){ avisoErro(e.message); });
+  }
+  function atualizarOcorrencia(campos, pergunta){
+    var r = recursos[state.recursoId];
+    if (pergunta && !confirm(pergunta)) return;
+    db.collection('recursosJulgamento').doc(r.id).update(Object.assign({ atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }, campos))
+      .catch(function(e){ avisoErro('Não foi possível: ' + e.message); });
   }
   // liberar/recolher marca a sessão e todos os recursos dela (as regras checam o campo em cada recurso)
   function liberarSessao(liberar){
@@ -923,11 +1095,12 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     json.text().then(function(txt){
       var p = JSON.parse(txt);
       var slug = slugify(p.condominio);
-      if (!confirm('Importar ' + (p.sessoes || []).length + ' sessão(ões) e ' + (p.recursos || []).length + ' recurso(s) do ' + p.condominio + '?\n\nAs sessões entram como RASCUNHO (o conselho não vê até você liberar). Recursos que já existem são atualizados, e arquivos já enviados não são enviados de novo.')) return;
+      if (!confirm('Importar ' + (p.sessoes || []).length + ' sessão(ões) e ' + (p.recursos || []).length + ' recurso(s) do ' + p.condominio + '?\n\nAs sessões entram como RASCUNHO (o conselho não vê até você liberar). Pode importar a pasta inteira de novo: o que já está no portal NÃO é alterado (sessões e textos editados pela equipe ficam como estão). Entram só os recursos novos, os campos que estavam em branco e os arquivos que ainda não foram enviados.')) return;
       var porArquivo = {}; lista.forEach(function(f){ porArquivo[(f.webkitRelativePath || f.name).slice(raiz.length)] = f; });
+      state.view = 'importando';
       app.innerHTML = '<h2>Importando…</h2><div id="imp-log" class="small" style="white-space:pre-wrap;line-height:1.6;"></div><div class="barra-up" style="height:8px;"><div id="imp-barra"></div></div>';
       var log = function(t){ var el = document.getElementById('imp-log'); if (el) el.textContent += t + '\n'; };
-      var idsSessao = {};
+      var idsSessao = {}, novosRec = {}, falhas = [];
       var total = (p.recursos || []).reduce(function(n, r){ return n + (r.arquivos || []).length; }, 0), feitos = 0;
       return (p.sessoes || []).reduce(function(pr, s){
         return pr.then(function(){
@@ -936,10 +1109,12 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
           var ref = db.collection('sessoesJulgamento').doc(id);
           log('… sessão: ' + (s.titulo || s.data));
           return ref.get().then(function(ex){
-            var dados = { condominioSlug:slug, condominioNome:p.condominio, data:s.data || '', titulo:s.titulo || 'Sessão de julgamento', local:s.local || '', realizada:!!s.realizada };
-            if (!ex.exists) Object.assign(dados, { liberada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
-            return ref.set(dados, { merge:true });
-          }).then(function(){ log('✔ sessão: ' + (s.titulo || s.data)); });
+            // sessão que já existe fica como está (data, título, local e "realizada" podem ter sido acertados pela equipe)
+            if (ex.exists) { log('= sessão já existe, mantida: ' + (ex.data().titulo || s.titulo || s.data)); return; }
+            var dados = { condominioSlug:slug, condominioNome:p.condominio, data:s.data || '', titulo:s.titulo || 'Sessão de julgamento', local:s.local || '', realizada:!!s.realizada,
+              liberada:false, criadoEm:FV.serverTimestamp(), criadoPor:me.uid };
+            return ref.set(dados, { merge:true }).then(function(){ log('✔ sessão nova: ' + (s.titulo || s.data)); });
+          });
         });
       }, Promise.resolve()).then(function(){
         return (p.recursos || []).reduce(function(pr, r){
@@ -949,13 +1124,16 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
             log('… recurso #' + r.ocorrencia);
             return ref.get().then(function(ex){
               var atual = ex.exists ? ex.data() : null;
+              if (!atual) novosRec[r.ocorrencia] = true;
               var sess = sessoes[idsSessao[r.sessao]] || {};
               var dados = {};
-              CAMPOS_TEXTO.forEach(function(k){ if (r[k] != null) dados[k] = String(r[k]); });
-              Object.assign(dados, { sessaoId:idsSessao[r.sessao], condominioSlug:slug, condominioNome:p.condominio, liberado:!!(atual ? atual.liberado : sess.liberada),
-                atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid });
-              if (!atual) Object.assign(dados, { provas:[], criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
-              return ref.set(dados, { merge:true }).then(function(){
+              // recurso que já existe: só preenche o que está em branco (o que a equipe escreveu ou corrigiu não muda)
+              CAMPOS_TEXTO.forEach(function(k){ if (r[k] != null && String(r[k]).trim() && !(atual && String(atual[k] || '').trim())) dados[k] = String(r[k]); });
+              if (!atual) Object.assign(dados, { sessaoId:idsSessao[r.sessao], condominioSlug:slug, condominioNome:p.condominio, liberado:!!sess.liberada,
+                provas:[], criadoEm:FV.serverTimestamp(), criadoPor:me.uid });
+              if (!atual || Object.keys(dados).length) Object.assign(dados, { atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid });
+              if (atual && !atual.sessaoId && idsSessao[r.sessao]) dados.sessaoId = idsSessao[r.sessao];
+              return (atual && !Object.keys(dados).length ? Promise.resolve() : ref.set(dados, { merge:true })).then(function(){
                 var ja = (atual && atual.provas || []).map(function(x){ return x.nome + '|' + x.tamanho; });
                 return (r.arquivos || []).reduce(function(pa, a){
                   return pa.then(function(){
@@ -966,17 +1144,25 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
                     if (ja.indexOf(f.name + '|' + f.size) >= 0) return;
                     var tipo = tipoDoArquivo(f); if (!tipo) { log('  ⚠ tipo não aceito: ' + a.arquivo); return; }
                     var caminho = 'julgamentos/' + slug + '/' + id + '/' + Date.now() + '-' + f.name.replace(/[^\w.\-]+/g, '_');
-                    return new Promise(function(ok, falha){ storage.ref(caminho).put(f, { contentType:tipo }).on('state_changed', null, falha, ok); }).then(function(){
+                    var enviar = function(tent){
+                      return new Promise(function(ok, falha){ storage.ref(caminho).put(f, { contentType:tipo }).on('state_changed', null, falha, ok); })
+                        .catch(function(e){ if (tent < 3) { log('  … nova tentativa (' + (tent + 1) + 'ª): ' + a.arquivo); return new Promise(function(r){ setTimeout(r, 3000 * tent); }).then(function(){ return enviar(tent + 1); }); } throw e; });
+                    };
+                    return enviar(1).then(function(){
                       return ref.update({ provas:FV.arrayUnion({ nome:f.name, caminho:caminho, tipo:tipo, tamanho:f.size, categoria:a.categoria || 'prova', enviadoEm:Date.now() }) });
-                    });
+                    }).catch(function(e){ falhas.push('#' + r.ocorrencia + ' — ' + f.name + ' (' + (e.code || e.message) + ')'); log('  ✖ não enviado: ' + a.arquivo + ' (' + (e.code || e.message) + ')'); });
                   });
                 }, Promise.resolve());
               });
-            }).then(function(){ log('✔ recurso #' + r.ocorrencia + ' (' + (r.arquivos || []).length + ' arquivos)'); });
+            }).then(function(){ log('✔ recurso #' + r.ocorrencia + (novosRec[r.ocorrencia] ? ' (novo)' : ' (já existia: só o que faltava)') + ' — ' + (r.arquivos || []).length + ' arquivos'); })
+              .catch(function(e){ falhas.push('#' + r.ocorrencia + ' — recurso não gravado (' + (e.code || e.message) + ')'); log('✖ recurso #' + r.ocorrencia + ' não gravado: ' + (e.code || e.message)); });
           });
         }, Promise.resolve());
-      }).then(function(){ log('\nConcluído. As sessões estão como rascunho: confira e libere ao conselho.'); state.condo = slug;
-        setTimeout(function(){ if (document.getElementById('imp-log')) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ver as sessões'; b.onclick = function(){ ir('lista'); }; app.appendChild(b); } }, 50); });
+      }).then(function(){
+        log(falhas.length ? '\n⚠ Concluído com ' + falhas.length + ' falha(s):\n' + falhas.join('\n') + '\n\nImporte a mesma pasta de novo: entra só o que faltou.'
+                          : '\nConcluído. Todas as ocorrências entraram como rascunho: confira e libere ao conselho.');
+        state.condo = slug;
+        setTimeout(function(){ if (document.getElementById('imp-log')) { var b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ver as ocorrências'; b.onclick = function(){ ir('lista'); }; app.appendChild(b); } }, 50); });
     }).catch(function(e){ alert('Não foi possível importar: ' + e.message); ir('lista'); });
   }
 
@@ -997,6 +1183,8 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     });
     var modBox = document.getElementById('dec-mod-box');
     if (modBox) modBox.addEventListener('change', function(){ Array.prototype.forEach.call(modBox.querySelectorAll('label'), function(l){ l.classList.toggle('on', !!l.querySelector('input:checked')); }); });
+    var bOc = document.getElementById('ed-busca-oc');
+    if (bOc) bOc.addEventListener('input', function(){ state.buscaOc = bOc.value; var pos = bOc.selectionStart; bOc.blur(); mostrar(true); var b2 = document.getElementById('ed-busca-oc'); b2.focus(); b2.setSelectionRange(pos, pos); });
     var filtro = document.getElementById('ed-filtro-ementario');
     if (filtro) filtro.addEventListener('input', function(){ state.filtroEmentario = filtro.value; var pos = filtro.selectionStart; filtro.blur(); mostrar(true); var f2 = document.getElementById('ed-filtro-ementario'); f2.focus(); f2.setSelectionRange(pos, pos); });
   }
@@ -1005,12 +1193,15 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
     if (t.id === 'ed-arquivos') { enviarArquivos(t.files, document.getElementById('ed-categoria').value, rascunho.id, document.getElementById('upl-status')); t.value = ''; }
     if (t.id === 'ed-categoria') state.categoriaUp = t.value;
     if (t.id === 'importar') { importarPacote(t.files); t.value = ''; }
+    if (t.id === 'sel-condo') { state.condo = t.value; mostrar(true); }
   });
   app.addEventListener('click', function(e){
     var el = e.target.closest('button, .card, .linha, [data-ir]');
     if (!el) return;
     var d = el.dataset;
     if (d.condo) { state.condo = d.condo; mostrar(true); return; }
+    if (d.filtroSessao) { state.filtroSessao = d.filtroSessao; mostrar(true); return; }
+    if (d.verPor) { state.verPor = d.verPor; mostrar(true); return; }
     if (d.ir) { ir(d.ir); return; }
     if (d.editar) { e.stopPropagation(); abrirEdicao(d.editar); return; }
     if (d.recurso) { ir('recurso', { recursoId:d.recurso, passo:0 }); return; }
@@ -1027,6 +1218,12 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
       case 'nova-sessao': novaSessao(); break;
       case 'novo-recurso': abrirEdicao(null, state.sessaoId); break;
       case 'editar-sessao': editarSessao(); break;
+      case 'nova-ocorrencia': novaOcorrencia(); break;
+      case 'oc-data': dataOcorrencia(); break;
+      case 'oc-liberar': atualizarOcorrencia({ liberado:true }, 'Liberar a ocorrência #' + recursos[state.recursoId].ocorrencia + ' ao conselho?\nSíndico e conselheiros passam a ver o resumo e as provas.'); break;
+      case 'oc-recolher': atualizarOcorrencia({ liberado:false }, 'Recolher esta ocorrência? O conselho deixa de ver.'); break;
+      case 'oc-realizada': atualizarOcorrencia({ realizada:true }); break;
+      case 'oc-desfazer': atualizarOcorrencia({ realizada:false }); break;
       case 'liberar': liberarSessao(true); break;
       case 'recolher': if (confirm('Recolher esta sessão? O conselho deixa de ver os recursos.')) liberarSessao(false); break;
       case 'marcar-realizada': db.collection('sessoesJulgamento').doc(state.sessaoId).update({ realizada:true }).catch(function(e){ avisoErro(e.message); }); break;
@@ -1044,7 +1241,7 @@ table.t th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:
         if (!confirm('Excluir o recurso #' + r.ocorrencia + ' e os arquivos dele do portal?\n(Os originais continuam no Google Drive.)')) return;
         Promise.all((r.provas || []).map(function(pv){ return storage.ref(pv.caminho).delete().catch(function(){}); }))
           .then(function(){ return db.collection('recursosJulgamento').doc(r.id).delete(); })
-          .then(function(){ ir('sessao', { sessaoId:r.sessaoId }); }).catch(function(e){ avisoErro(e.message); });
+          .then(function(){ ir('lista'); }).catch(function(e){ avisoErro(e.message); });
         break;
       case 'marcar-lido': marcarLido(); break;
     }

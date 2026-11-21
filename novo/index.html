@@ -1014,6 +1014,19 @@
 
   /* ---------- Comunicados (pop-up obrigatório + histórico do megafone) ---------- */
   #comunicados-btn{position:relative;overflow:visible;}
+  /* sino: @menções nos comentários da Agenda */
+  #mencoes-btn{position:relative;overflow:visible;}
+  .men-qtd{position:absolute;top:-4px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e0483d;color:#fff;font-size:.62rem;font-weight:800;line-height:17px;text-align:center;display:none;box-shadow:0 0 0 2px var(--panel);}
+  .men-qtd.show{display:block;}
+  .men-dropdown{width:min(380px,92vw);max-height:70vh;overflow:auto;padding:6px;}
+  .men-dropdown .men-tit{display:flex;justify-content:space-between;align-items:center;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px 8px;font-weight:700;}
+  .men-dropdown .men-tit button{width:auto;padding:2px 6px;font-size:.72rem;text-transform:none;letter-spacing:0;color:#5aa9ff;}
+  .men-item{display:block !important;padding:9px 10px !important;border-radius:8px;line-height:1.35;}
+  .men-item.nova{background:rgba(90,169,255,.08);}
+  .men-item .q{font-size:.72rem;color:var(--muted);display:block;}
+  .men-item .t{font-size:.84rem;font-weight:700;display:block;margin:2px 0;}
+  .men-item .x{font-size:.78rem;color:var(--muted);display:block;white-space:pre-wrap;word-break:break-word;}
+  .men-vazio{padding:16px 12px;font-size:.8rem;color:var(--muted);text-align:center;}
   #com-backdrop{z-index:70;}
   #com-backdrop .modal-box{width:min(560px,100%);max-width:100%;box-sizing:border-box;max-height:90vh;overflow-y:auto;display:block;padding:22px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.45);}
   .com-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
@@ -1045,7 +1058,7 @@
   .com-video.ok .com-video-st{color:var(--ok);font-weight:600;}
   .com-video-top .btn{width:auto;padding:7px 14px;font-size:.78rem;}
   .com-video-player{position:relative;padding-top:56.25%;margin-top:10px;border-radius:8px;overflow:hidden;background:#000;}
-  .com-video-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+  .com-video-player iframe,.com-video-player video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;}
   .com-lista-ciencia{margin:10px 0 0;padding:0;list-style:none;font-size:.82rem;}
   .com-lista-ciencia li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);}
   .com-lista-ciencia .quando{color:var(--muted);white-space:nowrap;}
@@ -1172,7 +1185,7 @@
 </style>
 <meta name="robots" content="noindex,nofollow">
 <script>window.__vgUrlLocal=function(u){u=String(u||'');var m=/^(?:https?:\/\/([^\/]+))?(?:\/[^?#]*?)?\/?(tools\/.*)$/i.exec(u);if(!m)return u;var host=(m[1]||'').toLowerCase();if(!host||host===location.host.toLowerCase()||/fonsecaebraga\.com\.br$|github\.io$/.test(host))return m[2];return u;};</script>
-<link rel="stylesheet" href="assets/layout-visao-geral.css?v=5">
+<link rel="stylesheet" href="assets/layout-visao-geral.css?v=6">
 </head>
 <body>
 
@@ -1408,11 +1421,13 @@
       <button type="button" class="user-menu-btn" id="sistemas-status-btn" title="Sistemas liberados para você" aria-haspopup="true" aria-expanded="false"></button>
       <div class="user-menu-dropdown sistemas-status-dropdown" id="sistemas-status-dropdown"></div>
       <button type="button" class="user-menu-btn" id="comunicados-btn" title="Comunicados do escritório" aria-label="Comunicados do escritório"><svg viewBox="0 0 24 24"><path d="M3 10.5v3a1 1 0 0 0 1 1h2.5l6.5 4V5.5l-6.5 4H4a1 1 0 0 0-1 1z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg><span class="gear-notif-dot" id="comunicados-dot"></span></button>
+      <button type="button" class="user-menu-btn" id="mencoes-btn" title="Onde chamaram você na Agenda" aria-label="Menções na Agenda" aria-haspopup="true" aria-expanded="false" style="display:none;"><svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z"></path><path d="M10 20.5a2.2 2.2 0 0 0 4 0"></path></svg><span class="men-qtd" id="mencoes-qtd"></span></button>
+      <div class="user-menu-dropdown men-dropdown" id="mencoes-dropdown"></div>
       <button type="button" class="user-menu-btn" id="user-menu-btn" title="Perfil e configurações" aria-haspopup="true" aria-expanded="false"></button>
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v201</span>
+      <span class="version-tag">v270</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1882,10 +1897,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="firebase-config.js"></script>
 <script src="autorizacao-restrita.js"></script>
 <script src="admin-config.js"></script>
 <script src="comunicados.js"></script>
+<script src="contrato-associacao.js"></script>
 <script>
 (function(){
   "use strict";
@@ -2675,6 +2692,9 @@
     // agendado à parte: uma falha em outra inicialização abaixo não impede o comunicado obrigatório.
     // Depois dos comunicados pendentes, vêm os cards de aniversário/tempo de escritório.
     setTimeout(iniciarComunicados, 0);
+    setTimeout(iniciarMencoes, 0);
+    // contrato de associação: associado com contrato para assinar só usa o Portal depois de assinar (contrato-associacao.js)
+    setTimeout(function(){ if (window.FBContratoAssociacao) window.FBContratoAssociacao.verificar({ db: db, auth: auth, perfil: currentProfile }); }, 0);
     setTimeout(verificarDadosBancarios, 0);   // pop-up da chave PIX (espera os comunicados fecharem)
     setTimeout(verificarLembreteHolerites, 0);   // pop-up de lançamento dos holerites (dia 27, uma vez por dia)
     renderUserInfo();
@@ -2981,6 +3001,81 @@
     if (bd){ bd.classList.remove('show'); bd.querySelectorAll('.com-video-player').forEach(function(p){ p.remove(); }); }
   }
   function comFmtSeg(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  // ---------- Sino: onde chamaram você (@) nos comentários da Agenda ----------
+  // Os avisos ficam em agTeste_mencoes (quem comenta cria; só a pessoa chamada lê e marca como lido).
+  let menNovas = [], menLidas = [], menOuvindo = null;
+  const AGENDA_TAB_ID = 'agenda-teste';
+  function temAgenda(){ return !!currentProfile && (currentProfile.role === 'admin' || (currentProfile.tabs || []).indexOf(AGENDA_TAB_ID) !== -1); }
+  function menQuando(t){ const d = t && t.toDate ? t.toDate() : null; if (!d) return '';
+    const hoje = new Date(); const mesmo = d.toDateString() === hoje.toDateString();
+    return mesmo ? 'hoje, ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); }
+  function menOrdenar(l){ return l.sort(function(a, b){ return ((b.em && b.em.toMillis ? b.em.toMillis() : 0) - (a.em && a.em.toMillis ? a.em.toMillis() : 0)); }); }
+  function menItem(m, nova){
+    const tp = {prazo:'Prazo', tarefa:'Tarefa', audiencia:'Audiência', compromisso:'Compromisso'}[m.tipo] || 'Atividade';
+    return '<button type="button" class="men-item' + (nova ? ' nova' : '') + '" data-men="' + escapeHtml(m.id) + '" data-at="' + escapeHtml(m.atividadeId) + '">'
+      + '<span class="q"><b>' + escapeHtml(m.deNome || 'Alguém') + '</b> chamou você · ' + escapeHtml(menQuando(m.em)) + '</span>'
+      + '<span class="t">' + escapeHtml(tp + ': ' + (m.titulo || '')) + '</span>' + (m.doPrazo ? '<span class="q">do prazo ' + escapeHtml(m.doPrazo) + '</span>' : '')
+      + '<span class="x">' + escapeHtml(m.trecho || '') + '</span></button>';
+  }
+  function menDesenhar(){
+    const q = document.getElementById('mencoes-qtd'), dd = document.getElementById('mencoes-dropdown');
+    q.textContent = menNovas.length > 99 ? '99+' : String(menNovas.length); q.classList.toggle('show', menNovas.length > 0);
+    document.getElementById('mencoes-btn').title = menNovas.length ? menNovas.length + ' menção(ões) nova(s) na Agenda' : 'Onde chamaram você na Agenda';
+    dd.innerHTML = '<div class="men-tit"><span>Chamaram você na Agenda</span>' + (menNovas.length ? '<button type="button" id="men-todas">marcar todas como lidas</button>' : '') + '</div>'
+      + (menNovas.length ? menNovas.map(function(m){ return menItem(m, true); }).join('') : '<div class="men-vazio">Nenhuma menção nova.</div>')
+      + (menLidas.length ? '<div class="men-tit" style="margin-top:6px;"><span>Já lidas</span></div>' + menLidas.slice(0, 15).map(function(m){ return menItem(m, false); }).join('') : '');
+    dd.querySelectorAll('[data-men]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); const id = b.getAttribute('data-men');
+      if (menNovas.some(function(m){ return m.id === id; })) menMarcar([id]);
+      menFechar(); abrirAtividadeAgenda(b.getAttribute('data-at')); }; });
+    const t = document.getElementById('men-todas'); if (t) t.onclick = function(e){ e.stopPropagation(); menMarcar(menNovas.map(function(m){ return m.id; })); };
+  }
+  function menMarcar(ids){
+    const lote = db.batch();
+    ids.forEach(function(id){ lote.update(db.collection('agTeste_mencoes').doc(id), {lida:true, lidaEm:firebase.firestore.FieldValue.serverTimestamp()}); });
+    lote.commit().catch(function(e){ console.error(e); });
+  }
+  function menFechar(){ const dd = document.getElementById('mencoes-dropdown'), b = document.getElementById('mencoes-btn'); dd.classList.remove('open'); b.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+  function iniciarMencoes(){
+    const b = document.getElementById('mencoes-btn');
+    if (!temAgenda() || ehContaCliente(currentProfile.role)) { b.style.display = 'none'; if (menOuvindo) { menOuvindo(); menOuvindo = null; } return; }
+    b.style.display = '';
+    if (menOuvindo) return;
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); closeUserMenu(); closeSistemasStatus();
+      const dd = document.getElementById('mencoes-dropdown'), abre = !dd.classList.contains('open');
+      if (!abre) return menFechar();
+      dd.classList.add('open'); b.classList.add('open'); b.setAttribute('aria-expanded', 'true'); menDesenhar();
+      db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', true).limit(100).get()
+        .then(function(s){ menLidas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); }).catch(function(){});
+    });
+    document.addEventListener('click', function(e){ if (!e.target.closest || !e.target.closest('#mencoes-dropdown, #mencoes-btn')) menFechar(); });
+    els.userMenuBtn.addEventListener('click', menFechar); els.sistemasStatusBtn.addEventListener('click', menFechar);
+    menOuvindo = db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', false)
+      .onSnapshot(function(s){ menNovas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); },
+        function(e){ console.warn('menções:', e.code || e); });
+  }
+  // abre a aba Agenda já com a atividade aberta (sino, link ?agenda=ID, link clicado no Chat)
+  function abrirAtividadeAgenda(id){
+    if (!id) return;
+    const t = tabsCatalog.find(function(x){ return x.id === AGENDA_TAB_ID && (currentProfile.role === 'admin' || (currentProfile.tabs || []).indexOf(x.id) !== -1); });
+    if (!t) { alert('Você ainda não tem acesso à Agenda. Peça ao administrador para liberar a aba.'); return; }
+    selectTab(t.id);
+    (function tentar(n){ let w = null; try { w = iframes[t.id] && iframes[t.id].contentWindow; } catch(e) {}
+      if (w && w.__agenda && typeof w.__agenda.abrirPorId === 'function') { w.__agenda.abrirPorId(id); return; }
+      if (n < 80) setTimeout(function(){ tentar(n + 1); }, 250); })(0);
+  }
+  let agendaDoLinkTratada = false;
+  function abrirAgendaDoLink(){
+    if (agendaDoLinkTratada) return;
+    let id = null; try { id = new URLSearchParams(location.search).get('agenda'); } catch(e) {}
+    agendaDoLinkTratada = true; if (!id) return;
+    try { const u = new URL(location.href); u.searchParams.delete('agenda'); history.replaceState(null, '', u.pathname + u.search + location.hash); } catch(e) {}
+    abrirAtividadeAgenda(id);
+  }
+  window.addEventListener('message', function(ev){
+    if (ev.origin !== location.origin || !ev.data || typeof ev.data.fbAbrirAgenda !== 'string') return;
+    abrirAtividadeAgenda(ev.data.fbAbrirAgenda.slice(0, 200));
+  });
   function iniciarComunicados(){
     if (currentProfile && ehContaCliente(currentProfile.role)) { document.getElementById('comunicados-btn').style.display = 'none'; return; }
     document.getElementById('comunicados-btn').onclick = comAbrirHistorico;
@@ -3006,9 +3101,9 @@
     box.style.width = videos.length ? 'min(760px,100%)' : '';
     let h = '<div class="com-head"><div class="com-ic">' + MEGAFONE_SVG + '</div><div>' +
       '<p class="com-rot">Comunicado à equipe · ' + taDataBR(c.data) + '</p><h3>' + escapeHtml(c.titulo) + '</h3>' +
-      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : videos.length ? 'Assista aos vídeos e registre sua ciência para continuar.' : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
+      '<p class="sub">' + (ciencia ? 'Comunicado oficial do escritório.' : videos.length ? (videos.length > 1 ? 'Assista aos vídeos e registre sua ciência para continuar.' : 'Assista ao vídeo e registre sua ciência para continuar.') : 'Leia com atenção e registre sua ciência para continuar.') + '</p></div></div>' +
       '<div class="com-corpo">' + c.html + '</div>';
-    // vídeos do Google Drive (c.videos = [{titulo, drive: id do arquivo, minutos: tempo mínimo com o vídeo aberto}])
+    // vídeos (c.videos = [{titulo, drive: id do arquivo no Google Drive | arquivo: .mp4 do portal, minutos: tempo mínimo}])
     if (videos.length){
       h += '<div class="com-videos">' + videos.map(function(v, i){
         return '<div class="com-video" id="com-v' + i + '"><div class="com-video-top"><span class="com-video-tit">🎬 ' + escapeHtml(v.titulo) + '</span>' +
@@ -3023,7 +3118,7 @@
     } else {
       h += '<div class="com-aceite">' +
         '<label class="com-check" id="com-l1"><input type="checkbox" id="com-c1"><span>' +
-          (videos.length ? 'Assisti aos vídeos e concordo com os termos deste comunicado.' : 'Li e concordo com os termos deste comunicado.') + '</span></label>' +
+          (videos.length ? (videos.length > 1 ? 'Assisti aos vídeos e concordo com os termos deste comunicado.' : 'Assisti ao vídeo e concordo com os termos deste comunicado.') : 'Li e concordo com os termos deste comunicado.') + '</span></label>' +
         '<label class="com-check off" id="com-l2"><input type="checkbox" id="com-c2" disabled><span>Confirmo que estou dando ciência deste comunicado e que o registro ficará gravado com meu nome, data e hora.</span></label>' +
         '</div><div class="com-erro" id="com-erro"></div>' +
         '<div class="com-acoes"><button type="button" class="btn" id="com-registrar" disabled>Registrar ciência e fechar</button></div>';
@@ -3051,13 +3146,19 @@
         box.querySelectorAll('[data-video]').forEach(function(x){ x.textContent = '▶ Assistir'; });
         const pl = document.createElement('div');
         pl.className = 'com-video-player';
-        pl.innerHTML = '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(videos[i].drive) + '/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>';
+        const arq = /^tools\/treinamentos\/videos\/[\w.-]+\.mp4$/.test(videos[i].arquivo || '') ? videos[i].arquivo : '';
+        pl.innerHTML = arq
+          ? '<video controls autoplay playsinline preload="auto" src="' + arq + '"' + (videos[i].capa ? ' poster="' + escapeHtml(videos[i].capa) + '"' : '') + '></video>'
+          : '<iframe src="https://drive.google.com/file/d/' + encodeURIComponent(videos[i].drive) + '/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>';
         document.getElementById('com-v' + i).appendChild(pl);
         b.textContent = 'Assistindo…';
+        const vel = pl.querySelector('video');
         if (ciencia) return;
+        // vídeo do portal: conta só o tempo tocando de verdade (pular para o fim não vale)
         comPararVideos();
         comVideoTick = setInterval(function(){
           if (document.visibilityState !== 'visible' || !pl.isConnected) return;
+          if (vel && (vel.paused || vel.ended || vel.seeking)) return;
           visto[i]++;
           try { localStorage.setItem(chaveVideo(i), visto[i]); } catch(e) {}
           pintaVideos();
@@ -3885,6 +3986,90 @@
     }
   }
 
+  // mensagens não lidas do chat fora da página (16/11/2026): "(3) Portal…" no título da aba, bolinha vermelha com o
+  // número no ícone da aba, selo no ícone do app instalado pelo navegador e, no app do Windows, o número sobre o
+  // ícone da barra de tarefas (o app recebe a contagem por mensagem e desenha o selo)
+  const TITULO_PORTAL = document.title || 'Portal Fonseca e Braga';
+  let faviconOriginal = null, faviconImg = null, naoLidasAvisadas = -1, naoLidasAnterior = -1, piscaTimer = null, piscaFase = false;
+  function tituloComNumero(){ const n = Math.max(0, mhChatUnread | 0); return n > 0 ? '(' + (n > 99 ? '99+' : n) + ') ' + TITULO_PORTAL : TITULO_PORTAL; }
+  // pisca: o título alterna com "Nova mensagem no chat" e o ícone alterna entre a bolinha e o ícone normal
+  function piscarAvisoChat(){
+    try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('piscar'); } catch (e) {}
+    if (piscaTimer) return;
+    piscaFase = false;
+    // letreiro: "(1) Chat · nova mensagem" corre no título, uma letra a cada 300 ms; o ícone pisca a cada ~1 s
+    let tique = 0, desloc = -1;
+    const passo = function(){
+      const n = Math.max(0, mhChatUnread | 0);
+      const texto = '(' + (n > 99 ? '99+' : n) + ') Chat · ' + (n === 1 ? 'nova mensagem' : 'novas mensagens') + '   •   ';
+      desloc = (desloc + 1) % texto.length;
+      document.title = texto.slice(desloc) + texto.slice(0, desloc);
+      if (++tique % 3 === 0){
+        piscaFase = !piscaFase;
+        const link = document.querySelector('link[rel~="icon"]');
+        if (link && faviconOriginal && faviconComNumero) link.href = piscaFase ? faviconComNumero : faviconOriginal;
+      }
+    };
+    // O Chrome segura os temporizadores de aba em segundo plano há mais de 5 min (1 vez por MINUTO) e o pisca
+    // parava. O relógio de um worker não sofre esse freio: ele só avisa a página a cada segundo.
+    const w = relogioPisca();
+    if (w){ w.onmessage = passo; w.postMessage(300); piscaTimer = { worker: w }; }
+    else piscaTimer = { id: setInterval(passo, 300) };
+    passo();
+  }
+  let relogioWorker = null;
+  function relogioPisca(){
+    if (relogioWorker !== null) return relogioWorker || null;
+    try {
+      const url = URL.createObjectURL(new Blob(['var t;onmessage=function(e){clearInterval(t);if(e.data>0)t=setInterval(function(){postMessage(1)},e.data)}'], { type: 'text/javascript' }));
+      relogioWorker = new Worker(url);
+    } catch (e) { relogioWorker = false; }
+    return relogioWorker || null;
+  }
+  function pararPiscarChat(){
+    if (!piscaTimer) return;
+    if (piscaTimer.worker) piscaTimer.worker.postMessage(0); else clearInterval(piscaTimer.id);
+    piscaTimer = null; piscaFase = false;
+    document.title = tituloComNumero();
+    const link = document.querySelector('link[rel~="icon"]');
+    if (link && faviconOriginal) link.href = (mhChatUnread > 0 && faviconComNumero) ? faviconComNumero : faviconOriginal;
+  }
+  window.addEventListener('focus', pararPiscarChat);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && document.hasFocus()) pararPiscarChat(); });
+  let faviconComNumero = null;
+  function avisoNaoLidasForaDaPagina(n){
+    n = Math.max(0, n | 0);
+    if (n === naoLidasAvisadas) return;
+    naoLidasAvisadas = n;
+    const rotulo = n > 99 ? '99+' : String(n);
+    if (!piscaTimer) document.title = n > 0 ? '(' + rotulo + ') ' + TITULO_PORTAL : TITULO_PORTAL;
+    try { if (navigator.setAppBadge) { n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
+    try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('naolidas:' + n); } catch (e) {}
+    const link = document.querySelector('link[rel~="icon"]');
+    if (!link) return;
+    if (!faviconOriginal) faviconOriginal = link.href;
+    if (!n){ faviconComNumero = null; link.href = faviconOriginal; return; }
+    const desenhar = function(){
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d');
+        g.drawImage(faviconImg, 0, 0, 64, 64);
+        const r = rotulo.length > 1 ? 21 : 18, cx = 64 - r, cy = r;
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = '#e53935'; g.fill();
+        g.lineWidth = 3; g.strokeStyle = '#ffffff'; g.stroke();
+        g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = 'bold ' + (rotulo.length > 2 ? 17 : rotulo.length > 1 ? 22 : 26) + 'px Arial, sans-serif';
+        g.fillText(rotulo, cx, cy + 1);
+        faviconComNumero = c.toDataURL('image/png');
+        if (!piscaTimer || piscaFase) link.href = faviconComNumero;
+      } catch (e) { /* sem canvas: fica só o número no título */ }
+    };
+    if (faviconImg && faviconImg.complete && faviconImg.naturalWidth) return desenhar();
+    faviconImg = new Image();
+    faviconImg.onload = function(){ if (naoLidasAvisadas > 0) { naoLidasAvisadas = -1; avisoNaoLidasForaDaPagina(mhChatUnread); } };
+    faviconImg.src = faviconOriginal;
+  }
+
   let mhAvatarFotoCarregada = false;
   function carregarFotoAvatarMobile(){
     if (mhAvatarFotoCarregada || !currentProfile.uid) return;
@@ -3913,6 +4098,11 @@
         }, 0);
         atualizarBadgesMobileHome();
         updateTabBlinks();
+        // chegou mensagem nova e a pessoa não está olhando o portal: a aba (e o app) piscam até ela voltar
+        if (naoLidasAnterior >= 0 && mhChatUnread > naoLidasAnterior && (document.hidden || !document.hasFocus())) piscarAvisoChat();
+        if (!mhChatUnread) pararPiscarChat();
+        naoLidasAnterior = mhChatUnread;
+        avisoNaoLidasForaDaPagina(mhChatUnread);
       }, function(){ /* sem acesso ao chat: ignora, badge fica em 0 */ });
     db.collection('pendTarefas').where('ownerUid', '==', currentProfile.uid)
       .onSnapshot(function(snap){
@@ -4078,6 +4268,115 @@
     return l.indexOf('perfil') !== -1 || l.indexOf('anivers') !== -1 || l.indexOf('sugest') !== -1;
   }
 
+  // ---------- Baixar o sistema do escritório (Instalador FB.exe = app do Portal + Verificador do computador) ----------
+  // O instalador leva a chave do Painel dos Computadores, por isso NÃO fica em baixar/ (público): fica no Storage
+  // (instaladores/Instalador FB.exe), que só a equipe ativa lê (storage.rules): o link só é entregue a quem passa
+  // pela regra, e o arquivo é baixado pela página (fetch → blob). Só o admin envia a versão nova.
+  const INSTALADOR_CAMINHO = 'instaladores/Instalador FB.exe';
+  // o SDK do Storage é carregado no <head> (junto com Auth e Firestore)
+  function carregarStorage(){
+    try { return Promise.resolve(firebase.storage()); } catch (e) { return Promise.reject(e); }
+  }
+  function tamanhoLegivel(n){ return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function motivoInstalador(e){
+    const c = (e && e.code) || '';
+    if (c.indexOf('object-not-found') !== -1) return 'o instalador ainda não foi enviado ao portal. Peça ao administrador.';
+    if (c.indexOf('unauthorized') !== -1) return 'sem permissão para baixar (a regra do Storage ainda não foi publicada ou sua conta não é da equipe).';
+    if (c.indexOf('retry-limit') !== -1 || /conex|network|fetch/i.test((e && e.message) || '')) return 'sem conexão. Tente de novo em instantes.';
+    return ((e && e.message) || 'erro desconhecido').slice(0, 160);
+  }
+  function abrirInstaladorFB(){
+    const ehAdmin = currentProfile && currentProfile.role === 'admin';
+    let bd = document.getElementById('instalador-fb-bd');
+    if (bd) bd.remove();
+    bd = document.createElement('div');
+    bd.id = 'instalador-fb-bd';
+    bd.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(10,6,6,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+    bd.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="inst-fb-tit" style="width:min(540px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel,#211918);color:var(--paper,#ece6e1);border:1px solid var(--line,rgba(236,230,225,.2));border-radius:14px;padding:22px;font:14px/1.55 Segoe UI,system-ui,sans-serif;">' +
+      '<h3 id="inst-fb-tit" style="margin:0 0 8px;font-size:1.05rem;">Baixar o sistema do escritório</h3>' +
+      '<p style="margin:0 0 8px;color:var(--muted,#c9bdb8);">Um instalador só, para usar em cada computador do escritório (por exemplo, depois de formatar). Ele coloca:</p>' +
+      '<ul style="margin:0 0 10px 18px;padding:0;"><li><b>Portal FB</b>: o app do portal, com atalho na área de trabalho. Depois ele se atualiza sozinho.</li>' +
+      '<li><b>Verificador do computador</b> (Otimizador de PC): deixa o computador leve e mostra a situação dele no Painel dos Computadores.</li></ul>' +
+      '<p style="margin:0 0 4px;font-weight:600;">Como instalar</p>' +
+      '<ol style="margin:0 0 10px 18px;padding:0;"><li>Clique em <b>Baixar o instalador</b> e abra o arquivo <b>Instalador FB</b> quando o download terminar.</li>' +
+      '<li>Se o Windows avisar, clique em <b>Mais informações › Executar assim mesmo</b>.</li>' +
+      '<li>Quando o Windows perguntar se o app pode fazer alterações, clique em <b>Sim</b> (é preciso ser administrador do computador).</li></ol>' +
+      '<p style="margin:0 0 12px;color:var(--muted,#9c908b);font-size:12.5px;">Uso interno: não envie este arquivo para fora do escritório.</p>' +
+      '<p id="inst-fb-info" style="margin:0 0 10px;color:var(--muted,#9c908b);font-size:12.5px;">Verificando o instalador…</p>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
+      '<button type="button" id="inst-fb-fechar" class="btn secondary small">Fechar</button>' +
+      '<button type="button" id="inst-fb-baixar" class="btn small" disabled>Baixar o instalador</button></div>' +
+      (ehAdmin ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line,rgba(236,230,225,.2));">' +
+        '<p style="margin:0 0 6px;font-weight:600;">Administrador: enviar versão nova</p>' +
+        '<p style="margin:0 0 8px;color:var(--muted,#9c908b);font-size:12.5px;">Escolha o <b>Instalador FB.exe</b> gerado por <code>otimizador-pc\\compilar.ps1</code> (pasta <code>otimizador-pc\\dist</code>). Ele substitui o atual para todos.</p>' +
+        '<input type="file" id="inst-fb-arquivo" accept=".exe" style="max-width:100%;"> ' +
+        '<button type="button" id="inst-fb-enviar" class="btn secondary small" style="margin-top:8px;">Enviar</button>' +
+        '<p id="inst-fb-envio" style="margin:8px 0 0;font-size:12.5px;"></p></div>' : '') +
+      '</div>';
+    document.body.appendChild(bd);
+    const info = document.getElementById('inst-fb-info'), baixar = document.getElementById('inst-fb-baixar');
+    function fechar(){ bd.remove(); document.removeEventListener('keydown', esc); }
+    function esc(e){ if (e.key === 'Escape') fechar(); }
+    document.addEventListener('keydown', esc);
+    document.getElementById('inst-fb-fechar').onclick = fechar;
+    bd.addEventListener('click', function(e){ if (e.target === bd) fechar(); });
+
+    function atualizarInfo(){
+      info.textContent = 'Verificando o instalador…';
+      return carregarStorage().then(function(st){ return st.ref(INSTALADOR_CAMINHO).getMetadata(); }).then(function(md){
+        const quando = md.updated ? new Date(md.updated).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        info.textContent = 'Versão disponível: enviada em ' + quando + ' · ' + tamanhoLegivel(md.size || 0);
+        baixar.disabled = false;
+      }).catch(function(e){ info.textContent = 'Não dá para baixar agora: ' + motivoInstalador(e); baixar.disabled = true; });
+    }
+    atualizarInfo();
+
+    baixar.onclick = function(){
+      baixar.disabled = true; baixar.textContent = 'Baixando…';
+      carregarStorage().then(function(st){ return st.ref(INSTALADOR_CAMINHO).getDownloadURL(); }).then(function(u){
+        return fetch(u).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); });
+      }).then(function(blob){
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'Instalador FB.exe';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        baixar.textContent = 'Baixado ✓';
+        info.textContent = 'Pronto. Abra o arquivo "Instalador FB" na lista de downloads.';
+        setTimeout(function(){ baixar.disabled = false; baixar.textContent = 'Baixar o instalador'; }, 4000);
+      }).catch(function(e){
+        console.warn('instalador', e);
+        baixar.disabled = false; baixar.textContent = 'Baixar o instalador';
+        info.textContent = 'O download falhou: ' + motivoInstalador(e);
+      });
+    };
+
+    if (ehAdmin) {
+      const enviar = document.getElementById('inst-fb-enviar'), msg = document.getElementById('inst-fb-envio');
+      enviar.onclick = function(){
+        const arq = document.getElementById('inst-fb-arquivo').files[0];
+        if (!arq) { msg.textContent = 'Escolha o arquivo primeiro.'; return; }
+        if (!/\.exe$/i.test(arq.name)) { msg.textContent = 'Tem que ser o arquivo .exe do instalador.'; return; }
+        if (arq.size > 50 * 1024 * 1024) { msg.textContent = 'Arquivo grande demais (máximo 50 MB).'; return; }
+        if (!confirm('Substituir o instalador para todos pelo arquivo "' + arq.name + '" (' + tamanhoLegivel(arq.size) + ')?')) return;
+        enviar.disabled = true; msg.textContent = 'Enviando…';
+        carregarStorage().then(function(st){
+          const tarefa = st.ref(INSTALADOR_CAMINHO).put(arq, { contentType: 'application/octet-stream', customMetadata: { nomeOriginal: arq.name.slice(0, 100) } });
+          tarefa.on('state_changed', function(s){ if (s.totalBytes) msg.textContent = 'Enviando… ' + Math.round(100 * s.bytesTransferred / s.totalBytes) + '%'; });
+          return tarefa;
+        }).then(function(){
+          msg.textContent = 'Enviado ✓. A equipe já baixa esta versão.';
+          enviar.disabled = false;
+          atualizarInfo();
+        }).catch(function(e){
+          console.warn('instalador envio', e);
+          enviar.disabled = false;
+          msg.textContent = 'O envio falhou: ' + motivoInstalador(e);
+        });
+      };
+    }
+  }
+
   function renderUserMenu(menuTabs){
     els.userMenuDropdown.innerHTML = '';
 
@@ -4132,6 +4431,15 @@
       abrirDownloadLogo();
     });
     if (!ehContaCliente(currentProfile.role)) els.userMenuDropdown.appendChild(logoBtn);   // material interno da equipe
+
+    // instalador completo (app do Portal + Verificador do computador): só equipe, nunca cliente
+    if (!ehContaCliente(currentProfile.role)) {
+      const instBtn = document.createElement('button');
+      instBtn.type = 'button';
+      instBtn.innerHTML = iconeSvg('download') + '<span>Baixar o sistema do escritório</span>';
+      instBtn.addEventListener('click', function(){ closeUserMenu(); abrirInstaladorFB(); });
+      els.userMenuDropdown.appendChild(instBtn);
+    }
 
     const divLogo = document.createElement('div');
     divLogo.className = 'user-menu-divider';
@@ -4341,6 +4649,7 @@
     }
     agendarPreloadAbas(allowed);
     abrirTarefaDoLink();
+    abrirAgendaDoLink();
 
     applySearchFilter();
   }
@@ -5494,6 +5803,10 @@
   ];
   function corrigirNomesDeAbas(){
     tabsCatalog.forEach(function(t){
+      // 10/11/2026: "Petições" passou a ser "Formatador" (petição, parecer e notificação)
+      if (/tools\/peticoes\//.test(t.url || '') && /^\s*(formatador de\s+)?peti[cç][õo]es\s*$/i.test(t.label || '')) {
+        db.collection('tabs').doc(t.id).update({ label: 'Formatador' }).catch(function(){});
+      }
       CORRECOES_NOME_ABA.forEach(function(c){
         if (c[0].test(t.label || '') && t.label !== c[1]) {
           db.collection('tabs').doc(t.id).update({ label: c[1] }).catch(function(){});
@@ -5691,7 +6004,118 @@
   }
 })();
 </script>
-<script src="assets/layout-visao-geral.js?v=5"></script>
-<script src="assets/layout-subabas.js?v=3"></script>
+<script>
+// App para Windows (app-windows/): aviso de conexão e de sincronização. O Firestore guarda o que for
+// gravado sem internet e envia quando a conexão volta (firebase-config.js liga isso só no app).
+(function(){
+  if (!window.__portalApp) return;
+  var el = document.createElement('div');
+  el.id = 'app-conexao';
+  el.setAttribute('role', 'status');
+  el.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8500;display:none;max-width:min(92vw,620px);' +
+    'padding:9px 16px;border-radius:12px;font:600 13px/1.4 "Segoe UI",system-ui,sans-serif;text-align:center;box-shadow:0 10px 26px rgba(0,0,0,.45);';
+  function mostrar(txt, tipo, segundos){
+    el.textContent = txt;
+    el.style.background = tipo === 'off' ? '#7a5a00' : '#1f6b45';
+    el.style.color = '#fff';
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    if (segundos) el._t = setTimeout(function(){ el.style.display = 'none'; }, segundos * 1000);
+  }
+  function semInternet(){
+    mostrar('Sem internet. Você pode continuar trabalhando: o que gravar fica guardado neste computador e é enviado quando a conexão voltar.', 'off');
+  }
+  function voltou(){
+    mostrar('Conexão de volta. Enviando o que foi feito sem internet…', 'on');
+    try {
+      firebase.firestore().waitForPendingWrites().then(function(){ mostrar('✓ Tudo sincronizado.', 'on', 5); })
+        .catch(function(){ mostrar('Conexão de volta.', 'on', 5); });
+    } catch (e) { mostrar('Conexão de volta.', 'on', 5); }
+  }
+  document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); if (!navigator.onLine) semInternet(); });
+  window.addEventListener('offline', semInternet);
+  window.addEventListener('online', voltou);
+  // versão única: portal e app têm o mesmo número (app-windows/publicar.ps1). No app, mostra as duas e, se o app
+  // estiver atrás do portal (ou for de antes da versão única, que não se atualiza sozinho), mostra o botão
+  // "Atualizar o app": baixa o instalador novo, que fecha o app, atualiza e reabre.
+  // app v220 em diante: um clique só. O próprio app baixa a versão nova, confere, fecha e reabre já atualizado.
+  var appUmClique = false;
+  function atualizarAgora(b){
+    if (!confirm('O app vai baixar a versão nova, fechar e abrir de novo sozinho (alguns segundos; o login continua).\n\nSe estiver escrevendo algo, salve antes. Atualizar agora?')) return;
+    b.disabled = true; b.textContent = '⟳ Atualizando…';
+    mostrar('Baixando a versão nova… o app fecha e abre de novo sozinho.', 'on');
+    try { window.chrome.webview.postMessage('atualizar-agora'); }
+    catch (e) { b.disabled = false; b.textContent = '⟳ Atualizar o app'; mostrar('Não foi possível atualizar agora. Feche e abra o app: ele se atualiza sozinho.', 'off', 10); }
+  }
+  if (window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message', function(ev){
+    var b = document.getElementById('app-atualizar-btn');
+    if (b) { b.disabled = false; b.textContent = '⟳ Atualizar o app'; }
+    if (ev.data === 'atualizar-nada') mostrar('O app já está na versão mais nova. Recarregue a página (Ctrl+Shift+R).', 'on', 8);
+    else if (ev.data === 'atualizar-erro') mostrar('Não deu para baixar a versão nova agora (internet?). Tente de novo daqui a pouco.', 'off', 10);
+  });
+  // apps de antes do v220: não sabem atualizar com um clique. Os de v207 a v219 já baixam a versão nova sozinhos e
+  // instalam ao fechar; os 1.0.x (antes da versão única) precisam do instalador uma última vez.
+  function atualizarAppAntigo(antigo){
+    if (!antigo) {
+      alert('Para atualizar desta vez: feche o app (no X da janela) e abra de novo pelo atalho "Portal FB".\n\nEle já baixou a versão nova sozinho e se instala ao fechar. Das próximas vezes, basta clicar em "Atualizar o app" que ele faz tudo sozinho.');
+      return;
+    }
+    atualizarApp();
+  }
+  function atualizarApp(){
+    var a = document.createElement('a');
+    a.href = 'baixar/PortalFB.exe?t=' + Date.now();
+    a.download = 'Portal FB - Instalador.exe';
+    document.body.appendChild(a); a.click(); a.remove();
+    var bd = document.getElementById('app-atualizar-bd');
+    if (!bd) {
+      bd = document.createElement('div'); bd.id = 'app-atualizar-bd';
+      bd.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(10,6,6,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+      bd.innerHTML = '<div style="width:min(500px,100%);background:#211918;color:#ece6e1;border:1px solid rgba(236,230,225,.2);border-radius:14px;padding:22px;font:14px/1.55 Segoe UI,system-ui,sans-serif;">' +
+        '<h3 style="margin:0 0 8px;font-size:1.05rem;">Atualizando o app</h3>' +
+        '<p style="margin:0 0 6px;color:#c9bdb8;">O instalador novo está sendo baixado. Para concluir:</p>' +
+        '<ol style="margin:6px 0 10px 18px;padding:0;">' +
+        '<li>Clique no arquivo <b>Portal FB - Instalador</b> na lista de downloads, que aparece no canto superior direito.</li>' +
+        '<li>Se o Windows avisar, clique em <b>Mais informações › Executar assim mesmo</b>.</li>' +
+        '<li>O app fecha e atualiza. Na tela <b>Portal FB instalado</b>, clique em <b>Abrir o Portal</b>. O login continua.</li></ol>' +
+        '<p style="margin:0;color:#9c908b;font-size:12.5px;">Depois disso, você não precisa fazer mais nada: o app baixa as versões novas sozinho e se atualiza quando é fechado.</p>' +
+        '<div style="text-align:right;margin-top:14px;"><button type="button" id="app-atualizar-ok" style="padding:9px 18px;border-radius:8px;border:none;background:#b8362e;color:#fff;font-weight:600;cursor:pointer;">Entendi</button></div></div>';
+      document.body.appendChild(bd);
+      document.getElementById('app-atualizar-ok').onclick = function(){ bd.remove(); };
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var m = /PortalFBApp\/([\d.]+)/.exec(navigator.userAgent || '');
+    var antigo = !!(m && m[1].indexOf('.') !== -1);   // apps 1.0.x (antes da versão única)
+    document.querySelectorAll('.version-tag').forEach(function(tag){
+      var portal = (tag.textContent.match(/\d+/) || [''])[0];
+      var app = antigo ? null : m[1];
+      var atrasado = antigo || (parseInt(app, 10) < parseInt(portal, 10));
+      appUmClique = !antigo && parseInt(app, 10) >= 220 && !!(window.chrome && window.chrome.webview);
+      tag.textContent = 'v' + portal + ' · app ' + (antigo ? '(versão antiga)' : 'v' + app);
+      tag.title = !atrasado ? 'Portal e app na mesma versão' : 'O app está desatualizado: ele se atualiza sozinho quando for fechado, ou clique em "Atualizar o app"';
+      if (!atrasado) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'app-atualizar-btn';
+      b.textContent = '⟳ Atualizar o app';
+      b.title = 'Atualiza o app para a versão v' + portal + ' (fecha e abre de novo sozinho)';
+      b.style.cssText = 'margin-left:8px;padding:4px 10px;border-radius:999px;border:1px solid #c9463c;background:#b8362e;color:#fff;' +
+        'font:600 11.5px/1.2 Segoe UI,system-ui,sans-serif;cursor:pointer;white-space:nowrap;vertical-align:middle;';
+      b.onclick = function(){ if (appUmClique) atualizarAgora(b); else atualizarAppAntigo(antigo); };
+      tag.insertAdjacentElement('afterend', b);
+    });
+  });
+  // guarda todas as ferramentas para abrirem sem internet (uma vez por abertura do app, depois de carregar)
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      if (!navigator.onLine || !navigator.serviceWorker) return;
+      navigator.serviceWorker.ready.then(function(r){ if (r.active) r.active.postMessage({ tipo: 'guardar-para-offline' }); }).catch(function(){});
+    }, 8000);
+  });
+})();
+</script>
+<script src="assets/layout-visao-geral.js?v=6"></script>
+<script src="assets/layout-subabas.js?v=6"></script>
 </body>
 </html>

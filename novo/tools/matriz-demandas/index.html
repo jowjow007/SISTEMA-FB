@@ -330,6 +330,28 @@ header.masthead{position:sticky;top:0;z-index:5;display:flex;align-items:center;
 footer.note{margin-top:28px;font-size:12px;color:var(--ink-soft);line-height:1.6;padding-top:18px;border-top:1px solid var(--border)}
 footer.note b{color:var(--ink)}
 @media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+/* regras do portal atual (posteriores a 07/11/2026), trazidas para a versão nova */
+/* calculadora de prazos por tribunal (16/11/2026) */
+  .pt-form{grid-template-columns:repeat(4,minmax(0,1fr));}
+.pt-form .pt-largo{grid-column:span 3;}
+@media (max-width:760px){ .pt-form{grid-template-columns:1fr 1fr;} .pt-form .pt-largo{grid-column:span 2;} }
+@media (max-width:480px){ .pt-form{grid-template-columns:1fr;} .pt-form .pt-largo{grid-column:auto;} }
+.pt-aviso{margin-top:16px;padding:10px 14px;border-radius:10px;background:var(--calc-bg);border:1px solid var(--calc-border);font-size:14px;}
+.pt-resultado{margin-top:20px;background:var(--calc-card);border:1px solid var(--calc-border);border-radius:14px;padding:20px 22px;}
+.pt-resultado h3{margin:0 0 4px;font-size:20px;}
+.pt-sub{margin:0 0 12px;color:var(--ink-soft);}
+.pt-dados{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13.5px;margin-bottom:12px;}
+.pt-final{font-size:17px;margin:6px 0 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pt-final b{color:var(--wine-500);font-size:19px;}
+.pt-copiar{border:1px solid var(--calc-border);background:transparent;color:inherit;border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer;}
+.pt-tab{width:100%;border-collapse:collapse;font-size:13.5px;}
+.pt-tab th,.pt-tab td{border-bottom:1px solid var(--calc-border);padding:5px 10px;text-align:left;}
+.pt-tab th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+.pt-tab td:first-child{width:90px;font-weight:700;text-align:center;}
+.pt-tab tr.nao td{color:var(--ink-soft);opacity:.7;font-weight:400;}
+.pt-tab tr.prorr td{font-weight:700;color:var(--wine-500);}
+.pt-acoes{margin-top:14px;}
+.pt-nota{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
 </style>
 
 <header class="masthead">
@@ -361,6 +383,10 @@ footer.note b{color:var(--ink)}
       <button class="mode-tab" type="button" data-mode="calculadora" aria-pressed="false">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2 2 4-4"/></svg>
         <span>Calculadora de Prazo</span>
+      </button>
+      <button class="mode-tab" type="button" data-mode="prazotribunal" aria-pressed="false">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/><path d="M8 21h8"/></svg>
+        <span>Prazo por tribunal</span>
       </button>
       <button class="mode-tab" type="button" data-mode="guia" aria-pressed="false">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>
@@ -457,6 +483,26 @@ footer.note b{color:var(--ink)}
     </div>
     <div class="calc-results" id="calcResults"></div>
     <p class="calc-footnote">Contagem em dias úteis considera apenas <b>sábados, domingos e feriados nacionais</b> (Confraternização Universal, Sexta-feira da Paixão, Tiradentes, Dia do Trabalho, Independência, Nossa Senhora Aparecida, Finados, Proclamação da República, Consciência Negra e Natal) — não considera Carnaval, Corpus Christi, recesso forense nem feriados estaduais/municipais, que variam por tribunal e comarca. Se o resultado em dias corridos cair em dia não útil, mostramos também a data prorrogada.</p>
+  </section>
+
+  <section class="panel calc-panel" id="prazoTribunalPanel" style="display:none">
+    <div class="calc-head">
+      <h2>Calculadora de prazos por tribunal</h2>
+      <p>Escolha o município, a matéria, o tipo de processo e o tribunal; informe a data da publicação, o prazo e a forma de contagem. A contagem começa no dia útil seguinte à publicação e considera fins de semana, feriados nacionais, forenses do tribunal, municipais e o recesso de 20/12 a 20/01.</p>
+    </div>
+    <div class="calc-form pt-form">
+      <div class="calc-field"><label>Estado</label><select id="ptUf"><option value="mg">Minas Gerais</option></select></div>
+      <div class="calc-field"><label>Município</label><select id="ptMun"></select></div>
+      <div class="calc-field"><label>Matéria</label><select id="ptMateria"><option value="">Selecione...</option><option value="civel">Cível</option><option value="criminal">Criminal</option><option value="trabalhista">Trabalhista</option></select></div>
+      <div class="calc-field"><label>Processo</label><select id="ptProc"><option value="">Selecione...</option><option value="eletronico">Eletrônico</option><option value="fisico">Físico</option></select></div>
+      <div class="calc-field"><label>Tribunal</label><select id="ptTrib"></select></div>
+      <div class="calc-field"><label>Data da Publicação</label><input type="date" id="ptData"></div>
+      <div class="calc-field"><label>Prazo (Dias)</label><input type="number" id="ptPrazo" min="1" max="365" step="1" inputmode="numeric" placeholder="ex.: 15"></div>
+      <div class="calc-field"><label>Contagem</label><select id="ptCont"><option value="uteis">Úteis</option><option value="corridos">Corridos</option></select></div>
+      <div class="calc-field pt-largo"><label>Suspensões / feriados locais (opcional)</label><input type="text" id="ptExtras" placeholder="ex.: 28/10 Dia do Servidor, 15/08, 05/03/2027 indisponibilidade do PJe"></div>
+      <button class="btn primary" id="ptCalc" type="button">Calcular</button>
+    </div>
+    <div id="ptRes"></div>
   </section>
 
   <section class="panel guide-panel" id="guiaPanel" style="display:none">
@@ -637,6 +683,7 @@ footer.note b{color:var(--ink)}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="prazo-tribunal.js"></script>
 <script>
 // [cat, tipo, complexidade, prazo, forma, baseLegal, sla, responsavel, revisor, slaRevisao, protocolo, etiqueta]
 // Cópia de segurança: usada só se a planilha estiver fora do ar E não houver
@@ -1261,7 +1308,7 @@ function groupByCat(rows){
 }
 
 function render(){
-  if(state.mode === 'calculadora' || state.mode === 'guia' || state.mode === 'feedback') return;
+  if(state.mode === 'calculadora' || state.mode === 'guia' || state.mode === 'feedback' || state.mode === 'prazotribunal') return;
   if(state.mode === 'tipo'){
     renderTipoList();
     if(state.selected!==null){
@@ -1662,6 +1709,8 @@ function updateModeUI(){
   guiaPanel.style.display = state.mode==='guia' ? 'block' : 'none';
   feedbackPanel.style.display = state.mode==='feedback' ? 'block' : 'none';
   calendarTabPanel.style.display = state.mode==='calendario' ? 'block' : 'none';
+  document.getElementById('prazoTribunalPanel').style.display = state.mode==='prazotribunal' ? 'block' : 'none';
+  if(state.mode==='prazotribunal' && window.PrazoTribunal) PrazoTribunal.montar();
   if(state.mode==='guia') initGuide();
   else stopGuide();
   if(state.mode==='calendario') renderCalTabGrid();
@@ -1929,6 +1978,6 @@ initCalendarTab();
 scheduleDailyRefresh();
 loadRowsFromSheet();
 document.getElementById('syncRefreshBtn')?.addEventListener('click', ()=>loadRowsFromSheet());
-</script><link rel="stylesheet" href="../../assets/ds-teste.css?v=7">
-<script src="../../assets/ds-teste.js?v=7" defer></script>
+</script><link rel="stylesheet" href="../../assets/ds-teste.css?v=8">
+<script src="../../assets/ds-teste.js?v=8" defer></script>
 

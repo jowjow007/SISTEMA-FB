@@ -231,9 +231,19 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
 .trecho{white-space:normal}
 .conversa{grid-template-columns:1fr}
 .periodos .baixar{margin-left:0}}
+/* regras do portal atual (posteriores a 07/11/2026), trazidas para a versão nova */
+.modal select{width:100%;margin:5px 0 12px;background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font:inherit;font-size:.85rem;padding:7px;}
+.modal .erro-m{color:var(--red-bright);font-size:.75rem;min-height:1em;margin-top:6px;}
+.motivo{grid-column:1/-1;font-size:.76rem;color:var(--paper);background:var(--panel-3);border-radius:7px;padding:6px 9px;word-break:break-word;}
+.motivo b{color:var(--muted);font-weight:600;}
+.env{background:var(--panel-2);border:1px solid var(--line-strong);border-left:4px solid var(--gold);border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:4px 14px;}
+.env .quando{font-size:.74rem;color:var(--muted);text-align:right;white-space:nowrap;}
+.env .para{font-size:.82rem;}
+.env .para b{color:var(--gold);}
+@media (max-width:700px){ .env{grid-template-columns:1fr;} .env .quando{text-align:left;} }
 </style>
-<link rel="stylesheet" href="../../assets/ds-teste.css?v=7">
-<script src="../../assets/ds-teste.js?v=7" defer></script>
+<link rel="stylesheet" href="../../assets/ds-teste.css?v=8">
+<script src="../../assets/ds-teste.js?v=8" defer></script>
 </head>
 <body>
 
@@ -242,8 +252,9 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   <p class="sub" id="sub">Carregando…</p>
   <nav class="abas" id="abas" style="display:none;">
     <button type="button" data-aba="conf" class="ativa">Conferência</button>
-    <button type="button" data-aba="hist">Histórico</button>
-    <button type="button" data-aba="rel">Relatório</button>
+    <button type="button" data-aba="env">Enviados</button>
+    <button type="button" data-aba="hist" data-so-dono>Histórico</button>
+    <button type="button" data-aba="rel" data-so-dono>Relatório</button>
   </nav>
 </header>
 
@@ -256,6 +267,13 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     <div class="filtros" id="filtros"></div>
     <div class="lista" id="lista"></div>
     <div class="rodape" id="rodape"></div>
+  </section>
+
+  <!-- ===== Enviados (todos: o que cada um enviou para outro colega; o admin vê todos) ===== -->
+  <section class="painel" id="painel-env">
+    <div class="filtros"><input class="busca grande" id="e-q" placeholder="🔎 Buscar por assunto, remetente ou colega…"></div>
+    <div class="resumo" id="e-resumo"></div>
+    <div class="lista" id="e-lista"></div>
   </section>
 
   <!-- ===== Histórico (só o dono) ===== -->
@@ -313,8 +331,13 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
     <h3 id="m-tit">Marcar como respondido</h3>
     <p class="ref" id="m-ref"></p>
-    <label for="m-nota">Como foi respondido? <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+    <div id="m-para-bloco" style="display:none">
+      <label for="m-para">Enviar para</label>
+      <select id="m-para"></select>
+    </div>
+    <label for="m-nota" id="m-rot">Como foi respondido? <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
     <textarea id="m-nota" placeholder="Ex.: Liguei para a síndica e expliquei o prazo do recurso."></textarea>
+    <div class="erro-m" id="m-erro"></div>
     <div class="acoes">
       <button type="button" class="bt" id="m-cancelar">Cancelar</button>
       <button type="button" class="bt p" id="m-ok">Marcar respondido</button>
@@ -332,7 +355,8 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   "use strict";
 
   // Os e-mails são gravados pelo robô (scripts/conferencia-emails/Codigo.gs, Google Apps Script), de hora em hora.
-  // Administrador vê tudo e troca o responsável; cada responsável vê só os próprios e marca como respondido.
+  // Administrador vê tudo e troca o responsável; cada responsável vê só os próprios e marca como respondido,
+  // ignora (com motivo obrigatório) ou envia para outro colega (registrado em emailsConferenciaEnvios, aba Enviados).
   // Histórico e Relatório (com os textos dos e-mails e das respostas) são só do dono — travado também nas
   // regras do Firestore (função isDonoConferencia).
   const DONO_EMAIL = 'jonathan@fonsecaebraga.com.br';
@@ -368,7 +392,9 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   let eu = null;            // { uid, email, nome, admin, dono }
   let todos = [];           // e-mails que esta pessoa pode ver (o dono recebe a coleção inteira)
   let textos = {};          // id -> textos (só o dono)
-  let equipe = [];          // [{ email, nome }] — só o admin carrega
+  let equipe = [];          // [{ email, nome }] — admin: users; demais: perfis (para o "Enviar para…")
+  let envios = [];          // emailsConferenciaEnvios: os que eu enviei (admin: todos)
+  let recebidos = {};       // emailId -> último envio recebido por mim (para mostrar quem enviou e o recado)
   let meta = null;
   let filtroSt = 'abertos', filtroCaixa = '', filtroResp = '', busca = '';
   let abertos = {};         // id -> conversa aberta
@@ -427,7 +453,20 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     const p = equipe.find(function(x){ return x.email === email; });
     if (p) return p.nome;
     const m = todos.find(function(x){ return x.responsavelEmail === email && x.responsavelNome; });
-    return m ? m.responsavelNome : email;
+    if (m) return m.responsavelNome;
+    const c = todos.find(function(x){ return (x.coResponsaveis || []).indexOf(email) >= 0 && x.coResponsaveisNomes; });
+    if (c) return c.coResponsaveisNomes[c.coResponsaveis.indexOf(email)] || email;
+    const v = envios.concat(Object.keys(recebidos).map(function(k){ return recebidos[k]; })).find(function(x){ return x.porEmail === email || x.paraEmail === email; });
+    if (v) return (v.porEmail === email ? v.porNome : v.paraNome) || email;
+    return email;
+  }
+  // responsável principal + quem divide a caixa com ele (coResponsaveis, ex.: jurídico no piloto de 19/11/2026)
+  function respsDe(m){
+    return [m.responsavelEmail].concat(m.coResponsaveis || []).filter(function(e, i, a){ return e && a.indexOf(e) === i; });
+  }
+  function nomesResp(m){
+    const n = respsDe(m).map(nomeDe);
+    return n.length > 1 ? n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1] : (n[0] || '');
   }
   function st(m){
     if (m.status === 'respondido') return m.respondidoModo === 'manual' ? 'manual' : 'respondido';
@@ -452,7 +491,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
       return (s === 'manual' ? '✍️ Marcado à mão' : '✓ Respondido') + (m.respondidoPor ? ' por ' + escapeHtml(nomeDe(m.respondidoPor)) : '') +
         ' · ' + quando(data(m.respondidoEm)) + (horasResposta(m) != null ? ' · em ' + duracao(horasResposta(m)) : '');
     }
-    if (s === 'ignorado') return 'Ignorado';
+    if (s === 'ignorado') return 'Ignorado' + (m.ignoradoPor ? ' por ' + escapeHtml(nomeDe(m.ignoradoPor)) : '') + (m.ignoradoEm ? ' · ' + quando(data(m.ignoradoEm)) : '');
     const h = horasDesde(data(m.recebidoEm));
     return s === 'atrasado' ? '● Sem resposta ' + idade(h) : '● Aguardando resposta · ' + idade(h);
   }
@@ -472,7 +511,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     if (!lado) {
       lado = m.status === 'respondido'
         ? '<div class="bolha resp"><div class="rot">✉️ Resposta · ' + escapeHtml(nomeDe(m.respondidoPor)) + '</div><i>O robô ainda vai buscar o texto desta resposta (próxima conferência).</i></div>'
-        : '<div class="bolha falta"><div class="rot">' + (m.status === 'ignorado' ? 'Ignorado' : '⏳ Ainda sem resposta') + '</div><i>Responsável: ' + escapeHtml(nomeDe(m.responsavelEmail)) + '</i></div>';
+        : '<div class="bolha falta"><div class="rot">' + (m.status === 'ignorado' ? 'Ignorado' : '⏳ Ainda sem resposta') + '</div><i>Responsável: ' + escapeHtml(nomesResp(m)) + '</i></div>';
     }
     return '<div class="conversa">' + recebido + '<div style="display:flex;flex-direction:column;gap:10px">' + lado + '</div></div>';
   }
@@ -489,7 +528,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
       if (filtroSt === 'respondidos' && s !== 'respondido' && s !== 'manual') return false;
       if (filtroSt === 'ignorados' && s !== 'ignorado') return false;
       if (filtroCaixa && m.caixa !== filtroCaixa) return false;
-      if (filtroResp && m.responsavelEmail !== filtroResp) return false;
+      if (filtroResp && respsDe(m).indexOf(filtroResp) < 0) return false;
       if (busca && norm(m.assunto + ' ' + m.deNome + ' ' + m.deEmail + ' ' + m.trecho).indexOf(busca) < 0) return false;
       return true;
     }).sort(function(a, b){
@@ -509,7 +548,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
       ['atrasados', 'alerta', n(function(m){ return st(m) === 'atrasado'; }), 'Sem resposta há +' + PRAZO_H + ' h', ICONES.relogio],
       ['respondidos', 'okc', n(function(m){ const s = st(m); return s === 'respondido' || s === 'manual'; }), 'Respondidos', ICONES.check]
     ];
-    if (eu.admin) cards.push(['ignorados', '', n(function(m){ return st(m) === 'ignorado'; }), 'Ignorados', ICONES.ignorado]);
+    cards.push(['ignorados', '', n(function(m){ return st(m) === 'ignorado'; }), 'Ignorados', ICONES.ignorado]);
     $('cards').innerHTML = cards.map(function(c){
       return '<div class="card com-icone ' + c[1] + (filtroSt === c[0] ? ' on' : '') + '" data-st="' + c[0] + '">' +
         '<span class="ico" aria-hidden="true">' + c[4] + '</span><div><b>' + c[2] + '</b><span>' + c[3] + '</span></div></div>';
@@ -521,7 +560,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
       }).join('');
     if (eu.admin) {
       const resps = [];
-      base.forEach(function(m){ if (m.responsavelEmail && resps.indexOf(m.responsavelEmail) < 0) resps.push(m.responsavelEmail); });
+      base.forEach(function(m){ respsDe(m).forEach(function(e){ if (resps.indexOf(e) < 0) resps.push(e); }); });
       f += '<select id="filtro-resp"><option value="">Todos os responsáveis</option>' + resps.map(function(e){
         return '<option value="' + escapeHtml(e) + '"' + (filtroResp === e ? ' selected' : '') + '>' + escapeHtml(nomeDe(e)) + '</option>';
       }).join('') + '</select>';
@@ -546,19 +585,25 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
         '<a class="bt" href="' + escapeHtml(linkGmail(m)) + '" target="_blank" rel="noopener">Abrir no Gmail ↗</a>';
       if (!fechado(s)) {
         bts += '<button type="button" class="bt p" data-ok="' + m.id + '">Marcar respondido</button>';
-        if (eu.admin) bts += '<button type="button" class="bt" data-ign="' + m.id + '" title="Tirar da conferência (propaganda, aviso que não precisa de resposta…)">Ignorar</button>';
+        if (!eu.admin) bts += '<button type="button" class="bt" data-env="' + m.id + '" title="Passar este e-mail para outro colega responder">Enviar para…</button>';
+        bts += '<button type="button" class="bt" data-ign="' + m.id + '" title="Tirar da conferência (propaganda, aviso que não precisa de resposta…) — pede a justificativa">Ignorar</button>';
       } else if (eu.admin) {
         bts += '<button type="button" class="bt" data-reabrir="' + m.id + '">Reabrir</button>';
       }
       // o responsável já aparece no seletor enquanto o e-mail está aberto
-      const para = eu.admin && !resp && m.responsavelEmail ? ' · responsável: <b>' + escapeHtml(nomeDe(m.responsavelEmail)) + '</b>' : '';
+      const para = m.responsavelEmail && (eu.admin ? !resp : respsDe(m).length > 1) ? ' · responsável: <b>' + escapeHtml(nomesResp(m)) + '</b>' : '';
+      const rec = recebidos[m.id];
+      const veio = m.atribuidoPor && m.atribuidoPor !== eu.email
+        ? ' · ↪ enviado por <b>' + escapeHtml(nomeDe(m.atribuidoPor)) + '</b>' + (m.atribuidoEm ? ' ' + quando(data(m.atribuidoEm)) : '') : '';
+      const extra = (s === 'ignorado' && m.ignoradoMotivo ? '<div class="motivo"><b>Motivo para ignorar:</b> ' + escapeHtml(m.ignoradoMotivo) + '</div>' : '') +
+        (rec && rec.recado && !fechado(s) ? '<div class="motivo"><b>Recado de ' + escapeHtml(rec.porNome || nomeDe(rec.porEmail)) + ':</b> ' + escapeHtml(rec.recado) + '</div>' : '');
       return '<div class="mail ' + s + '">' +
         '<div><div class="linha1"><span class="caixa ' + escapeHtml(m.caixa) + '">' + escapeHtml(CAIXAS[m.caixa] || m.caixa) + '</span>' +
           '<span class="assunto">' + escapeHtml(m.assunto) + '</span></div>' +
           '<div class="de">' + escapeHtml(m.deNome) + (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + escapeHtml(m.deEmail) + '&gt;' : '') +
-          ' · recebido ' + quando(data(m.recebidoEm)) + para + '</div></div>' +
+          ' · recebido ' + quando(data(m.recebidoEm)) + para + veio + '</div></div>' +
         '<div class="lado"><span class="st ' + s + '">' + textoStatus(m) + '</span>' + resp + '<div class="bts">' + bts + '</div></div>' +
-        '<div class="trecho">' + escapeHtml(m.trecho) + '</div>' +
+        '<div class="trecho">' + escapeHtml(m.trecho) + '</div>' + extra +
         (eu.dono && abertos[m.id] ? htmlConversa(m, '') : '') +
       '</div>';
     }).join('') : '<div class="vazio">' + (base.length ? 'Nenhum e-mail nesta lista. 🎉' : 'Nenhum e-mail na conferência ainda.') + '</div>';
@@ -566,9 +611,10 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     $('rodape').innerHTML = eu.admin
       ? 'O robô confere as caixas <b>Meu e-mail</b>, <b>Condomínio</b> e <b>Jurídico</b> de hora em hora (e-mails dos últimos 7 dias; avisos automáticos, tribunais e mensagens internas ficam de fora). ' +
         'Um e-mail vira <b>respondido</b> sozinho quando alguém do escritório responde no mesmo fio — na sua caixa ou nos enviados do responsável. ' +
-        'Trocar o responsável vale na hora: ele passa a ver o e-mail nesta aba. Aqui aparecem os últimos ' + DIAS_VISAO_ADMIN + ' dias' + (eu.dono ? '; o histórico completo fica na aba <b>Histórico</b>.' : '.')
+        'Trocar o responsável vale na hora: ele passa a ver o e-mail nesta aba (o envio fica na aba <b>Enviados</b>). Para ignorar, é preciso escrever o motivo. Aqui aparecem os últimos ' + DIAS_VISAO_ADMIN + ' dias' + (eu.dono ? '; o histórico completo fica na aba <b>Histórico</b>.' : '.')
       : 'Aqui aparecem os e-mails que você precisa responder. Responda pelo Gmail (botão <b>Abrir no Gmail</b>): o status muda sozinho para <b>respondido</b> em até 1 hora. ' +
-        'Se respondeu por outro meio (telefone, WhatsApp…), use <b>Marcar respondido</b> e conte rapidamente como foi.';
+        'Se respondeu por outro meio (telefone, WhatsApp…), use <b>Marcar respondido</b> e conte rapidamente como foi. ' +
+        'Se não precisa de resposta, use <b>Ignorar</b> (o motivo é obrigatório). Se é de outra pessoa, use <b>Enviar para…</b>: o e-mail sai da sua lista e passa a ser dela — fica registrado na aba <b>Enviados</b>.';
 
     const b = $('busca');
     b.oninput = function(){
@@ -663,7 +709,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
           '<span class="assunto">' + marca(m.assunto, q) + '</span></div>' +
           '<div class="de"><a class="rem" data-rem="' + escapeHtml(m.deEmail) + '" title="Ver todos os e-mails deste remetente">' + marca(m.deNome, q) +
             (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + marca(m.deEmail, q) + '&gt;' : '') + '</a> · recebido ' + dataHora(data(m.recebidoEm)) +
-            ' · responsável: <b>' + escapeHtml(nomeDe(m.responsavelEmail)) + '</b></div></div>' +
+            ' · responsável: <b>' + escapeHtml(nomesResp(m)) + '</b></div></div>' +
         '<div class="lado"><span class="st ' + s + '">' + textoStatus(m) + '</span><div class="bts">' +
           '<button type="button" class="bt" data-conv="' + m.id + '">' + (aberto ? '💬 Ocultar conversa' : '💬 Ver conversa') + '</button>' +
           '<a class="bt" href="' + escapeHtml(linkGmail(m)) + '" target="_blank" rel="noopener">Abrir no Gmail ↗</a></div></div>' +
@@ -963,7 +1009,7 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     const emails = L.map(function(m){
       const t = textos[m.id] || {};
       return { 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa, 'Remetente': m.deNome, 'E-mail do remetente': m.deEmail,
-        'Assunto': m.assunto, 'Responsável': nomeDe(m.responsavelEmail), 'Situação': situacao(m),
+        'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Situação': situacao(m),
         'Respondido por': m.respondidoPor ? nomeDe(m.respondidoPor) : '', 'Respondido em': dataHora(data(m.respondidoEm)),
         'Tempo de resposta': duracao(horasResposta(m)), 'E-mail recebido': t.recebidoTexto || m.trecho || '',
         'Resposta': t.respostaTexto || '', 'Anotação (marcado à mão)': t.nota || '' };
@@ -972,10 +1018,10 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     L.forEach(function(m){
       const s = st(m), t = textos[m.id] || {}, h = horasResposta(m);
       const add = function(tipo, det){ atencao.push({ 'Ponto de atenção': tipo, 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa,
-        'Remetente': m.deNome + ' <' + m.deEmail + '>', 'Assunto': m.assunto, 'Responsável': nomeDe(m.responsavelEmail), 'Detalhe': det }); };
+        'Remetente': m.deNome + ' <' + m.deEmail + '>', 'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Detalhe': det }); };
       if (s === 'atrasado' || s === 'pendente') add('Sem resposta', 'Aguardando há ' + idade(horasDesde(data(m.recebidoEm))).replace('há ', ''));
       if (s === 'manual' && !t.respostaTexto) add('Marcado à mão sem resposta no Gmail', t.nota ? 'Anotação: ' + t.nota : 'Sem anotação');
-      if (s === 'ignorado') add('Ignorado', 'Tirado da conferência no portal');
+      if (s === 'ignorado') add('Ignorado', (m.ignoradoPor ? 'Por ' + nomeDe(m.ignoradoPor) + ' em ' + dataHora(data(m.ignoradoEm)) + ' — ' : '') + (m.ignoradoMotivo ? 'Motivo: ' + m.ignoradoMotivo : 'Tirado da conferência no portal'));
       if ((s === 'respondido' || s === 'manual') && h != null && h > PRAZO_H) add('Respondido depois de ' + PRAZO_H + ' h', 'Levou ' + duracao(h));
     });
     db.collection('emailsConferenciaDescartes').where('recebidoEm', '>=', r.de).where('recebidoEm', '<=', r.ate).get().then(function(snap){
@@ -1003,50 +1049,134 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   // ---------- abas e repintura ----------
   function abrirAba(a){
     abaAtual = a;
-    ['conf', 'hist', 'rel'].forEach(function(x){ $('painel-' + x).classList.toggle('ativo', x === a); });
+    ['conf', 'env', 'hist', 'rel'].forEach(function(x){ $('painel-' + x).classList.toggle('ativo', x === a); });
     document.querySelectorAll('[data-aba]').forEach(function(b){ b.classList.toggle('ativa', b.dataset.aba === a); });
     repintar();
   }
   function repintar(){
     if (abaAtual === 'conf') renderConf();
+    else if (abaAtual === 'env') renderEnv();
     else if (abaAtual === 'hist') renderHist();
     else renderRel();
   }
 
-  // ---------- marcar respondido (com anotação opcional) ----------
-  let marcandoId = null;
-  function abrirModal(id){
+  // ---------- janela: marcar respondido (anotação opcional), ignorar (motivo obrigatório), enviar para… ----------
+  let marcandoId = null, modo = 'ok';
+  const MODOS = {
+    ok:  { tit: 'Marcar como respondido', rot: 'Como foi respondido? <span style="color:var(--muted);font-weight:400">(opcional)</span>',
+           ph: 'Ex.: Liguei para a síndica e expliquei o prazo do recurso.', bt: 'Marcar respondido' },
+    ign: { tit: 'Ignorar este e-mail', rot: 'Por que este e-mail não precisa de resposta? <span style="color:var(--red-bright);font-weight:600">(obrigatório)</span>',
+           ph: 'Ex.: Propaganda do fornecedor; aviso automático do banco; já tratado pelo Dr. Fulano por telefone.', bt: 'Ignorar' },
+    env: { tit: 'Enviar para outro colega', rot: 'Recado para o colega <span style="color:var(--muted);font-weight:400">(opcional)</span>',
+           ph: 'Ex.: É do processo da Dra. Fulana, ela já está acompanhando.', bt: 'Enviar' }
+  };
+  function abrirModal(id, qual){
     const m = todos.find(function(x){ return x.id === id; });
     if (!m) return;
-    marcandoId = id;
+    marcandoId = id; modo = qual || 'ok';
+    const c = MODOS[modo];
+    $('m-tit').textContent = c.tit; $('m-rot').innerHTML = c.rot; $('m-nota').placeholder = c.ph; $('m-ok').textContent = c.bt;
     $('m-ref').textContent = '“' + m.assunto + '” — ' + m.deNome;
-    $('m-nota').value = '';
+    $('m-nota').value = ''; $('m-erro').textContent = '';
+    $('m-para-bloco').style.display = modo === 'env' ? 'block' : 'none';
+    if (modo === 'env') {
+      const fora = respsDe(m);
+      const ops = equipe.filter(function(p){ return fora.indexOf(p.email) < 0; });
+      $('m-para').innerHTML = '<option value="">Escolha o colega…</option>' + ops.map(function(p){
+        return '<option value="' + escapeHtml(p.email) + '">' + escapeHtml(p.nome) + '</option>';
+      }).join('');
+    }
     $('modal').classList.add('aberto');
-    setTimeout(function(){ $('m-nota').focus(); }, 30);
+    setTimeout(function(){ (modo === 'env' ? $('m-para') : $('m-nota')).focus(); }, 30);
   }
   function fecharModal(){ $('modal').classList.remove('aberto'); marcandoId = null; }
   $('m-cancelar').onclick = fecharModal;
   $('modal').addEventListener('click', function(e){ if (e.target.id === 'modal') fecharModal(); });
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && marcandoId) fecharModal(); });
-  $('m-ok').onclick = function(){
-    const id = marcandoId, nota = $('m-nota').value.trim().slice(0, 2000);
-    if (!id) return;
-    const btn = $('m-ok'); btn.disabled = true;
+
+  // Passa o e-mail para outro colega: troca o responsável (só ele fica) e grava o registro do envio — na mesma
+  // gravação (as regras exigem as duas partes juntas).
+  function enviarPara(id, para, recado){
+    const m = todos.find(function(x){ return x.id === id; });
+    if (!m) return Promise.reject(new Error('e-mail não encontrado'));
     const ts = firebase.firestore.FieldValue.serverTimestamp();
-    db.collection('emailsConferencia').doc(id).update({
-      status: 'respondido', respondidoModo: 'manual', respondidoPor: eu.email, respondidoEm: ts
-    }).then(function(){
-      if (!nota) return;
-      return db.collection('emailsConferenciaTextos').doc(id).set({ nota: nota, notaPor: eu.email, notaEm: ts }, { merge: true })
-        .catch(function(err){ toast('Marcado, mas a anotação não foi salva: ' + err.message); });
-    }).then(function(){ fecharModal(); toast('Marcado como respondido.'); })
-      .catch(function(err){ toast('Não foi possível marcar: ' + err.message); })
-      .finally(function(){ btn.disabled = false; });
+    const p = equipe.find(function(x){ return x.email === para; });
+    const paraNome = String(p ? p.nome : para).slice(0, 120);
+    const env = db.collection('emailsConferenciaEnvios').doc();
+    const reg = { emailId: id, porEmail: eu.email, porNome: String(eu.nome || eu.email).slice(0, 120), paraEmail: para, paraNome: paraNome, em: ts,
+      assunto: String(m.assunto || '').slice(0, 1000), remetente: String(m.deNome || ''), remetenteEmail: String(m.deEmail || ''), caixa: String(m.caixa || '') };
+    if (m.recebidoEm) reg.recebidoEm = m.recebidoEm;
+    if (recado) reg.recado = recado;
+    const b = db.batch();
+    b.update(db.collection('emailsConferencia').doc(id), {
+      responsavelEmail: para, responsavelNome: paraNome, coResponsaveis: [], coResponsaveisNomes: [],
+      atribuidoPor: eu.email, atribuidoEm: ts, envioId: env.id
+    });
+    b.set(env, reg);
+    return b.commit().then(function(){ return paraNome; });
+  }
+
+  $('m-ok').onclick = function(){
+    const id = marcandoId, nota = $('m-nota').value.trim().slice(0, modo === 'ok' ? 2000 : 1000);
+    if (!id) return;
+    const btn = $('m-ok');
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    let feito;
+    if (modo === 'ign') {
+      if (nota.length < 5) { $('m-erro').textContent = 'Escreva o motivo (pelo menos algumas palavras) para poder ignorar.'; $('m-nota').focus(); return; }
+      btn.disabled = true;
+      feito = db.collection('emailsConferencia').doc(id).update({ status: 'ignorado', ignoradoPor: eu.email, ignoradoEm: ts, ignoradoMotivo: nota })
+        .then(function(){ fecharModal(); toast('E-mail ignorado — o motivo fica registrado.'); })
+        .catch(function(err){ toast('Não foi possível ignorar: ' + err.message); });
+    } else if (modo === 'env') {
+      const para = $('m-para').value;
+      if (!para) { $('m-erro').textContent = 'Escolha para quem enviar.'; $('m-para').focus(); return; }
+      btn.disabled = true;
+      feito = enviarPara(id, para, nota)
+        .then(function(nome){ fecharModal(); toast('Enviado para ' + nome + '. Fica registrado na aba Enviados.'); })
+        .catch(function(err){ toast('Não foi possível enviar: ' + err.message); });
+    } else {
+      btn.disabled = true;
+      feito = db.collection('emailsConferencia').doc(id).update({
+        status: 'respondido', respondidoModo: 'manual', respondidoPor: eu.email, respondidoEm: ts
+      }).then(function(){
+        if (!nota) return;
+        return db.collection('emailsConferenciaTextos').doc(id).set({ nota: nota, notaPor: eu.email, notaEm: ts }, { merge: true })
+          .catch(function(err){ toast('Marcado, mas a anotação não foi salva: ' + err.message); });
+      }).then(function(){ fecharModal(); toast('Marcado como respondido.'); })
+        .catch(function(err){ toast('Não foi possível marcar: ' + err.message); });
+    }
+    feito.finally(function(){ btn.disabled = false; });
   };
+
+  // ---------- Enviados ----------
+  function renderEnv(){
+    const q = norm($('e-q').value.trim());
+    const L = envios.filter(function(v){
+      return !q || norm([v.assunto, v.remetente, v.remetenteEmail, v.paraNome, v.paraEmail, v.porNome, v.recado].join(' ')).indexOf(q) >= 0;
+    }).sort(function(a, b){ return (data(b.em) || new Date()) - (data(a.em) || new Date()); });
+    $('e-resumo').innerHTML = eu.admin
+      ? L.length + ' envio(s) entre colegas — todos os envios aparecem para o administrador.'
+      : L.length + ' e-mail(s) que você enviou para outro colega. Depois de enviado, o e-mail passa a ser só da pessoa e sai da sua conferência.';
+    $('e-lista').innerHTML = L.length ? L.map(function(v){
+      return '<div class="env">' +
+        '<div><div class="linha1"><span class="caixa ' + escapeHtml(v.caixa) + '">' + escapeHtml(CAIXAS[v.caixa] || v.caixa || '') + '</span>' +
+          '<span class="assunto">' + marca(v.assunto, q) + '</span></div>' +
+          '<div class="de">' + marca(v.remetente, q) + (v.remetenteEmail && v.remetenteEmail !== v.remetente ? ' &lt;' + escapeHtml(v.remetenteEmail) + '&gt;' : '') +
+            (v.recebidoEm ? ' · recebido ' + dataHora(data(v.recebidoEm)) : '') + '</div>' +
+          '<div class="para">' + (eu.admin ? '<b>' + escapeHtml(v.porEmail === eu.email ? 'Você' : (v.porNome || v.porEmail)) + '</b> enviou para ' : 'Enviado para ') +
+            '<b>' + marca(v.paraNome || v.paraEmail, q) + '</b></div>' +
+          (v.recado ? '<div class="motivo" style="margin-top:4px"><b>Recado:</b> ' + marca(v.recado, q) + '</div>' : '') +
+        '</div>' +
+        '<div class="quando">' + (data(v.em) ? dataHora(data(v.em)) : 'agora') + '</div>' +
+      '</div>';
+    }).join('') : '<div class="vazio">' + (envios.length ? 'Nada encontrado.' : 'Nenhum e-mail enviado ainda.') + '</div>';
+  }
+  $('e-q').addEventListener('input', function(){ if (abaAtual === 'env') renderEnv(); });
 
   // ---------- ações ----------
   document.addEventListener('click', function(e){
-    const t = e.target.closest('[data-aba],[data-st],[data-cx],[data-ok],[data-ign],[data-reabrir],[data-conv],[data-rem],[data-ir],[data-p],[data-ordem],[data-g-cx],[data-g-st],#rem-mais,#h-mais,#h-limpa-rem,#r-baixar');
+    const t = e.target.closest('[data-aba],[data-st],[data-cx],[data-ok],[data-ign],[data-env],[data-reabrir],[data-conv],[data-rem],[data-ir],[data-p],[data-ordem],[data-g-cx],[data-g-st],#rem-mais,#h-mais,#h-limpa-rem,#r-baixar');
     if (!t) return;
     if (t.dataset.aba) { abrirAba(t.dataset.aba); return; }
     if (t.dataset.st) { filtroSt = filtroSt === t.dataset.st ? 'todos' : t.dataset.st; renderConf(); return; }
@@ -1073,15 +1203,14 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     if (t.dataset.gCx) { $('r-caixa').value = $('r-caixa').value === t.dataset.gCx ? '' : t.dataset.gCx; renderRel(); return; }
     if (t.dataset.ordem) { ordem = t.dataset.ordem; const o = ORDENS_REM.find(function(x){ return x.campo === ordem; }); ordemDesc = o ? o.desc : true; renderRel(); return; }
     if (t.id === 'rem-mais') { remTodos = !remTodos; renderRel(); return; }
-    if (t.dataset.ok) { abrirModal(t.dataset.ok); return; }
+    if (t.dataset.ok) { abrirModal(t.dataset.ok, 'ok'); return; }
+    if (t.dataset.ign) { abrirModal(t.dataset.ign, 'ign'); return; }
+    if (t.dataset.env) { abrirModal(t.dataset.env, 'env'); return; }
     const ref = function(id){ return db.collection('emailsConferencia').doc(id); };
-    if (t.dataset.ign) {
-      ref(t.dataset.ign).update({ status: 'ignorado' })
-        .then(function(){ toast('E-mail ignorado — some da conferência.'); })
-        .catch(function(err){ toast('Erro: ' + err.message); });
-    } else if (t.dataset.reabrir) {
+    if (t.dataset.reabrir) {
       const del = firebase.firestore.FieldValue.delete();
-      ref(t.dataset.reabrir).update({ status: 'pendente', respondidoEm: del, respondidoPor: del, respondidoModo: del })
+      ref(t.dataset.reabrir).update({ status: 'pendente', respondidoEm: del, respondidoPor: del, respondidoModo: del,
+        ignoradoPor: del, ignoradoEm: del, ignoradoMotivo: del })
         .then(function(){ toast('Reaberto — volta a aguardar resposta.'); })
         .catch(function(err){ toast('Erro: ' + err.message); });
     }
@@ -1090,12 +1219,8 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
   document.addEventListener('change', function(e){
     const id = e.target.dataset && e.target.dataset.resp;
     if (!id) return;
-    const email = e.target.value;
-    db.collection('emailsConferencia').doc(id).update({
-      responsavelEmail: email, responsavelNome: nomeDe(email) === 'você' ? eu.nome : nomeDe(email),
-      atribuidoPor: eu.email, atribuidoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function(){ toast('Encaminhado para ' + nomeDe(email) + '.'); })
-      .catch(function(err){ toast('Erro ao trocar o responsável: ' + err.message); });
+    enviarPara(id, e.target.value, '').then(function(nome){ toast('Encaminhado para ' + nome + ' (registrado na aba Enviados).'); })
+      .catch(function(err){ toast('Erro ao trocar o responsável: ' + err.message); repintar(); });
   });
 
   let atrasoBusca = null;
@@ -1119,13 +1244,37 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
     $('gate').textContent = 'Não foi possível carregar a conferência: ' + err.message;
   }
 
+  function guardarRecebido(v){
+    const a = recebidos[v.emailId];
+    if (!a || (data(v.em) || new Date()) > (data(a.em) || new Date())) recebidos[v.emailId] = v;
+  }
   function iniciar(){
     $('gate').style.display = 'none';
     $('painel-conf').classList.add('ativo');
     renderSub();
+    $('topo').classList.add('com-abas');
+    $('abas').style.display = 'flex';
+    if (!eu.dono) document.querySelectorAll('[data-so-dono]').forEach(function(b){ b.style.display = 'none'; });
+    // Enviados: os que eu enviei (admin: todos); e os que recebi, para mostrar quem enviou e o recado
+    (eu.admin ? db.collection('emailsConferenciaEnvios') : db.collection('emailsConferenciaEnvios').where('porEmail', '==', eu.email))
+      .onSnapshot(function(snap){
+        envios = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        if (eu.admin) { recebidos = {}; envios.forEach(function(v){ if (v.paraEmail === eu.email) guardarRecebido(v); }); }
+        repintar();
+      }, function(err){ if (abaAtual === 'env') toast('Enviados indisponíveis: ' + err.message); });
+    if (!eu.admin) {
+      db.collection('emailsConferenciaEnvios').where('paraEmail', '==', eu.email).onSnapshot(function(snap){
+        recebidos = {};
+        snap.docs.forEach(function(d){ guardarRecebido(d.data()); });
+        repintar();
+      }, function(){});
+      db.collection('perfis').get().then(function(snap){
+        equipe = snap.docs.map(function(d){ const u = d.data(); return { email: String(u.email || '').toLowerCase(), nome: u.displayName || u.email }; })
+          .filter(function(p){ return /@fonsecaebraga\.com\.br$/.test(p.email) && p.email !== eu.email; })
+          .sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+      }).catch(function(){});
+    }
     if (eu.dono) {
-      $('topo').classList.add('com-abas');
-      $('abas').style.display = 'flex';
       db.collection('emailsConferencia').onSnapshot(aoMudar, aoErro);
       db.collection('emailsConferenciaTextos').onSnapshot(function(snap){
         textos = {};
@@ -1136,7 +1285,15 @@ button.pz-led-row:hover,.pz-led-row.on{background:var(--ds-sel)}
       const desde = new Date(Date.now() - DIAS_VISAO_ADMIN * 864e5);
       db.collection('emailsConferencia').where('recebidoEm', '>=', desde).onSnapshot(aoMudar, aoErro);
     } else {
-      db.collection('emailsConferencia').where('responsavelEmail', '==', eu.email).onSnapshot(aoMudar, aoErro);
+      // os seus + os da caixa que divide com outra pessoa (coResponsaveis); as duas listas viram uma só
+      const partes = { a: [], b: [] };
+      const juntar = function(k){ return function(snap){
+        partes[k] = snap.docs;
+        const vistos = {};
+        aoMudar({ docs: partes.a.concat(partes.b).filter(function(d){ if (vistos[d.id]) return false; vistos[d.id] = true; return true; }) });
+      }; };
+      db.collection('emailsConferencia').where('responsavelEmail', '==', eu.email).onSnapshot(juntar('a'), aoErro);
+      db.collection('emailsConferencia').where('coResponsaveis', 'array-contains', eu.email).onSnapshot(juntar('b'), aoErro);
     }
     db.collection('emailsConferenciaMeta').doc('ultima').onSnapshot(function(d){ meta = d.exists ? d.data() : null; renderSub(); }, function(){});
     if (eu.admin) {

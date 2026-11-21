@@ -48,7 +48,15 @@
       firebase.auth().onAuthStateChanged(function (u) {
         var sair = function () { try { (window.top || window).location.replace('/'); } catch (e) { location.replace('/'); } };
         if (!u) return sair();
-        firebase.firestore().collection('users').doc(u.uid).get().then(function (d) { if (!d.exists || d.data().role !== 'admin') sair(); }).catch(sair);
+        var conferir = function () { firebase.firestore().collection('users').doc(u.uid).get().then(function (d) { if (!d.exists || d.data().role !== 'admin') sair(); }).catch(sair); };
+        if (typeof firebase.firestore === 'function') return conferir();
+        // dentro da casca do /novo/ (mesma origem), a página principal já tem a mesma trava
+        try { if (window.top !== window && /\/novo\//.test(window.top.location.pathname)) return; } catch (e) {}
+        // ferramentas que não usam o banco (ex.: Gmail) não carregam o Firestore: carrega só para a trava (antes dava erro e a trava não valia)
+        var s = document.createElement('script');
+        s.src = 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js';
+        s.integrity = 'sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0'; s.crossOrigin = 'anonymous';
+        s.onload = conferir; s.onerror = sair; document.head.appendChild(s);
       });
     })();
   }
@@ -78,11 +86,11 @@
     'condominios': 'teal', 'sessoes-julgamento': 'teal', 'documentos': 'azul', 'peticoes': 'azul', 'contratos': 'azul', 'calculadoras': 'azul',
     'organograma': 'lilas', 'aniversariantes': 'lilas', 'perfil': 'lilas', 'treinamentos': 'lilas', 'academia-teste': 'lilas', 'pop': 'lilas',
     'conferencia-emails': 'ceu', 'gmail': 'ceu', 'noticias': 'ceu', 'sugestoes': 'ceu', 'minhas-anotacoes': 'ceu', 'assistente-ia': 'ceu', 'sistemas': 'ceu',
-    'matriz-demandas': 'ambar'
+    'matriz-demandas': 'ambar', 'monitor-pcs': 'rosa'
   };
   var mf = /tools\/([\w-]+)\//.exec(location.pathname), FERR = mf ? mf[1] : '';
   var tomPadrao = TOM_FERRAMENTA[FERR] || 'azul';
-  var SEM_TOM = FERR === 'chat';
+  var SEM_TOM = FERR === 'chat' || FERR === 'agenda-teste';   // Agenda: as cores são dos tipos (prazo, audiência, tarefa) e das etiquetas
   var FORA = '[class*="doc-"],[class*="dc-"],[class*="sig-"],.blk,.preview,.paper,.folha,.pagina-a4,iframe,svg,table,thead,tbody,tr,td,th,button,input,select,textarea,label,a,nav,header.topbar';
   var corCard = '', corCard2 = '';
   function lerCores() {

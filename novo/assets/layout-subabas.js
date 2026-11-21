@@ -30,10 +30,12 @@
       S('Efetividade', '[data-tab="efetividade"]'), S('Qualidade de Cadastro', '[data-tab="qualidade"]'), S('Agenda — Astrea', '[data-tab="agenda"]')
     ] },
     { re: /tools\/conferencia-emails/, itens: [S('Conferência', '[data-aba="conf"]'), S('Histórico', '[data-aba="hist"]'), S('Relatório', '[data-aba="rel"]')] },
-    { re: /tools\/peticoes/, itens: [S('Formatar petição', '[data-view="formatar"]'), S('Formatar parecer', '[data-view="parecer"]'), S('Nomenclatura', '[data-view="nomenclatura"]')] },
+    { re: /tools\/peticoes/, itens: [S('Formatar petição', '[data-view="formatar"]'), S('Formatar parecer', '[data-view="parecer"]'), S('Formatar notificação', '[data-view="notificacao"]'), S('Nomenclatura', '[data-view="nomenclatura"]')] },
     { re: /tools\/remuneracao/, itens: [S('Lançamento do mês', '[data-aba="mes"]'), S('Pessoas e cargos', '[data-aba="pessoas"]'), S('Cargos e percentuais', '[data-aba="cargos"]')] },
     { re: /tools\/sugestoes/, itens: [S('Abertas', '[data-view="abertas"]'), S('Implantadas e excluídas', '[data-view="historico"]')] },
     { re: /tools\/treinamentos/, itens: [S('Manual', '[data-goto="manual"]'), S('POP', '[data-goto="pop"]'), S('Vídeos', '[data-goto="videos"]'), S('Documentos', '[data-goto="documentos"]')] },
+    { re: /tools\/agenda-teste/, itens: [S('Agenda', '[data-sub="agenda"]'), S('Clientes', '[data-sub="clientes"]'), S('Processos e casos', '[data-sub="processos"]'),
+      S('Publicações', '[data-sub="publicacoes"]'), S('Relatórios', '[data-sub="relatorios"]')] },
     { re: /tools\/chat/, itens: [S('Todas as conversas', '[data-tab="todos"]'), S('Favoritos', '[data-tab="favoritos"]')] },
     { re: /tools\/documentos/, itens: ['Procuração', 'Substabelecimento', 'Declaração de Hipossuficiência', 'Termo de Repasse', 'Recibo', 'Carta de Preposição', 'Petição de Ciência', 'Relatório de Cobranças'].map(function (t) { return T(t); }) },
     { re: /tools\/contratos/, itens: [
