@@ -74,7 +74,7 @@
     }
   }
   function abrirAbaPorRotulo(re) {
-    var b = Array.prototype.find.call(document.querySelectorAll('#tabstrip-list .tab-btn'), function (x) { return re.test(norm((x.querySelector('span') || x).textContent)); });
+    var b = Array.prototype.find.call(document.querySelectorAll('#tabstrip-list .tab-btn'), function (x) { return re.test(norm((x.querySelector('span:not(.vg-aba-est)') || x).textContent)); });
     if (b) { b.click(); return true; }
     return false;
   }

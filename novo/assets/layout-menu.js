@@ -292,7 +292,7 @@
     try {
       firebase.firestore().collection('perfis').doc(S.uid).get().then(function (doc) {
         var l = doc.exists && Array.isArray(doc.data().navFavoritos) ? doc.data().navFavoritos : null;
-        if (l) { S.favs = l.filter(function (x) { return typeof x === 'string'; }); gravarLS('vg-favs-' + S.uid, S.favs); desenharFavoritos(); estrela(); }
+        if (l) { S.favs = l.filter(function (x) { return typeof x === 'string'; }); gravarLS('vg-favs-' + S.uid, S.favs); desenharFavoritos(); estrela(); estrelasAbas(); }
       }).catch(function () {});
     } catch (e) {}
   }
@@ -304,7 +304,7 @@
     var i = S.favs.indexOf(k);
     if (i >= 0) S.favs.splice(i, 1); else S.favs.push(k);   // nunca duplica: a chave é única
     S.favs = S.favs.filter(function (x, j, a) { return a.indexOf(x) === j; }).slice(0, 40);
-    salvarFavoritos(); desenharFavoritos(); estrela();
+    salvarFavoritos(); desenharFavoritos(); estrela(); estrelasAbas();
   }
   // um favorito só aparece se a pessoa ainda tem acesso (aba liberada e, no destino, liberação confirmada)
   function resolverFavorito(k) {
@@ -322,11 +322,56 @@
     var itens = S.favs.map(resolverFavorito).filter(Boolean);
     var lista = box.querySelector('.vg-favs-lista');
     var html = itens.length ? itens.map(function (x) {
-      return '<button type="button" class="tab-btn vg-item vg-fav-item" data-chave="' + esc(x.k) + '" title="' + esc(x.rot + (x.sec ? ' · ' + x.sec : '')) + '">' + x.ico +
+      return '<button type="button" class="tab-btn vg-item vg-fav-item" data-chave="' + esc(x.k) + '" title="' + esc(x.rot + (x.sec ? ' · ' + x.sec : '')) + '">' + estrelaAba(x.k, x.rot, true) + x.ico +
         '<span class="vg-dois"><span class="vg-l1">' + esc(x.rot) + '</span>' + (x.sec ? '<span class="vg-l2">' + esc(x.sec) + '</span>' : '') + '</span></button>';
-    }).join('') : '<div class="vg-fav-vazio">Nenhum favorito ainda. Use a estrela no topo de uma página para guardar aqui.</div>';
+    }).join('') : '<div class="vg-fav-vazio">Nenhum favorito ainda. Toque na estrelinha ao lado do nome de uma aba para guardar aqui.</div>';
     if (lista._vgHtml !== html) { lista._vgHtml = html; lista.innerHTML = html; }
     marcar();
+  }
+  // estrelinha antes do nome de cada aba da lateral; ao tocar, pede confirmação
+  function estrelaAba(k, rot, on) {
+    var tit = on ? 'Tirar dos favoritos' : 'Favoritar';
+    return '<span class="vg-aba-est' + (on ? ' on' : '') + '" data-k="' + esc(k) + '" data-rot="' + esc(rot) + '" title="' + tit + '" aria-label="' + tit + ': ' + esc(rot) + '">' + (on ? ICONE_ESTRELA_CHEIA : ICONE_ESTRELA) + '</span>';
+  }
+  function chaveDoBotao(b) {
+    if (b.classList.contains('vg-promo')) return chave(b.dataset.vgPasta, b.dataset.vgDest);
+    var id = b.dataset.tabId; if (!id || id === '__admin__') return '';
+    var t = P().abas().filter(function (x) { return x.id === id; })[0]; var f = t ? pasta(t.url) : '';
+    return f && !SO_PROMOVIDOS[f] ? chave(f, '') : '';
+  }
+  function estrelasAbas() {   // idempotente: só mexe no DOM quando algo muda
+    var raiz = $('vg-menu'); if (!raiz || !P()) return;
+    raiz.querySelectorAll('.vg-cat .tab-btn').forEach(function (b) {
+      var k = chaveDoBotao(b); if (!k) return;
+      var on = S.favs.indexOf(k) >= 0, e = b.querySelector('.vg-aba-est');
+      if (!e) {
+        var rot = (b.querySelector('span:not(.vg-aba-est):not(.pending-badge):not(.tab-blink-dot)') || b).textContent.trim();
+        b.insertAdjacentHTML('afterbegin', estrelaAba(k, rot, on)); return;
+      }
+      if (e.classList.contains('on') !== on) {
+        e.classList.toggle('on', on); e.innerHTML = on ? ICONE_ESTRELA_CHEIA : ICONE_ESTRELA;
+        var tit = on ? 'Tirar dos favoritos' : 'Favoritar'; e.title = tit; e.setAttribute('aria-label', tit + ': ' + e.dataset.rot);
+      }
+    });
+  }
+  function confirmarFavorito(k, rot) {
+    var on = S.favs.indexOf(k) >= 0;
+    var box = $('vg-conf');
+    if (!box) { box = document.createElement('div'); box.id = 'vg-conf'; box.className = 'vg-conf'; document.body.appendChild(box); }
+    box.innerHTML = '<div class="vg-conf-caixa" role="dialog" aria-modal="true" aria-labelledby="vg-conf-tit">' +
+      '<div class="vg-conf-ic' + (on ? '' : ' on') + '">' + ICONE_ESTRELA_CHEIA + '</div>' +
+      '<div class="vg-conf-tit" id="vg-conf-tit">' + (on ? 'Tirar dos favoritos?' : 'Favoritar esta aba?') + '</div>' +
+      '<div class="vg-conf-txt">' + (on ? '<b>' + esc(rot) + '</b> sai da sua lista de Favoritos.' : '<b>' + esc(rot) + '</b> vai aparecer na sua lista de Favoritos, no topo do menu.') + '</div>' +
+      '<div class="vg-conf-bts"><button type="button" class="vg-conf-nao">Cancelar</button><button type="button" class="vg-conf-sim">' + (on ? 'Tirar' : 'Favoritar') + '</button></div></div>';
+    box.classList.add('aberto');
+    var fechar = function () { box.classList.remove('aberto'); document.removeEventListener('keydown', tecla, true); };
+    var tecla = function (ev) { if (ev.key === 'Escape') { ev.preventDefault(); fechar(); } };
+    document.addEventListener('keydown', tecla, true);
+    box.onclick = function (ev) {
+      if (ev.target === box || ev.target.closest('.vg-conf-nao')) { fechar(); return; }
+      if (ev.target.closest('.vg-conf-sim')) { fechar(); if ((S.favs.indexOf(k) >= 0) === on) alternarFavorito(k); }
+    };
+    setTimeout(function () { var s = box.querySelector('.vg-conf-sim'); if (s) s.focus(); }, 0);
   }
   function abrirFavorito(k) {
     var x = resolverFavorito(k); if (!x) { desenharFavoritos(); return; }
@@ -438,6 +483,7 @@
     S.montando = false;
     atualizarDisponiveis();
     desenharFavoritos();
+    estrelasAbas();
     aplicarAberturas();
     marcar();
   }
@@ -500,6 +546,8 @@
   // ---------------------------------------------------------------- eventos
   document.addEventListener('click', function (ev) {
     var t = ev.target;
+    var ea = t.closest && t.closest('.vg-aba-est');
+    if (ea) { ev.stopPropagation(); ev.preventDefault(); confirmarFavorito(ea.dataset.k, ea.dataset.rot); return; }
     var cab = t.closest && t.closest('.vg-cat > .vg-grupo-cab');
     if (cab) {
       var c = cab.parentNode; c.classList.toggle('aberto');
