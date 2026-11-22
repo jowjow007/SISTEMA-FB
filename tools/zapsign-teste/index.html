@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZapSign (teste) — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:url('../../assets/bg-texture.jpg') repeat;background-size:280px auto;opacity:.05;}
+  :root{
+    --ink:#161010; --panel:#211918; --panel-2:#2a1f1e; --paper:#ece6e1; --muted:#9c908b;
+    --red:#b8362e; --red-bright:#c9463c; --red-deep:#5c1a16; --gold:#d8b25a; --green:#4caf6e; --blue:#6ea8e0;
+    --line:rgba(236,230,225,0.10); --line-strong:rgba(236,230,225,0.18);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9; --panel:#ffffff; --panel-2:#f1ece6; --paper:#241c1b; --muted:#7d716b;
+    --gold:#9a7424; --green:#2e8a4f; --blue:#2f6aa8;
+    --line:rgba(36,28,27,0.10); --line-strong:rgba(36,28,27,0.16);
+  }
+  *{box-sizing:border-box;}
+  *{scrollbar-width:thin;scrollbar-color:var(--red-deep) var(--panel-2);}
+  html,body{margin:0;min-height:100%;background:var(--panel);color:var(--paper);font-family:var(--font-body);}
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:16px 20px 12px;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.45rem;margin:0 0 4px;}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+  main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:22px 20px 60px;}
+  #gate{padding:80px 20px;text-align:center;color:var(--muted);line-height:1.6;}
+  #app{display:none;}
+  .card{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:14px;padding:18px 20px;margin-bottom:18px;}
+  .card h2{font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin:0 0 6px;}
+  .card p.desc{font-size:.82rem;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  .linha{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  label.campo{display:flex;flex-direction:column;gap:5px;font-size:.75rem;color:var(--muted);font-weight:600;min-width:0;}
+  label.campo.cresce{flex:1 1 220px;}
+  label.check{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--paper);cursor:pointer;}
+  input,select{background:var(--panel);border:1px solid var(--line-strong);border-radius:8px;color:var(--paper);font:inherit;font-size:.88rem;padding:8px 10px;min-width:0;}
+  input[type=checkbox]{padding:0;width:16px;height:16px;accent-color:var(--red);}
+  input:focus,select:focus{outline:none;border-color:var(--red);}
+  .btn{background:var(--red);color:#fff;border:none;border-radius:8px;font:inherit;font-size:.85rem;font-weight:600;padding:9px 16px;cursor:pointer;}
+  .btn:hover{background:var(--red-bright);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn.sec{background:transparent;border:1px solid var(--line-strong);color:var(--paper);}
+  .btn.sec:hover{border-color:var(--paper);}
+  .btn.peq{font-size:.75rem;padding:5px 10px;}
+  .btn.perigo{background:transparent;border:1px solid rgba(184,54,46,.6);color:var(--red-bright);}
+  .muted{color:var(--muted);}
+  .aviso{background:rgba(216,178,90,.12);border:1px solid rgba(216,178,90,.45);color:var(--paper);border-radius:10px;padding:10px 14px;font-size:.82rem;margin:0 0 14px;line-height:1.5;}
+  .aviso.erro{background:rgba(184,54,46,.14);border-color:rgba(184,54,46,.5);}
+  .aviso.ok{background:rgba(76,175,110,.12);border-color:rgba(76,175,110,.45);}
+  .res{margin-top:14px;font-size:.84rem;line-height:1.6;}
+  .res:empty{display:none;}
+  dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0;font-size:.85rem;}
+  dl.kv dt{color:var(--muted);}
+  dl.kv dd{margin:0;font-weight:600;}
+  .sig{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel);}
+  .sig .topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.78rem;color:var(--muted);font-weight:700;}
+  .sig .grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+  .sig .opcoes{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;}
+  .doc{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--panel);}
+  .doc .cab{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+  .doc .nome{font-weight:700;font-size:.9rem;word-break:break-word;}
+  .doc .meta{font-size:.75rem;color:var(--muted);margin-top:2px;}
+  .doc .signs{margin-top:8px;font-size:.8rem;display:flex;flex-direction:column;gap:6px;}
+  .doc .signs .s{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .doc .acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .doc .det{margin-top:10px;font-size:.8rem;}
+  .badge{display:inline-block;font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid var(--line-strong);color:var(--muted);white-space:nowrap;}
+  .badge.ok{color:var(--green);border-color:rgba(76,175,110,.5);}
+  .badge.pend{color:var(--gold);border-color:rgba(216,178,90,.5);}
+  .badge.nao{color:var(--red-bright);border-color:rgba(184,54,46,.5);}
+  .badge.info{color:var(--blue);border-color:rgba(110,168,224,.5);}
+  .link-box{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;}
+  .link-box code{font-size:.75rem;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all;flex:1 1 240px;}
+  a{color:var(--blue);}
+  @media (max-width:640px){ main{padding:16px 16px 50px;} .card{padding:14px;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>✍️ ZapSign (teste)</h1>
+  <p class="sub">Teste da integração do portal com a API do ZapSign. Só para o administrador.</p>
+</header>
+<main>
+  <div id="gate">Carregando…</div>
+
+  <div id="app">
+    <div class="card">
+      <h2>1. Conexão com o ZapSign</h2>
+      <p class="desc">Consulta o plano da conta. Não cria documento e não gasta franquia.</p>
+      <button class="btn" id="bt-plano" type="button">Testar conexão</button>
+      <div class="res" id="res-plano"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Enviar um documento para assinatura</h2>
+      <p class="desc">O documento vai para a pasta <b id="pasta-nome">Portal FB - teste</b> no ZapSign.
+        <b>Cada documento criado gasta 1 da franquia do mês</b>, mesmo que depois seja excluído ou ninguém assine.</p>
+      <div class="linha" style="margin-bottom:14px;">
+        <label class="campo cresce">Nome do documento
+          <input id="doc-nome" maxlength="200" placeholder="Ex.: Teste de integração — contrato">
+        </label>
+        <label class="campo cresce">Arquivo PDF (até 10 MB)
+          <input id="doc-pdf" type="file" accept="application/pdf,.pdf">
+        </label>
+      </div>
+      <div id="sigs"></div>
+      <div class="linha" style="margin-top:6px;">
+        <button class="btn sec peq" id="bt-add-sig" type="button">+ Signatário</button>
+      </div>
+      <div class="linha" style="margin-top:16px;">
+        <button class="btn" id="bt-criar" type="button">Criar documento no ZapSign</button>
+      </div>
+      <div class="res" id="res-criar"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. Documentos enviados pelo portal</h2>
+      <p class="desc">Acompanhe o andamento, copie os links de assinatura e baixe o PDF assinado.
+        Os links de PDF do ZapSign valem por 60 minutos; clique em "Atualizar" para gerar novos.</p>
+      <div class="linha" style="margin-bottom:12px;">
+        <button class="btn sec" id="bt-listar" type="button">Atualizar lista</button>
+        <label class="check"><input type="checkbox" id="chk-todos"> Mostrar todos os documentos da conta (só consulta)</label>
+      </div>
+      <div id="lista"></div>
+      <div class="linha" id="paginas" style="margin-top:8px;"></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // Endereço do Worker do Cloudflare que guarda o token do ZapSign (ver worker.js nesta pasta).
+  const ZAPSIGN_WORKER_URL = 'https://portal-fb-zapsign.jowjow07.workers.dev';
+  const LIMITE_PDF = 10 * 1024 * 1024;
+
+  const $ = function(id){ return document.getElementById(id); };
+  const gate = $('gate');
+
+  if (!window.firebaseConfig && typeof firebaseConfig === 'undefined') { gate.textContent = 'Configuração do Firebase ausente.'; return; }
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function dataBR(s){
+    if (!s) return '';
+    const d = new Date(s);
+    return isNaN(d) ? String(s) : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+  function aviso(el, tipo, html){ el.innerHTML = '<div class="aviso ' + (tipo || '') + '">' + html + '</div>'; }
+
+  async function api(metodo, caminho, corpo){
+    const u = auth.currentUser;
+    if (!u) throw new Error('Sessão encerrada. Recarregue o portal.');
+    const tok = await u.getIdToken();
+    const opts = { method: metodo, headers: { Authorization: 'Bearer ' + tok } };
+    if (corpo !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(corpo); }
+    let r;
+    try { r = await fetch(ZAPSIGN_WORKER_URL + caminho, opts); }
+    catch (e) { throw new Error('Não foi possível falar com a ponte do ZapSign (Worker). Ela já foi publicada no Cloudflare?'); }
+    let data = null;
+    try { data = await r.json(); } catch (e) {}
+    if (!r.ok) {
+      let msg = (data && data.error) || ('Erro ' + r.status);
+      if (data && data.dados) msg += ' — resposta do ZapSign (' + data.status + '): ' + JSON.stringify(data.dados).slice(0, 400);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  // ---------- rótulos de situação ----------
+  const ST_DOC = { pending: ['Aguardando', 'pend'], signed: ['Assinado', 'ok'], refused: ['Recusado', 'nao'] };
+  const ST_SIG = {
+    'new': ['Não abriu', ''], nao_abriu: ['Não abriu', ''],
+    'link-opened': ['Abriu', 'info'], abriu: ['Abriu', 'info'],
+    signed: ['Assinou', 'ok'], assinou: ['Assinou', 'ok'],
+    recusou: ['Recusou', 'nao'], refused: ['Recusou', 'nao'],
+    expirou: ['Expirou', 'nao'], cancelado: ['Cancelado', 'nao']
+  };
+  function badge(mapa, v){ const x = mapa[v] || [v || '—', '']; return '<span class="badge ' + x[1] + '">' + esc(x[0]) + '</span>'; }
+
+  // ---------- 1. plano ----------
+  $('bt-plano').addEventListener('click', async function(){
+    const bt = this, out = $('res-plano');
+    bt.disabled = true; out.innerHTML = '<span class="muted">Consultando…</span>';
+    try {
+      const r = await api('GET', '/plano');
+      const d = r.dados || {};
+      const stTxt = { paid: 'Pago', pending_payment: 'Pagamento pendente', unpaid: 'Não pago', canceled: 'Cancelado' }[d.status] || d.status;
+      out.innerHTML = '<div class="aviso ok">Conexão funcionando.</div><dl class="kv">' +
+        '<dt>Plano</dt><dd>' + esc(d.name) + '</dd>' +
+        '<dt>Situação</dt><dd>' + esc(stTxt) + '</dd>' +
+        '<dt>Período</dt><dd>' + esc(d.period === 'monthly' ? 'Mensal' : d.period === 'annual' ? 'Anual' : d.period) + '</dd>' +
+        '<dt>Válido até</dt><dd>' + esc(dataBR(d.current_period_end)) + '</dd>' +
+        '<dt>Créditos extras</dt><dd>' + esc(d.number_of_credits) + '</dd></dl>';
+    } catch (e) { aviso(out, 'erro', esc(e.message)); }
+    bt.disabled = false;
+  });
+
+  // ---------- 2. criar ----------
+  let nSig = 0;
+  function addSig(pre){
+    pre = pre || {};
+    nSig++;
+    const div = document.createElement('div');
+    div.className = 'sig';
+    div.innerHTML =
+      '<div class="topo"><span>Signatário</span><button type="button" class="btn sec peq rm">Remover</button></div>' +
+      '<div class="grade">' +
+        '<label class="campo">Nome completo<input class="s-nome" maxlength="120" value="' + esc(pre.nome || '') + '"></label>' +
+        '<label class="campo">E-mail<input class="s-email" type="email" maxlength="160" value="' + esc(pre.email || '') + '"></label>' +
+        '<label class="campo">Celular com DDD (opcional)<input class="s-cel" inputmode="tel" maxlength="20" placeholder="34 99999-9999"></label>' +
+        '<label class="campo">Confirmação de identidade<select class="s-auth">' +
+          '<option value="assinaturaTela">Só assinatura na tela</option>' +
+          '<option value="assinaturaTela-tokenEmail">Assinatura + código por e-mail</option>' +
+          '<option value="tokenEmail">Só código por e-mail</option>' +
+          '<option value="assinaturaTela-tokenSms">Assinatura + código por SMS (custo)</option>' +
+          '<option value="assinaturaTela-tokenWhatsapp">Assinatura + código por WhatsApp (custo)</option>' +
+        '</select></label>' +
+      '</div>' +
+      '<div class="opcoes">' +
+        '<label class="check"><input type="checkbox" class="s-env-email"> ZapSign envia o link por e-mail</label>' +
+        '<label class="check"><input type="checkbox" class="s-env-zap"> ZapSign envia o link por WhatsApp (custo por envio)</label>' +
+      '</div>';
+    div.querySelector('.rm').addEventListener('click', function(){
+      if ($('sigs').children.length > 1) div.remove();
+    });
+    $('sigs').appendChild(div);
+  }
+  $('bt-add-sig').addEventListener('click', function(){ addSig(); });
+
+  function lerArquivoBase64(file){
+    return new Promise(function(ok, falha){
+      const fr = new FileReader();
+      fr.onload = function(){ ok(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function(){ falha(new Error('Não consegui ler o PDF.')); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  $('bt-criar').addEventListener('click', async function(){
+    const bt = this, out = $('res-criar');
+    out.innerHTML = '';
+    const nome = $('doc-nome').value.trim();
+    const file = $('doc-pdf').files[0];
+    if (!nome) return aviso(out, 'erro', 'Dê um nome ao documento.');
+    if (!file) return aviso(out, 'erro', 'Escolha o arquivo PDF.');
+    if (file.size > LIMITE_PDF) return aviso(out, 'erro', 'O PDF tem ' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' MB; o limite é 10 MB.');
+    const signatarios = Array.prototype.map.call($('sigs').children, function(d){
+      return {
+        nome: d.querySelector('.s-nome').value.trim(),
+        email: d.querySelector('.s-email').value.trim(),
+        celular: d.querySelector('.s-cel').value.trim(),
+        autenticacao: d.querySelector('.s-auth').value,
+        enviarEmail: d.querySelector('.s-env-email').checked,
+        enviarWhatsapp: d.querySelector('.s-env-zap').checked
+      };
+    });
+    for (let i = 0; i < signatarios.length; i++) {
+      if (!signatarios[i].nome) return aviso(out, 'erro', 'Preencha o nome do signatário ' + (i + 1) + '.');
+    }
+    if (!confirm('Criar "' + nome + '" no ZapSign?\n\nIsso gasta 1 documento da franquia do mês, mesmo se depois for excluído.')) return;
+
+    bt.disabled = true; out.innerHTML = '<span class="muted">Enviando para o ZapSign…</span>';
+    try {
+      const pdfBase64 = await lerArquivoBase64(file);
+      const r = await api('POST', '/criar', { nome: nome, pdfBase64: pdfBase64, signatarios: signatarios });
+      const d = r.dados || {};
+      let html = '<div class="aviso ok">Documento criado no ZapSign. Situação: ' + badge(ST_DOC, d.status) + '</div>';
+      html += '<p class="muted" style="margin:0 0 8px;">Links de assinatura (mande para cada pessoa, se não marcou o envio automático):</p>';
+      (d.signers || []).forEach(function(s){
+        const link = s.sign_url || s.signing_url || ('https://app.zapsign.co/verificar/' + s.token);
+        html += '<div><b>' + esc(s.name) + '</b>' + linkBox(link) + '</div>';
+      });
+      out.innerHTML = html;
+      ligarCopiar(out);
+      $('doc-pdf').value = '';
+      listar(1);
+    } catch (e) { aviso(out, 'erro', esc(e.message)); }
+    bt.disabled = false;
+  });
+
+  function linkBox(url){
+    return '<div class="link-box"><code>' + esc(url) + '</code>' +
+      '<button type="button" class="btn sec peq copiar" data-url="' + esc(url) + '">Copiar</button>' +
+      '<a class="btn sec peq" href="' + esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none;">Abrir</a></div>';
+  }
+  function ligarCopiar(raiz){
+    raiz.querySelectorAll('.copiar').forEach(function(b){
+      b.addEventListener('click', function(){
+        const url = b.getAttribute('data-url');
+        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function(){
+          b.textContent = 'Copiado!'; setTimeout(function(){ b.textContent = 'Copiar'; }, 1500);
+        }, function(){ prompt('Copie o link:', url); });
+      });
+    });
+  }
+
+  // ---------- 3. lista ----------
+  let paginaAtual = 1;
+  async function listar(pagina){
+    paginaAtual = pagina || 1;
+    const out = $('lista'), pag = $('paginas');
+    const todos = $('chk-todos').checked;
+    out.innerHTML = '<span class="muted">Carregando…</span>'; pag.innerHTML = '';
+    try {
+      const r = await api('GET', '/docs?page=' + paginaAtual + (todos ? '&todos=1' : ''));
+      if (r.pasta) $('pasta-nome').textContent = r.pasta.replace(/^\/|\/$/g, '');
+      const d = r.dados;
+      const itens = Array.isArray(d) ? d : ((d && d.results) || []);
+      if (!itens.length) { out.innerHTML = '<p class="muted">' + (todos ? 'Nenhum documento.' : 'Nenhum documento enviado pelo portal ainda.') + '</p>'; return; }
+      out.innerHTML = itens.map(function(doc){ return cardDoc(doc, !todos); }).join('');
+      ligarDocs(out);
+      if (d && !Array.isArray(d)) {
+        const total = d.count != null ? d.count + ' documento(s) · ' : '';
+        pag.innerHTML = '<span class="muted" style="font-size:.8rem;">' + total + 'página ' + paginaAtual + '</span>' +
+          (d.previous ? '<button class="btn sec peq" type="button" id="pg-ant">‹ Anterior</button>' : '') +
+          (d.next ? '<button class="btn sec peq" type="button" id="pg-prox">Próxima ›</button>' : '');
+        if ($('pg-ant')) $('pg-ant').onclick = function(){ listar(paginaAtual - 1); };
+        if ($('pg-prox')) $('pg-prox').onclick = function(){ listar(paginaAtual + 1); };
+      }
+    } catch (e) { aviso(out, 'erro', esc(e.message)); }
+  }
+
+  function cardDoc(doc, podeExcluir){
+    const sigs = (doc.signers || []).map(function(s){
+      const link = s.signing_url || s.sign_url || '';
+      return '<div class="s">' + badge(ST_SIG, s.status) + ' <span>' + esc(s.name) + (s.email ? ' <span class="muted">· ' + esc(s.email) + '</span>' : '') + '</span>' +
+        (link && s.status !== 'signed' && s.status !== 'assinou' ? '<button type="button" class="btn sec peq copiar" data-url="' + esc(link) + '">Copiar link</button>' : '') + '</div>';
+    }).join('');
+    return '<div class="doc" data-token="' + esc(doc.token) + '">' +
+      '<div class="cab"><div><div class="nome">' + esc(doc.name) + '</div>' +
+      '<div class="meta">Criado em ' + esc(dataBR(doc.created_at)) + (doc.folder_path ? ' · pasta ' + esc(doc.folder_path) : '') + '</div></div>' +
+      badge(ST_DOC, doc.status) + '</div>' +
+      (sigs ? '<div class="signs">' + sigs + '</div>' : '') +
+      '<div class="acoes"><button type="button" class="btn sec peq det-bt">Atualizar / ver PDFs</button>' +
+      (podeExcluir ? '<button type="button" class="btn perigo peq exc-bt">Excluir</button>' : '') + '</div>' +
+      '<div class="det"></div></div>';
+  }
+
+  function ligarDocs(raiz){
+    ligarCopiar(raiz);
+    raiz.querySelectorAll('.doc').forEach(function(card){
+      const token = card.getAttribute('data-token');
+      const det = card.querySelector('.det');
+      card.querySelector('.det-bt').addEventListener('click', async function(){
+        const bt = this; bt.disabled = true; det.innerHTML = '<span class="muted">Consultando…</span>';
+        try {
+          const d = (await api('GET', '/doc/' + encodeURIComponent(token))).dados || {};
+          let h = '<dl class="kv"><dt>Situação</dt><dd>' + badge(ST_DOC, d.status) + '</dd>' +
+            '<dt>Última mudança</dt><dd>' + esc(dataBR(d.last_update_at)) + '</dd></dl>';
+          h += '<div class="signs" style="margin-top:8px;">' + (d.signers || []).map(function(s){
+            return '<div class="s">' + badge(ST_SIG, s.status) + ' ' + esc(s.name) +
+              (s.signed_at ? ' <span class="muted">· assinou em ' + esc(dataBR(s.signed_at)) + '</span>' :
+                (s.times_viewed ? ' <span class="muted">· abriu ' + esc(s.times_viewed) + 'x</span>' : '')) + '</div>';
+          }).join('') + '</div>';
+          h += '<div class="acoes">' +
+            (d.original_file ? '<a class="btn sec peq" target="_blank" rel="noopener" style="text-decoration:none;" href="' + esc(d.original_file) + '">PDF original</a>' : '') +
+            (d.signed_file ? '<a class="btn peq" target="_blank" rel="noopener" style="text-decoration:none;" href="' + esc(d.signed_file) + '">PDF assinado</a>' : '<span class="muted" style="font-size:.78rem;align-self:center;">PDF assinado sai quando todos assinarem.</span>') +
+            '</div>';
+          det.innerHTML = h;
+        } catch (e) { aviso(det, 'erro', esc(e.message)); }
+        bt.disabled = false;
+      });
+      const exc = card.querySelector('.exc-bt');
+      if (exc) exc.addEventListener('click', async function(){
+        if (!confirm('Excluir este documento no ZapSign? Não dá para desfazer, e a franquia não volta.')) return;
+        exc.disabled = true;
+        try { await api('POST', '/excluir/' + encodeURIComponent(token)); card.remove(); }
+        catch (e) { aviso(det, 'erro', esc(e.message)); exc.disabled = false; }
+      });
+    });
+  }
+
+  $('bt-listar').addEventListener('click', function(){ listar(1); });
+  $('chk-todos').addEventListener('change', function(){ listar(1); });
+
+  // ---------- entrada ----------
+  auth.onAuthStateChanged(async function(u){
+    if (!u) { gate.textContent = 'Faça login no portal para usar esta aba.'; return; }
+    try {
+      const snap = await db.collection('users').doc(u.uid).get();
+      const p = snap.exists ? snap.data() : {};
+      if (p.role !== 'admin') { gate.textContent = 'Esta aba de teste é só para o administrador.'; return; }
+      gate.style.display = 'none';
+      $('app').style.display = 'block';
+      addSig({ nome: p.nome || p.name || u.displayName || '', email: u.email || '' });
+      listar(1);
+    } catch (e) {
+      gate.textContent = 'Não foi possível conferir seu acesso: ' + e.message;
+    }
+  });
+})();
+</script>
+</body>
+</html>

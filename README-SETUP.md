@@ -1282,3 +1282,15 @@ Ficam em `contratosAssociacao` com `tipo: 'termo'`, `termoId` e `contratoId`. A 
 - Quem assina é a sociedade (titular) e, depois, o diretor (`associadoUid` = diretor, `rotuloSignatario` "DIRETOR"). O diretor pode assinar depois.
 - A partir de 25/01, sem documento do ano, o admin vê um lembrete no login e um alerta vermelho na sub-aba.
 - Ninguém além do admin e do diretor lê esse documento (regras de `contratosAssociacao`).
+
+## 13. ZapSign (teste) — `tools/zapsign-teste/`
+
+Aba só do administrador para testar a API do ZapSign: consultar o plano, enviar um PDF para assinatura, acompanhar e baixar o assinado. O token da API **não** fica no site: mora num Cloudflare Worker (igual ao do Assistente IA, seção 9).
+
+1. **Worker:** em dash.cloudflare.com › Workers & Pages › Create › Worker, nome **`portal-fb-zapsign`** (o endereço fica `https://portal-fb-zapsign.jowjow07.workers.dev`, que é o que a página usa). Deploy, depois **Edit code**, apague tudo, cole `tools/zapsign-teste/worker.js` e **Deploy**.
+2. **Token:** Settings › Variables and Secrets › Add › tipo **Secret**, nome `ZAPSIGN_API_TOKEN`, valor = token de ZapSign › Configurações › Integrações › API ZapSign. Salvar. (Para o sandbox, acrescente a variável `ZAPSIGN_API_BASE` com o endereço da API do sandbox.)
+3. **Aba:** Administração › Abas › nova aba "ZapSign (teste)", url `tools/zapsign-teste/index.html`, liberada só para o admin.
+
+Regras: nenhuma regra nova do Firestore (a página só lê o próprio `users/{uid}`). O Worker também exige admin com acesso ativo.
+
+Cuidados: cada documento criado gasta 1 da franquia do ZapSign, mesmo se excluído. Tudo o que o portal cria vai para a pasta **"Portal FB - teste"** do ZapSign, e o botão Excluir só funciona para documentos dessa pasta. A opção "Mostrar todos" lista os documentos da conta só para consulta.
