@@ -3146,18 +3146,38 @@
   function transcreverAudio(blob, mime){
     if (!/^audio\/(wav|mp3|mpeg|aiff|aac|ogg|flac)/.test(mime || '')) return paraWav16k(blob).then(function(w){ return transcreverAudio(w, 'audio/wav'); });
     if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return Promise.resolve(null);
-    return Promise.all([blobParaBase64(blob), auth.currentUser.getIdToken()]).then(function(r){
-      var corpo = { contents: [{ role: 'user', parts: [
-          { inline_data: { mime_type: mime, data: r[0] } },
+    return blobParaBase64(blob).then(function(b64){
+      var corpo = JSON.stringify({ contents: [{ role: 'user', parts: [
+          { inline_data: { mime_type: mime, data: b64 } },
           { text: 'Transcreva este áudio em português do Brasil, palavra por palavra, com pontuação. Responda SOMENTE com a transcrição, sem comentários. Se não houver fala, responda exatamente: [sem fala]' }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } };
+        generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } });
+      function tentar(n){
+        return pedirTranscricao(corpo).catch(function(e){
+          if (n >= TRANSC_ESPERAS.length || !erroPassageiro(e)) throw e;
+          return new Promise(function(res){ setTimeout(res, TRANSC_ESPERAS[n]); }).then(function(){ return tentar(n + 1); });
+        });
+      }
+      return tentar(0);
+    }).then(function(d){ var c = d.candidates && d.candidates[0], ps = c && c.content && c.content.parts || [];
+      var t = ps.map(function(x){ return x.text || ''; }).join('').trim(); return t && t !== '[sem fala]' ? t.slice(0, 8000) : null; });
+  }
+  // O Google recusa pedidos nos picos de demanda (503): repete sozinho antes de desistir. Cada tentativa conta no limite diário do Worker.
+  var TRANSC_ESPERAS = [5000, 15000, 40000];
+  function erroPassageiro(e){
+    if (!e || e.name === 'AbortError') return false;
+    var s = String(e.message || e);
+    if (/limite di[aá]rio|prepayment|credits|billing|chave do gemini|autentica/i.test(s)) return false;
+    return [429, 500, 502, 503, 504].indexOf(e.status) >= 0 || /high demand|overloaded|failed to fetch|networkerror|load failed/i.test(s);
+  }
+  function pedirTranscricao(corpo){
+    return auth.currentUser.getIdToken().then(function(token){
       var ctl = window.AbortController ? new AbortController() : null; var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 240000);
-      return fetch(GEMINI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + r[1] }, body: JSON.stringify(corpo), signal: ctl ? ctl.signal : undefined })
+      return fetch(GEMINI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: corpo, signal: ctl ? ctl.signal : undefined })
         .then(function(resp){ clearTimeout(to); return resp.text().then(function(tx){ var d = null; try { d = JSON.parse(tx); } catch (e) {}
-          if (!resp.ok || !d) throw new Error((d && d.error && (d.error.message || d.error)) || ('HTTP ' + resp.status + (resp.status === 413 ? ' (áudio grande demais)' : resp.status === 429 ? ' (limite de uso do Gemini)' : '')));
-          return d; }); })
-        .then(function(d){ var c = d.candidates && d.candidates[0], ps = c && c.content && c.content.parts || [];
-          var t = ps.map(function(x){ return x.text || ''; }).join('').trim(); return t && t !== '[sem fala]' ? t.slice(0, 8000) : null; });
+          if (resp.ok && d) return d;
+          var erro = new Error((d && d.error && (d.error.message || d.error)) || ('HTTP ' + resp.status + (resp.status === 413 ? ' (áudio grande demais)' : resp.status === 429 ? ' (limite de uso do Gemini)' : '')));
+          erro.status = resp.status; throw erro; }); },
+          function(e){ clearTimeout(to); throw e; });
     });
   }
   function prepararAudio(blob, mime, dur){
@@ -3180,12 +3200,15 @@
     });
   }
   // transcreve e grava na mensagem já enviada (regras: só os campos da transcrição, e só em mensagem de áudio)
-  var transcrevendoIds = {}, errosTransc = {};
+  // audiosTransc: guarda o áudio desta sessão até transcrever, porque baixá-lo de volta do Storage é bloqueado no navegador
+  var transcrevendoIds = {}, errosTransc = {}, audiosTransc = {};
   // motivo legível da falha (fica só nesta tela; o banco guarda apenas "falhou")
   function motivoTransc(e){
     var s = String((e && (e.message || e)) || '');
+    if (e && e.baixarAudio) return 'não foi possível baixar este áudio para transcrever';
     if (e && e.name === 'AbortError') return 'demorou demais para responder';
     if (/limite di[aá]rio/i.test(s)) return 'limite diário do Gemini atingido (volta amanhã)';
+    if ((e && e.status === 503) || /high demand|overloaded/i.test(s)) return 'a IA do Google está sobrecarregada, tente em alguns minutos';
     if (/failed to fetch|networkerror|load failed/i.test(s)) return 'sem conexão com o serviço de transcrição';
     if (/permission|insufficient/i.test(s)) return 'sem permissão para gravar a transcrição';
     if (/decod|AudioContext|EncodingError/i.test(s)) return 'o navegador não conseguiu ler o áudio';
@@ -3198,10 +3221,14 @@
   function transcreverMensagem(conversaId, msgId, blob, mime){
     if (transcrevendoIds[msgId]) return Promise.resolve(); transcrevendoIds[msgId] = true; delete errosTransc[msgId]; redesenharTransc(conversaId);
     var ref = db.collection('conversas').doc(conversaId).collection('mensagens').doc(msgId);
+    if (blob) audiosTransc[msgId] = { blob: blob, mime: mime };
+    else if (audiosTransc[msgId]) { blob = audiosTransc[msgId].blob; mime = audiosTransc[msgId].mime; }
     var obter = blob ? Promise.resolve(blob) : ref.get().then(function(d){ var m = d.data() || {}; mime = m.audioTipo || 'audio/webm';
-      return storage.refFromURL(m.audioUrl).getBlob ? storage.refFromURL(m.audioUrl).getBlob() : fetch(m.audioUrl).then(function(r){ return r.blob(); }); });
+      return storage.refFromURL(m.audioUrl).getBlob ? storage.refFromURL(m.audioUrl).getBlob() : fetch(m.audioUrl).then(function(r){ return r.blob(); });
+    }).catch(function(e){ console.warn('baixar áudio', e); var x = new Error('baixar áudio'); x.baixarAudio = true; throw x; });
     return obter.then(function(b){ return transcreverAudio(b, mime); })
       .then(function(t){ return ref.update({ transcricao: t || null, transcricaoStatus: t ? 'ok' : 'vazio' }); })
+      .then(function(){ delete audiosTransc[msgId]; })
       .catch(function(e){ console.warn('transcrição', e); errosTransc[msgId] = motivoTransc(e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
       .then(function(){ delete transcrevendoIds[msgId]; redesenharTransc(conversaId); });
   }
