@@ -1695,6 +1695,7 @@
     db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: 0 }).catch(function(){});
 
     ouvirMensagens(id);
+    verAudiosAntigos(id);
   }
 
   // só as últimas limiteMsgs mensagens (as mais novas); subir até o topo da lista aumenta o limite
@@ -3143,8 +3144,8 @@
         return new Blob([buf], { type: 'audio/wav' });
       });
   }
-  function transcreverAudio(blob, mime){
-    if (!/^audio\/(wav|mp3|mpeg|aiff|aac|ogg|flac)/.test(mime || '')) return paraWav16k(blob).then(function(w){ return transcreverAudio(w, 'audio/wav'); });
+  function transcreverAudio(blob, mime, umaTentativa){
+    if (!/^audio\/(wav|mp3|mpeg|aiff|aac|ogg|flac)/.test(mime || '')) return paraWav16k(blob).then(function(w){ return transcreverAudio(w, 'audio/wav', umaTentativa); });
     if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return Promise.resolve(null);
     return blobParaBase64(blob).then(function(b64){
       var corpo = JSON.stringify({ contents: [{ role: 'user', parts: [
@@ -3153,7 +3154,7 @@
         generationConfig: { temperature: 0, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } });
       function tentar(n){
         return pedirTranscricao(corpo).catch(function(e){
-          if (n >= TRANSC_ESPERAS.length || !erroPassageiro(e)) throw e;
+          if (umaTentativa || n >= TRANSC_ESPERAS.length || !erroPassageiro(e)) throw e;
           return new Promise(function(res){ setTimeout(res, TRANSC_ESPERAS[n]); }).then(function(){ return tentar(n + 1); });
         });
       }
@@ -3168,6 +3169,10 @@
     var s = String(e.message || e);
     if (/limite di[aá]rio|prepayment|credits|billing|chave do gemini|autentica/i.test(s)) return false;
     return [429, 500, 502, 503, 504].indexOf(e.status) >= 0 || /high demand|overloaded|failed to fetch|networkerror|load failed/i.test(s);
+  }
+  // o problema é do serviço (e não deste áudio): a fila dos áudios antigos para, sem marcar o áudio como falho
+  function erroDoServico(e){
+    return erroPassageiro(e) || (e && (e.status === 401 || e.status === 403)) || /limite di[aá]rio|prepayment|credits|billing/i.test(String((e && e.message) || e));
   }
   function pedirTranscricao(corpo){
     return auth.currentUser.getIdToken().then(function(token){
@@ -3200,7 +3205,7 @@
     });
   }
   // transcreve e grava na mensagem já enviada (regras: só os campos da transcrição, e só em mensagem de áudio)
-  // audiosTransc: guarda o áudio desta sessão até transcrever, porque baixá-lo de volta do Storage é bloqueado no navegador
+  // audiosTransc: guarda o áudio desta sessão até transcrever, para "tentar de novo" não precisar baixá-lo outra vez
   var transcrevendoIds = {}, errosTransc = {}, audiosTransc = {};
   // motivo legível da falha (fica só nesta tela; o banco guarda apenas "falhou")
   function motivoTransc(e){
@@ -3218,7 +3223,8 @@
     if (errosTransc[m.id]) return 'A transcrição falhou (' + errosTransc[m.id] + ') · tentar de novo';
     return m.transcricaoStatus === 'falhou' ? 'A transcrição falhou · tentar de novo' : 'Transcrever';
   }
-  function transcreverMensagem(conversaId, msgId, blob, mime){
+  function transcreverMensagem(conversaId, msgId, blob, mime, auto){
+    var erroFinal = null;
     if (transcrevendoIds[msgId]) return Promise.resolve(); transcrevendoIds[msgId] = true; delete errosTransc[msgId]; redesenharTransc(conversaId);
     var ref = db.collection('conversas').doc(conversaId).collection('mensagens').doc(msgId);
     if (blob) audiosTransc[msgId] = { blob: blob, mime: mime };
@@ -3226,11 +3232,79 @@
     var obter = blob ? Promise.resolve(blob) : ref.get().then(function(d){ var m = d.data() || {}; mime = m.audioTipo || 'audio/webm';
       return storage.refFromURL(m.audioUrl).getBlob ? storage.refFromURL(m.audioUrl).getBlob() : fetch(m.audioUrl).then(function(r){ return r.blob(); });
     }).catch(function(e){ console.warn('baixar áudio', e); var x = new Error('baixar áudio'); x.baixarAudio = true; throw x; });
-    return obter.then(function(b){ return transcreverAudio(b, mime); })
+    return obter.then(function(b){ return transcreverAudio(b, mime, !!auto); })
       .then(function(t){ return ref.update({ transcricao: t || null, transcricaoStatus: t ? 'ok' : 'vazio' }); })
       .then(function(){ delete audiosTransc[msgId]; })
-      .catch(function(e){ console.warn('transcrição', e); errosTransc[msgId] = motivoTransc(e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
-      .then(function(){ delete transcrevendoIds[msgId]; redesenharTransc(conversaId); });
+      .catch(function(e){ console.warn('transcrição', e); erroFinal = e;
+        if (auto && erroDoServico(e)) return;
+        errosTransc[msgId] = motivoTransc(e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
+      .then(function(){ if (auto) delete audiosTransc[msgId]; delete transcrevendoIds[msgId]; redesenharTransc(conversaId); return erroFinal; });
+  }
+
+  // Áudios já enviados sem transcrição: ao abrir a conversa, quem participa dela transcreve um por vez.
+  // O teto vale para o escritório inteiro (contadores/chatTranscAntigos), porque o Worker tem 200 usos por dia divididos com o Assistente.
+  var ANTIGOS_POR_DIA = 50, ANTIGOS_PAUSA = 3000, antigosVistos = {}, antigosFila = [], antigosRodando = false, antigosParadoAte = 0;
+  function diaBrasilia(){ return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10); }
+  function antigoJaTentado(id, marcar){
+    try {
+      var k = 'fbTranscAntigosTentados', o = JSON.parse(localStorage.getItem(k) || '{}');
+      if (marcar) { o[id] = 1; localStorage.setItem(k, JSON.stringify(o)); }
+      return !!o[id];
+    } catch (e) { return false; }
+  }
+  function audioSemTranscricao(m){
+    if (!m || m.tipo !== 'audio' || !m.audioUrl || m.transcricao || m.transcricaoStatus === 'ok' || m.transcricaoStatus === 'vazio') return false;
+    var t = m.criadoEm && m.criadoEm.toMillis ? m.criadoEm.toMillis() : 0;
+    return t > 0 && Date.now() - t > 600000;   // o recém-enviado ainda está com quem gravou
+  }
+  function verAudiosAntigos(conversaId){
+    if (antigosVistos[conversaId] || Date.now() < antigosParadoAte) return;
+    if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return;
+    antigosVistos[conversaId] = true;
+    db.collection('conversas').doc(conversaId).collection('mensagens').where('tipo', '==', 'audio').get().then(function(snap){
+      snap.docs.map(function(d){ return { c: conversaId, id: d.id, m: d.data() }; })
+        .filter(function(x){ return audioSemTranscricao(x.m) && !antigoJaTentado(x.id); })
+        .sort(function(a, b){ return b.m.criadoEm.toMillis() - a.m.criadoEm.toMillis(); })
+        .forEach(function(x){ antigosFila.push({ c: x.c, id: x.id }); });
+      rodarAntigos();
+    }).catch(function(e){ console.warn('áudios antigos', e); delete antigosVistos[conversaId]; });
+  }
+  function pararAntigos(ms){
+    antigosParadoAte = Date.now() + ms;
+    antigosFila.forEach(function(x){ delete antigosVistos[x.c]; });
+    antigosFila = [];
+  }
+  // reserva no banco: conta no teto do dia e impede que duas pessoas transcrevam o mesmo áudio ao mesmo tempo
+  function reservarAntigo(x){
+    var msgRef = db.collection('conversas').doc(x.c).collection('mensagens').doc(x.id), contRef = db.collection('contadores').doc('chatTranscAntigos');
+    return db.runTransaction(function(tx){
+      return Promise.all([tx.get(msgRef), tx.get(contRef)]).then(function(r){
+        if (!audioSemTranscricao(r[0].data())) return 'pular';
+        var c = r[1].data() || {}, dia = diaBrasilia(), hoje = c.dia === dia, usados = hoje ? (c.usados || 0) : 0, agora = Date.now(), emCurso = {}, antes = hoje ? (c.andamento || {}) : {};
+        if (usados >= ANTIGOS_POR_DIA) return 'limite';
+        Object.keys(antes).forEach(function(k){ if (agora - antes[k] < 600000) emCurso[k] = antes[k]; });
+        if (emCurso[x.id]) return 'pular';
+        emCurso[x.id] = agora;
+        tx.set(contRef, { dia: dia, usados: usados + 1, andamento: emCurso });
+        return 'ok';
+      });
+    });
+  }
+  function rodarAntigos(){
+    if (antigosRodando) return;
+    var x = antigosFila.shift(); if (!x) return;
+    antigosRodando = true;
+    reservarAntigo(x).then(function(r){
+      if (r === 'limite') { antigosFila.unshift(x); pararAntigos(3600000); return; }
+      if (r !== 'ok') return;
+      return transcreverMensagem(x.c, x.id, null, null, true).then(function(e){
+        if (e && erroDoServico(e)) { antigosFila.unshift(x); pararAntigos(600000); }
+        else if (e) antigoJaTentado(x.id, true);
+        // terminou: tira a reserva, senão o áudio ficaria 10 minutos sem poder ser tentado de novo
+        return db.collection('contadores').doc('chatTranscAntigos').update({ ['andamento.' + x.id]: FV.delete() }).catch(function(){});
+      });
+    }).catch(function(e){ console.warn('áudios antigos', e); antigosFila.unshift(x); pararAntigos(600000); })
+      .then(function(){ antigosRodando = false; if (antigosFila.length) setTimeout(rodarAntigos, ANTIGOS_PAUSA); });
   }
   // o estado "transcrevendo" e o motivo da falha não vêm do banco: sem isto, uma nova falha (status já "falhou")
   // deixava a mensagem presa em "transcrevendo…"
