@@ -6,12 +6,60 @@
    administrador e gravados em condoUnidades/{slug}.ficha (a equipe lê; só o admin grava — regra já existente).
    Usa as funções globais da página (escapeHtml, slugify, isAdminUser, unidadesState, render, db...).
    ================================================================================================ */
-var FC = { editando: null, rascunho: null, aviso: '' };
+var FC = { editando: null, rascunho: null, aviso: '', cpfs: {} };
 
 function fcEsc(s) { return escapeHtml(s == null ? '' : s); }
 function fcLista(v) { return (Array.isArray(v) ? v : String(v || '').split(/\n+/)).map(function (x) { return String(x).trim(); }).filter(Boolean); }
 function fcUrl(u) { u = String(u || '').trim(); if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u; return /^https?:\/\/[^\s"'<>]+$/i.test(u) ? u : ''; }
-function fcFicha(c) { var r = (unidadesState.porSlug || {})[slugify(c.nome)] || {}; return r.ficha || {}; }
+function fcFicha(c) {
+  var slug = slugify(c.nome), r = (unidadesState.porSlug || {})[slug] || {}, f = r.ficha || {}, x = FC.cpfs[slug];
+  if (!x || !isAdminUser()) return f;
+  var o = JSON.parse(JSON.stringify(f));
+  ['sindico', 'subsindico'].forEach(function (k) { if (x[k]) o[k] = Object.assign({}, o[k] || {}, { cpf: x[k] }); });
+  (o.conselho || []).forEach(function (p, i) { var v = (x.conselho || {})[fcChaveCons(p, i)]; if (v) p.cpf = v; });
+  return o;
+}
+
+/* ---------------------------------------------------------------- CPF só para administradores
+   condoUnidades é lido por toda a equipe; o CPF/CNPJ das pessoas fica em condoFichaRestrita/{slug} (só admin). */
+function fcChaveCons(p, i) { return slugify((p && p.nome) || '') || ('linha-' + i); }
+function fcSeparar(ficha) {
+  var f = JSON.parse(JSON.stringify(ficha || {})), c = { sindico: '', subsindico: '', conselho: {} };
+  ['sindico', 'subsindico'].forEach(function (k) { if (f[k]) { c[k] = f[k].cpf || ''; delete f[k].cpf; } });
+  (f.conselho || []).forEach(function (p, i) { if (p && p.cpf) c.conselho[fcChaveCons(p, i)] = p.cpf; if (p) delete p.cpf; });
+  return { ficha: f, cpfs: c, tem: !!(c.sindico || c.subsindico || Object.keys(c.conselho).length) };
+}
+function fcTemCpfPublico(f) { return !!f && fcSeparar(f).tem; }
+function fcParaGravar(sep, dados) {
+  var FV = firebase.firestore.FieldValue, pub = Object.assign({}, dados, { ficha: JSON.parse(JSON.stringify(sep.ficha)) });
+  ['sindico', 'subsindico'].forEach(function (k) { pub.ficha[k] = Object.assign({}, pub.ficha[k] || {}, { cpf: FV.delete() }); });
+  return pub;
+}
+// grava a ficha sem CPF e o CPF na área restrita, juntos: ou as duas gravações entram, ou nenhuma
+function fcGravarFicha(slug, dados) {
+  var sep = fcSeparar(dados.ficha), b = db.batch();
+  b.set(db.collection('condoUnidades').doc(slug), fcParaGravar(sep, dados), { merge: true });
+  if (sep.tem || FC.cpfs[slug]) b.set(db.collection('condoFichaRestrita').doc(slug), { sindico: sep.cpfs.sindico, subsindico: sep.cpfs.subsindico, conselho: sep.cpfs.conselho, atualizadoPorUid: currentUser.uid, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+  return b.commit().then(function () { FC.cpfs[slug] = sep.cpfs; return sep.ficha; });
+}
+// ao abrir como administrador: carrega os CPFs e move os que ainda estiverem no documento da equipe
+function fcCarregarRestrito(mapa) {
+  if (!isAdminUser() || !db) return Promise.resolve();
+  return db.collection('condoFichaRestrita').get().then(function (snap) {
+    snap.docs.forEach(function (d) { FC.cpfs[d.id] = d.data(); });
+    var b = db.batch(), mover = [];
+    Object.keys(mapa).forEach(function (slug) {
+      var f = mapa[slug].ficha; if (!fcTemCpfPublico(f)) return;
+      var sep = fcSeparar(f), ant = FC.cpfs[slug] || {};
+      var c = { sindico: sep.cpfs.sindico || ant.sindico || '', subsindico: sep.cpfs.subsindico || ant.subsindico || '', conselho: Object.assign({}, ant.conselho || {}, sep.cpfs.conselho) };
+      b.set(db.collection('condoFichaRestrita').doc(slug), { sindico: c.sindico, subsindico: c.subsindico, conselho: c.conselho, atualizadoPorUid: currentUser.uid, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+      b.set(db.collection('condoUnidades').doc(slug), fcParaGravar(sep, { ficha: sep.ficha }), { merge: true });
+      mover.push({ slug: slug, ficha: sep.ficha, c: c });
+    });
+    if (!mover.length) return;
+    return b.commit().then(function () { mover.forEach(function (m) { mapa[m.slug].ficha = m.ficha; FC.cpfs[m.slug] = m.c; }); });
+  }).catch(function (e) { console.warn('CPF restrito ainda indisponível', e && e.code); });
+}
 function fcIcone(n) {
   var I = {
     predio: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>',
@@ -226,8 +274,8 @@ document.addEventListener('click', function (ev) {
     var dados = { condominio: nome, ficha: f, atualizadoPorUid: currentUser.uid, atualizadoPorNome: quem, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() };
     var n = parseInt(f.unidades, 10); if (n > 0) dados.unidades = n;
     b.disabled = true; if (stt) stt.textContent = 'Salvando…';
-    db.collection('condoUnidades').doc(slug).set(dados, { merge: true }).then(function () {
-      unidadesState.porSlug[slug] = Object.assign({}, unidadesState.porSlug[slug] || {}, { condominio: nome, ficha: f }, n > 0 ? { unidades: n } : {});
+    fcGravarFicha(slug, dados).then(function (semCpf) {
+      unidadesState.porSlug[slug] = Object.assign({}, unidadesState.porSlug[slug] || {}, { condominio: nome, ficha: semCpf }, n > 0 ? { unidades: n } : {});
       FC.editando = null; FC.rascunho = null; FC.aviso = 'Ficha salva.'; render();
     }).catch(function (e) { b.disabled = false; if (stt) stt.textContent = 'Não foi possível salvar: ' + e.message; });
   }

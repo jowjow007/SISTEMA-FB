@@ -28,6 +28,10 @@ service cloud.firestore {
     function isAdmin() {
       return isAtivo() && meuCadastro().role == 'admin';
     }
+    // quem o administrador escolheu para cadastrar condomínios e enviar convenções e regimentos (23/11/2026)
+    function podeCadastrarCondo() {
+      return isAdmin() || (isEquipe() && exists(/databases/$(database)/documents/condoCadastradores/$(request.auth.uid)));
+    }
     // Tipos de usuário de fora do escritório (05/11/2026): cliente, conselheiro e síndico têm o mesmo acesso restrito
     function isContaCliente() {
       return isAtivo() && meuCadastro().role in ['cliente', 'conselheiro', 'sindico'];
@@ -174,6 +178,11 @@ service cloud.firestore {
                   || (chave == 'numerosEfetividade' && temSubabaRestrita('numeros-do-escritorio-mscj8kts', 'efetividade'))
                   || (!(chave in ['numerosClientes', 'numerosJuizo', 'numerosEfetividade']) && isEquipe());
       allow write: if isAdmin();
+      // cadastro de condomínio novo: só acrescenta à lista (o texto não pode diminuir)
+      allow update: if chave == 'condominios' && podeCadastrarCondo()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['json', 'atualizadoPor', 'atualizadoEm'])
+                    && request.resource.data.atualizadoPor == request.auth.uid
+                    && request.resource.data.json.size() > resource.data.json.size();
     }
     match /arquivosPrivados/{arquivoId} {
       allow read: if isEquipe();
@@ -602,6 +611,16 @@ service cloud.firestore {
     match /condoUnidades/{slug} {
       allow read: if isEquipe();
       allow write: if isAdmin();
+      allow create: if podeCadastrarCondo();
+    }
+    match /condoCadastradores/{uid} {
+      allow read: if isAdmin() || (isEquipe() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+    // CPF/CNPJ de síndico, subsíndico e conselheiros (23/11/2026): só o administrador lê e grava
+    match /condoFichaRestrita/{slug} {
+      allow read, write: if isAdmin();
+      allow create: if podeCadastrarCondo();   // quem cadastra informa o CPF, mas não lê os CPFs guardados
     }
     match /notificacoesGeradas/{docId} {
       // o síndico aprovador lê só as do próprio condomínio (a consulta filtra por condominioSlug)

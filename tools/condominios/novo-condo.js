@@ -9,8 +9,45 @@ var NC = { arquivos: [], rascunho: null, nome: '', docs: {} };
 var NC_PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 var NC_OCR = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
 
+var NC_CAD = { pode: false };
+function podeCadastrarCondo() { return isAdminUser() || NC_CAD.pode; }
+function ncCarregarPermissao() {
+  if (isAdminUser() || !currentUser || !currentProfile || ['gestor', 'membro'].indexOf(currentProfile.role) < 0) return;
+  db.collection('condoCadastradores').doc(currentUser.uid).get().then(function (s) {
+    NC_CAD.pode = s.exists;
+    if (s.exists && state.section === 'condominios') render();
+  }).catch(function () { NC_CAD.pode = false; });
+}
 function ncBotao() {
-  return isAdminUser() ? '<button type="button" class="btn" data-nc="abrir">+ Novo Condomínio</button>' : '';
+  return (isAdminUser() ? '<button type="button" class="btn secondary" data-nc="permissoes">Quem pode cadastrar</button>' : '')
+    + (podeCadastrarCondo() ? '<button type="button" class="btn" data-nc="abrir">+ Novo Condomínio</button>' : '');
+}
+// administrador escolhe quem cadastra condomínios e envia convenções e regimentos
+function ncPermissoes() {
+  var f = ncCaixa('<p class="nc-lead">Marque quem pode cadastrar condomínios e enviar convenções e regimentos.</p><div id="nc-pessoas" class="nc-lista">Carregando…</div><p id="nc-perm-status" class="nc-status" role="status"></p><div class="fc-acoes"><button type="button" class="btn ghost" data-nc="fechar">Cancelar</button><button type="button" class="btn" data-nc="salvar-perm" disabled>Salvar</button></div>');
+  Promise.all([db.collection('users').get(), db.collection('condoCadastradores').get()]).then(function (r) {
+    var marcados = {}; r[1].docs.forEach(function (d) { marcados[d.id] = 1; });
+    NC.pessoas = r[0].docs.map(function (d) { return Object.assign({ uid: d.id }, d.data()); })
+      .filter(function (u) { return ['gestor', 'membro'].indexOf(u.role) >= 0 && u.acesso === 'ativo'; })
+      .sort(function (a, b) { return String(a.displayName || a.email).localeCompare(String(b.displayName || b.email), 'pt-BR'); });
+    NC.marcados = marcados;
+    var el = f.querySelector('#nc-pessoas');
+    el.innerHTML = NC.pessoas.length ? NC.pessoas.map(function (u) {
+      return '<label class="nc-pessoa"><input type="checkbox" data-nc-uid="' + fcEsc(u.uid) + '"' + (marcados[u.uid] ? ' checked' : '') + '> <span>' + fcEsc(u.displayName || u.email) + '</span></label>';
+    }).join('') : 'Nenhuma pessoa ativa da equipe.';
+    f.querySelector('[data-nc="salvar-perm"]').disabled = !NC.pessoas.length;
+  }).catch(function (e) { f.querySelector('#nc-pessoas').textContent = 'Não foi possível carregar: ' + e.message; });
+}
+function ncSalvarPermissoes(bt) {
+  var st = document.getElementById('nc-perm-status'), b = db.batch(), n = 0;
+  NC.pessoas.forEach(function (u) {
+    var el = document.querySelector('[data-nc-uid="' + u.uid + '"]'), quer = !!(el && el.checked), tem = !!NC.marcados[u.uid], ref = db.collection('condoCadastradores').doc(u.uid);
+    if (quer && !tem) { b.set(ref, { nome: u.displayName || '', email: u.email || '', definidoPor: currentUser.uid, definidoEm: firebase.firestore.FieldValue.serverTimestamp() }); n++; }
+    if (!quer && tem) { b.delete(ref); n++; }
+  });
+  if (!n) return ncFechar();
+  bt.disabled = true; st.textContent = 'Salvando…';
+  b.commit().then(ncFechar).catch(function (e) { bt.disabled = false; st.textContent = 'Não foi possível salvar: ' + e.message; });
 }
 function ncCaixa(corpo) {
   ncFechar();
@@ -161,9 +198,9 @@ function ncSalvar(b) {
   }).then(function (d) {
     var dados = { condominio: nome, ficha: f, atualizadoPorUid: currentUser.uid, atualizadoPorNome: quem, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, n = parseInt(f.unidades, 10);
     if (n > 0) dados.unidades = n;
-    return db.collection('condoUnidades').doc(slug).set(dados, { merge: true }).then(function () {
+    return fcGravarFicha(slug, dados).then(function (semCpf) {
       CONDOMINIOS.length = 0; Array.prototype.push.apply(CONDOMINIOS, d.condominios);
-      unidadesState.porSlug[slug] = Object.assign({}, unidadesState.porSlug[slug] || {}, { condominio: nome, ficha: f }, n > 0 ? { unidades: n } : {});
+      unidadesState.porSlug[slug] = Object.assign({}, unidadesState.porSlug[slug] || {}, { condominio: nome, ficha: semCpf }, n > 0 ? { unidades: n } : {});
       var cad = Promise.resolve(), erros = [];
       ['convencao', 'regimento'].forEach(function (k) {
         var a = NC.docs[k]; if (!a) return;
@@ -186,8 +223,10 @@ function ncSalvar(b) {
 document.addEventListener('click', function (ev) {
   var b = ev.target.closest && ev.target.closest('[data-nc]');
   if (!b) { if (ev.target && ev.target.id === 'nc-modal') ncFechar(); return; }
-  if (!isAdminUser()) return;
+  if (!podeCadastrarCondo()) return;
   var a = b.getAttribute('data-nc');
+  if (a === 'permissoes') return isAdminUser() ? ncPermissoes() : undefined;
+  if (a === 'salvar-perm') return isAdminUser() ? ncSalvarPermissoes(b) : undefined;
   if (a === 'abrir' || a === 'inicio') return ncInicio();
   if (a === 'fechar') return ncFechar();
   if (a === 'enviar') return ncTelaEnvio();

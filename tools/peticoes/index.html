@@ -1284,6 +1284,8 @@ function montarBlocos(d){
       if(mS){ subsecao(mS); continue; }
       if(ehMarcaImagem(s)){ B.push({t:'imagem', n:numMarcaImagem(s)}); continue; }
       if(FONTE_RE.test(s)){ B.push({t:'fonte', texto:s}); continue; }
+      // notificação: "I — Imediatamente:" agrupa as alíneas seguintes e não recebe número de parágrafo
+      if(notif && /^(?:\*\*)?[IVXL]{1,5}\s*[—–-]\s*[^.;]{2,60}:(?:\*\*)?$/.test(s)){ B.push({t:'p', texto:s, semRecuo:true}); continue; }
       var mA = s.match(/^([a-z])[.)]\s+(.*)$/);
       if(mA){ B.push({t:'alinea', letra:mA[1]+')', texto:mA[2]}); continue; }
       var mB = s.match(SUBALINEA_RE);
@@ -2064,6 +2066,12 @@ function ehTituloNumerado(l){
 }
 function parsearNotificacao(raw){
   var linhas = desmarkdown(String(raw||'').replace(/\r\n?/g,'\n')).replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
+  // fecho com campos em branco do modelo ("[data]", "[Nome do advogado]"): quem assina vem do formulário
+  for(var u = linhas.length - 1, vistosFecho = 0; u >= 0 && vistosFecho < 5; u--){
+    if(!linhas[u]) continue;
+    if(/^(?:.{0,40},\s*)?\[data\]\.?$|^\[nome do advogado\]$|^OAB\s*\/\s*\[UF\]\s*\[n[úu]mero\]$|^\[contato profissional\]$/i.test(linhas[u])){ linhas[u] = ''; vistosFecho++; }
+    else break;
+  }
   var i = 0, titulo = '', dest = [], rots = [], intro = [];
   while(i < linhas.length && !linhas[i]) i++;
   if(i < linhas.length && /^(CONTRA[\s-]?)?NOTIFICA/i.test(linhas[i]) && linhas[i].length <= 120){ titulo = linhas[i].replace(/[.:]$/, ''); i++; }
@@ -2097,7 +2105,9 @@ function parsearNotificacao(raw){
   }
   intro = linhas.slice(i, kHead);
   var corpo = linhas.slice(kHead).join('\n');
-  var res = parsearPeticao(corpo, {semEnder:true});
+  // notificação não tem bloco próprio de pedidos: "Dos pedidos" é um tópico comum, com o texto e as alíneas como foram escritos;
+  // "item 3 da Seção V" é do documento citado, então a numeração dos tópicos não mexe nas remissões
+  var res = parsearPeticao(corpo, {semEnder:true, semPedidos:true, semRemissao:true});
   res.titulo = titulo || 'NOTIFICAÇÃO EXTRAJUDICIAL';
   res.enderecamento = dest.join('\n');
   res.rotulos = rots.join('\n');
@@ -2349,7 +2359,7 @@ function parsearPeticao(raw, opts){
       }
       pedLinhas.push(ln); continue;
     }
-    if((tt2 && PED_HEADER_RE.test(tt2.texto)) || PED_HEADER_RE.test(ln)){
+    if(!opts.semPedidos && ((tt2 && PED_HEADER_RE.test(tt2.texto)) || PED_HEADER_RE.test(ln))){
       modoPedidos = true; secN++;
       if(tt2 && (tt2.num || tt2.rom)) resultado.romanos = true;
       if(tt2 && tt2.num) mapa[tt2.num] = roman(secN);
@@ -2365,7 +2375,7 @@ function parsearPeticao(raw, opts){
       if(abre && cabAbertura.length) topico.linhas = cabAbertura.shift();
       continue;
     }
-    if(/^(Diante|Ante)\s+o\s+exposto/i.test(ln) && ln.length < 120) continue;
+    if(!opts.semPedidos && /^(Diante|Ante)\s+o\s+exposto/i.test(ln) && ln.length < 120) continue;
     topico.linhas.push(ln);
   }
   novoTopico('');
@@ -2382,12 +2392,12 @@ function parsearPeticao(raw, opts){
     resultado.pedidos = extrairPedidos(pedLinhas.concat(resto.length ? [] : linhas.slice(fim, fim+1)));
   }
 
-  if(resultado.romanos && !temAbertura && Object.keys(mapa).length){
+  if(resultado.romanos && !temAbertura && !opts.semRemissao && Object.keys(mapa).length){
     var REF_ITEM_RE = /\b(ite(?:m|ns)|t[óo]picos?|subite(?:m|ns)|se[çc](?:ão|ões)|cap[íi]tulos?)(\s+)(\d{1,2}(?:\.\d{1,2})*(?:\s*(?:,|e|a)\s*\d{1,2}(?:\.\d{1,2})*)*)\b(?!\.\d)/gi;
     var trocar = function(txt){
       return String(txt||'').replace(REF_ITEM_RE, function(todo, pal, esp, nums, pos, str){
         var depois = str.slice(pos + todo.length, pos + todo.length + 45);
-        if(/^\s*,?\s*(?:d[aoe]s?\s+)?(?:contrato|contratual|ap[óo]lice|condi[çc][õo]es|cl[áa]usula|regulamento|edital|estatuto|conven[çc][ãa]o|anexo|tabela|norma|lei|resolu)/i.test(depois)) return todo;
+        if(/^\s*,?\s*(?:d[aoe]s?\s+)?(?:contrato|contratual|ap[óo]lice|condi[çc][õo]es|cl[áa]usula|regulamento|regimento|se[çc][ãa]o|edital|estatuto|conven[çc][ãa]o|anexo|tabela|norma|lei|resolu)/i.test(depois)) return todo;
         var ok = true;
         var novo = nums.replace(/\d{1,2}(?:\.\d{1,2})*/g, function(n){ if(mapa[n]) return mapa[n]; ok = false; return n; });
         return ok ? pal + esp + novo : todo;

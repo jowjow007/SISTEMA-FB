@@ -34,6 +34,12 @@ service firebase.storage {
             && cadastro().get('tabs', []).hasAny([firestore.get(/databases/(default)/documents/configPortal/abas).data.get('condominios', '')])
             && cadastro().get('subtabs', {}).get(firestore.get(/databases/(default)/documents/configPortal/abas).data.get('condominios', ''), []).hasAny(['sessoes-julgamento'])));
     }
+    // quem o administrador escolheu para cadastrar condomínios e enviar convenções e regimentos
+    function podeCadastrarCondo() {
+      return ativo() && (cadastro().get('role', '') == 'admin'
+        || (cadastro().get('role', '') in ['gestor', 'membro']
+            && firestore.exists(/databases/(default)/documents/condoCadastradores/$(request.auth.uid))));
+    }
     function recurso(recursoId) {
       return firestore.get(/databases/(default)/documents/recursosJulgamento/$(recursoId)).data;
     }
@@ -80,7 +86,7 @@ service firebase.storage {
     // só o admin envia ou troca; só PDF, até 60 MB (há convenções escaneadas com 30+ MB)
     match /condominiosDocs/{slug}/{arquivo} {
       allow read: if equipe();
-      allow create, update: if ativo() && cadastro().get('role', '') == 'admin'
+      allow create, update: if podeCadastrarCondo()
                             && arquivo in ['convencao.pdf', 'regimento.pdf']
                             && request.resource.size <= 60 * 1024 * 1024
                             && request.resource.contentType == 'application/pdf';

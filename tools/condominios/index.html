@@ -452,6 +452,7 @@
 .nc-opcao span{display:block;font-size:.8rem;line-height:1.45;color:var(--muted)}
 .nc-lista{margin:10px 0;font-size:.82rem;line-height:1.7}
 .nc-status{font-size:.8rem;color:var(--muted);margin:6px 0 10px}
+.nc-pessoa{display:flex;align-items:center;gap:8px;padding:6px 2px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -471,8 +472,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
-<script src="ficha-condo.js?v=2"></script>
-<script src="novo-condo.js?v=1"></script>
+<script src="ficha-condo.js?v=3"></script>
+<script src="novo-condo.js?v=3"></script>
 <script>
 /* ---------- data ---------- */
 
@@ -582,6 +583,7 @@ if (fbReady){
         return;
       }
       carregarDadosPrivadosCondo();
+      ncCarregarPermissao();
       calcularPodeSessoes().then(function(pode){ podeSessoesEquipe = pode; if (state.section === 'inicio') render(); });
       if (!secaoPermitida(state.section)) state.section = 'inicio';
       if (state.section === 'inicio') render();
@@ -740,7 +742,7 @@ function casarCondominio(rotulo){
   return nota >= Math.min(2, tk.length) ? melhor : '';
 }
 function abrirEnvioDocsCond(){
-  if (!isAdminUser() || !storageCond) return;
+  if (!podeCadastrarCondo() || !storageCond) return;
   var f = document.createElement('div'); f.className = 'doc-viewer';
   f.innerHTML = '<div class="doc-viewer-box" style="max-width:860px;height:auto;max-height:92vh;"><div class="doc-viewer-top"><b>Enviar convenções e regimentos</b><button type="button" class="btn ghost" data-e-fechar>✕</button></div>' +
     '<div style="padding:16px 20px;overflow:auto;"><p style="font-size:.86rem;line-height:1.55;margin:0 0 12px;">Escolha a pasta <b>"Convenções e Regimentos"</b> (com as subpastas de cada condomínio) ou selecione os PDFs. O portal reconhece o condomínio pelo nome do arquivo ou da subpasta e o tipo pela palavra <i>Convenção</i> ou <i>Regimento</i>. Confira a tabela antes de enviar; o que já existir é substituído.</p>' +
@@ -1134,7 +1136,7 @@ function viewCondoGrid(){
     + '<p class="lead">Consulte síndicos, regras especiais, número de unidades e particularidades de cada condomínio.</p>'
     + '<hr class="rule">'
     + avisoDadosCondo()
-    + (isAdminUser() ? '<div class="cc-acoes">' + (CONDOMINIOS.length ? '<button type="button" class="btn secondary" data-docs-enviar>📤 Enviar convenções e regimentos</button>' : '') + ncBotao() + '</div>' : '')
+    + (podeCadastrarCondo() ? '<div class="cc-acoes">' + (CONDOMINIOS.length ? '<button type="button" class="btn secondary" data-docs-enviar>📤 Enviar convenções e regimentos</button>' : '') + ncBotao() + '</div>' : '')
     + '<div class="grid g3 cc-grade">' + CONDOMINIOS.map(function(c,i){ return fcCard(c, i); }).join('') + '</div>';
 }
 
@@ -1496,7 +1498,7 @@ function carregarUnidades(){
     snap.docs.forEach(function(d){ mapa[d.id] = d.data(); });
     unidadesState.porSlug = mapa;
     unidadesState.loaded = true;
-    render();
+    return fcCarregarRestrito(mapa).then(function(){ render(); });
   }).catch(function(e){ console.error('Falha ao carregar número de unidades', e); });
 }
 
