@@ -67,7 +67,7 @@
 
     <section>
       <h2><span class="passo">4</span>Dados que saíram do site público</h2>
-      <p class="sub">Selecione os arquivos da pasta <code>privado/</code> do computador. Eles vão para o Firestore com leitura só para a equipe: <code>numeros-stats.json</code> (painel de Números), <code>condominios.json</code> (clientes e relatórios de Condomínios), <code>condominios-convocacao.json</code> (prazos de edital de assembleia) e os PDFs/PNGs de <code>privado/condominios-pdfs/</code>.</p>
+      <p class="sub">Selecione os arquivos da pasta <code>privado/</code> do computador. Eles vão para o Firestore com leitura só para a equipe: <code>numeros-stats.json</code> (painel de Números), <code>condominios.json</code> (clientes e relatórios de Condomínios), <code>condominios-convocacao.json</code> (prazos de edital de assembleia), <code>condominios-fichas.json</code> (fichas dos cartões; só preenche campos vazios) e os PDFs/PNGs de <code>privado/condominios-pdfs/</code>.</p>
       <div class="linha"><input type="file" id="f-dados" multiple accept=".json,.pdf,.png"><button id="b-dados">Enviar</button></div>
       <div class="msg" id="m-dados"></div>
     </section>
@@ -269,7 +269,32 @@
       modo === 'texto' ? r.readAsText(file, 'utf-8') : r.readAsDataURL(file);
     });
   }
+  // fichas dos condomínios: completa só o que está vazio, para nunca apagar o que a equipe já digitou
+  function completarVazios(atual, novo){
+    const r = Object.assign({}, atual || {});
+    Object.keys(novo || {}).forEach(function(k){
+      const v = novo[k], a = r[k];
+      if (v && typeof v === 'object' && !Array.isArray(v)) r[k] = completarVazios(a, v);
+      else if (a === undefined || a === null || a === '' || (Array.isArray(a) && !a.length)) r[k] = v;
+    });
+    return r;
+  }
+  function enviarFichas(txt){
+    const itens = JSON.parse(txt).itens || [];
+    if (!itens.length) return Promise.reject(new Error('condominios-fichas.json sem itens'));
+    return Promise.all(itens.map(function(x){
+      if (!x.slug || !x.ficha) throw new Error('item inválido em condominios-fichas.json');
+      const ref = db.collection('condoUnidades').doc(x.slug);
+      return ref.get().then(function(s){
+        const d = s.exists ? s.data() : {}, ficha = completarVazios(d.ficha, x.ficha), n = parseInt(ficha.unidades, 10);
+        const dados = { condominio: d.condominio || x.nome, ficha: ficha, atualizadoPorUid: eu.uid, atualizadoEm: FV.serverTimestamp() };
+        if (!d.unidades && n > 0) dados.unidades = n;
+        return ref.set(dados, { merge: true });
+      });
+    }));
+  }
   function enviarJson(file){
+    if (file.name === 'condominios-fichas.json') return lerComo(file, 'texto').then(enviarFichas);
     const chave = { 'numeros-stats.json': 'numerosStats', 'condominios.json': 'condominios', 'condominios-convocacao.json': 'condominiosConvocacao' }[file.name];
     if (!chave) return Promise.reject(new Error(file.name + ': nome não reconhecido'));
     return lerComo(file, 'texto').then(function(txt){
