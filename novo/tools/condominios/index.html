@@ -217,6 +217,7 @@ main{padding:24px 16px 60px}}
 .doc-cond button:hover{background:var(--red);border-color:var(--red);color:#fff;}
 .doc-cond small{color:var(--muted);font-size:.72rem;}
 .doc-cond.falta,.doc-cond.carregando{opacity:.6;}
+  .convoc-cond{border:1px solid var(--card-line);border-left:3px solid var(--red);border-radius:8px;padding:8px 10px;margin:6px 0 10px;font-size:.8rem;line-height:1.45;}.convoc-cond .t{font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}.convoc-cond .p{display:block;font-size:.95rem;font-weight:700;margin:1px 0;}.convoc-cond small{display:block;color:var(--muted);font-size:.74rem;}.convoc-cond p{margin:6px 0 0;font-size:.8rem;}
 .doc-viewer{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:18px;}
 .doc-viewer-box{background:var(--card,#fff);color:var(--text,#222);width:min(1100px,100%);height:min(94vh,100%);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5);}
 .doc-viewer-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--card-line);}
@@ -374,6 +375,7 @@ if (fbReady){
 var PROCEDIMENTOS = { avisos: [], regrasEspeciais: [], modelos: [] };
 var dadosCondoStatus = 'carregando';   // 'carregando' | 'ok' | 'sem-dados' | 'sem-acesso'
 function carregarDadosPrivadosCondo(){
+  carregarConvocacaoCond();
   db.collection('dadosPrivados').doc('condominios').get().then(function(snap){
     if (!snap.exists) { dadosCondoStatus = 'sem-dados'; render(); return; }
     var d = JSON.parse(snap.data().json);
@@ -385,6 +387,37 @@ function carregarDadosPrivadosCondo(){
     dadosCondoStatus = 'ok';
     render();
   }).catch(function(){ dadosCondoStatus = 'sem-acesso'; render(); });
+}
+// Prazo do edital de assembleia de cada condomínio: vem de dadosPrivados/condominiosConvocacao (só a equipe lê),
+// enviado em tools/admin-seguranca como condominios-convocacao.json — nunca no HTML público.
+var CONVOCACAO_COND = { itens: [] };
+function carregarConvocacaoCond(){
+  db.collection('dadosPrivados').doc('condominiosConvocacao').get().then(function(snap){
+    if (!snap.exists) return;
+    var d = JSON.parse(snap.data().json);
+    CONVOCACAO_COND = { itens: d.itens || [], contagem: d.contagem || '', conferidoEm: d.conferidoEm || '' };
+    if (state.section === 'condominios') render();
+  }).catch(function(){});
+}
+function convocacaoDe(c){
+  var partes = slugify(c.nome).split('-');
+  return CONVOCACAO_COND.itens.filter(function(x){
+    return (x.busca || []).length && x.busca.every(function(t){ return partes.some(function(p){ return p.indexOf(t) === 0; }); });
+  })[0] || null;
+}
+function blocoConvocacao(c, completo){
+  var x = convocacaoDe(c);
+  if (!x) return '';
+  var h = '<div class="convoc-cond"><span class="t">📅 Edital de assembleia</span><span class="p">' + escapeHtml(x.prazo) + '</span>' +
+    '<small>' + escapeHtml(x.fonte) + (x.pagina ? ' · ' + escapeHtml(x.pagina) : '') + '</small>';
+  if (x.urgencia) h += completo ? '<p><b>Urgência:</b> ' + escapeHtml(x.urgencia) + '</p>' : '<small>' + escapeHtml(x.urgencia) + '</small>';
+  if (completo){
+    if (x.meio) h += '<p><b>Como convocar:</b> ' + escapeHtml(x.meio) + '</p>';
+    if (CONVOCACAO_COND.contagem) h += '<p><b>Contagem:</b> ' + escapeHtml(CONVOCACAO_COND.contagem) + '</p>';
+    if (x.alerta) h += '<p><b>Atenção:</b> ' + escapeHtml(x.alerta) + '</p>';
+    if (CONVOCACAO_COND.conferidoEm) h += '<small style="margin-top:6px;">Conferido em ' + escapeHtml(CONVOCACAO_COND.conferidoEm) + '.</small>';
+  }
+  return h + '</div>';
 }
 function avisoDadosCondo(){
   var t = { carregando: 'Carregando a lista de clientes…',
@@ -957,6 +990,7 @@ function viewCondoGrid(){
           + '<p class="sind">Síndico(a): <b>'+c.sindico+'</b></p>'
           + unidadesBlocoCard(slug, c.nome)
           + botoesDocsCond(c)
+          + blocoConvocacao(c, false)
           + (c.nota ? '<p class="note">⚠ '+truncate(c.nota,90)+'</p>' : '')
           + '<button class="ver" data-open-condo="'+i+'">Ver detalhes <span>→</span></button>'
           + '</div>';
@@ -1000,7 +1034,7 @@ function viewCondoDetail(){
           ? '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;line-height:1.55;">'+c.nota+'</div></div></div>'
           : '<div class="obs-box"><span>ℹ️</span><div><div class="label">Observações importantes</div><div style="font-size:.86rem;color:var(--muted);">Nenhuma particularidade registrada — segue o procedimento padrão.</div></div></div>');
   } else if(state.condoSubtab === 'regimento'){
-    html += '<p class="lead" style="margin-bottom:12px;font-size:.86rem;">Convenção condominial e regimento interno de ' + escapeHtml(c.nome) + ' — veja aqui no portal ou baixe o PDF.</p>' + botoesDocsCond(c);
+    html += '<p class="lead" style="margin-bottom:12px;font-size:.86rem;">Convenção condominial e regimento interno de ' + escapeHtml(c.nome) + ' — veja aqui no portal ou baixe o PDF.</p>' + botoesDocsCond(c) + blocoConvocacao(c, true);
   } else if(state.condoSubtab === 'relatorios'){
     html += viewCondoRelatorios(c);
   } else {
