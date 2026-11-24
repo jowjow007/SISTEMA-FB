@@ -317,6 +317,10 @@
   .login-box .hint,.login-box .hint a{color:rgba(255,255,255,.65);}
   .login-box .hint a{text-decoration:underline;}
   .login-box .error-msg{background:rgba(0,0,0,.3);border-color:rgba(255,120,120,.4);color:#ffb4ae;}
+  /* Esqueceu a senha (v278) */
+  .login-box .esqueci{text-align:right;margin:-6px 0 14px;font-size:.78rem;}
+  .login-box .esqueci a{color:rgba(255,255,255,.8);text-decoration:underline;}
+  .login-box .ok-msg{background:rgba(0,0,0,.3);border:1px solid rgba(120,220,150,.45);color:#b9f0c8;padding:9px 11px;border-radius:8px;font-size:.82rem;margin-bottom:14px;display:none;line-height:1.45;}
 
   /* ---------- APP SHELL ---------- */
   /* 100dvh = altura realmente visível (no iPhone 100vh é maior que a tela e cortava o fim) */
@@ -1261,6 +1265,8 @@
           <label>Senha</label>
           <input type="password" id="login-password" autocomplete="current-password" required>
         </div>
+        <p class="esqueci"><a href="#" id="forgot-password">Esqueceu a senha?</a></p>
+        <div class="ok-msg" id="login-ok" role="status"></div>
         <button type="submit" class="btn" id="login-submit">Entrar</button>
       </form>
       <p class="hint">Ainda não tem uma conta? <a href="#" id="show-register">Cadastre-se aqui</a>.</p>
@@ -1445,7 +1451,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v277</span>
+      <span class="version-tag">v278</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2169,6 +2175,7 @@
   els.loginForm.addEventListener('submit', function(e){
     e.preventDefault();
     els.loginError.style.display = 'none';
+    document.getElementById('login-ok').style.display = 'none';
     els.loginSubmit.disabled = true;
     els.loginSubmit.textContent = 'Entrando...';
     auth.signInWithEmailAndPassword(els.loginEmail.value.trim(), els.loginPassword.value)
@@ -2178,6 +2185,29 @@
         els.loginSubmit.disabled = false;
         els.loginSubmit.textContent = 'Entrar';
       });
+  });
+
+  // ---------- Esqueceu a senha: o Firebase manda o link de redefinição para o próprio e-mail ----------
+  document.getElementById('forgot-password').addEventListener('click', function(e){
+    e.preventDefault();
+    var link = this, ok = document.getElementById('login-ok'), email = els.loginEmail.value.trim();
+    els.loginError.style.display = 'none'; ok.style.display = 'none';
+    if (!email || !els.loginEmail.checkValidity()) {
+      els.loginError.textContent = 'Digite seu e-mail no campo acima e clique de novo em "Esqueceu a senha?".';
+      els.loginError.style.display = 'block'; els.loginEmail.focus(); return;
+    }
+    if (link.dataset.enviando) return;
+    link.dataset.enviando = '1'; link.textContent = 'Enviando…';
+    auth.languageCode = 'pt-BR';
+    auth.sendPasswordResetEmail(email).then(function(){ return null; }, function(err){ return err; }).then(function(err){
+      delete link.dataset.enviando; link.textContent = 'Esqueceu a senha?';
+      // e-mail não cadastrado recebe a mesma resposta, para ninguém descobrir quem tem conta
+      if (err && err.code !== 'auth/user-not-found') {
+        els.loginError.textContent = traduzErro(err.code); els.loginError.style.display = 'block'; return;
+      }
+      ok.textContent = 'Se este e-mail tiver cadastro no portal, enviamos um link para criar uma senha nova. Confira a caixa de entrada e o spam. O link vale por 1 hora.';
+      ok.style.display = 'block';
+    });
   });
 
   // ---------- Menu do usuário (engrenagem: Perfil + Aniversários + Sair) ----------
