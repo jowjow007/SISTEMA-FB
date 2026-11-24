@@ -170,6 +170,127 @@ service cloud.firestore {
                    || (agendaTeste() && resource != null
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['etiquetas', 'djenAtualizadoEm']));
     }
+    // Validações Processuais (24/11/2026, tools/validacoes): pedidos de orientação estratégica sobre publicações.
+    // Permissões por pessoa em valPermissoes/{uid} (criar, responder, esclarecer, concluir, reabrir, historico, admin),
+    // gravadas só pelo administrador do portal ou do módulo. Cada mudança de situação grava, no mesmo lote, uma mensagem
+    // em validacoes/{id}/mensagens — que nunca é alterada nem apagada (correção = mensagem nova que aponta a anterior).
+    function valCad() { return get(/databases/$(database)/documents/valPermissoes/$(request.auth.uid)).data; }
+    function valTem() { return isEquipe() && exists(/databases/$(database)/documents/valPermissoes/$(request.auth.uid)); }
+    function valPode(p) { return isAdmin() || (valTem() && valCad().get(p, false) == true); }
+    function valLe(v) {
+      return isAdmin() || (isEquipe() && v.get('proximaAcaoUid', '') == request.auth.uid)
+          || (valTem() && (request.auth.uid in v.participantes || valCad().get('historico', false) == true || valCad().get('admin', false) == true));
+    }
+    function valValidador(uid) {
+      return exists(/databases/$(database)/documents/valPermissoes/$(uid))
+          && get(/databases/$(database)/documents/valPermissoes/$(uid)).data.get('responder', false) == true;
+    }
+    // a mensagem gravada no mesmo lote (ultimaMov.msgId) tem o tipo esperado e é de quem está agindo
+    function valMsg(id, tipos) {
+      return existsAfter(/databases/$(database)/documents/validacoes/$(id)/mensagens/$(request.resource.data.ultimaMov.msgId))
+          && getAfter(/databases/$(database)/documents/validacoes/$(id)/mensagens/$(request.resource.data.ultimaMov.msgId)).data.tipo in tipos
+          && getAfter(/databases/$(database)/documents/validacoes/$(id)/mensagens/$(request.resource.data.ultimaMov.msgId)).data.autorUid == request.auth.uid
+          && request.resource.data.ultimaMov.porUid == request.auth.uid
+          && request.resource.data.atualizadoEm == request.time;
+    }
+    function valMuda(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+    match /valPermissoes/{uid} {
+      allow read: if isAdmin() || valTem();
+      allow write: if valPode('admin');
+    }
+    match /valConfig/{doc} {
+      allow read: if isAdmin() || valTem();
+      allow write: if valPode('admin');
+    }
+    match /valContadores/{serie} {
+      allow read: if isAdmin() || valTem();
+      allow create: if valPode('criar') && serie == 'seq' && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
+      allow update: if valPode('criar') && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
+      allow delete: if false;
+    }
+    match /validacoes/{id} {
+      allow read: if valLe(resource.data);
+      allow create: if valPode('criar')
+                    && request.resource.data.keys().hasOnly(['seq', 'codigo', 'processo', 'numeroDig', 'assunto', 'dataPublicacao', 'prazoFatal',
+                         'prazoValidacao', 'prioridade', 'solicitanteUid', 'solicitanteNome', 'validadorUid', 'validadorNome', 'participantes',
+                         'status', 'proximaAcaoUid', 'criadoEm', 'atualizadoEm', 'ultimaMov', 'rodada', 'origemDados', 'reaberturas'])
+                    && request.resource.data.solicitanteUid == request.auth.uid
+                    && request.resource.data.validadorUid != request.auth.uid
+                    && valValidador(request.resource.data.validadorUid)
+                    && request.resource.data.participantes.size() == 2
+                    && request.resource.data.participantes.hasAll([request.auth.uid, request.resource.data.validadorUid])
+                    && request.resource.data.status == 'aguardando'
+                    && request.resource.data.proximaAcaoUid == request.resource.data.validadorUid
+                    && request.resource.data.prioridade in ['normal', 'alta', 'urgente']
+                    && request.resource.data.assunto is string && request.resource.data.assunto.size() > 0 && request.resource.data.assunto.size() <= 300
+                    && request.resource.data.seq == getAfter(/databases/$(database)/documents/valContadores/seq).data.n
+                    && request.resource.data.criadoEm == request.time
+                    && valMsg(id, ['solicitacao']);
+      allow update: if isEquipe() && (
+          // validador responde (orientação estratégica): a vez passa para quem pediu
+          (resource.data.status in ['aguardando', 'aguardando_nova'] && request.auth.uid == resource.data.validadorUid && valPode('responder')
+            && request.resource.data.status == 'respondida' && request.resource.data.proximaAcaoUid == resource.data.solicitanteUid
+            && valMuda(['status', 'proximaAcaoUid', 'atualizadoEm', 'ultimaMov', 'primeiraRespostaEm', 'respondidaEm'])
+            && valMsg(id, ['orientacao']))
+          // quem pediu pede esclarecimento: volta para o validador
+          || (resource.data.status == 'respondida' && request.auth.uid == resource.data.solicitanteUid && valPode('esclarecer')
+            && request.resource.data.status == 'aguardando_nova' && request.resource.data.proximaAcaoUid == resource.data.validadorUid
+            && request.resource.data.rodada == resource.data.rodada + 1
+            && valMuda(['status', 'proximaAcaoUid', 'atualizadoEm', 'ultimaMov', 'rodada'])
+            && valMsg(id, ['esclarecimento']))
+          // quem pediu conclui
+          || (resource.data.status == 'respondida' && request.auth.uid == resource.data.solicitanteUid && valPode('concluir')
+            && request.resource.data.status == 'concluida' && request.resource.data.proximaAcaoUid == null
+            && request.resource.data.concluidaEm == request.time
+            && valMuda(['status', 'proximaAcaoUid', 'atualizadoEm', 'ultimaMov', 'concluidaEm'])
+            && valMsg(id, ['conclusao']))
+          // reabrir uma concluída (com motivo): volta para o validador
+          || (resource.data.status == 'concluida' && valPode('reabrir') && valLe(resource.data)
+            && request.resource.data.status == 'aguardando_nova' && request.resource.data.proximaAcaoUid == resource.data.validadorUid
+            && request.resource.data.rodada == resource.data.rodada + 1 && request.resource.data.reaberturas == resource.data.get('reaberturas', 0) + 1
+            && valMuda(['status', 'proximaAcaoUid', 'atualizadoEm', 'ultimaMov', 'rodada', 'reaberturas', 'concluidaEm'])
+            && valMsg(id, ['reabertura']))
+          // alterar prazos/prioridade/assunto ou corrigir uma mensagem: fica registrado no histórico
+          || (resource.data.status != 'concluida' && request.auth.uid in resource.data.participantes
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.prioridade in ['normal', 'alta', 'urgente']
+            && request.resource.data.assunto is string && request.resource.data.assunto.size() > 0 && request.resource.data.assunto.size() <= 300
+            && valMuda(['prazoFatal', 'prazoValidacao', 'prioridade', 'assunto', 'atualizadoEm', 'ultimaMov'])
+            && valMsg(id, ['alteracao', 'correcao']))
+        );
+      allow delete: if isAdmin();
+      match /mensagens/{mid} {
+        allow read: if valLe(get(/databases/$(database)/documents/validacoes/$(id)).data);
+        allow create: if isEquipe()
+                      && request.resource.data.keys().hasOnly(['tipo', 'autorUid', 'autorNome', 'texto', 'resumo', 'analise', 'sugestao', 'anexos', 'em', 'rodada', 'refId', 'motivo', 'alteracoes'])
+                      && request.resource.data.autorUid == request.auth.uid
+                      && request.resource.data.em == request.time
+                      && request.resource.data.tipo in ['solicitacao', 'orientacao', 'esclarecimento', 'conclusao', 'reabertura', 'alteracao', 'correcao']
+                      && request.resource.data.texto is string && request.resource.data.texto.size() <= 20000
+                      && request.resource.data.get('anexos', []).size() <= 20
+                      && getAfter(/databases/$(database)/documents/validacoes/$(id)).data.ultimaMov.msgId == mid
+                      && (request.auth.uid in getAfter(/databases/$(database)/documents/validacoes/$(id)).data.participantes
+                          || (request.resource.data.tipo == 'reabertura' && valPode('reabrir')));
+        allow update, delete: if false;
+      }
+    }
+    // avisos do sino (topo do portal): quem age avisa a outra pessoa da validação; só quem recebe lê e marca como lido
+    match /valAvisos/{id} {
+      allow read: if isAdmin() || (isAtivo() && resource.data.para == request.auth.uid);
+      allow create: if (isAdmin() || valTem())
+                    && request.resource.data.keys().hasOnly(['para', 'de', 'deNome', 'validacaoId', 'codigo', 'tipo', 'titulo', 'trecho', 'em', 'lida'])
+                    && request.resource.data.de == request.auth.uid && request.resource.data.para != request.auth.uid
+                    && request.resource.data.tipo in ['nova', 'orientacao', 'esclarecimento', 'concluida', 'reaberta']
+                    && request.resource.data.para in getAfter(/databases/$(database)/documents/validacoes/$(request.resource.data.validacaoId)).data.participantes
+                    && request.resource.data.get('trecho', '').size() <= 300 && request.resource.data.get('titulo', '').size() <= 300
+                    && request.resource.data.em == request.time && request.resource.data.lida == false;
+      allow update: if isAtivo() && resource.data.para == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida', 'lidaEm'])
+                    && request.resource.data.lida == true && request.resource.data.lidaEm == request.time;
+      allow delete: if isAdmin() || (isAtivo() && resource.data.para == request.auth.uid);
+    }
     // Dados que antes ficavam no HTML público (painel de Números, clientes de Condomínios e relatórios em PDF).
     // Números › Clientes, Juízo & Ação e Efetividade ficam em documentos próprios (áreas restritas).
     match /dadosPrivados/{chave} {

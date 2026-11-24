@@ -105,6 +105,33 @@ service firebase.storage {
       allow delete: if ativo() && cadastro().get('role', '') == 'admin';
     }
 
+    // Validações Processuais (24/11/2026): anexos de cada mensagem. Lê quem pode ler a validação; envia quem participa
+    // (ou, no pedido novo, quem pode criar). Até 25 MB, sem HTML/SVG/JS/XML; nada é trocado nem apagado depois.
+    function valCad() {
+      return firestore.get(/databases/(default)/documents/valPermissoes/$(request.auth.uid)).data;
+    }
+    function valTem() {
+      return equipe() && firestore.exists(/databases/(default)/documents/valPermissoes/$(request.auth.uid));
+    }
+    function valAdminPortal() {
+      return ativo() && cadastro().get('role', '') == 'admin';
+    }
+    function valDoc(valId) {
+      return firestore.get(/databases/(default)/documents/validacoes/$(valId)).data;
+    }
+    match /validacoes/{valId}/{msgId}/{arquivo} {
+      allow read: if valAdminPortal() || (valTem() && firestore.exists(/databases/(default)/documents/validacoes/$(valId))
+                    && (request.auth.uid in valDoc(valId).participantes || valCad().get('historico', false) == true || valCad().get('admin', false) == true));
+      allow create: if resource == null && (valAdminPortal() || valTem())
+                    && request.resource.size <= 25 * 1024 * 1024
+                    && request.resource.contentType != null
+                    && !request.resource.contentType.matches('(?i)(text/html|image/svg|application/xhtml|text/xml|application/xml|.*javascript|.*ecmascript).*')
+                    && (!firestore.exists(/databases/(default)/documents/validacoes/$(valId))
+                        || request.auth.uid in valDoc(valId).participantes
+                        || valAdminPortal() || valCad().get('reabrir', false) == true);
+      allow update, delete: if false;
+    }
+
     match /chat/{uid}/{arquivo} {
       allow read: if ativo() && request.auth.uid == uid;
       allow write: if false;

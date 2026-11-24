@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Validações Processuais — Fonseca e Braga</title>
+<link rel="icon" type="image/png" href="../../assets/favicon.png">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('fb-portal-theme');
+    if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key === 'fb-portal-theme'){
+      if(e.newValue === 'light') document.documentElement.setAttribute('data-theme','light');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  });
+})();
+</script>
+<style>
+  :root{
+    --ink:#161010; --panel:#211918; --panel-2:#2a1f1e; --panel-3:#332524; --paper:#ece6e1; --muted:#a3968f;
+    --red:#b8362e; --red-bright:#d4544a; --gold:#d8b25a; --green:#4caf6e; --blue:#5b9bd5; --yellow:#e0b04a;
+    --line:rgba(236,230,225,0.10); --line-strong:rgba(236,230,225,0.18);
+    --c-vermelho:#e0675d; --c-amarelo:#e6b84f; --c-azul:#6fa8dc; --c-verde:#5cbf7e; --c-cinza:#a3968f;
+    --w-vermelho:rgba(212,84,74,.16); --w-amarelo:rgba(224,176,74,.16); --w-azul:rgba(91,155,213,.17); --w-verde:rgba(76,175,110,.16); --w-cinza:rgba(163,150,143,.14);
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --font-body:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe9; --panel:#ffffff; --panel-2:#f6f2ed; --panel-3:#ebe4dd; --paper:#241c1b; --muted:#6f645e;
+    --gold:#8a6514; --green:#2e8a4f; --blue:#2f6aa3; --yellow:#9a6b0a;
+    --line:rgba(36,28,27,0.10); --line-strong:rgba(36,28,27,0.18);
+    --c-vermelho:#b3261e; --c-amarelo:#8a5d00; --c-azul:#1f5f9e; --c-verde:#23773f; --c-cinza:#6f645e;
+    --w-vermelho:rgba(179,38,30,.10); --w-amarelo:rgba(214,158,20,.15); --w-azul:rgba(31,95,158,.10); --w-verde:rgba(35,119,63,.10); --w-cinza:rgba(111,100,94,.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;background:var(--panel);color:var(--paper);font-family:var(--font-body);font-size:14px;}
+  button{font:inherit;}
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line-strong);padding:14px 20px 0;}
+  .topo{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .topo .tit{flex:1 1 260px;min-width:0;}
+  header h1{font-family:var(--font-display);font-weight:600;font-size:1.45rem;margin:0 0 3px;}
+  header .sub{font-size:.8rem;color:var(--muted);margin:0;}
+  .acoes-topo{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .abas{display:flex;gap:2px;flex-wrap:wrap;margin-top:10px;}
+  .abas button{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:.85rem;font-weight:600;padding:8px 12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;}
+  .abas button.ativa{color:var(--paper);border-bottom-color:var(--red);}
+  .abas .qtd{background:var(--red);color:#fff;border-radius:10px;font-size:.68rem;padding:1px 7px;}
+  main{max-width:1250px;margin:0 auto;padding:18px 20px 60px;}
+  #gate{padding:70px 20px;text-align:center;color:var(--muted);line-height:1.6;}
+  .painel{display:none;} .painel.ativo{display:block;}
+  .btn{border:1px solid var(--red);background:var(--red);color:#fff;border-radius:9px;padding:8px 14px;font-weight:600;font-size:.84rem;cursor:pointer;display:inline-flex;gap:6px;align-items:center;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn.sec{background:transparent;color:var(--paper);border-color:var(--line-strong);}
+  .btn.ouro{background:transparent;color:var(--gold);border-color:var(--gold);}
+  .btn.verde{background:var(--green);border-color:var(--green);}
+  .btn.azul{background:var(--blue);border-color:var(--blue);}
+  .btn.mini{padding:5px 10px;font-size:.76rem;}
+  .btn:disabled{opacity:.55;cursor:default;filter:none;}
+  .btn.grande{padding:10px 18px;font-size:.92rem;}
+  h2{font-family:var(--font-display);font-weight:600;font-size:1.15rem;margin:22px 0 10px;}
+  h2:first-child{margin-top:0;}
+  .sutil{color:var(--muted);}
+  .vazio{color:var(--muted);font-size:.86rem;padding:18px;border:1px dashed var(--line-strong);border-radius:10px;text-align:center;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:8px;}
+  .card{background:var(--panel-2);border:1px solid var(--line-strong);border-left:4px solid var(--c-cinza);border-radius:11px;padding:11px 13px;cursor:pointer;text-align:left;color:var(--paper);}
+  .card:hover{border-color:var(--gold);}
+  .card b{display:block;font-size:1.55rem;font-weight:700;line-height:1.15;}
+  .card span{font-size:.76rem;color:var(--muted);}
+  .card.vermelho{border-left-color:var(--c-vermelho);} .card.vermelho b{color:var(--c-vermelho);}
+  .card.amarelo{border-left-color:var(--c-amarelo);} .card.amarelo b{color:var(--c-amarelo);}
+  .card.azul{border-left-color:var(--c-azul);} .card.azul b{color:var(--c-azul);}
+  .card.verde{border-left-color:var(--c-verde);} .card.verde b{color:var(--c-verde);}
+  .card.cinza b{color:var(--paper);}
+  .card.fixo{cursor:default;} .card.fixo:hover{border-color:var(--line-strong);}
+  .grupo-tit{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 6px;font-weight:700;}
+  .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;}
+  input,select,textarea{font-family:inherit;color:var(--paper);background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 9px;font-size:.86rem;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red-bright);}
+  :root:not([data-theme="light"]) input[type=date]{color-scheme:dark;}
+  .filtros .busca{flex:1 1 240px;}
+  .filtros select{max-width:200px;}
+  .filtros label{font-size:.75rem;color:var(--muted);display:inline-flex;gap:5px;align-items:center;}
+  .chiprem{display:inline-flex;gap:6px;align-items:center;background:var(--panel-3);border:1px solid var(--gold);color:var(--gold);border-radius:20px;padding:3px 10px;font-size:.76rem;cursor:pointer;}
+  .resumo{font-size:.78rem;color:var(--muted);margin:2px 0 10px;}
+  table.lista{width:100%;border-collapse:separate;border-spacing:0;font-size:.8rem;}
+  table.lista th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;padding:7px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+  table.lista td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.lista tr.linha{cursor:pointer;}
+  table.lista tr.linha:hover td{background:var(--panel-2);}
+  table.lista tr.linha td:first-child{border-left:4px solid var(--c-cinza);}
+  table.lista tr.vermelho td:first-child{border-left-color:var(--c-vermelho);}
+  table.lista tr.amarelo td:first-child{border-left-color:var(--c-amarelo);}
+  table.lista tr.azul td:first-child{border-left-color:var(--c-azul);}
+  table.lista tr.verde td:first-child{border-left-color:var(--c-verde);}
+  table.lista tr.vencida td{background:rgba(212,84,74,.07);}
+  .cod{font-weight:700;white-space:nowrap;}
+  .num{white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .tag{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:2px 9px;font-size:.7rem;font-weight:700;white-space:nowrap;border:1px solid transparent;}
+  .tag.vermelho{background:var(--w-vermelho);color:var(--c-vermelho);border-color:var(--c-vermelho);}
+  .tag.amarelo{background:var(--w-amarelo);color:var(--c-amarelo);border-color:var(--c-amarelo);}
+  .tag.azul{background:var(--w-azul);color:var(--c-azul);border-color:var(--c-azul);}
+  .tag.verde{background:var(--w-verde);color:var(--c-verde);border-color:var(--c-verde);}
+  .tag.cinza{background:var(--w-cinza);color:var(--c-cinza);border-color:var(--line-strong);}
+  .tag .bola{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+  table.lista .tag{white-space:normal;border-radius:12px;max-width:170px;}
+  table.lista td{min-width:70px;}
+  table.lista td.cod{min-width:0;}
+  .pri{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:6px;white-space:nowrap;}
+  .pri.urgente{background:var(--c-vermelho);color:#fff;} .pri.alta{background:var(--w-amarelo);color:var(--c-amarelo);border:1px solid var(--c-amarelo);} .pri.normal{color:var(--muted);border:1px solid var(--line-strong);}
+  .prazo-alerta{color:var(--c-vermelho);font-weight:700;} .prazo-perto{color:var(--c-amarelo);font-weight:700;}
+  .mov{font-size:.74rem;color:var(--muted);}
+  /* janelas */
+  .fundo{position:fixed;inset:0;z-index:50;background:rgba(10,6,6,.62);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;}
+  .janela{background:var(--panel);border:1px solid var(--line-strong);border-radius:14px;width:100%;max-width:880px;box-shadow:0 18px 60px rgba(0,0,0,.45);}
+  .janela.larga{max-width:1080px;}
+  .janela-topo{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-strong);position:sticky;top:-24px;background:var(--panel);border-radius:14px 14px 0 0;z-index:2;}
+  .janela-topo h3{font-family:var(--font-display);font-size:1.15rem;margin:0;flex:1;min-width:0;}
+  .janela-corpo{padding:16px 18px 20px;}
+  .fechar{background:transparent;border:1px solid var(--line-strong);color:var(--paper);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:1rem;flex:0 0 auto;}
+  .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 14px;}
+  .form .full{grid-column:1/-1;}
+  .form label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:4px;}
+  .form input,.form select,.form textarea{width:100%;}
+  .form textarea{min-height:84px;resize:vertical;line-height:1.45;}
+  .obrig{color:var(--c-vermelho);margin-left:2px;}
+  .secao-form{grid-column:1/-1;font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:700;margin-top:6px;border-top:1px solid var(--line);padding-top:12px;}
+  .auto{border-color:rgba(76,175,110,.55)!important;}
+  .aviso{font-size:.8rem;border-radius:9px;padding:9px 12px;line-height:1.45;}
+  .aviso.ok{background:var(--w-verde);color:var(--c-verde);border:1px solid var(--c-verde);}
+  .aviso.atencao{background:var(--w-amarelo);color:var(--c-amarelo);border:1px solid var(--c-amarelo);}
+  .aviso.erro{background:var(--w-vermelho);color:var(--c-vermelho);border:1px solid var(--c-vermelho);}
+  .busca-proc{position:relative;}
+  .sugestoes{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:10;max-height:330px;overflow:auto;}
+  .sug{display:block;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--paper);padding:9px 12px;cursor:pointer;}
+  .sug:hover,.sug.foco{background:var(--panel-2);}
+  .sug .l1{font-weight:600;font-size:.84rem;} .sug .l2{font-size:.74rem;color:var(--muted);margin-top:2px;}
+  .sug-info{padding:9px 12px;font-size:.78rem;color:var(--muted);}
+  .radios{display:flex;gap:8px;flex-wrap:wrap;}
+  .radios label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:8px;padding:7px 11px;cursor:pointer;color:var(--paper);font-weight:600;font-size:.8rem;margin:0;}
+  .radios input{width:auto;margin:0;}
+  .arquivos-lista{display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:.78rem;}
+  .arquivos-lista span{display:flex;gap:8px;align-items:center;}
+  .arquivos-lista button{background:transparent;border:none;color:var(--c-vermelho);cursor:pointer;font-size:.75rem;}
+  .rodape-form{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px;align-items:center;}
+  .rodape-form .st{flex:1;font-size:.8rem;color:var(--muted);}
+  /* detalhe */
+  .det-cab{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .dados{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 16px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:11px;padding:12px 14px;font-size:.82rem;margin-bottom:14px;}
+  .dados dt{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;}
+  .dados dd{margin:2px 0 0;word-break:break-word;}
+  .conversa{display:flex;flex-direction:column;gap:12px;margin:8px 0 16px;}
+  .msg{display:flex;gap:10px;align-items:flex-start;}
+  .avatar{flex:0 0 38px;width:38px;height:38px;border-radius:50%;background:var(--panel-3) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;color:var(--paper);border:1px solid var(--line-strong);}
+  .balao{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:10px 13px;}
+  .balao .cab{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.76rem;color:var(--muted);margin-bottom:6px;}
+  .balao .cab b{color:var(--paper);font-size:.84rem;}
+  .balao .txt{white-space:pre-wrap;line-height:1.5;font-size:.88rem;word-break:break-word;}
+  .balao .bloco{margin-top:8px;} .balao .bloco .rot{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-bottom:2px;}
+  .msg.orientacao .balao{border:2px solid var(--gold);background:linear-gradient(0deg,rgba(216,178,90,.07),rgba(216,178,90,.07)),var(--panel-2);}
+  .msg.orientacao .tipo-msg{background:var(--gold);color:#241c1b;}
+  .msg.evento .balao{background:transparent;border-style:dashed;padding:7px 12px;}
+  .msg.evento .avatar{width:30px;height:30px;flex-basis:30px;font-size:.7rem;}
+  .msg.conclusao .balao{border-color:var(--c-verde);}
+  .tipo-msg{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-radius:6px;padding:2px 7px;background:var(--panel-3);color:var(--paper);}
+  .anexos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .anexo{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:8px;padding:5px 9px;font-size:.76rem;background:var(--panel);color:var(--paper);cursor:pointer;max-width:100%;}
+  .anexo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .corrigida{font-size:.72rem;color:var(--c-amarelo);margin-top:6px;}
+  .original{margin-top:6px;border-left:3px solid var(--line-strong);padding-left:8px;color:var(--muted);font-size:.82rem;white-space:pre-wrap;}
+  .lk{background:none;border:none;color:var(--gold);cursor:pointer;padding:0;font-size:.74rem;text-decoration:underline;}
+  .compor{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:12px;padding:12px 14px;margin-top:6px;}
+  .compor h4{margin:0 0 8px;font-size:.92rem;}
+  .compor textarea{width:100%;min-height:120px;resize:vertical;line-height:1.45;}
+  .compor .linha-botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+  .anteriores{font-size:.82rem;}
+  .anteriores button{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:9px;color:var(--paper);padding:8px 11px;margin-bottom:6px;cursor:pointer;}
+  .hist-item{border:1px solid var(--line-strong);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:var(--panel-2);}
+  .hist-item .hcab{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;}
+  .hist-item .orient{border-left:3px solid var(--gold);padding:6px 10px;margin:6px 0;white-space:pre-wrap;font-size:.86rem;line-height:1.45;}
+  .ind-lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+  .ind-lista .caixa{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:11px;padding:11px 13px;font-size:.82rem;}
+  .ind-lista .caixa h4{margin:0 0 8px;font-size:.82rem;}
+  .ind-lista .caixa div{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line);}
+  .perm-tab{width:100%;border-collapse:collapse;font-size:.8rem;}
+  .perm-tab th{font-size:.68rem;text-transform:uppercase;color:var(--muted);padding:6px 4px;text-align:center;}
+  .perm-tab th:first-child,.perm-tab td:first-child{text-align:left;}
+  .perm-tab td{padding:7px 4px;border-top:1px solid var(--line);text-align:center;}
+  .perm-tab input{width:auto;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);border-radius:10px;padding:10px 16px;z-index:80;font-size:.84rem;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  @media (max-width:760px){
+    header{padding:12px 14px 0;} main{padding:14px 14px 50px;}
+    .form{grid-template-columns:1fr;}
+    table.lista thead{display:none;}
+    table.lista,table.lista tbody,table.lista tr,table.lista td{display:block;width:100%;}
+    table.lista tr.linha{border:1px solid var(--line-strong);border-left:4px solid var(--c-cinza);border-radius:10px;margin-bottom:10px;padding:6px 4px;}
+    table.lista tr.vermelho{border-left-color:var(--c-vermelho);} table.lista tr.amarelo{border-left-color:var(--c-amarelo);}
+    table.lista tr.azul{border-left-color:var(--c-azul);} table.lista tr.verde{border-left-color:var(--c-verde);}
+    table.lista tr.linha td:first-child{border-left:none;}
+    table.lista td{border:none;padding:3px 8px;}
+    table.lista td[data-r]::before{content:attr(data-r) ': ';font-size:.68rem;color:var(--muted);text-transform:uppercase;font-weight:700;}
+    table.lista td.so-pc{display:none;}
+    .fundo{padding:0;} .janela{border-radius:0;min-height:100%;} .janela-topo{top:0;border-radius:0;}
+    .abas button{padding:8px 9px;font-size:.8rem;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topo">
+    <div class="tit">
+      <h1>Validações Processuais</h1>
+      <p class="sub" id="sub">Carregando…</p>
+    </div>
+    <div class="acoes-topo">
+      <button type="button" class="btn sec mini" id="b-aba" style="display:none;">Registrar aba no menu</button>
+      <button type="button" class="btn sec mini" id="b-perm" style="display:none;">Permissões</button>
+      <button type="button" class="btn grande" id="b-nova" style="display:none;">+ Nova Validação</button>
+    </div>
+  </div>
+  <nav class="abas" id="abas" style="display:none;">
+    <button type="button" data-aba="painel" class="ativa">Painel de Controle</button>
+    <button type="button" data-aba="andamento">Validações em Andamento <span class="qtd" id="q-and" style="display:none;"></span></button>
+    <button type="button" data-aba="concluidas">Validações Concluídas</button>
+    <button type="button" data-aba="historico">Histórico por Processo</button>
+  </nav>
+</header>
+<main>
+  <div id="gate">Carregando…</div>
+  <section class="painel ativo" id="p-painel"></section>
+  <section class="painel" id="p-andamento"></section>
+  <section class="painel" id="p-concluidas"></section>
+  <section class="painel" id="p-historico"></section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" integrity="sha384-1hBNr0agKHNFwbheHcAJzeLri4PPLTLbaXUH5d9CauwS3A/PrkIt2tzxBJK3bHjY" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js" integrity="sha384-QCZO5nLB2oUUv0yv01wZHylPt2CPzKdo0YnmSYCTIOo8XPPIlsIP3f1cikv2oiJ1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
+<script src="../../firebase-config.js"></script>
+<script>
+(function(){
+  "use strict";
+  // Validações Processuais (24/11/2026). Quem analisa a publicação pede uma orientação estratégica; o validador
+  // responde; quem pediu conclui ou pede esclarecimento, quantas vezes precisar. Coleções:
+  //   validacoes/{id}            — o pedido (situação, de quem é a vez: proximaAcaoUid, prazos, dados do processo)
+  //   validacoes/{id}/mensagens  — a conversa; nunca é alterada nem apagada (correção = mensagem nova)
+  //   valPermissoes/{uid}        — o que cada pessoa pode fazer; valConfig/geral — validador padrão
+  //   valAvisos/{id}             — avisos do sino no topo do portal; valContadores/seq — numeração VAL-0001
+  // Os dados do processo vêm da Agenda (agTeste_casos, agTeste_clientes, agTeste_publicacoes), só para quem tem a Agenda.
+  const TAB_ID = 'validacoes-processuais';
+  const PERM_CAMPOS = [['criar', 'Criar'], ['responder', 'Responder'], ['esclarecer', 'Pedir esclarecimento'], ['concluir', 'Concluir'], ['reabrir', 'Reabrir'], ['historico', 'Ver todo o histórico'], ['admin', 'Administrar']];
+  const STATUS = { aguardando: 'Aguardando validação', respondida: 'Respondida — aguardando conclusão', aguardando_nova: 'Aguardando nova validação', concluida: 'Concluída' };
+  const PRIORIDADE = { normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
+  const TIPO_MSG = { solicitacao: 'Solicitação', orientacao: 'Orientação estratégica', esclarecimento: 'Pedido de esclarecimento', conclusao: 'Conclusão', reabertura: 'Reabertura', alteracao: 'Alteração de dados', correcao: 'Correção' };
+  const DIAS_PERTO = 2;
+
+  const $ = function(id){ return document.getElementById(id); };
+  const esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  const soDig = function(s){ return String(s || '').replace(/\D/g, ''); };
+  const norm = function(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+  function fmtCnj(n){ const d = soDig(n); return d.length === 20 ? d.replace(/^(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})$/, '$1-$2.$3.$4.$5.$6') : (n || ''); }
+  function hojeISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function dataBR(iso){ return /^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : ''; }
+  function diasAte(iso){ if (!iso) return null; const a = new Date(hojeISO() + 'T00:00:00'), b = new Date(iso + 'T00:00:00'); return Math.round((b - a) / 86400000); }
+  function ms(t){ return t && t.toMillis ? t.toMillis() : (t instanceof Date ? t.getTime() : 0); }
+  function quando(t){ const m = ms(t); if (!m) return 'agora'; const d = new Date(m);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+  function iniciais(n){ const p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
+  function duracao(m){ if (!(m > 0)) return '—'; const h = m / 3600000; return h < 24 ? h.toFixed(1).replace('.', ',') + ' h' : (h / 24).toFixed(1).replace('.', ',') + ' dias'; }
+  function toast(t){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(function(){ d.remove(); }, 3500); }
+
+  if (typeof firebaseConfig === 'undefined' || !firebaseConfig || firebaseConfig.apiKey === 'COLE_AQUI_SUA_API_KEY') { $('gate').textContent = 'Configuração pendente: firebase-config.js não foi preenchido.'; return; }
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(), db = firebase.firestore(), st = firebase.storage();
+  const FV = firebase.firestore.FieldValue;
+
+  let eu = null;                 // { uid, nome, adminPortal, perm }
+  let PERMS = {};                // uid -> permissões
+  let PERFIS = {};               // uid -> { nome, foto }
+  let CONFIG = {};
+  let VALS = [], valsProntos = false;
+  let aba = 'painel';
+  let filtro = { card: '', busca: '', prioridade: '', status: '', resp: '', de: '', ate: '' };
+  let histSel = '';
+  let aberta = null, msgsUnsub = null, MSGS = [], verOriginal = {};
+  let FONTE = { p: null, lista: [], semAcesso: false };
+  let unsubVals = null;
+
+  function pode(p){ return !!eu && (eu.adminPortal || !!(eu.perm && eu.perm[p])); }
+  function verTudo(){ return pode('historico') || pode('admin'); }
+  function nomeDe(uid, reserva){ return (PERFIS[uid] && PERFIS[uid].nome) || (PERMS[uid] && PERMS[uid].nome) || reserva || 'Pessoa'; }
+  function avatar(uid, nome){ const f = PERFIS[uid] && PERFIS[uid].foto;
+    if (f && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(f)) return '<span class="avatar" style="background-image:url(' + f + ')" aria-hidden="true"></span>';
+    return '<span class="avatar" aria-hidden="true">' + esc(iniciais(nome || nomeDe(uid))) + '</span>'; }
+
+  // ---------- situação vista por quem está olhando (o mesmo registro, cores diferentes) ----------
+  function visao(v){
+    const me = eu.uid;
+    if (v.status === 'concluida') return { cor: 'verde', txt: 'Concluída' };
+    if (v.proximaAcaoUid === me) {
+      if (v.status === 'respondida') return { cor: 'azul', txt: 'Orientação recebida — analisar' };
+      return { cor: 'vermelho', txt: v.status === 'aguardando_nova' ? 'Novo questionamento — responder' : 'Aguardando sua resposta' };
+    }
+    if (v.solicitanteUid === me) return { cor: 'amarelo', txt: v.status === 'aguardando_nova' ? 'Aguardando nova validação' : 'Aguardando retorno do validador' };
+    if (v.validadorUid === me && v.status === 'respondida') return { cor: 'cinza', txt: 'Respondida' };
+    return { cor: v.status === 'respondida' ? 'azul' : 'amarelo', txt: STATUS[v.status] || v.status };
+  }
+  function tagVisao(v){ const x = visao(v); return '<span class="tag ' + x.cor + '"><span class="bola"></span>' + esc(x.txt) + '</span>'; }
+  function vencida(v){ return v.status !== 'concluida' && !!v.prazoValidacao && diasAte(v.prazoValidacao) < 0; }
+  function perto(v){ if (v.status === 'concluida' || vencida(v)) return false;
+    const a = diasAte(v.prazoValidacao), b = diasAte(v.prazoFatal);
+    return (a !== null && a <= DIAS_PERTO) || (b !== null && b >= 0 && b <= DIAS_PERTO + 1); }
+  function chaveOrdem(v){
+    const pri = vencida(v) ? 0 : v.prioridade === 'urgente' ? 1 : v.prioridade === 'alta' ? 2 : 3;
+    const datas = [v.prazoValidacao, v.prazoFatal].filter(Boolean).sort();
+    return [pri, datas[0] || '9999-99-99', -ms(v.criadoEm)];
+  }
+  function ordenar(l){ return l.slice().sort(function(a, b){ const x = chaveOrdem(a), y = chaveOrdem(b);
+    for (let i = 0; i < 3; i++) { if (x[i] < y[i]) return -1; if (x[i] > y[i]) return 1; } return 0; }); }
+  function prazoHtml(iso, ehValidacao, v){
+    if (!iso) return '<span class="sutil">—</span>';
+    const d = diasAte(iso), fechada = v && v.status === 'concluida';
+    let cls = '', extra = '';
+    if (!fechada && d !== null) {
+      if (d < 0) { cls = 'prazo-alerta'; extra = ehValidacao ? ' (vencido)' : ' (passou)'; }
+      else if (d === 0) { cls = 'prazo-alerta'; extra = ' (hoje)'; }
+      else if (d <= DIAS_PERTO + (ehValidacao ? 0 : 1)) { cls = 'prazo-perto'; extra = ' (' + d + (d === 1 ? ' dia)' : ' dias)'); }
+    }
+    return '<span class="num ' + cls + '">' + dataBR(iso) + extra + '</span>';
+  }
+  function eParticipante(v){ return v.solicitanteUid === eu.uid || v.validadorUid === eu.uid; }
+
+  // ---------- cartões do painel (cada um vira um filtro da lista) ----------
+  const CARDS = {
+    aResponder: { rot: 'Aguardando minha resposta', cor: 'vermelho', f: function(v){ return v.proximaAcaoUid === eu.uid && v.status !== 'respondida'; } },
+    respondidas: { rot: 'Respondidas aguardando conclusão', cor: 'cinza', f: function(v){ return v.validadorUid === eu.uid && v.status === 'respondida'; } },
+    aguardRetorno: { rot: 'Aguardando retorno do validador', cor: 'amarelo', f: function(v){ return v.solicitanteUid === eu.uid && (v.status === 'aguardando' || v.status === 'aguardando_nova'); } },
+    orientacoes: { rot: 'Orientações recebidas para analisar', cor: 'azul', f: function(v){ return v.solicitanteUid === eu.uid && v.status === 'respondida'; } },
+    devolvidas: { rot: 'Devolvidas para esclarecimento', cor: 'amarelo', f: function(v){ return v.solicitanteUid === eu.uid && v.status === 'aguardando_nova'; } },
+    urgentes: { rot: 'Urgentes', cor: 'vermelho', f: function(v){ return v.status !== 'concluida' && v.prioridade === 'urgente' && eParticipante(v); } },
+    perto: { rot: 'Prazo próximo do vencimento', cor: 'amarelo', f: function(v){ return perto(v) && eParticipante(v); } },
+    vencidas: { rot: 'Prazo de resposta vencido', cor: 'vermelho', f: function(v){ return vencida(v) && eParticipante(v); } },
+    concluidas: { rot: 'Concluídas', cor: 'verde', f: function(v){ return v.status === 'concluida' && eParticipante(v); }, aba: 'concluidas' }
+  };
+  function cardsDoUsuario(){
+    const l = [];
+    const validador = pode('responder') || VALS.some(function(v){ return v.validadorUid === eu.uid; });
+    const solicitante = pode('criar') || VALS.some(function(v){ return v.solicitanteUid === eu.uid; });
+    if (validador) l.push(['Como validador', ['aResponder', 'respondidas']]);
+    if (solicitante) l.push(['Minhas solicitações', ['aguardRetorno', 'orientacoes', 'devolvidas']]);
+    l.push(['Prazos e prioridade', ['urgentes', 'perto', 'vencidas', 'concluidas']]);
+    return l;
+  }
+  function minhasPendencias(){ return VALS.filter(function(v){ return v.proximaAcaoUid === eu.uid; }); }
+
+  // ---------- desenho ----------
+  function render(){
+    if (!valsProntos) return;
+    const pend = minhasPendencias().length, q = $('q-and');
+    q.textContent = pend; q.style.display = pend ? '' : 'none';
+    $('sub').textContent = pend ? pend + (pend === 1 ? ' validação depende de você.' : ' validações dependem de você.') : 'Nenhuma validação depende de você agora.';
+    if (aba === 'painel') renderPainel();
+    if (aba === 'andamento') renderLista('andamento');
+    if (aba === 'concluidas') renderLista('concluidas');
+    if (aba === 'historico') renderHistorico();
+    if (aberta) renderDetalhe();
+  }
+  function irAba(a){
+    aba = a;
+    document.querySelectorAll('#abas button').forEach(function(b){ b.classList.toggle('ativa', b.dataset.aba === a); });
+    document.querySelectorAll('.painel').forEach(function(p){ p.classList.toggle('ativo', p.id === 'p-' + a); });
+    render();
+  }
+  function renderPainel(){
+    let h = '';
+    cardsDoUsuario().forEach(function(g){
+      h += '<div class="grupo-tit">' + esc(g[0]) + '</div><div class="cards">' + g[1].map(function(k){
+        const c = CARDS[k], n = VALS.filter(c.f).length;
+        return '<button type="button" class="card ' + c.cor + '" data-card="' + k + '"><b>' + n + '</b><span>' + esc(c.rot) + '</span></button>';
+      }).join('') + '</div>';
+    });
+    const pend = ordenar(minhasPendencias());
+    h += '<h2>O que depende de você</h2>' + (pend.length ? tabela(pend, true) : '<div class="vazio">Nada pendente com você. As validações em que você aguarda outra pessoa ficam em "Validações em Andamento".</div>');
+    if (verTudo()) h += indicadores();
+    $('p-painel').innerHTML = h;
+    $('p-painel').querySelectorAll('[data-card]').forEach(function(b){ b.onclick = function(){ const k = b.dataset.card;
+      filtro = { card: k, busca: '', prioridade: '', status: '', resp: '', de: '', ate: '' }; irAba(CARDS[k].aba || 'andamento'); }; });
+    ligarLinhas($('p-painel'));
+  }
+  function indicadores(){
+    const t = VALS, pend = t.filter(function(v){ return v.status !== 'concluida'; }), conc = t.filter(function(v){ return v.status === 'concluida'; });
+    const prim = t.filter(function(v){ return v.primeiraRespostaEm && v.criadoEm; }).map(function(v){ return ms(v.primeiraRespostaEm) - ms(v.criadoEm); });
+    const fim = conc.filter(function(v){ return v.concluidaEm && v.criadoEm; }).map(function(v){ return ms(v.concluidaEm) - ms(v.criadoEm); });
+    const media = function(l){ return l.length ? l.reduce(function(a, b){ return a + b; }, 0) / l.length : 0; };
+    const foraPrazo = t.filter(function(v){ if (!v.prazoValidacao) return false;
+      const lim = new Date(v.prazoValidacao + 'T23:59:59').getTime(); return v.primeiraRespostaEm ? ms(v.primeiraRespostaEm) > lim : Date.now() > lim; }).length;
+    const porProc = {}, porUser = {};
+    t.forEach(function(v){ const k = v.numeroDig || ('—' + (v.processo && v.processo.cliente || ''));
+      porProc[k] = porProc[k] || { n: 0, rot: (v.processo && (fmtCnj(v.processo.numero) || v.processo.cliente)) || '—' }; porProc[k].n++;
+      porUser[v.solicitanteUid] = (porUser[v.solicitanteUid] || 0) + 1; });
+    const top = Object.keys(porProc).map(function(k){ return porProc[k]; }).sort(function(a, b){ return b.n - a.n; }).slice(0, 6);
+    const us = Object.keys(porUser).sort(function(a, b){ return porUser[b] - porUser[a]; });
+    const c = function(n, r){ return '<div class="card fixo cinza"><b>' + n + '</b><span>' + r + '</span></div>'; };
+    return '<h2>Indicadores</h2><div class="cards">' + c(t.length, 'Total de validações') + c(pend.length, 'Pendentes') + c(conc.length, 'Concluídas') +
+      c(duracao(media(prim)), 'Tempo médio até a 1ª resposta') + c(duracao(media(fim)), 'Tempo médio até a conclusão') +
+      c(t.filter(function(v){ return v.prioridade === 'urgente'; }).length, 'Urgentes') + c(foraPrazo, 'Respondidas fora do prazo (ou vencidas sem resposta)') + '</div>' +
+      '<div class="ind-lista"><div class="caixa"><h4>Processos com mais validações</h4>' + (top.length ? top.map(function(x){ return '<div><span>' + esc(x.rot) + '</span><b>' + x.n + '</b></div>'; }).join('') : '<span class="sutil">—</span>') + '</div>' +
+      '<div class="caixa"><h4>Solicitações por pessoa</h4>' + (us.length ? us.map(function(u){ return '<div><span>' + esc(nomeDe(u)) + '</span><b>' + porUser[u] + '</b></div>'; }).join('') : '<span class="sutil">—</span>') + '</div></div>';
+  }
+  function tabela(l){
+    return '<div style="overflow-x:auto;"><table class="lista"><thead><tr><th>ID</th><th>Processo / tipo de ação</th><th>Cliente x parte contrária</th><th>Assunto</th><th>Solicitante</th><th>Próxima ação</th><th>Prazos</th><th>Prioridade</th><th>Situação</th><th>Última movimentação</th></tr></thead><tbody>' +
+      l.map(function(v){ const vi = visao(v), p = v.processo || {};
+        return '<tr class="linha ' + vi.cor + (vencida(v) ? ' vencida' : '') + '" data-val="' + esc(v.id) + '" tabindex="0">' +
+          '<td class="cod">' + esc(v.codigo || '') + '</td>' +
+          '<td data-r="Processo"><span class="num">' + esc(fmtCnj(p.numero) || '—') + '</span>' + (p.tipoAcao ? '<div class="mov">' + esc(p.tipoAcao) + '</div>' : '') + '</td>' +
+          '<td data-r="Partes">' + esc(p.cliente || '—') + (p.contraria ? ' <span class="sutil">x</span> ' + esc(p.contraria) : '') + '</td>' +
+          '<td data-r="Assunto"><b>' + esc(v.assunto) + '</b></td>' +
+          '<td data-r="Solicitante">' + esc(v.solicitanteNome || nomeDe(v.solicitanteUid)) + '<div class="mov num">' + esc(quando(v.criadoEm)) + '</div></td>' +
+          '<td data-r="Próxima ação">' + (v.proximaAcaoUid ? esc(v.proximaAcaoUid === eu.uid ? 'Você' : nomeDe(v.proximaAcaoUid)) : '—') + '</td>' +
+          '<td data-r="Prazos" class="num"><div>Validação: ' + prazoHtml(v.prazoValidacao, true, v) + '</div><div>Fatal: ' + prazoHtml(v.prazoFatal, false, v) + '</div></td>' +
+          '<td data-r="Prioridade"><span class="pri ' + esc(v.prioridade) + '">' + esc(PRIORIDADE[v.prioridade] || v.prioridade) + '</span></td>' +
+          '<td data-r="Situação">' + tagVisao(v) + '</td>' +
+          '<td data-r="Última movimentação" class="mov">' + (v.ultimaMov ? esc((TIPO_MSG[v.ultimaMov.tipo] || v.ultimaMov.tipo) + ' · ' + (v.ultimaMov.porNome || '')) + '<br>' + esc(quando(v.ultimaMov.em)) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function ligarLinhas(raiz){
+    raiz.querySelectorAll('[data-val]').forEach(function(tr){
+      tr.onclick = function(){ abrir(tr.dataset.val); };
+      tr.onkeydown = function(e){ if (e.key === 'Enter') abrir(tr.dataset.val); };
+    });
+  }
+  function renderLista(qual){
+    const raiz = $('p-' + qual), concl = qual === 'concluidas';
+    const base = VALS.filter(function(v){ return concl ? v.status === 'concluida' : v.status !== 'concluida'; });
+    const pessoas = {}; base.forEach(function(v){ if (v.proximaAcaoUid) pessoas[v.proximaAcaoUid] = 1; if (concl) { pessoas[v.validadorUid] = 1; pessoas[v.solicitanteUid] = 1; } });
+    const foco = document.activeElement && document.activeElement.id;
+    let h = '<div class="filtros"><input class="busca" id="f-busca" type="search" placeholder="Buscar por processo, cliente, parte contrária ou assunto" value="' + esc(filtro.busca) + '">' +
+      '<select id="f-pri"><option value="">Toda prioridade</option>' + Object.keys(PRIORIDADE).map(function(k){ return '<option value="' + k + '"' + (filtro.prioridade === k ? ' selected' : '') + '>' + PRIORIDADE[k] + '</option>'; }).join('') + '</select>' +
+      (concl ? '' : '<select id="f-st"><option value="">Toda situação</option>' + ['aguardando', 'respondida', 'aguardando_nova'].map(function(k){ return '<option value="' + k + '"' + (filtro.status === k ? ' selected' : '') + '>' + STATUS[k] + '</option>'; }).join('') + '</select>') +
+      '<select id="f-resp"><option value="">' + (concl ? 'Qualquer pessoa' : 'Próxima ação: todos') + '</option>' + Object.keys(pessoas).map(function(u){ return '<option value="' + esc(u) + '"' + (filtro.resp === u ? ' selected' : '') + '>' + esc(u === eu.uid ? 'Você' : nomeDe(u)) + '</option>'; }).join('') + '</select>' +
+      '<label>De <input type="date" id="f-de" value="' + esc(filtro.de) + '"></label><label>até <input type="date" id="f-ate" value="' + esc(filtro.ate) + '"></label>' +
+      (filtro.card ? '<span class="chiprem" id="f-card" title="Tirar o filtro">' + esc(CARDS[filtro.card].rot) + ' ✕</span>' : '') + '</div>';
+    const b = norm(filtro.busca), bd = soDig(filtro.busca);
+    const l = ordenar(base.filter(function(v){
+      if (filtro.card && !CARDS[filtro.card].f(v)) return false;
+      if (filtro.prioridade && v.prioridade !== filtro.prioridade) return false;
+      if (filtro.status && v.status !== filtro.status) return false;
+      if (filtro.resp && (concl ? (v.validadorUid !== filtro.resp && v.solicitanteUid !== filtro.resp) : v.proximaAcaoUid !== filtro.resp)) return false;
+      const dia = ms(v.criadoEm) ? new Date(ms(v.criadoEm)).toISOString().slice(0, 10) : '';
+      if (filtro.de && dia && dia < filtro.de) return false;
+      if (filtro.ate && dia && dia > filtro.ate) return false;
+      if (b) { const p = v.processo || {}; const txt = norm([v.codigo, p.numero, fmtCnj(p.numero), p.cliente, p.contraria, p.outrasPartes, p.tipoAcao, v.assunto].join(' '));
+        if (txt.indexOf(b) < 0 && !(bd.length >= 3 && (v.numeroDig || '').indexOf(bd) >= 0)) return false; }
+      return true;
+    }));
+    if (concl) l.sort(function(a, b2){ return ms(b2.concluidaEm) - ms(a.concluidaEm); });
+    h += '<div class="resumo">' + l.length + (l.length === 1 ? ' validação' : ' validações') + (concl ? ' concluída(s).' : ' em andamento.') + ' As cores mostram a sua situação em cada uma.</div>';
+    h += l.length ? tabela(l, false) : '<div class="vazio">' + (base.length ? 'Nenhuma validação com esses filtros.' : concl ? 'Nenhuma validação concluída ainda.' : 'Nenhuma validação em andamento.') + '</div>';
+    raiz.innerHTML = h;
+    const ligar = function(id, k, ev){ const el = $(id); if (el) el.addEventListener(ev || 'change', function(){ filtro[k] = el.value; renderLista(qual); }); };
+    ligar('f-busca', 'busca', 'input'); ligar('f-pri', 'prioridade'); ligar('f-st', 'status'); ligar('f-resp', 'resp'); ligar('f-de', 'de'); ligar('f-ate', 'ate');
+    if ($('f-card')) $('f-card').onclick = function(){ filtro.card = ''; renderLista(qual); };
+    if (foco === 'f-busca') { const el = $('f-busca'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    ligarLinhas(raiz);
+  }
+
+  // ---------- histórico por processo ----------
+  function grupoProcessos(){
+    const g = {};
+    VALS.forEach(function(v){ const k = v.numeroDig || ('sem:' + norm((v.processo && v.processo.cliente) || '') + '|' + norm((v.processo && v.processo.contraria) || ''));
+      if (!g[k]) g[k] = { chave: k, processo: v.processo || {}, vals: [] }; g[k].vals.push(v); });
+    return g;
+  }
+  function renderHistorico(){
+    const raiz = $('p-historico'), g = grupoProcessos(), foco = document.activeElement && document.activeElement.id === 'h-busca';
+    const b = norm(histBusca), bd = soDig(histBusca);
+    const procs = Object.keys(g).map(function(k){ return g[k]; }).filter(function(x){
+      if (!b) return true; const p = x.processo;
+      return norm([p.numero, fmtCnj(p.numero), p.cliente, p.contraria, p.outrasPartes, p.tipoAcao].join(' ')).indexOf(b) >= 0 || (bd.length >= 3 && x.chave.indexOf(bd) >= 0);
+    }).sort(function(a, c){ return Math.max.apply(null, c.vals.map(function(v){ return ms(v.criadoEm); })) - Math.max.apply(null, a.vals.map(function(v){ return ms(v.criadoEm); })); });
+    let h = '<div class="filtros"><input class="busca" id="h-busca" type="search" placeholder="Número do processo (com ou sem pontuação) ou nome das partes" value="' + esc(histBusca) + '"></div>';
+    if (!histSel || !g[histSel]) {
+      h += '<div class="resumo">' + procs.length + (procs.length === 1 ? ' processo' : ' processos') + ' com validações' + (verTudo() ? '' : ' em que você participou') + '. Escolha um para ver todas as validações dele.</div>';
+      h += procs.length ? '<div class="anteriores">' + procs.slice(0, 200).map(function(x){ const p = x.processo, ab = x.vals.filter(function(v){ return v.status !== 'concluida'; }).length;
+        return '<button type="button" data-proc="' + esc(x.chave) + '"><b>' + esc(fmtCnj(p.numero) || 'Sem número') + '</b> · ' + esc(p.cliente || '—') + (p.contraria ? ' x ' + esc(p.contraria) : '') +
+          '<br><span class="sutil">' + x.vals.length + (x.vals.length === 1 ? ' validação' : ' validações') + (ab ? ' · ' + ab + ' em andamento' : '') + (p.tipoAcao ? ' · ' + esc(p.tipoAcao) : '') + '</span></button>'; }).join('') + '</div>'
+        : '<div class="vazio">Nenhum processo encontrado.</div>';
+      raiz.innerHTML = h;
+      raiz.querySelectorAll('[data-proc]').forEach(function(bt){ bt.onclick = function(){ histSel = bt.dataset.proc; renderHistorico(); }; });
+    } else {
+      const x = g[histSel], p = x.processo, lista = x.vals.slice().sort(function(a, c){ return ms(a.criadoEm) - ms(c.criadoEm); });
+      h += '<button type="button" class="btn sec mini" id="h-voltar">← Todos os processos</button>' +
+        '<h2>' + esc(fmtCnj(p.numero) || 'Processo sem número') + '</h2>' + dadosProcesso(p) +
+        '<div class="resumo">' + lista.length + (lista.length === 1 ? ' validação' : ' validações') + ' neste processo, da mais antiga para a mais recente.</div><div id="h-itens">' +
+        lista.map(function(v){ return '<div class="hist-item" data-hist="' + esc(v.id) + '"><div class="hcab"><span class="cod">' + esc(v.codigo) + '</span><b>' + esc(v.assunto) + '</b>' + tagVisao(v) +
+          '<span class="pri ' + esc(v.prioridade) + '">' + esc(PRIORIDADE[v.prioridade]) + '</span></div>' +
+          '<div class="mov">Pedida por ' + esc(v.solicitanteNome) + ' em ' + esc(quando(v.criadoEm)) + ' · validador: ' + esc(v.validadorNome) + (v.concluidaEm ? ' · concluída em ' + esc(quando(v.concluidaEm)) : '') + '</div>' +
+          '<div class="h-corpo sutil" style="font-size:.8rem;margin-top:6px;">Carregando a conversa…</div>' +
+          '<div style="margin-top:8px;"><button type="button" class="btn sec mini" data-abrir="' + esc(v.id) + '">Abrir a validação completa</button></div></div>'; }).join('') + '</div>';
+      raiz.innerHTML = h;
+      $('h-voltar').onclick = function(){ histSel = ''; renderHistorico(); };
+      raiz.querySelectorAll('[data-abrir]').forEach(function(bt){ bt.onclick = function(){ abrir(bt.dataset.abrir); }; });
+      lista.forEach(function(v){ carregarResumoHist(v); });
+    }
+    const hb = $('h-busca'); hb.addEventListener('input', function(){ histBusca = hb.value; histSel = ''; renderHistorico(); });
+    if (foco) { hb.focus(); hb.setSelectionRange(hb.value.length, hb.value.length); }
+  }
+  let histBusca = '';
+  const CACHE_MSGS = {};
+  function carregarResumoHist(v){
+    const usar = function(msgs){
+      const el = document.querySelector('[data-hist="' + (window.CSS && CSS.escape ? CSS.escape(v.id) : v.id) + '"] .h-corpo'); if (!el) return;
+      const ef = efetivas(msgs);
+      const sol = ef.filter(function(m){ return m.tipo === 'solicitacao'; })[0];
+      const ori = ef.filter(function(m){ return m.tipo === 'orientacao'; });
+      const docs = []; msgs.forEach(function(m){ (m.anexos || []).forEach(function(a){ docs.push(a); }); });
+      el.className = 'h-corpo';
+      el.innerHTML = (sol ? '<div class="bloco"><div class="rot sutil" style="font-size:.68rem;font-weight:700;text-transform:uppercase;">Questionamento</div><div style="white-space:pre-wrap;font-size:.86rem;">' + esc(sol.texto) + '</div></div>' : '') +
+        (ori.length ? ori.map(function(m){ return '<div class="orient"><div class="mov">Orientação de ' + esc(m.autorNome) + ' · ' + esc(quando(m.em)) + '</div>' + esc(m.texto) + '</div>'; }).join('') : '<div class="mov" style="margin-top:6px;">Ainda sem orientação.</div>') +
+        (docs.length ? '<div class="anexos">' + docs.map(function(a){ return anexoBtn(a); }).join('') + '</div>' : '');
+      ligarAnexos(el);
+    };
+    if (CACHE_MSGS[v.id] && CACHE_MSGS[v.id].em === ms(v.atualizadoEm)) return usar(CACHE_MSGS[v.id].msgs);
+    db.collection('validacoes').doc(v.id).collection('mensagens').get().then(function(s){
+      const msgs = ordenarMsgs(s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }));
+      CACHE_MSGS[v.id] = { em: ms(v.atualizadoEm), msgs: msgs }; usar(msgs);
+    }).catch(function(e){ const el = document.querySelector('[data-hist="' + v.id + '"] .h-corpo'); if (el) el.textContent = 'Não foi possível carregar: ' + e.message; });
+  }
+  function dadosProcesso(p){
+    const it = function(r, v){ return v ? '<div><dt>' + r + '</dt><dd>' + esc(v) + '</dd></div>' : ''; };
+    return '<dl class="dados">' + it('Número', fmtCnj(p.numero)) + it('Tipo / classe', p.tipoAcao) + it('Cliente', p.cliente) + it('Parte contrária', p.contraria) +
+      it('Demais partes', p.outrasPartes) + it('Polo do cliente', p.polo) + it('Vara / órgão', p.orgao) + it('Comarca', p.comarca) + it('Advogado responsável', p.advogado) +
+      (p.localizado === false ? '<div><dt>Origem dos dados</dt><dd>Preenchidos à mão (processo não localizado na base)</dd></div>' : p.localizado ? '<div><dt>Origem dos dados</dt><dd>Agenda do portal (Astrea)</dd></div>' : '') + '</dl>';
+  }
+
+  // ---------- mensagens ----------
+  function ordenarMsgs(l){ return l.sort(function(a, b){ return (ms(a.em) || Date.now() + 1) - (ms(b.em) || Date.now() + 1); }); }
+  // texto em vigor: a última correção vale sobre o original (o original continua guardado)
+  function efetivas(msgs){
+    const cor = {}; msgs.forEach(function(m){ if (m.tipo === 'correcao' && m.refId) cor[m.refId] = m; });
+    return msgs.filter(function(m){ return m.tipo !== 'correcao'; }).map(function(m){ return cor[m.id] ? Object.assign({}, m, { texto: cor[m.id].texto }) : m; });
+  }
+  function anexoBtn(a){ return '<button type="button" class="anexo" data-anexo="' + esc(a.caminho) + '" title="Abrir ' + esc(a.nome) + '">📎 <span>' + esc(a.nome) + '</span><small class="sutil">' + (a.tam ? (a.tam / 1048576).toFixed(1).replace('.', ',') + ' MB' : '') + '</small></button>'; }
+  function ligarAnexos(raiz){
+    raiz.querySelectorAll('[data-anexo]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation();
+      const janela = window.open('', '_blank');
+      st.ref(b.dataset.anexo).getDownloadURL().then(function(u){ if (janela) janela.location = u; else location.href = u; })
+        .catch(function(err){ if (janela) janela.close(); alert('Não foi possível abrir o anexo: ' + (err.code === 'storage/unauthorized' ? 'sem permissão.' : err.message)); }); }; });
+  }
+
+  // ---------- detalhe de uma validação ----------
+  function abrir(id){
+    if (aberta !== id) { if (msgsUnsub) msgsUnsub(); MSGS = []; verOriginal = {}; aberta = id; compor = { modo: '', texto: '', arquivos: [] };
+      msgsUnsub = db.collection('validacoes').doc(id).collection('mensagens').onSnapshot(function(s){
+        MSGS = ordenarMsgs(s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); })); renderDetalhe(); },
+        function(e){ MSGS = []; const c = $('det-conversa'); if (c) c.innerHTML = '<div class="aviso erro">Não foi possível carregar a conversa: ' + esc(e.message) + '</div>'; });
+      marcarAvisosLidos(id);
+    }
+    renderDetalhe();
+  }
+  function fecharDetalhe(){ if (msgsUnsub) msgsUnsub(); msgsUnsub = null; aberta = null; const f = $('det-fundo'); if (f) f.remove(); document.documentElement.style.overflow = ''; }
+  let compor = { modo: '', texto: '', arquivos: [] };
+  function renderDetalhe(){
+    const v = VALS.filter(function(x){ return x.id === aberta; })[0];
+    let f = $('det-fundo');
+    if (!v) { if (f && valsProntos) { f.querySelector('.janela-corpo').innerHTML = '<div class="vazio">Validação não encontrada ou sem permissão para ver.</div>'; } else if (!f && valsProntos) { aberta = null; toast('Validação não encontrada ou sem permissão.'); } return; }
+    // guarda o que estava sendo digitado (a tela é redesenhada a cada mudança no servidor)
+    const ta = $('c-texto'); if (ta) compor.texto = ta.value;
+    const focoTexto = ta && document.activeElement === ta ? [ta.selectionStart, ta.selectionEnd] : null;
+    const scroll = f ? f.scrollTop : 0;
+    if (!f) { f = document.createElement('div'); f.className = 'fundo'; f.id = 'det-fundo'; document.body.appendChild(f); document.documentElement.style.overflow = 'hidden';
+      f.addEventListener('mousedown', function(e){ if (e.target === f) fecharDetalhe(); }); }
+    const p = v.processo || {}, vi = visao(v);
+    const outras = VALS.filter(function(x){ return x.id !== v.id && v.numeroDig && x.numeroDig === v.numeroDig; }).sort(function(a, b){ return ms(b.criadoEm) - ms(a.criadoEm); });
+    let h = '<div class="janela larga" role="dialog" aria-modal="true" aria-label="Validação ' + esc(v.codigo) + '"><div class="janela-topo"><h3>' + esc(v.codigo) + ' · ' + esc(v.assunto) + '</h3><button type="button" class="fechar" id="det-fechar" title="Fechar (Esc)">✕</button></div><div class="janela-corpo">' +
+      '<div class="det-cab">' + tagVisao(v) + '<span class="tag cinza">' + esc(STATUS[v.status]) + '</span><span class="pri ' + esc(v.prioridade) + '">' + esc(PRIORIDADE[v.prioridade]) + '</span>' +
+      (vencida(v) ? '<span class="tag vermelho">Prazo de validação vencido</span>' : '') +
+      '<span class="mov">Próxima ação: ' + (v.proximaAcaoUid ? esc(v.proximaAcaoUid === eu.uid ? 'você' : nomeDe(v.proximaAcaoUid)) : 'ninguém (concluída)') + '</span></div>' +
+      dadosProcesso(p) +
+      '<dl class="dados"><div><dt>Solicitante</dt><dd>' + esc(v.solicitanteNome) + '</dd></div><div><dt>Validador</dt><dd>' + esc(v.validadorNome) + '</dd></div>' +
+      '<div><dt>Solicitada em</dt><dd>' + esc(quando(v.criadoEm)) + '</dd></div><div><dt>Data da publicação</dt><dd>' + (dataBR(v.dataPublicacao) || '—') + '</dd></div>' +
+      '<div><dt>Prazo fatal processual</dt><dd>' + prazoHtml(v.prazoFatal, false, v) + '</dd></div><div><dt>Prazo para validar</dt><dd>' + prazoHtml(v.prazoValidacao, true, v) + '</dd></div>' +
+      (v.concluidaEm ? '<div><dt>Concluída em</dt><dd>' + esc(quando(v.concluidaEm)) + '</dd></div>' : '') + '</dl>' +
+      (outras.length ? '<details class="anteriores" style="margin-bottom:12px;"><summary style="cursor:pointer;font-weight:700;margin-bottom:8px;">Outras validações deste processo (' + outras.length + ')</summary>' +
+        outras.map(function(o){ return '<button type="button" data-outra="' + esc(o.id) + '"><b>' + esc(o.codigo) + '</b> · ' + esc(o.assunto) + ' · <span class="sutil">' + esc(STATUS[o.status]) + ' · ' + esc(quando(o.criadoEm)) + '</span></button>'; }).join('') + '</details>' : '') +
+      '<h2 style="margin-top:6px;">Conversa</h2><div class="conversa" id="det-conversa">' + conversaHtml(v) + '</div>' + compositor(v) + '</div></div>';
+    f.innerHTML = h;
+    f.scrollTop = scroll;
+    $('det-fechar').onclick = fecharDetalhe;
+    f.querySelectorAll('[data-outra]').forEach(function(b){ b.onclick = function(){ abrir(b.dataset.outra); }; });
+    f.querySelectorAll('[data-original]').forEach(function(b){ b.onclick = function(){ verOriginal[b.dataset.original] = !verOriginal[b.dataset.original]; renderDetalhe(); }; });
+    f.querySelectorAll('[data-corrigir]').forEach(function(b){ b.onclick = function(){ corrigirMsg(v, b.dataset.corrigir); }; });
+    ligarAnexos(f);
+    ligarCompositor(v);
+    const ta2 = $('c-texto'); if (ta2 && focoTexto) { ta2.focus(); ta2.setSelectionRange(focoTexto[0], focoTexto[1]); }
+  }
+  function conversaHtml(v){
+    if (!MSGS.length) return '<div class="sutil">Carregando…</div>';
+    const cor = {}; MSGS.forEach(function(m){ if (m.tipo === 'correcao' && m.refId) (cor[m.refId] = cor[m.refId] || []).push(m); });
+    return MSGS.map(function(m){
+      const evento = ['conclusao', 'reabertura', 'alteracao', 'correcao'].indexOf(m.tipo) >= 0 && !(m.tipo === 'conclusao' && m.texto);
+      const cs = cor[m.id] || [], ultima = cs[cs.length - 1];
+      let corpo = '';
+      if (m.tipo === 'solicitacao') {
+        corpo = bloco('Resumo da publicação', m.resumo) + bloco('Análise preliminar', m.analise) + bloco('Sugestão de providência', m.sugestao) + bloco('Questionamento ao validador', ultima ? ultima.texto : m.texto, true);
+      } else if (m.tipo === 'alteracao') {
+        corpo = '<div class="txt">' + esc(m.texto) + '</div>';
+      } else if (m.tipo === 'correcao') {
+        corpo = '<div class="txt">Corrigiu uma mensagem' + (m.motivo ? ' — motivo: ' + esc(m.motivo) : '') + '.</div>';
+      } else {
+        corpo = m.texto ? '<div class="txt">' + esc(ultima ? ultima.texto : m.texto) + '</div>' : '';
+      }
+      if (ultima) corpo += '<div class="corrigida">Corrigida por ' + esc(ultima.autorNome) + ' em ' + esc(quando(ultima.em)) + (ultima.motivo ? ' — ' + esc(ultima.motivo) : '') +
+        ' · <button type="button" class="lk" data-original="' + esc(m.id) + '">' + (verOriginal[m.id] ? 'esconder o texto original' : 'ver o texto original') + '</button></div>' +
+        (verOriginal[m.id] ? '<div class="original">' + esc(m.texto) + (cs.length > 1 ? cs.slice(0, -1).map(function(c){ return '\n\n— versão de ' + quando(c.em) + ':\n' + c.texto; }).join('') : '') + '</div>' : '');
+      const podeCorrigir = m.autorUid === eu.uid && ['solicitacao', 'orientacao', 'esclarecimento', 'conclusao', 'reabertura'].indexOf(m.tipo) >= 0 && v.status !== 'concluida' && m.texto;
+      return '<div class="msg ' + esc(m.tipo) + (evento ? ' evento' : '') + '">' + avatar(m.autorUid, m.autorNome) + '<div class="balao"><div class="cab"><b>' + esc(m.autorNome) + '</b><span class="tipo-msg">' + esc(TIPO_MSG[m.tipo] || m.tipo) + '</span><span>' + esc(quando(m.em)) + '</span>' +
+        (podeCorrigir ? '<button type="button" class="lk" data-corrigir="' + esc(m.id) + '">corrigir</button>' : '') + '</div>' + corpo +
+        ((m.anexos || []).length ? '<div class="anexos">' + m.anexos.map(anexoBtn).join('') + '</div>' : '') + '</div></div>';
+    }).join('');
+  }
+  function bloco(rot, txt, destaque){ return txt ? '<div class="bloco"><div class="rot">' + esc(rot) + '</div><div class="txt"' + (destaque ? ' style="font-weight:600;"' : '') + '>' + esc(txt) + '</div></div>' : ''; }
+
+  // o que a pessoa pode fazer agora nesta validação
+  function compositor(v){
+    const me = eu.uid; let h = '';
+    const arq = '<div style="margin-top:8px;"><label class="btn sec mini" style="cursor:pointer;">📎 Anexar documentos<input type="file" id="c-arqs" multiple hidden></label><div class="arquivos-lista" id="c-lista"></div></div>';
+    if ((v.status === 'aguardando' || v.status === 'aguardando_nova') && v.validadorUid === me && pode('responder')) {
+      h = '<div class="compor"><h4>Orientação Estratégica</h4><textarea id="c-texto" placeholder="Escreva qual providência deve ser adotada e por quê.">' + esc(compor.texto) + '</textarea>' + arq +
+        '<div class="linha-botoes"><button type="button" class="btn ouro" data-acao="orientacao">Confirmar e Enviar Orientação</button><span class="st sutil" id="c-st"></span></div></div>';
+    } else if (v.status === 'respondida' && v.solicitanteUid === me) {
+      if (compor.modo === 'esclarecimento' && pode('esclarecer')) {
+        h = '<div class="compor"><h4>Solicitar esclarecimento</h4><textarea id="c-texto" placeholder="Qual dúvida ainda ficou? A conversa anterior fica preservada.">' + esc(compor.texto) + '</textarea>' + arq +
+          '<div class="linha-botoes"><button type="button" class="btn" data-acao="esclarecimento">Enviar para o validador</button><button type="button" class="btn sec" data-modo="">Cancelar</button><span class="st sutil" id="c-st"></span></div></div>';
+      } else if (compor.modo === 'conclusao' && pode('concluir')) {
+        h = '<div class="compor"><h4>Concluir validação</h4><p class="sutil" style="font-size:.8rem;margin:0 0 8px;">Concluir significa que a orientação foi compreendida e a validação está encerrada — não que a providência já foi feita.</p>' +
+          '<textarea id="c-texto" placeholder="Observação final (opcional). Ex.: tarefa cadastrada no Astrea e direcionada ao advogado responsável.">' + esc(compor.texto) + '</textarea>' +
+          '<div class="linha-botoes"><button type="button" class="btn verde" data-acao="conclusao">Concluir Validação</button><button type="button" class="btn sec" data-modo="">Cancelar</button><span class="st sutil" id="c-st"></span></div></div>';
+      } else {
+        h = '<div class="compor"><h4>A orientação chegou. O que deseja fazer?</h4><div class="linha-botoes">' +
+          (pode('concluir') ? '<button type="button" class="btn verde" data-modo="conclusao">Concluir Validação</button>' : '') +
+          (pode('esclarecer') ? '<button type="button" class="btn azul" data-modo="esclarecimento">Solicitar Esclarecimento</button>' : '') +
+          (!pode('concluir') && !pode('esclarecer') ? '<span class="sutil">Você não tem permissão para concluir nem para pedir esclarecimento.</span>' : '') + '</div></div>';
+      }
+    } else if (v.status === 'concluida' && pode('reabrir')) {
+      h = compor.modo === 'reabertura'
+        ? '<div class="compor"><h4>Reabrir validação</h4><textarea id="c-texto" placeholder="Motivo da reabertura (obrigatório). A pendência volta para o validador.">' + esc(compor.texto) + '</textarea>' + arq +
+          '<div class="linha-botoes"><button type="button" class="btn" data-acao="reabertura">Reabrir</button><button type="button" class="btn sec" data-modo="">Cancelar</button><span class="st sutil" id="c-st"></span></div></div>'
+        : '<div class="linha-botoes"><button type="button" class="btn sec" data-modo="reabertura">Reabrir validação</button></div>';
+    } else if (v.status !== 'concluida') {
+      h = '<div class="aviso atencao">' + (v.proximaAcaoUid === me ? 'Você ainda não tem permissão para esta ação.' : 'Aguardando ' + esc(nomeDe(v.proximaAcaoUid)) + '. Você será avisado quando houver resposta.') + '</div>';
+    }
+    if (v.status !== 'concluida' && eParticipante(v)) {
+      h += compor.modo === 'alterar'
+        ? '<div class="compor"><h4>Alterar dados da validação</h4><div class="form"><div class="full"><label>Assunto</label><input id="a-assunto" maxlength="300" value="' + esc(v.assunto) + '"></div>' +
+          '<div><label>Prazo fatal processual</label><input type="date" id="a-fatal" value="' + esc(v.prazoFatal || '') + '"></div><div><label>Prazo para validar</label><input type="date" id="a-prazo" value="' + esc(v.prazoValidacao || '') + '"></div>' +
+          '<div class="full"><label>Prioridade</label><div class="radios">' + Object.keys(PRIORIDADE).map(function(k){ return '<label><input type="radio" name="a-pri" value="' + k + '"' + (v.prioridade === k ? ' checked' : '') + '> ' + PRIORIDADE[k] + '</label>'; }).join('') + '</div></div></div>' +
+          '<p class="sutil" style="font-size:.76rem;">A alteração fica registrada na conversa, com o valor anterior.</p><div class="linha-botoes"><button type="button" class="btn" data-acao="alteracao">Salvar alteração</button><button type="button" class="btn sec" data-modo="">Cancelar</button><span class="st sutil" id="c-st"></span></div></div>'
+        : '<div class="linha-botoes" style="margin-top:10px;"><button type="button" class="btn sec mini" data-modo="alterar">Alterar prazos, prioridade ou assunto</button></div>';
+    }
+    return h;
+  }
+  function ligarCompositor(v){
+    const f = $('det-fundo'); if (!f) return;
+    f.querySelectorAll('[data-modo]').forEach(function(b){ b.onclick = function(){ compor = { modo: b.dataset.modo, texto: '', arquivos: [] }; renderDetalhe(); const t = $('c-texto'); if (t) t.focus(); }; });
+    const ia = $('c-arqs'); if (ia) ia.onchange = function(){ Array.prototype.forEach.call(ia.files, function(x){ compor.arquivos.push(x); }); ia.value = ''; pintarArquivos(); };
+    pintarArquivos();
+    f.querySelectorAll('[data-acao]').forEach(function(b){ b.onclick = function(){ agir(v, b.dataset.acao, b); }; });
+  }
+  function pintarArquivos(){
+    const l = $('c-lista'); if (!l) return;
+    l.innerHTML = compor.arquivos.map(function(a, i){ return '<span>📎 ' + esc(a.name) + ' <small class="sutil">' + (a.size / 1048576).toFixed(1).replace('.', ',') + ' MB</small><button type="button" data-tirar="' + i + '">remover</button></span>'; }).join('');
+    l.querySelectorAll('[data-tirar]').forEach(function(b){ b.onclick = function(){ compor.arquivos.splice(+b.dataset.tirar, 1); pintarArquivos(); }; });
+  }
+  function nomeSeguro(n){ return String(n || 'arquivo').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\- ]+/g, '_').slice(-120); }
+  function conferirArquivos(lista){
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i];
+      if (a.size > 25 * 1048576) return 'O arquivo "' + a.name + '" passa de 25 MB.';
+      if (/(html|svg|xml|javascript)/i.test(a.type || '') || /\.(html?|svg|xml|js|mjs)$/i.test(a.name)) return 'O arquivo "' + a.name + '" é de um tipo não aceito (página, script ou SVG).';
+    }
+    return '';
+  }
+  function enviarArquivos(valId, msgId, lista, stEl){
+    let feito = Promise.resolve([]);
+    lista.forEach(function(a, i){
+      feito = feito.then(function(acc){
+        const caminho = 'validacoes/' + valId + '/' + msgId + '/' + Date.now() + '_' + nomeSeguro(a.name);
+        if (stEl) stEl.textContent = 'Enviando anexo ' + (i + 1) + ' de ' + lista.length + '…';
+        return st.ref(caminho).put(a, { contentType: a.type || 'application/octet-stream' }).then(function(){
+          acc.push({ nome: String(a.name).slice(0, 200), caminho: caminho, tipo: a.type || '', tam: a.size }); return acc; });
+      });
+    });
+    return feito;
+  }
+  function aviso(lote, v, para, tipo, trecho){
+    if (!para || para === eu.uid) return;
+    lote.set(db.collection('valAvisos').doc(), { para: para, de: eu.uid, deNome: eu.nome, validacaoId: v.id, codigo: v.codigo || '', tipo: tipo,
+      titulo: String(v.assunto || '').slice(0, 300), trecho: String(trecho || '').slice(0, 300), em: FV.serverTimestamp(), lida: false });
+  }
+  function agir(v, tipo, botao){
+    const stEl = $('c-st'), texto = ($('c-texto') ? $('c-texto').value : '').trim();
+    const msgRef = db.collection('validacoes').doc(v.id).collection('mensagens').doc();
+    const ult = { tipo: tipo, porUid: eu.uid, porNome: eu.nome, em: FV.serverTimestamp(), msgId: msgRef.id };
+    let upd = { atualizadoEm: FV.serverTimestamp(), ultimaMov: ult }, msg = { tipo: tipo, autorUid: eu.uid, autorNome: eu.nome, texto: texto, em: FV.serverTimestamp(), rodada: v.rodada || 1, anexos: [] };
+    let para = null, avTipo = null;
+    if (tipo === 'orientacao') { if (!texto) return falha('Escreva a orientação estratégica.'); Object.assign(upd, { status: 'respondida', proximaAcaoUid: v.solicitanteUid, respondidaEm: FV.serverTimestamp() });
+      if (!v.primeiraRespostaEm) upd.primeiraRespostaEm = FV.serverTimestamp(); para = v.solicitanteUid; avTipo = 'orientacao'; }
+    else if (tipo === 'esclarecimento') { if (!texto) return falha('Escreva a dúvida.'); Object.assign(upd, { status: 'aguardando_nova', proximaAcaoUid: v.validadorUid, rodada: (v.rodada || 1) + 1 }); msg.rodada = (v.rodada || 1) + 1; para = v.validadorUid; avTipo = 'esclarecimento'; }
+    else if (tipo === 'conclusao') { Object.assign(upd, { status: 'concluida', proximaAcaoUid: null, concluidaEm: FV.serverTimestamp() }); para = v.validadorUid; avTipo = 'concluida'; }
+    else if (tipo === 'reabertura') { if (!texto) return falha('Informe o motivo da reabertura.'); Object.assign(upd, { status: 'aguardando_nova', proximaAcaoUid: v.validadorUid, rodada: (v.rodada || 1) + 1, reaberturas: (v.reaberturas || 0) + 1, concluidaEm: null }); msg.rodada = (v.rodada || 1) + 1; avTipo = 'reaberta'; }
+    else if (tipo === 'alteracao') {
+      const novo = { assunto: ($('a-assunto').value || '').trim(), prazoFatal: $('a-fatal').value || '', prazoValidacao: $('a-prazo').value || '', prioridade: (document.querySelector('input[name="a-pri"]:checked') || {}).value || v.prioridade };
+      if (!novo.assunto) return falha('O assunto não pode ficar vazio.');
+      const rot = { assunto: 'Assunto', prazoFatal: 'Prazo fatal processual', prazoValidacao: 'Prazo para validar', prioridade: 'Prioridade' };
+      const mud = Object.keys(novo).filter(function(k){ return (v[k] || '') !== novo[k]; });
+      if (!mud.length) return falha('Nada foi alterado.');
+      const fmt = function(k, x){ return k === 'prioridade' ? (PRIORIDADE[x] || x) : /^prazo/.test(k) ? (dataBR(x) || 'sem data') : (x || '—'); };
+      msg.texto = mud.map(function(k){ return rot[k] + ': ' + fmt(k, v[k] || '') + ' → ' + fmt(k, novo[k]); }).join('\n');
+      msg.alteracoes = mud.map(function(k){ return { campo: k, de: v[k] || '', para: novo[k] }; });
+      mud.forEach(function(k){ upd[k] = novo[k]; });
+    }
+    const arquivos = (tipo === 'conclusao' || tipo === 'alteracao') ? [] : compor.arquivos.slice();
+    const erroArq = conferirArquivos(arquivos); if (erroArq) return falha(erroArq);
+    botao.disabled = true;
+    enviarArquivos(v.id, msgRef.id, arquivos, stEl).then(function(anexos){
+      msg.anexos = anexos; if (stEl) stEl.textContent = 'Salvando…';
+      const lote = db.batch();
+      lote.set(msgRef, msg); lote.update(db.collection('validacoes').doc(v.id), upd);
+      if (tipo === 'reabertura') { [v.solicitanteUid, v.validadorUid].forEach(function(u){ aviso(lote, v, u, 'reaberta', texto); }); }
+      else if (avTipo) aviso(lote, v, para, avTipo, texto);
+      return lote.commit();
+    }).then(function(){
+      compor = { modo: '', texto: '', arquivos: [] };
+      toast({ orientacao: 'Orientação enviada.', esclarecimento: 'Esclarecimento pedido ao validador.', conclusao: 'Validação concluída.', reabertura: 'Validação reaberta.', alteracao: 'Alteração registrada.' }[tipo]);
+      renderDetalhe();
+    }).catch(function(e){ botao.disabled = false; falha('Não foi possível salvar: ' + (e.code === 'permission-denied' || e.code === 'storage/unauthorized' ? 'sem permissão para esta ação.' : e.message)); });
+    function falha(t){ if (stEl) { stEl.textContent = t; stEl.style.color = 'var(--c-vermelho)'; } else alert(t); }
+  }
+  function corrigirMsg(v, mid){
+    const m = MSGS.filter(function(x){ return x.id === mid; })[0]; if (!m) return;
+    const cs = MSGS.filter(function(x){ return x.tipo === 'correcao' && x.refId === mid; });
+    const atual = cs.length ? cs[cs.length - 1].texto : m.texto;
+    const fundo = document.createElement('div'); fundo.className = 'fundo'; fundo.style.zIndex = 60;
+    fundo.innerHTML = '<div class="janela" style="max-width:640px;"><div class="janela-topo"><h3>Corrigir mensagem</h3><button type="button" class="fechar" data-x>✕</button></div><div class="janela-corpo">' +
+      '<p class="sutil" style="font-size:.8rem;margin-top:0;">O texto anterior fica guardado e visível em "ver o texto original". A correção aparece na conversa.</p>' +
+      '<div class="form"><div class="full"><label>Texto corrigido</label><textarea id="cr-texto" style="min-height:140px;">' + esc(atual) + '</textarea></div>' +
+      '<div class="full"><label>Motivo da correção<span class="obrig">*</span></label><input id="cr-motivo" maxlength="300"></div></div>' +
+      '<div class="rodape-form"><span class="st" id="cr-st"></span><button type="button" class="btn sec" data-x>Cancelar</button><button type="button" class="btn" id="cr-ok">Salvar correção</button></div></div></div>';
+    document.body.appendChild(fundo);
+    fundo.querySelectorAll('[data-x]').forEach(function(b){ b.onclick = function(){ fundo.remove(); }; });
+    $('cr-ok').onclick = function(){
+      const novo = $('cr-texto').value.trim(), motivo = $('cr-motivo').value.trim(), s = $('cr-st');
+      if (!novo || novo === atual) { s.textContent = 'Altere o texto antes de salvar.'; return; }
+      if (!motivo) { s.textContent = 'Informe o motivo.'; return; }
+      const msgRef = db.collection('validacoes').doc(v.id).collection('mensagens').doc(), lote = db.batch();
+      lote.set(msgRef, { tipo: 'correcao', autorUid: eu.uid, autorNome: eu.nome, texto: novo, refId: mid, motivo: motivo, em: FV.serverTimestamp(), rodada: v.rodada || 1, anexos: [] });
+      lote.update(db.collection('validacoes').doc(v.id), { atualizadoEm: FV.serverTimestamp(), ultimaMov: { tipo: 'correcao', porUid: eu.uid, porNome: eu.nome, em: FV.serverTimestamp(), msgId: msgRef.id } });
+      this.disabled = true;
+      lote.commit().then(function(){ fundo.remove(); toast('Correção registrada.'); }).catch(function(e){ $('cr-ok').disabled = false; s.textContent = 'Não foi possível salvar: ' + e.message; });
+    };
+  }
+  function marcarAvisosLidos(valId){
+    db.collection('valAvisos').where('para', '==', eu.uid).where('lida', '==', false).get().then(function(s){
+      const l = s.docs.filter(function(d){ return d.data().validacaoId === valId; }); if (!l.length) return;
+      const lote = db.batch(); l.forEach(function(d){ lote.update(d.ref, { lida: true, lidaEm: FV.serverTimestamp() }); }); return lote.commit();
+    }).catch(function(){});
+  }
+
+  // ---------- busca do processo na base do portal (Agenda / Astrea) ----------
+  function comarcaDe(orgao){
+    const o = String(orgao || ''); let m = /\b(?:comarca|foro)\s+d[eoa]s?\s+([^,;–\-]+)/i.exec(o);
+    if (m) return m[1].trim();
+    m = /\s+d[eoa]\s+([A-ZÀ-Ú][^,;–\-]*)$/.exec(o);
+    if (m && !/^(Fam[ií]lia|Fazenda|Execu|Sucess|Registro|Fal[eê]ncia|[OÓ]rf|Trabalho|T[oó]xico|Inf[aâ]ncia|Viol[eê]ncia|Juizado|Acidente|Empresari|Recupera|Meio|Crimes?|Entorpec|Precat|Feitos)/i.test(m[1])) return m[1].trim();
+    return '';
+  }
+  function carregarFonte(){
+    if (FONTE.p) return FONTE.p;
+    FONTE.p = Promise.all([db.collection('agTeste_casos').get(), db.collection('agTeste_clientes').get()]).then(function(r){
+      const cli = {}; r[1].docs.forEach(function(d){ const x = d.data(); cli[d.id] = x.nome || x.razaoSocial || ''; });
+      const mapa = {};
+      r[0].docs.forEach(function(d){
+        const k = d.data(); if (k.status === 'excluido') return;
+        const nd = soDig(k.numero), chave = nd.length >= 15 ? nd : 'caso:' + d.id;
+        const nomes = (k.clientes || []).map(function(id){ return cli[id] || ''; }).filter(Boolean);
+        let resp = k.responsavel || ''; resp = /^ex:/.test(resp) ? resp.slice(3) : (resp ? nomeDe(resp, '') : '');
+        const item = { chave: chave, casoId: d.id, numero: nd.length >= 15 ? nd : (k.numero || ''), numeroDig: nd.length >= 15 ? nd : '', titulo: k.titulo || '', tipoAcao: k.astrea ? (k.titulo || '') : (k.titulo || ''),
+          clientes: nomes, contraria: k.contraria || '', orgao: k.orgao || '', tribunal: k.tribunal || '', comarca: comarcaDe(k.orgao), advogado: resp, area: k.area || '', codigo: k.seq ? 'Prc-' + k.seq : '' };
+        if (mapa[chave]) { const a = mapa[chave]; nomes.forEach(function(n){ if (a.clientes.indexOf(n) < 0) a.clientes.push(n); }); ['contraria', 'orgao', 'tribunal', 'comarca', 'advogado'].forEach(function(c){ if (!a[c] && item[c]) a[c] = item[c]; }); }
+        else mapa[chave] = item;
+      });
+      FONTE.lista = Object.keys(mapa).map(function(k){ const x = mapa[k]; x.busca = norm([x.titulo, x.clientes.join(' '), x.contraria, x.orgao, x.codigo, fmtCnj(x.numero)].join(' ')); return x; });
+    }).catch(function(e){ FONTE.semAcesso = true; FONTE.erro = e.code || e.message; FONTE.lista = []; });
+    return FONTE.p;
+  }
+  // processos que já aparecem em validações (inclusive os preenchidos à mão) também entram na busca, sem repetir
+  function fonteCompleta(){
+    const l = FONTE.lista.slice(), vistos = {}; l.forEach(function(x){ if (x.numeroDig) vistos[x.numeroDig] = 1; });
+    VALS.forEach(function(v){ const p = v.processo || {}; if (!v.numeroDig || vistos[v.numeroDig]) return; vistos[v.numeroDig] = 1;
+      l.push({ chave: v.numeroDig, numero: v.numeroDig, numeroDig: v.numeroDig, tipoAcao: p.tipoAcao || '', titulo: p.tipoAcao || '', clientes: p.cliente ? [p.cliente] : [], contraria: p.contraria || '', orgao: p.orgao || '', comarca: p.comarca || '',
+        advogado: p.advogado || '', outrasPartes: p.outrasPartes || '', polo: p.polo || '', deValidacao: true, busca: norm([p.tipoAcao, p.cliente, p.contraria, p.orgao, fmtCnj(v.numeroDig)].join(' ')) }); });
+    return l;
+  }
+  function buscarProcessos(q){
+    const d = soDig(q), n = norm(q), palavras = n.split(' ').filter(function(w){ return w.length >= 2; });
+    if (d.length < 3 && n.replace(/[^a-z]/g, '').length < 3) return [];
+    return fonteCompleta().map(function(x){
+      let s = 0;
+      if (d.length >= 3 && x.numeroDig) { const i = x.numeroDig.indexOf(d); if (i === 0) s = 3; else if (i > 0) s = 2; }
+      if (!s && palavras.length && palavras.every(function(w){ return x.busca.indexOf(w) >= 0; })) s = 1;
+      return [s, x];
+    }).filter(function(r){ return r[0] > 0; }).sort(function(a, b){ return b[0] - a[0]; }).slice(0, 8).map(function(r){ return r[1]; });
+  }
+
+  // ---------- nova validação ----------
+  function validadores(){ return Object.keys(PERMS).filter(function(u){ return PERMS[u].responder && u !== eu.uid; }); }
+  function novaValidacao(){
+    if (!pode('criar')) return;
+    const vs = validadores();
+    const padrao = vs.indexOf(CONFIG.validadorPadrao) >= 0 ? CONFIG.validadorPadrao : vs[0] || '';
+    const fundo = document.createElement('div'); fundo.className = 'fundo'; fundo.id = 'nv-fundo';
+    const campo = function(id, rot, extra, tipo){ return '<div' + (extra ? ' class="' + extra + '"' : '') + '><label for="' + id + '">' + rot + '</label><input id="' + id + '"' + (tipo ? ' type="' + tipo + '"' : '') + '></div>'; };
+    fundo.innerHTML = '<div class="janela" role="dialog" aria-modal="true" aria-label="Nova validação"><div class="janela-topo"><h3>Nova validação</h3><button type="button" class="fechar" data-x title="Fechar">✕</button></div><div class="janela-corpo"><div class="form">' +
+      '<div class="secao-form" style="margin-top:0;border-top:none;padding-top:0;">Processo</div>' +
+      '<div class="full busca-proc"><label for="nv-num">Número do processo<span class="obrig">*</span> <span class="sutil" style="font-weight:400;">— digite o número (com ou sem pontos) ou o nome de uma das partes</span></label>' +
+      '<input id="nv-num" autocomplete="off" placeholder="0000000-00.0000.0.00.0000 ou nome da parte"><div class="sugestoes" id="nv-sug" style="display:none;"></div></div>' +
+      '<div class="full" id="nv-origem"></div>' +
+      campo('nv-tipo', 'Tipo / classe da ação') + campo('nv-cliente', 'Cliente representado pelo escritório<span class="obrig">*</span>') + campo('nv-contraria', 'Parte contrária') + campo('nv-outras', 'Demais partes') +
+      '<div><label for="nv-polo">Polo do cliente</label><select id="nv-polo"><option value="">—</option><option>Ativo (autor / exequente / reclamante)</option><option>Passivo (réu / executado / reclamado)</option><option>Terceiro interessado</option><option>Outro</option></select></div>' +
+      campo('nv-orgao', 'Vara / órgão julgador') + campo('nv-comarca', 'Comarca') + campo('nv-adv', 'Advogado responsável') +
+      '<div class="secao-form">Validação</div>' +
+      '<div><label>Solicitante</label><input value="' + esc(eu.nome) + '" disabled></div>' +
+      '<div><label for="nv-val">Responsável pela validação<span class="obrig">*</span></label><select id="nv-val">' + (vs.length ? vs.map(function(u){ return '<option value="' + esc(u) + '"' + (u === padrao ? ' selected' : '') + '>' + esc(nomeDe(u)) + '</option>'; }).join('') : '<option value="">Nenhum validador cadastrado</option>') + '</select></div>' +
+      '<div class="full"><label for="nv-assunto">Assunto da validação<span class="obrig">*</span></label><input id="nv-assunto" maxlength="300" placeholder="Ex.: Sentença parcialmente procedente — embargos ou apelação?"></div>' +
+      campo('nv-pub', 'Data da publicação', '', 'date') + '<div></div>' +
+      campo('nv-fatal', 'Prazo fatal processual', '', 'date') + campo('nv-prazo', 'Data limite para validação', '', 'date') +
+      '<div class="full"><p class="sutil" style="font-size:.74rem;margin:-4px 0 0;">O prazo fatal é o judicial, informado por você (o sistema não calcula prazo pela data da publicação). A data limite para validação é o prazo interno para a estratégia ser definida.</p></div>' +
+      '<div class="full"><label>Nível de prioridade</label><div class="radios"><label><input type="radio" name="nv-pri" value="normal" checked> Normal</label><label><input type="radio" name="nv-pri" value="alta"> Alta</label><label><input type="radio" name="nv-pri" value="urgente"> Urgente</label></div></div>' +
+      '<div class="full"><label for="nv-resumo">Resumo da publicação<span class="obrig">*</span></label><textarea id="nv-resumo"></textarea></div>' +
+      '<div class="full"><label for="nv-analise">Análise preliminar</label><textarea id="nv-analise"></textarea></div>' +
+      '<div class="full"><label for="nv-sugestao">Sugestão de providência</label><textarea id="nv-sugestao"></textarea></div>' +
+      '<div class="full"><label for="nv-quest">Questionamento ao validador<span class="obrig">*</span> <span class="sutil" style="font-weight:400;">— qual decisão precisa ser tomada?</span></label><textarea id="nv-quest" style="min-height:110px;"></textarea></div>' +
+      '<div class="full"><label>Documentos anexos</label><label class="btn sec mini" style="cursor:pointer;display:inline-flex;">📎 Escolher arquivos (decisão, sentença, acórdão, publicação, imagens…)<input type="file" id="nv-arqs" multiple hidden></label><div class="arquivos-lista" id="nv-lista"></div></div>' +
+      '</div><div class="rodape-form"><span class="st" id="nv-st"></span><button type="button" class="btn sec" data-x>Cancelar</button><button type="button" class="btn grande" id="nv-ok">Enviar para Validação</button></div></div></div>';
+    document.body.appendChild(fundo); document.documentElement.style.overflow = 'hidden';
+    const fechar = function(){ if (envio) return; if (sujo() && !confirm('Descartar esta validação?')) return; fundo.remove(); document.documentElement.style.overflow = aberta ? 'hidden' : ''; document.removeEventListener('keydown', escTecla); };
+    const escTecla = function(e){ const el = $('nv-sug'); if (e.key === 'Escape' && (!el || el.style.display === 'none')) fechar(); };
+    document.addEventListener('keydown', escTecla);
+    fundo.querySelectorAll('[data-x]').forEach(function(b){ b.onclick = fechar; });
+    let escolhido = null, arquivos = [], envio = false, sugs = [], focoSug = -1;
+    const sujo = function(){ return ['nv-num', 'nv-assunto', 'nv-resumo', 'nv-quest'].some(function(id){ return $(id).value.trim(); }) || arquivos.length; };
+    const origem = function(){
+      const o = $('nv-origem');
+      if (escolhido) o.innerHTML = '<div class="aviso ok">Processo localizado' + (escolhido.deValidacao ? ' em validações anteriores' : ' na Agenda do portal') + '. Os campos em verde foram preenchidos automaticamente e podem ser ajustados.</div>';
+      else if (FONTE.semAcesso) o.innerHTML = '<div class="aviso atencao">Sem acesso aos processos da Agenda, a busca usa só as validações anteriores. Preencha os dados à mão; a validação ficará marcada como "dados não localizados automaticamente".</div>';
+      else if ($('nv-num').value.trim().length >= 3) o.innerHTML = '<div class="aviso atencao">Nenhum processo escolhido da lista. Se não encontrar, preencha à mão — a validação ficará marcada como "dados não localizados automaticamente".</div>';
+      else o.innerHTML = '';
+    };
+    carregarFonte().then(origem);
+    const pintarSug = function(){
+      const el = $('nv-sug'), q = $('nv-num').value.trim();
+      sugs = buscarProcessos(q); focoSug = -1;
+      if (q.length < 3) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.innerHTML = (!FONTE.lista.length && !FONTE.semAcesso && FONTE.p && !FONTE.pronta ? '<div class="sug-info">Carregando processos…</div>' : '') +
+        (sugs.length ? sugs.map(function(x, i){ return '<button type="button" class="sug" data-i="' + i + '"><div class="l1">' + esc(x.numeroDig ? fmtCnj(x.numero) : 'Caso sem número') + (x.codigo ? ' · ' + esc(x.codigo) : '') + '</div>' +
+          '<div class="l2">' + esc(x.clientes.join(', ') || '—') + (x.contraria ? ' x ' + esc(x.contraria) : '') + (x.titulo ? ' · ' + esc(x.titulo) : '') + (x.orgao ? ' · ' + esc(x.orgao) : '') + '</div></button>'; }).join('')
+          : '<div class="sug-info">Nenhum processo encontrado. Continue preenchendo à mão.</div>');
+      el.querySelectorAll('[data-i]').forEach(function(b){ b.onmousedown = function(e){ e.preventDefault(); escolher(sugs[+b.dataset.i]); }; });
+    };
+    carregarFonte().then(function(){ FONTE.pronta = true; if (document.activeElement === $('nv-num')) pintarSug(); });
+    const marcar = function(id, valor){ const el = $(id); if (valor && !el.value.trim()) { el.value = valor; el.classList.add('auto'); } };
+    const escolher = function(x){
+      escolhido = x; $('nv-sug').style.display = 'none';
+      $('nv-num').value = x.numeroDig ? fmtCnj(x.numero) : (x.titulo || ''); $('nv-num').classList.add('auto');
+      ['nv-tipo', 'nv-cliente', 'nv-contraria', 'nv-outras', 'nv-orgao', 'nv-comarca', 'nv-adv'].forEach(function(id){ $(id).value = ''; $(id).classList.remove('auto'); });
+      marcar('nv-tipo', x.tipoAcao); marcar('nv-cliente', x.clientes.join(', ')); marcar('nv-contraria', x.contraria); marcar('nv-outras', x.outrasPartes);
+      marcar('nv-orgao', x.orgao); marcar('nv-comarca', x.comarca); marcar('nv-adv', x.advogado);
+      if (x.polo) { $('nv-polo').value = x.polo; $('nv-polo').classList.add('auto'); }
+      origem();
+      if (x.numeroDig && !FONTE.semAcesso) {
+        db.collection('agTeste_publicacoes').where('numero', '==', x.numeroDig).get().then(function(s){
+          if (escolhido !== x || !s.size) return;
+          const pubs = s.docs.map(function(d){ return d.data(); }).sort(function(a, b){ return String(b.disponibilizacao || '').localeCompare(String(a.disponibilizacao || '')); });
+          const p = pubs[0];
+          if (p.classe) { if (!$('nv-tipo').value || $('nv-tipo').classList.contains('auto')) { $('nv-tipo').value = p.classe; $('nv-tipo').classList.add('auto'); } }
+          marcar('nv-orgao', p.orgao); marcar('nv-comarca', comarcaDe(p.orgao));
+          if (/^\d{4}-\d{2}-\d{2}/.test(p.disponibilizacao || '')) marcar('nv-pub', String(p.disponibilizacao).slice(0, 10));
+          const partes = p.partes || [], nc = x.clientes.map(norm), ncon = norm(x.contraria);
+          const doCliente = partes.filter(function(pt){ const n = norm(pt.nome); return nc.some(function(c){ return c && (n.indexOf(c) >= 0 || c.indexOf(n) >= 0); }); })[0];
+          if (doCliente && !$('nv-polo').value) { $('nv-polo').value = doCliente.polo === 'A' ? 'Ativo (autor / exequente / reclamante)' : doCliente.polo === 'P' ? 'Passivo (réu / executado / reclamado)' : ''; if ($('nv-polo').value) $('nv-polo').classList.add('auto'); }
+          if (!x.contraria && doCliente) { const contra = partes.filter(function(pt){ return pt.polo && pt.polo !== doCliente.polo; }).map(function(pt){ return pt.nome; }); marcar('nv-contraria', contra.join(', ')); }
+          const outras = partes.filter(function(pt){ const n = norm(pt.nome); return !nc.some(function(c){ return c && (n.indexOf(c) >= 0 || c.indexOf(n) >= 0); }) && !(ncon && (ncon.indexOf(n) >= 0 || n.indexOf(ncon) >= 0)) && !(norm($('nv-contraria').value).indexOf(n) >= 0); }).map(function(pt){ return pt.nome; });
+          marcar('nv-outras', outras.join(', '));
+        }).catch(function(){});
+      }
+    };
+    $('nv-num').addEventListener('input', function(){ if (escolhido) { escolhido = null; $('nv-num').classList.remove('auto'); } pintarSug(); origem(); });
+    $('nv-num').addEventListener('focus', pintarSug);
+    $('nv-num').addEventListener('blur', function(){ setTimeout(function(){ const el = $('nv-sug'); if (el) el.style.display = 'none'; }, 150); });
+    $('nv-num').addEventListener('keydown', function(e){
+      const bts = $('nv-sug').querySelectorAll('.sug'); if (!bts.length || $('nv-sug').style.display === 'none') return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); focoSug = (focoSug + (e.key === 'ArrowDown' ? 1 : -1) + bts.length) % bts.length; bts.forEach(function(b, i){ b.classList.toggle('foco', i === focoSug); }); }
+      else if (e.key === 'Enter' && focoSug >= 0) { e.preventDefault(); escolher(sugs[focoSug]); }
+      else if (e.key === 'Escape') { $('nv-sug').style.display = 'none'; }
+    });
+    fundo.querySelectorAll('input:not(#nv-num),textarea,select').forEach(function(el){ el.addEventListener('input', function(){ el.classList.remove('auto'); }); });
+    const pintarArq = function(){ $('nv-lista').innerHTML = arquivos.map(function(a, i){ return '<span>📎 ' + esc(a.name) + ' <small class="sutil">' + (a.size / 1048576).toFixed(1).replace('.', ',') + ' MB</small><button type="button" data-t="' + i + '">remover</button></span>'; }).join('');
+      $('nv-lista').querySelectorAll('[data-t]').forEach(function(b){ b.onclick = function(){ arquivos.splice(+b.dataset.t, 1); pintarArq(); }; }); };
+    $('nv-arqs').onchange = function(){ Array.prototype.forEach.call(this.files, function(a){ arquivos.push(a); }); this.value = ''; pintarArq(); };
+    $('nv-ok').onclick = function(){
+      const s = $('nv-st'), val = (id) => $(id).value.trim();
+      const falta = [];
+      if (!val('nv-num')) falta.push('número do processo'); if (!val('nv-cliente')) falta.push('cliente'); if (!$('nv-val').value) falta.push('responsável pela validação');
+      if (!val('nv-assunto')) falta.push('assunto'); if (!val('nv-resumo')) falta.push('resumo da publicação'); if (!val('nv-quest')) falta.push('questionamento');
+      if (falta.length) { s.textContent = 'Preencha: ' + falta.join(', ') + '.'; s.style.color = 'var(--c-vermelho)'; return; }
+      const eArq = conferirArquivos(arquivos); if (eArq) { s.textContent = eArq; s.style.color = 'var(--c-vermelho)'; return; }
+      const numDig = escolhido && escolhido.numeroDig ? escolhido.numeroDig : (soDig(val('nv-num')).length >= 15 ? soDig(val('nv-num')) : '');
+      const processo = { numero: numDig || val('nv-num'), tipoAcao: val('nv-tipo'), cliente: val('nv-cliente'), contraria: val('nv-contraria'), outrasPartes: val('nv-outras'), polo: $('nv-polo').value,
+        orgao: val('nv-orgao'), comarca: val('nv-comarca'), advogado: val('nv-adv'), casoId: (escolhido && escolhido.casoId) || '', localizado: !!escolhido };
+      const validador = $('nv-val').value, vRef = db.collection('validacoes').doc(), mRef = vRef.collection('mensagens').doc(), cRef = db.collection('valContadores').doc('seq');
+      envio = true; this.disabled = true; s.style.color = ''; const botao = this;
+      enviarArquivos(vRef.id, mRef.id, arquivos, s).then(function(anexos){
+        s.textContent = 'Registrando…';
+        return db.runTransaction(function(t){
+          return t.get(cRef).then(function(c){
+            const n = c.exists ? (c.data().n || 0) + 1 : 1;
+            if (c.exists) t.update(cRef, { n: n }); else t.set(cRef, { n: 1 });
+            const codigo = 'VAL-' + String(n).padStart(4, '0');
+            const doc = { seq: n, codigo: codigo, processo: processo, numeroDig: numDig, assunto: val('nv-assunto'), dataPublicacao: $('nv-pub').value || '', prazoFatal: $('nv-fatal').value || '', prazoValidacao: $('nv-prazo').value || '',
+              prioridade: (fundo.querySelector('input[name="nv-pri"]:checked') || {}).value || 'normal', solicitanteUid: eu.uid, solicitanteNome: eu.nome, validadorUid: validador, validadorNome: nomeDe(validador),
+              participantes: [eu.uid, validador], status: 'aguardando', proximaAcaoUid: validador, criadoEm: FV.serverTimestamp(), atualizadoEm: FV.serverTimestamp(),
+              ultimaMov: { tipo: 'solicitacao', porUid: eu.uid, porNome: eu.nome, em: FV.serverTimestamp(), msgId: mRef.id }, rodada: 1, origemDados: escolhido ? 'agenda' : 'manual', reaberturas: 0 };
+            t.set(vRef, doc);
+            t.set(mRef, { tipo: 'solicitacao', autorUid: eu.uid, autorNome: eu.nome, texto: val('nv-quest'), resumo: val('nv-resumo'), analise: val('nv-analise'), sugestao: val('nv-sugestao'), anexos: anexos, em: FV.serverTimestamp(), rodada: 1 });
+            t.set(db.collection('valAvisos').doc(), { para: validador, de: eu.uid, deNome: eu.nome, validacaoId: vRef.id, codigo: codigo, tipo: 'nova', titulo: doc.assunto.slice(0, 300), trecho: val('nv-quest').slice(0, 300), em: FV.serverTimestamp(), lida: false });
+            return codigo;
+          });
+        });
+      }).then(function(codigo){
+        envio = false; fundo.remove(); document.removeEventListener('keydown', escTecla); document.documentElement.style.overflow = '';
+        toast(codigo + ' enviada para validação.'); irAba('andamento');
+      }).catch(function(e){ envio = false; botao.disabled = false; s.style.color = 'var(--c-vermelho)';
+        s.textContent = 'Não foi possível enviar: ' + (e.code === 'permission-denied' || e.code === 'storage/unauthorized' ? 'sem permissão (confira as permissões do módulo e se as regras novas foram publicadas).' : e.message); });
+    };
+    setTimeout(function(){ $('nv-num').focus(); }, 50);
+  }
+
+  // ---------- permissões (administrador) ----------
+  function abrirPermissoes(){
+    if (!pode('admin')) return;
+    const fundo = document.createElement('div'); fundo.className = 'fundo';
+    fundo.innerHTML = '<div class="janela"><div class="janela-topo"><h3>Permissões do módulo</h3><button type="button" class="fechar" data-x>✕</button></div><div class="janela-corpo">' +
+      '<p class="sutil" style="font-size:.8rem;margin-top:0;">Marque o que cada pessoa pode fazer. Quem não tiver nenhuma marcação não vê o módulo. ' + (eu.adminPortal ? 'Ao salvar, a aba "Validações Processuais" é liberada (ou retirada) do menu de cada pessoa.' : 'A aba do menu é liberada pelo administrador do portal.') +
+      ' "Ver todo o histórico" mostra todas as validações do escritório; sem ela, a pessoa vê só aquelas de que participa.</p><div id="pm-corpo">Carregando…</div>' +
+      '<div class="rodape-form"><span class="st" id="pm-st"></span><button type="button" class="btn sec" data-x>Cancelar</button><button type="button" class="btn" id="pm-ok" disabled>Salvar</button></div></div></div>';
+    document.body.appendChild(fundo);
+    fundo.querySelectorAll('[data-x]').forEach(function(b){ b.onclick = function(){ fundo.remove(); }; });
+    const fonte = eu.adminPortal ? db.collection('users').get().then(function(s){ return s.docs.map(function(d){ const u = d.data(); return { uid: d.id, nome: u.displayName || u.email || d.id, ok: ['admin', 'gestor', 'membro'].indexOf(u.role) >= 0 && u.acesso === 'ativo', tabs: u.tabs || [] }; }).filter(function(u){ return u.ok; }); })
+      : Promise.resolve(Object.keys(PERFIS).map(function(u){ return { uid: u, nome: PERFIS[u].nome }; }).filter(function(u){ return u.nome; }));
+    let pessoas = [];
+    fonte.then(function(l){
+      pessoas = l.sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+      Object.keys(PERMS).forEach(function(u){ if (!pessoas.some(function(p){ return p.uid === u; })) pessoas.push({ uid: u, nome: PERMS[u].nome || u, fora: true }); });
+      $('pm-corpo').innerHTML = '<div style="overflow-x:auto;"><table class="perm-tab"><thead><tr><th>Pessoa</th>' + PERM_CAMPOS.map(function(c){ return '<th>' + c[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        pessoas.map(function(p){ const x = PERMS[p.uid] || {}; return '<tr><td>' + esc(p.nome) + (p.fora ? ' <small class="sutil">(sem acesso ativo)</small>' : '') + '</td>' + PERM_CAMPOS.map(function(c){ return '<td><input type="checkbox" aria-label="' + esc(c[1] + ' — ' + p.nome) + '" data-pu="' + esc(p.uid) + '" data-pc="' + c[0] + '"' + (x[c[0]] ? ' checked' : '') + '></td>'; }).join('') + '</tr>'; }).join('') +
+        '</tbody></table></div><div class="form" style="margin-top:14px;"><div><label for="pm-padrao">Validador padrão (já vem escolhido na nova validação)</label><select id="pm-padrao"></select></div>' +
+        '<div class="full"><button type="button" class="lk" id="pm-micaela">Marcar o perfil de quem pede validações (criar, pedir esclarecimento, concluir) para quem já pode criar</button></div></div>';
+      const pintarPadrao = function(){ const sel = $('pm-padrao'), atual = sel.value || CONFIG.validadorPadrao || '';
+        const resp = pessoas.filter(function(p){ const cb = fundo.querySelector('[data-pu="' + p.uid + '"][data-pc="responder"]'); return cb && cb.checked; });
+        sel.innerHTML = '<option value="">—</option>' + resp.map(function(p){ return '<option value="' + esc(p.uid) + '"' + (p.uid === atual ? ' selected' : '') + '>' + esc(p.nome) + '</option>'; }).join(''); };
+      pintarPadrao();
+      fundo.querySelectorAll('[data-pc="responder"]').forEach(function(cb){ cb.addEventListener('change', pintarPadrao); });
+      $('pm-micaela').onclick = function(){ pessoas.forEach(function(p){ const c = fundo.querySelector('[data-pu="' + p.uid + '"][data-pc="criar"]'); if (c && c.checked) ['esclarecer', 'concluir'].forEach(function(k){ fundo.querySelector('[data-pu="' + p.uid + '"][data-pc="' + k + '"]').checked = true; }); }); };
+      $('pm-ok').disabled = false;
+    }).catch(function(e){ $('pm-corpo').textContent = 'Não foi possível carregar a equipe: ' + e.message; });
+    $('pm-ok').onclick = function(){
+      const lote = db.batch(), s = $('pm-st'); let n = 0;
+      pessoas.forEach(function(p){
+        const novo = {}; let algum = false;
+        PERM_CAMPOS.forEach(function(c){ const cb = fundo.querySelector('[data-pu="' + p.uid + '"][data-pc="' + c[0] + '"]'); novo[c[0]] = !!(cb && cb.checked); if (novo[c[0]]) algum = true; });
+        const antes = PERMS[p.uid], mudou = !antes || PERM_CAMPOS.some(function(c){ return !!antes[c[0]] !== novo[c[0]]; }) || (antes && antes.nome !== p.nome);
+        if (algum && mudou) { lote.set(db.collection('valPermissoes').doc(p.uid), Object.assign(novo, { nome: p.nome, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() })); n++; }
+        if (!algum && antes) { lote.delete(db.collection('valPermissoes').doc(p.uid)); n++; }
+        if (eu.adminPortal && p.tabs) {
+          const tem = p.tabs.indexOf(TAB_ID) >= 0;
+          if (algum && !tem) { lote.update(db.collection('users').doc(p.uid), { tabs: FV.arrayUnion(TAB_ID) }); n++; }
+          // só tira a aba de quem tinha permissões e perdeu todas (quem nunca teve fica como o administrador deixou)
+          // e nunca a única aba da pessoa (sem nenhuma aba ela perderia o acesso ao portal inteiro)
+          if (!algum && tem && antes && p.uid !== eu.uid && p.tabs.length > 1) { lote.update(db.collection('users').doc(p.uid), { tabs: FV.arrayRemove(TAB_ID) }); n++; }
+        }
+      });
+      const padrao = $('pm-padrao').value || '';
+      if (padrao !== (CONFIG.validadorPadrao || '')) { lote.set(db.collection('valConfig').doc('geral'), { validadorPadrao: padrao, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }, { merge: true }); n++; }
+      if (!n) { fundo.remove(); return; }
+      this.disabled = true; s.textContent = 'Salvando…';
+      const bt = this;
+      lote.commit().then(function(){ fundo.remove(); toast('Permissões salvas.'); }).catch(function(e){ bt.disabled = false; s.textContent = 'Não foi possível salvar: ' + e.message; });
+    };
+  }
+  function registrarAba(){
+    db.collection('tabs').doc(TAB_ID).set({ label: 'Validações Processuais', url: 'tools/validacoes/index.html', order: 56 }, { merge: true })
+      .then(function(){ return db.collection('users').doc(eu.uid).update({ tabs: FV.arrayUnion(TAB_ID) }); })
+      .then(function(){ $('b-aba').style.display = 'none'; toast('Aba registrada no menu. Recarregue o portal para vê-la.'); })
+      .catch(function(e){ alert('Não foi possível registrar a aba: ' + e.message); });
+  }
+
+  // ---------- início ----------
+  function iniciar(){
+    $('gate').style.display = 'none'; $('abas').style.display = '';
+    irAba(aba);
+    document.querySelectorAll('#abas button').forEach(function(b){ b.onclick = function(){ if (b.dataset.aba !== 'andamento' && b.dataset.aba !== 'concluidas') filtro.card = ''; irAba(b.dataset.aba); }; });
+    $('b-nova').style.display = pode('criar') ? '' : 'none'; $('b-nova').onclick = novaValidacao;
+    $('b-perm').style.display = pode('admin') ? '' : 'none'; $('b-perm').onclick = abrirPermissoes;
+    if (eu.adminPortal) { db.collection('tabs').doc(TAB_ID).get().then(function(s){ if (!s.exists) { $('b-aba').style.display = ''; $('b-aba').onclick = registrarAba; } }).catch(function(){}); }
+    db.collection('valPermissoes').onSnapshot(function(s){ PERMS = {}; s.docs.forEach(function(d){ PERMS[d.id] = d.data(); }); if (PERMS[eu.uid]) eu.perm = PERMS[eu.uid];
+      $('b-nova').style.display = pode('criar') ? '' : 'none'; $('b-perm').style.display = pode('admin') ? '' : 'none'; render(); }, function(){});
+    db.collection('valConfig').doc('geral').onSnapshot(function(s){ CONFIG = s.exists ? s.data() : {}; }, function(){});
+    db.collection('perfis').get().then(function(s){ s.docs.forEach(function(d){ const p = d.data(); PERFIS[d.id] = { nome: p.displayName || '', foto: p.photoBase64 || '' }; }); render(); }).catch(function(){});
+    const q = verTudo() ? db.collection('validacoes') : db.collection('validacoes').where('participantes', 'array-contains', eu.uid);
+    unsubVals = q.onSnapshot(function(s){
+      VALS = s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      valsProntos = true; render();
+      if (pendenteAbrir) { const id = pendenteAbrir; pendenteAbrir = null; abrir(id); }
+    }, function(e){ $('gate').style.display = ''; $('gate').innerHTML = 'Não foi possível carregar as validações: ' + esc(e.code === 'permission-denied' ? 'sem permissão (as regras novas do Firestore foram publicadas?).' : e.message); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && aberta && !document.querySelector('.fundo:not(#det-fundo)')) fecharDetalhe(); });
+    setInterval(function(){ if (!aberta) render(); }, 5 * 60 * 1000);
+  }
+  let pendenteAbrir = null;
+  try { pendenteAbrir = new URLSearchParams(location.search).get('val'); } catch (e) {}
+  window.__validacoes = { abrir: function(id){ if (valsProntos) { irAba(aba); abrir(String(id).slice(0, 100)); } else pendenteAbrir = String(id).slice(0, 100); } };
+
+  auth.onAuthStateChanged(function(user){
+    if (!user) { $('gate').textContent = 'Faça login no portal para ver as validações.'; $('sub').textContent = ''; return; }
+    Promise.all([db.collection('users').doc(user.uid).get(), db.collection('valPermissoes').doc(user.uid).get().catch(function(){ return null; })]).then(function(r){
+      const u = r[0].exists ? r[0].data() : {};
+      if (['admin', 'gestor', 'membro'].indexOf(u.role) < 0 || u.acesso !== 'ativo') { $('gate').textContent = 'Este módulo é só da equipe do escritório.'; $('sub').textContent = ''; return; }
+      eu = { uid: user.uid, nome: u.displayName || user.email, adminPortal: u.role === 'admin', perm: r[1] && r[1].exists ? r[1].data() : null };
+      if (eu.perm || eu.adminPortal) {
+        // administrador do portal: na primeira vez entra com todas as permissões e como validador padrão
+        if (eu.adminPortal && !eu.perm) {
+          const tudo = {}; PERM_CAMPOS.forEach(function(c){ tudo[c[0]] = true; });
+          eu.perm = tudo;
+          db.collection('valPermissoes').doc(eu.uid).set(Object.assign({}, tudo, { nome: eu.nome, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }))
+            .then(function(){ return db.collection('valConfig').doc('geral').get(); })
+            .then(function(c){ if (!c.exists || !c.data().validadorPadrao) return db.collection('valConfig').doc('geral').set({ validadorPadrao: eu.uid, atualizadoPor: eu.uid, atualizadoEm: FV.serverTimestamp() }, { merge: true }); })
+            .catch(function(e){ console.warn('permissões iniciais:', e.code || e); });
+        }
+        iniciar();
+      } else {
+        $('gate').innerHTML = 'Você ainda não tem permissão neste módulo.<br>Peça ao administrador para liberar em <b>Validações Processuais › Permissões</b>.'; $('sub').textContent = '';
+      }
+    }).catch(function(err){ $('gate').textContent = 'Erro ao carregar o seu cadastro: ' + err.message; });
+  });
+})();
+</script>
+</body>
+</html>

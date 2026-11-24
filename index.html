@@ -1031,6 +1031,10 @@
   .men-item .t{font-size:.84rem;font-weight:700;display:block;margin:2px 0;}
   .men-item .x{font-size:.78rem;color:var(--muted);display:block;white-space:pre-wrap;word-break:break-word;}
   .men-vazio{padding:16px 12px;font-size:.8rem;color:var(--muted);text-align:center;}
+  .men-item.val.nova{background:rgba(216,178,90,.10);}
+  .men-item.alerta-prazo{background:rgba(224,72,61,.10);}
+  .men-item.alerta-prazo .q{color:#e0675d;font-weight:700;}
+  #tabstrip .tab-btn .val-qtd{background:#c9463c;}
   #com-backdrop{z-index:70;}
   #com-backdrop .modal-box{width:min(560px,100%);max-width:100%;box-sizing:border-box;max-height:90vh;overflow-y:auto;display:block;padding:22px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.45);}
   .com-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
@@ -1451,7 +1455,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v278</span>
+      <span class="version-tag">v279</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2756,6 +2760,7 @@
     subscribeAnotacoesPendentes();
     subscribePatrimonioPendentes();
     subscribeEmailsPendentes();
+    subscribeValidacoes();
     verificarAvisoFotoObrigatoria();
     iniciarPresenca();
   }
@@ -2848,6 +2853,39 @@
     }).catch(function(){});
   }
 
+  // ---------- Validações Processuais (tools/validacoes): contador = validações em que é a minha vez de agir ----------
+  const VAL_TAB_ID = 'validacoes-processuais';
+  let valPendentes = [], valAvisosNovos = [], valAvisosLidos = [], valOuvindo = null, valAvisosOuvindo = null;
+  function ehAbaValidacoes(t){ return !!t && (t.id === VAL_TAB_ID || /tools\/validacoes\//.test(t.url || '')); }
+  function temValidacoes(){ return !!currentProfile && !ehContaCliente(currentProfile.role) && (currentProfile.tabs || []).indexOf(VAL_TAB_ID) !== -1; }
+  function subscribeValidacoes(){
+    if (!temValidacoes() || valOuvindo) return;
+    valOuvindo = db.collection('validacoes').where('proximaAcaoUid', '==', currentProfile.uid).onSnapshot(function(s){
+      valPendentes = s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      updateTabBlinks(); menDesenhar();
+    }, function(e){ console.warn('validações:', e.code || e); valPendentes = []; updateTabBlinks(); });
+  }
+  // prazo de validação vencido ou perto (2 dias), ou prazo fatal em até 3 dias, nas validações que dependem de mim
+  function valAlertasPrazo(){
+    const hoje = new Date(hojeISO() + 'T00:00:00');
+    const dias = function(iso){ return iso ? Math.round((new Date(iso + 'T00:00:00') - hoje) / 86400000) : null; };
+    return valPendentes.map(function(v){
+      const a = dias(v.prazoValidacao), f = dias(v.prazoFatal);
+      const venc = a !== null && a < 0, perto = !venc && ((a !== null && a <= 2) || (f !== null && f >= 0 && f <= 3));
+      return (venc || perto) ? { v: v, venc: venc } : null;
+    }).filter(Boolean).sort(function(x, y){ return (y.venc - x.venc) || String(x.v.prazoValidacao || x.v.prazoFatal || '').localeCompare(String(y.v.prazoValidacao || y.v.prazoFatal || '')); });
+  }
+  // abre a aba Validações Processuais já com a validação aberta (sino)
+  function abrirValidacao(id){
+    if (!id) return;
+    const t = tabsCatalog.find(function(x){ return ehAbaValidacoes(x) && (currentProfile.tabs || []).indexOf(x.id) !== -1; });
+    if (!t) { alert('Você ainda não tem acesso às Validações Processuais. Peça ao administrador para liberar.'); return; }
+    selectTab(t.id);
+    (function tentar(n){ let w = null; try { w = iframes[t.id] && iframes[t.id].contentWindow; } catch(e) {}
+      if (w && w.__validacoes && typeof w.__validacoes.abrir === 'function') { w.__validacoes.abrir(id); return; }
+      if (n < 80) setTimeout(function(){ tentar(n + 1); }, 250); })(0);
+  }
+
   // Pisca a aba "Conferência de E-mails" enquanto houver e-mail sob minha responsabilidade sem resposta
   // (gravados pelo robô scripts/conferencia-emails — ver tools/conferencia-emails).
   function subscribeEmailsPendentes(){
@@ -2874,8 +2912,10 @@
         (/gest[ãa]o/i.test(l) && (comprasPendentesCount > 0 || patAceitePendentes > 0 || patDevolucoesPendentes > 0 || semDeptoCount > 0)) ||
         (/anota/i.test(l) && (anotacoesPendentesCount > 0 || anotacoesEnviadasAtencao > 0)) ||
         (/chat|mensage|recad/i.test(l) && mhChatUnread > 0) ||
-        (/e-?mail/i.test(l) && /confer/i.test(l) && emailsPendentesCount > 0);
+        (/e-?mail/i.test(l) && /confer/i.test(l) && emailsPendentesCount > 0) ||
+        (ehAbaValidacoes(t) && valPendentes.length > 0);
       b.classList.toggle('tab-blink', !!pisca);
+      if (ehAbaValidacoes(t)) { const q = b.querySelector('.val-qtd'); if (q) { q.textContent = valPendentes.length > 99 ? '99+' : String(valPendentes.length); q.classList.toggle('show', valPendentes.length > 0); } }
     });
     // "Sugestões" fica no menu da engrenagem — acende ponto vermelho no botão
     var gearDot = document.getElementById('gear-notif-dot');
@@ -3066,42 +3106,91 @@
       + '<span class="t">' + escapeHtml(tp + ': ' + (m.titulo || '')) + '</span>' + (m.doPrazo ? '<span class="q">do prazo ' + escapeHtml(m.doPrazo) + '</span>' : '')
       + '<span class="x">' + escapeHtml(m.trecho || '') + '</span></button>';
   }
+  const VAL_TIPOS_AVISO = { nova: 'enviou uma validação para você', orientacao: 'enviou a orientação estratégica', esclarecimento: 'pediu um esclarecimento', concluida: 'concluiu a validação', reaberta: 'reabriu a validação' };
+  function valItemAviso(m, nova){
+    return '<button type="button" class="men-item val' + (nova ? ' nova' : '') + '" data-valaviso="' + escapeHtml(m.id) + '" data-val="' + escapeHtml(m.validacaoId) + '">'
+      + '<span class="q"><b>' + escapeHtml(m.deNome || 'Alguém') + '</b> ' + escapeHtml(VAL_TIPOS_AVISO[m.tipo] || 'movimentou a validação') + ' · ' + escapeHtml(menQuando(m.em)) + '</span>'
+      + '<span class="t">' + escapeHtml((m.codigo ? m.codigo + ': ' : '') + (m.titulo || '')) + '</span>'
+      + (m.trecho ? '<span class="x">' + escapeHtml(m.trecho) + '</span>' : '') + '</button>';
+  }
+  function valItemAlerta(a){
+    const v = a.v, br = function(iso){ return iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '—'; };
+    return '<button type="button" class="men-item alerta-prazo" data-val="' + escapeHtml(v.id) + '">'
+      + '<span class="q">' + (a.venc ? 'Prazo de validação vencido' : 'Prazo próximo') + '</span>'
+      + '<span class="t">' + escapeHtml((v.codigo ? v.codigo + ': ' : '') + (v.assunto || '')) + '</span>'
+      + '<span class="x">Prazo para validar: ' + br(v.prazoValidacao) + ' · Prazo fatal: ' + br(v.prazoFatal) + '</span></button>';
+  }
   function menDesenhar(){
     const q = document.getElementById('mencoes-qtd'), dd = document.getElementById('mencoes-dropdown');
-    q.textContent = menNovas.length > 99 ? '99+' : String(menNovas.length); q.classList.toggle('show', menNovas.length > 0);
-    document.getElementById('mencoes-btn').title = menNovas.length ? menNovas.length + ' menção(ões) nova(s) na Agenda' : 'Onde chamaram você na Agenda';
-    dd.innerHTML = '<div class="men-tit"><span>Chamaram você na Agenda</span>' + (menNovas.length ? '<button type="button" id="men-todas">marcar todas como lidas</button>' : '') + '</div>'
-      + (menNovas.length ? menNovas.map(function(m){ return menItem(m, true); }).join('') : '<div class="men-vazio">Nenhuma menção nova.</div>')
-      + (menLidas.length ? '<div class="men-tit" style="margin-top:6px;"><span>Já lidas</span></div>' + menLidas.slice(0, 15).map(function(m){ return menItem(m, false); }).join('') : '');
+    if (!q || !dd) return;
+    const alertas = temValidacoes() ? valAlertasPrazo() : [];
+    const total = menNovas.length + valAvisosNovos.length + alertas.length;
+    q.textContent = total > 99 ? '99+' : String(total); q.classList.toggle('show', total > 0);
+    document.getElementById('mencoes-btn').title = total ? total + ' aviso(s) novo(s)' : 'Avisos: menções na Agenda e validações processuais';
+    let h = '';
+    if (temValidacoes()) {
+      h += '<div class="men-tit"><span>Validações processuais</span>' + (valAvisosNovos.length ? '<button type="button" id="val-todas">marcar como lidas</button>' : '') + '</div>'
+        + (alertas.length || valAvisosNovos.length ? alertas.map(valItemAlerta).join('') + valAvisosNovos.map(function(m){ return valItemAviso(m, true); }).join('') : '<div class="men-vazio">Nenhum aviso novo.</div>');
+    }
+    if (temAgenda()) {
+      h += '<div class="men-tit"' + (h ? ' style="margin-top:6px;"' : '') + '><span>Chamaram você na Agenda</span>' + (menNovas.length ? '<button type="button" id="men-todas">marcar todas como lidas</button>' : '') + '</div>'
+        + (menNovas.length ? menNovas.map(function(m){ return menItem(m, true); }).join('') : '<div class="men-vazio">Nenhuma menção nova.</div>');
+    }
+    const lidas = menOrdenar(menLidas.map(function(m){ return Object.assign({ fonte: 'ag' }, m); }).concat(valAvisosLidos.map(function(m){ return Object.assign({ fonte: 'val' }, m); })));
+    if (lidas.length) h += '<div class="men-tit" style="margin-top:6px;"><span>Já lidos</span></div>' + lidas.slice(0, 15).map(function(m){ return m.fonte === 'val' ? valItemAviso(m, false) : menItem(m, false); }).join('');
+    dd.innerHTML = h;
     dd.querySelectorAll('[data-men]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); const id = b.getAttribute('data-men');
       if (menNovas.some(function(m){ return m.id === id; })) menMarcar([id]);
       menFechar(); abrirAtividadeAgenda(b.getAttribute('data-at')); }; });
+    dd.querySelectorAll('[data-val]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); const id = b.getAttribute('data-valaviso');
+      if (id && valAvisosNovos.some(function(m){ return m.id === id; })) valMarcar([id]);
+      menFechar(); abrirValidacao(b.getAttribute('data-val')); }; });
     const t = document.getElementById('men-todas'); if (t) t.onclick = function(e){ e.stopPropagation(); menMarcar(menNovas.map(function(m){ return m.id; })); };
+    const tv = document.getElementById('val-todas'); if (tv) tv.onclick = function(e){ e.stopPropagation(); valMarcar(valAvisosNovos.map(function(m){ return m.id; })); };
   }
   function menMarcar(ids){
     const lote = db.batch();
     ids.forEach(function(id){ lote.update(db.collection('agTeste_mencoes').doc(id), {lida:true, lidaEm:firebase.firestore.FieldValue.serverTimestamp()}); });
     lote.commit().catch(function(e){ console.error(e); });
   }
+  function valMarcar(ids){
+    const lote = db.batch();
+    ids.forEach(function(id){ lote.update(db.collection('valAvisos').doc(id), {lida:true, lidaEm:firebase.firestore.FieldValue.serverTimestamp()}); });
+    lote.commit().catch(function(e){ console.error(e); });
+  }
   function menFechar(){ const dd = document.getElementById('mencoes-dropdown'), b = document.getElementById('mencoes-btn'); dd.classList.remove('open'); b.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+  let menIniciado = false;
   function iniciarMencoes(){
     const b = document.getElementById('mencoes-btn');
-    if (!temAgenda() || ehContaCliente(currentProfile.role)) { b.style.display = 'none'; if (menOuvindo) { menOuvindo(); menOuvindo = null; } return; }
+    if ((!temAgenda() && !temValidacoes()) || ehContaCliente(currentProfile.role)) {
+      b.style.display = 'none';
+      if (menOuvindo) { menOuvindo(); menOuvindo = null; }
+      if (valAvisosOuvindo) { valAvisosOuvindo(); valAvisosOuvindo = null; }
+      return;
+    }
     b.style.display = '';
-    if (menOuvindo) return;
+    if (menIniciado) return;
+    menIniciado = true;
+    b.setAttribute('aria-label', 'Avisos');
     b.addEventListener('click', function(e){
       e.stopPropagation(); closeUserMenu(); closeSistemasStatus();
       const dd = document.getElementById('mencoes-dropdown'), abre = !dd.classList.contains('open');
       if (!abre) return menFechar();
       dd.classList.add('open'); b.classList.add('open'); b.setAttribute('aria-expanded', 'true'); menDesenhar();
-      db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', true).limit(100).get()
+      if (temAgenda()) db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', true).limit(100).get()
         .then(function(s){ menLidas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); }).catch(function(){});
+      if (temValidacoes()) db.collection('valAvisos').where('para', '==', currentProfile.uid).where('lida', '==', true).limit(100).get()
+        .then(function(s){ valAvisosLidos = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); }).catch(function(){});
     });
     document.addEventListener('click', function(e){ if (!e.target.closest || !e.target.closest('#mencoes-dropdown, #mencoes-btn')) menFechar(); });
     els.userMenuBtn.addEventListener('click', menFechar); els.sistemasStatusBtn.addEventListener('click', menFechar);
-    menOuvindo = db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', false)
+    if (temAgenda()) menOuvindo = db.collection('agTeste_mencoes').where('para', '==', currentProfile.uid).where('lida', '==', false)
       .onSnapshot(function(s){ menNovas = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); },
         function(e){ console.warn('menções:', e.code || e); });
+    if (temValidacoes()) valAvisosOuvindo = db.collection('valAvisos').where('para', '==', currentProfile.uid).where('lida', '==', false)
+      .onSnapshot(function(s){ valAvisosNovos = menOrdenar(s.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); })); menDesenhar(); },
+        function(e){ console.warn('avisos de validações:', e.code || e); });
+    menDesenhar();
   }
   // abre a aba Agenda já com a atividade aberta (sino, link ?agenda=ID, link clicado no Chat)
   function abrirAtividadeAgenda(id){
@@ -3887,6 +3976,7 @@
     peticao: '<path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"></path><path d="M14 3v4h4"></path><path d="M10.3 11.7l6.7 6.7"></path><circle cx="10" cy="11.4" r="1" fill="currentColor" stroke="none"></circle><line x1="11.3" y1="8.3" x2="11.3" y2="6.6"></line><line x1="8.6" y1="9.8" x2="7.3" y2="8.9"></line><line x1="8.6" y1="12.3" x2="7.3" y2="13.2"></line>',
     adminsite: '<path d="M12 3.2 19 6v6c0 4.8-3.1 8.6-7 9.8-3.9-1.2-7-5-7-9.8V6z"></path><circle cx="12" cy="11" r="2.4"></circle><line x1="12" y1="13.4" x2="12" y2="15.2"></line><line x1="9.9" y1="9.6" x2="8.4" y2="8.6"></line><line x1="14.1" y1="9.6" x2="15.6" y2="8.6"></line>',
     receipt: '<path d="M5 2h14v20l-1.7-1.1-1.7 1.1-1.7-1.1-1.7 1.1-1.7-1.1-1.7 1.1-1.7-1.1L5 22z"></path><path d="M12 4.5v7.8"></path><path d="M14.2 6H10.9a1.5 1.5 0 0 0 0 3h2.2a1.5 1.5 0 0 1 0 3H9.4"></path><path d="M8 15v3.4M10 15v3.4M12 15v3.4M14 15v3.4M16 15v3.4"></path>',
+    chatcheck: '<path d="M4 5.8A2.8 2.8 0 0 1 6.8 3h10.4A2.8 2.8 0 0 1 20 5.8v7.4a2.8 2.8 0 0 1-2.8 2.8H10.5L6 20v-4h.8A2.8 2.8 0 0 1 4 13.2z"></path><path d="m8.6 9.4 2.3 2.3 4.6-4.6"></path>',
   };
 
   const TAB_ICON_IMAGES = {
@@ -3921,6 +4011,7 @@
   function escolherIcone(label){
     // Ordem importa: checagens mais específicas primeiro, para evitar duas abas com o mesmo ícone.
     const l = (label || '').toLowerCase();
+    if (l.indexOf('valida') !== -1) return 'chatcheck';
     if (l.indexOf('painel') !== -1) return 'monitor';
     if (l.indexOf('matriz') !== -1 || l.indexOf('demanda') !== -1) return 'clipboard';
     if (l.indexOf('anivers') !== -1) return 'gift';
@@ -4672,7 +4763,7 @@
       const btn = document.createElement('button');
       btn.className = 'tab-btn';
       btn.dataset.tabId = t.id;
-      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span><span class="tab-blink-dot"></span>';
+      btn.innerHTML = iconeSvg(escolherIcone(t.label)) + '<span>' + escapeHtml(t.label) + '</span>' + (ehAbaValidacoes(t) ? '<span class="pending-badge val-qtd" aria-label="validações que dependem de você"></span>' : '') + '<span class="tab-blink-dot"></span>';
       btn.addEventListener('click', function(){ selectTab(t.id); });
       ativarTooltipAba(btn, t.label);
       els.tabstrip.appendChild(btn);
