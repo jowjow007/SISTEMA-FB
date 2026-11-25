@@ -1159,6 +1159,22 @@
   }
   // URL de foto/documento vinda da mensagem: só https:, data: de mídia, blob: (e localhost, para testes).
   // Qualquer outra coisa (javascript:, aspas para fechar o atributo...) vira vazio. Revisão de segurança 01/11/2026.
+  // Áudio gravado pelo Chrome (webm) não informa a duração: o player fica com a barra "no fim" e sem arrastar.
+  // Truque padrão: pula para o fim para o navegador medir o arquivo e volta para o início.
+  document.addEventListener('loadedmetadata', function(e){
+    var a = e.target;
+    if (!a || a.tagName !== 'AUDIO' || isFinite(a.duration) || a._durCorrigindo) return;
+    a._durCorrigindo = true;
+    var tocando = !a.paused;
+    function pronto(){
+      if (!isFinite(a.duration)) return;
+      a.removeEventListener('durationchange', pronto); a.removeEventListener('timeupdate', pronto);
+      a.currentTime = 0; a._durCorrigindo = false;
+      if (tocando) { var p = a.play(); if (p && p.catch) p.catch(function(){}); }
+    }
+    a.addEventListener('durationchange', pronto); a.addEventListener('timeupdate', pronto);
+    try { a.currentTime = 1e101; } catch (er) { a._durCorrigindo = false; }
+  }, true);
   function urlDeMidia(u){
     u = String(u || '');
     return /^(https:\/\/|data:(image\/|application\/|text\/plain)|blob:|http:\/\/(127\.0\.0\.1|localhost)[:\/])/i.test(u) ? escapeHtml(u) : '';
@@ -1829,7 +1845,7 @@
       }
       if (m.tipo === 'audio'){
         var auSrc = urlDeMidia(m.audioUrl || '');
-        out += '<div class="msg-audio">' + (auSrc ? '<div class="msg-audio-linha"><audio controls preload="none" src="' + auSrc + '"></audio>' + (m.audioDuracao ? '<span class="msg-audio-dur" title="Duração do áudio">' + mmss(m.audioDuracao) + '</span>' : '') + '</div>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
+        out += '<div class="msg-audio">' + (auSrc ? '<div class="msg-audio-linha"><audio controls preload="metadata" src="' + auSrc + '"></audio>' + (m.audioDuracao ? '<span class="msg-audio-dur" title="Duração do áudio">' + mmss(m.audioDuracao) + '</span>' : '') + '</div>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
           (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>'
             : m.transcricaoStatus === 'vazio' ? '<div class="msg-transc-st">sem fala para transcrever</div>'
             : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
