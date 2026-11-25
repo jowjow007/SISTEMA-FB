@@ -1848,7 +1848,7 @@
         out += '<div class="msg-audio">' + (auSrc ? '<div class="msg-audio-linha"><audio controls preload="metadata" src="' + auSrc + '"></audio>' + (m.audioDuracao ? '<span class="msg-audio-dur" title="Duração do áudio">' + mmss(m.audioDuracao) + '</span>' : '') + '</div>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
           (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>'
             : m.transcricaoStatus === 'vazio' ? '<div class="msg-transc-st">sem fala para transcrever</div>'
-            : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
+            : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] || agendadoTransc[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
             : '<button type="button" class="msg-transc-btn" data-transc="' + m.id + '">' + escapeHtml(rotuloTransc(m)) + '</button>') + '</div>';
       }
       if (m.texto) out += '<div>' + linkify(m.texto) + '</div>';
@@ -3288,10 +3288,27 @@
     return obter.then(function(b){ return transcreverAudio(b, mime, !!auto); })
       .then(function(t){ return ref.update({ transcricao: t || null, transcricaoStatus: t ? 'ok' : 'vazio' }); })
       .then(function(){ delete audiosTransc[msgId]; })
+      .then(function(){ delete audiosTransc[msgId]; delete tentativasFundo[msgId]; })
       .catch(function(e){ console.warn('transcrição', e); erroFinal = e;
         if (auto && erroDoServico(e)) return;
+        if (!auto && agendarNovaTentativa(conversaId, msgId, e)) return;
+        delete tentativasFundo[msgId];
         errosTransc[msgId] = motivoTransc(e); return ref.update({ transcricaoStatus: 'falhou' }).catch(function(){}); })
       .then(function(){ if (auto) delete audiosTransc[msgId]; delete transcrevendoIds[msgId]; redesenharTransc(conversaId); return erroFinal; });
+  }
+  // Falhou no envio: o Google costuma voltar em poucos minutos. Este computador tenta de novo sozinho
+  // (1, 3, 6 e 10 min depois), sem ninguém clicar; só marca "falhou" se todas derem errado.
+  // Limite diário, crédito ou chave inválida não adiantam repetir.
+  var FUNDO_ESPERAS = [60000, 180000, 360000, 600000], tentativasFundo = {}, agendadoTransc = {};
+  function agendarNovaTentativa(conversaId, msgId, e){
+    if (/limite di[aá]rio|prepayment|credits|billing|chave do gemini/i.test(String((e && e.message) || e))) return false;
+    if (e && (e.status === 401 || e.status === 403 || e.status === 413)) return false;
+    var n = tentativasFundo[msgId] || 0;
+    if (n >= FUNDO_ESPERAS.length) return false;
+    tentativasFundo[msgId] = n + 1;
+    agendadoTransc[msgId] = Date.now() + FUNDO_ESPERAS[n];
+    setTimeout(function(){ delete agendadoTransc[msgId]; transcreverMensagem(conversaId, msgId, null, null, false); }, FUNDO_ESPERAS[n]);
+    return true;
   }
 
   // Áudios já enviados sem transcrição: ao abrir a conversa, quem participa dela transcreve um por vez.
@@ -3301,15 +3318,19 @@
   function antigoJaTentado(id, marcar){
     try {
       var k = 'fbTranscAntigosTentados', o = JSON.parse(localStorage.getItem(k) || '{}');
-      if (marcar) { o[id] = 1; localStorage.setItem(k, JSON.stringify(o)); }
-      return !!o[id];
+      if (marcar) { o[id] = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }
+      return !!o[id] && Date.now() - o[id] < 3600000;
     } catch (e) { return false; }
   }
   function audioSemTranscricao(m){
     if (!m || m.tipo !== 'audio' || !m.audioUrl || m.transcricao || m.transcricaoStatus === 'ok' || m.transcricaoStatus === 'vazio') return false;
     var t = m.criadoEm && m.criadoEm.toMillis ? m.criadoEm.toMillis() : 0;
-    return t > 0 && Date.now() - t > 600000;   // o recém-enviado ainda está com quem gravou
+    return t > 0 && Date.now() - t > 1200000;   // nos primeiros 20 min quem gravou ainda está tentando
   }
+  setInterval(function(){
+    if (!activeId || document.hidden) return;
+    delete antigosVistos[activeId]; verAudiosAntigos(activeId);
+  }, 300000);
   function verAudiosAntigos(conversaId){
     if (antigosVistos[conversaId] || Date.now() < antigosParadoAte) return;
     if (typeof GEMINI_WORKER_URL === 'undefined' || !GEMINI_WORKER_URL) return;
@@ -3364,6 +3385,7 @@
   function redesenharTransc(conversaId){ if (conversaId === activeId) try { renderMensagens(); } catch (e) {} }
   els.msgList.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('[data-transc]'); if (!b || !activeId) return;
+    delete tentativasFundo[b.dataset.transc];
     b.disabled = true; b.textContent = 'Transcrevendo…';
     transcreverMensagem(activeId, b.getAttribute('data-transc'));
   });

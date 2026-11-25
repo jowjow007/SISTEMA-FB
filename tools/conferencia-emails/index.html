@@ -101,6 +101,13 @@
   .chiprem a{color:inherit;text-decoration:none;font-weight:700;}
 
   .lista{display:flex;flex-direction:column;gap:8px;}
+  .lote{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:.8rem;}
+  .lote[hidden]{display:none;}
+  .lote b{font-family:var(--font-display,inherit);}
+  .lote label{display:inline-flex;gap:6px;align-items:center;cursor:pointer;}
+  .lote .qtd{color:var(--muted);}
+  .lote .bt:disabled{opacity:.45;cursor:default;}
+  .sel{width:17px;height:17px;margin:0;accent-color:var(--red-bright);cursor:pointer;flex:none;}
   .mail{background:var(--panel-2);border:1px solid var(--line-strong);border-left:4px solid var(--warn);border-radius:10px;padding:11px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 14px;}
   .mail.atrasado{border-left-color:var(--red-bright);}
   .mail.respondido{border-left-color:var(--green);}
@@ -110,6 +117,7 @@
   .linha1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   .caixa{font-size:.64rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:2px 7px;background:var(--panel-3);white-space:nowrap;}
   .caixa.meu{color:var(--green);} .caixa.condominio{color:var(--gold);} .caixa.juridico{color:var(--red-bright);}
+  .copia{font-size:.68rem;font-weight:600;color:var(--blue,#6aa7ff);border:1px dashed currentColor;border-radius:5px;padding:1px 7px;white-space:nowrap;}
   .assunto{font-weight:600;word-break:break-word;}
   .de{color:var(--muted);font-size:.76rem;word-break:break-word;}
   .de b{color:var(--paper);font-weight:600;}
@@ -294,6 +302,7 @@
   <section class="painel" id="painel-conf">
     <div class="cards" id="cards"></div>
     <div class="filtros" id="filtros"></div>
+    <div class="lote" id="lote" hidden></div>
     <div class="lista" id="lista"></div>
     <div class="rodape" id="rodape"></div>
   </section>
@@ -391,6 +400,18 @@
   const DONO_EMAIL = 'jonathan@fonsecaebraga.com.br';
   const CAIXAS = { meu: 'Meu e-mail', condominio: 'Condomínio', juridico: 'Jurídico' };
   const PRAZO_H = 24;
+  // E-mail endereçado a mais de uma caixa (ex.: ao Jonathan e ao condomínio): aparece nas duas listas,
+  // avisando quem mais está nele. A caixa "meu" é o e-mail pessoal do dono.
+  function nomeCaixaCopia(k){ return k === 'meu' ? (eu && eu.dono ? 'você' : nomeDe(DONO_EMAIL)) : (CAIXAS[k] || k); }
+  function avisoCopia(m){
+    const todas = [m.caixa].concat(m.tambemEm || []);
+    if (todas.length < 2) return '';
+    const outras = todas.filter(function(k){ return k !== (filtroCaixa || m.caixa); });
+    if (!outras.length) return '';
+    const nomes = outras.map(nomeCaixaCopia);
+    const txt = nomes.length === 1 ? nomes[0] : nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
+    return '<span class="copia" title="Este e-mail foi enviado também para ' + escapeHtml(txt) + '">📋 Também enviado para: ' + escapeHtml(txt) + '</span>';
+  }
   const DIAS_VISAO_ADMIN = 30;
   const POR_PAGINA = 100;
   const svg = function(corpo){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + corpo + '</svg>'; };
@@ -556,7 +577,7 @@
       if (filtroSt === 'atrasados' && s !== 'atrasado') return false;
       if (filtroSt === 'respondidos' && s !== 'respondido' && s !== 'manual') return false;
       if (filtroSt === 'ignorados' && s !== 'ignorado') return false;
-      if (filtroCaixa && m.caixa !== filtroCaixa) return false;
+      if (filtroCaixa && m.caixa !== filtroCaixa && (m.tambemEm || []).indexOf(filtroCaixa) < 0) return false;
       if (filtroResp && respsDe(m).indexOf(filtroResp) < 0) return false;
       if (busca && norm(m.assunto + ' ' + m.deNome + ' ' + m.deEmail + ' ' + m.trecho).indexOf(busca) < 0) return false;
       return true;
@@ -598,6 +619,9 @@
     $('filtros').innerHTML = f;
 
     const lista = filtradosConf(base);
+    const selecionaveis = eu.dono ? lista.filter(function(m){ return !fechado(st(m)); }) : [];
+    Object.keys(selecao).forEach(function(id){ if (!selecionaveis.some(function(m){ return m.id === id; })) delete selecao[id]; });
+    pintarLote(selecionaveis);
     $('lista').innerHTML = lista.length ? lista.map(function(m){
       const s = st(m);
       let resp = '';
@@ -627,7 +651,7 @@
       const extra = (s === 'ignorado' && m.ignoradoMotivo ? '<div class="motivo"><b>Motivo para ignorar:</b> ' + escapeHtml(m.ignoradoMotivo) + '</div>' : '') +
         (rec && rec.recado && !fechado(s) ? '<div class="motivo"><b>Recado de ' + escapeHtml(rec.porNome || nomeDe(rec.porEmail)) + ':</b> ' + escapeHtml(rec.recado) + '</div>' : '');
       return '<div class="mail ' + s + '">' +
-        '<div><div class="linha1"><span class="caixa ' + escapeHtml(m.caixa) + '">' + escapeHtml(CAIXAS[m.caixa] || m.caixa) + '</span>' +
+        '<div><div class="linha1">' + (eu.dono && !fechado(s) ? '<input type="checkbox" class="sel" data-sel="' + escapeHtml(m.id) + '"' + (selecao[m.id] ? ' checked' : '') + ' aria-label="Selecionar este e-mail">' : '') + '<span class="caixa ' + escapeHtml(filtroCaixa || m.caixa) + '">' + escapeHtml(CAIXAS[filtroCaixa || m.caixa] || m.caixa) + '</span>' + avisoCopia(m) +
           '<span class="assunto">' + escapeHtml(m.assunto) + '</span></div>' +
           '<div class="de">' + escapeHtml(m.deNome) + (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + escapeHtml(m.deEmail) + '&gt;' : '') +
           ' · recebido ' + quando(data(m.recebidoEm)) + para + veio + '</div></div>' +
@@ -654,6 +678,42 @@
     const fr = $('filtro-resp');
     if (fr) fr.onchange = function(){ filtroResp = fr.value; renderConf(); };
   }
+
+  // ---------- ações em lote (só o dono): marca vários e-mails de uma vez como "sem necessidade de resposta" ----------
+  var MOTIVO_LOTE = 'Sem necessidade de resposta';
+  var selecao = {}, loteVisiveis = [];
+  function pintarLote(sels){
+    loteVisiveis = sels;
+    const el = $('lote');
+    if (!eu.dono || abaAtual !== 'conf' || !sels.length) { el.hidden = true; el.innerHTML = ''; return; }
+    const n = sels.filter(function(m){ return selecao[m.id]; }).length, todos = n === sels.length;
+    el.hidden = false;
+    el.innerHTML = '<b>Ações em lote</b>' +
+      '<label><input type="checkbox" class="sel" id="lote-todos"' + (todos ? ' checked' : '') + '> Selecionar todos (' + sels.length + ')</label>' +
+      '<span class="qtd" id="lote-qtd">' + (n ? n + (n === 1 ? ' selecionado' : ' selecionados') : 'Marque os quadradinhos dos e-mails') + '</span>' +
+      '<button type="button" class="bt p" id="lote-sem"' + (n ? '' : ' disabled') + '>Sem necessidade de resposta</button>';
+    const t = $('lote-todos'); t.indeterminate = n > 0 && !todos;
+  }
+  function marcarSemResposta(){
+    const ids = loteVisiveis.filter(function(m){ return selecao[m.id]; }).map(function(m){ return m.id; });
+    if (!ids.length) return;
+    if (!confirm('Marcar ' + ids.length + (ids.length === 1 ? ' e-mail' : ' e-mails') + ' como "sem necessidade de resposta"? Eles saem da lista de abertos e ficam em Ignorados, com esse motivo.')) return;
+    const bt = $('lote-sem'); if (bt) { bt.disabled = true; bt.textContent = 'Marcando…'; }
+    const ts = firebase.firestore.FieldValue.serverTimestamp(), partes = [];
+    for (let i = 0; i < ids.length; i += 400) partes.push(ids.slice(i, i + 400));
+    Promise.all(partes.map(function(pt){
+      const b = db.batch();
+      pt.forEach(function(id){ b.update(db.collection('emailsConferencia').doc(id), { status: 'ignorado', ignoradoPor: eu.email, ignoradoEm: ts, ignoradoMotivo: MOTIVO_LOTE }); });
+      return b.commit();
+    })).then(function(){ selecao = {}; toast(ids.length + (ids.length === 1 ? ' e-mail marcado' : ' e-mails marcados') + ' como sem necessidade de resposta.'); repintar(); })
+      .catch(function(err){ toast('Não foi possível marcar: ' + err.message); repintar(); });
+  }
+  document.addEventListener('change', function(e){
+    const c = e.target;
+    if (c.dataset && c.dataset.sel) { if (c.checked) selecao[c.dataset.sel] = true; else delete selecao[c.dataset.sel]; pintarLote(loteVisiveis); return; }
+    if (c.id === 'lote-todos') { selecao = {}; if (c.checked) loteVisiveis.forEach(function(m){ selecao[m.id] = true; }); renderConf(); }
+  });
+  document.addEventListener('click', function(e){ if (e.target.closest && e.target.closest('#lote-sem')) marcarSemResposta(); });
 
   // Data e hora da última rodada do robô (todos veem); o administrador vê também o resumo e eventuais erros.
   function renderSub(){

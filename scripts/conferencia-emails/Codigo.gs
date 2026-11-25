@@ -18,7 +18,8 @@ var CONFIG = {
   projetoFirestore: 'sistema-fb-4cce5',
   dominio: 'fonsecaebraga.com.br',
   caixaPrincipal: 'jonathan@fonsecaebraga.com.br',
-  // Ordem importa: um e-mail endereçado ao condomínio e ao Jonathan entra como "condominio".
+  // Ordem importa: um e-mail endereçado ao condomínio e ao Jonathan entra como "condominio" (a caixa principal)
+  // e guarda as outras em "tambemEm" — no portal ele aparece nas duas listas, avisando quem mais está no e-mail.
   caixas: [
     { id: 'condominio', endereco: 'condominio@fonsecaebraga.com.br', responsavel: 'yasmin@fonsecaebraga.com.br' },
     // coResponsaveis: também veem e podem marcar os e-mails desta caixa (piloto do jurídico com a Dra. Micaela, 19/11/2026)
@@ -109,6 +110,7 @@ function conferirAgora() {
   try {
     migrarTextos();
     resumo.novos = registrarNovos();
+    try { completarTambemEm(); } catch (e3) { Logger.log('Falha ao completar tambemEm: ' + e3); }
     var r = atualizarRespostas();
     resumo.respondidos = r.respondidos;
     resumo.pendentes = r.pendentes;
@@ -169,6 +171,7 @@ function registrarNovos() {
     textos.push({ id: m.id, dados: { recebidoTexto: corpos[m.id] || limparTrecho(m.snippet), criadoEm: new Date() } });
     novos.push({ id: m.id, dados: {
       caixa: c.caixa.id,
+      tambemEm: c.outras || [],
       assunto: (m.h['subject'] || '(sem assunto)').slice(0, 300),
       deNome: c.de.nome.slice(0, 150),
       deEmail: c.de.email.slice(0, 150),
@@ -313,13 +316,40 @@ function classificar(m) {
   if (automatico(m.h, de.email)) return { motivo: 'automatico', de: de };
   var para = (m.h['to'] || '').toLowerCase();
   var cc = (m.h['cc'] || '').toLowerCase();
-  for (var i = 0; i < CONFIG.caixas.length; i++) {
-    var cx = CONFIG.caixas[i];
-    // aliases valem em Para ou Cc; o e-mail pessoal só quando está em Para (cópias ficam de fora)
-    var alvo = cx.id === 'meu' ? para : para + ',' + cc;
-    if (alvo.indexOf(cx.endereco) >= 0) return { caixa: cx, de: de };
-  }
+  var achadas = caixasDoEmail(para, cc);
+  if (achadas.length) return { caixa: achadas[0], de: de, outras: achadas.slice(1).map(function(cx) { return cx.id; }) };
   return { motivo: 'foraDasCaixas', de: de };
+}
+
+// Todas as caixas a que o e-mail foi endereçado, na ordem de CONFIG.caixas.
+// Aliases valem em Para ou Cc. O e-mail pessoal sozinho só entra quando está em Para (cópias ficam de fora);
+// se o e-mail já entrou por um alias, o pessoal em Cc também conta (aparece na lista dele, "em cópia").
+function caixasDoEmail(para, cc) {
+  var tudo = para + ',' + cc;
+  var porAlias = CONFIG.caixas.some(function(cx) { return cx.id !== 'meu' && tudo.indexOf(cx.endereco) >= 0; });
+  return CONFIG.caixas.filter(function(cx) {
+    var alvo = cx.id === 'meu' && !porAlias ? para : tudo;
+    return alvo.indexOf(cx.endereco) >= 0;
+  });
+}
+
+// E-mails registrados antes de existir "tambemEm" (até 30 dias): relê só os cabeçalhos e completa.
+// Depois da primeira rodada não sobra nenhum, e esta função não lê mais nada.
+function completarTambemEm() {
+  var desde = new Date(Date.now() - CONFIG.diasAcompanhar * 864e5);
+  var faltam = consultar(filtroCampo('recebidoEm', 'GREATER_THAN_OR_EQUAL', desde)).filter(function(d) { return d.tambemEm === undefined; });
+  if (!faltam.length) return 0;
+  var porId = {};
+  faltam.forEach(function(d) { porId[d._id] = d; });
+  var feitos = 0;
+  lerMensagens(CONFIG.caixaPrincipal, faltam.map(function(d) { return d._id; })).forEach(function(m) {
+    var d = porId[m.id]; if (!d) return;
+    var outras = caixasDoEmail((m.h['to'] || '').toLowerCase(), (m.h['cc'] || '').toLowerCase())
+      .map(function(cx) { return cx.id; }).filter(function(id) { return id !== d.caixa; });
+    atualizar(COLECAO, m.id, { tambemEm: outras });
+    feitos++;
+  });
+  return feitos;
 }
 
 function abaGmail(rotulos) {
