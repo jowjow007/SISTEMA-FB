@@ -65,7 +65,9 @@
   #nova .grade{display:grid;grid-template-columns:1.3fr 1.3fr .8fr;gap:10px;}
   #nova label.r{display:block;font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:4px;}
   #nova input:not([type=checkbox]),#nova textarea,#nova select{width:100%;}
-  #nova textarea{min-height:90px;resize:vertical;line-height:1.45;margin-top:10px;}
+  #nova textarea{min-height:110px;resize:vertical;line-height:1.45;}
+  #nova .caixas2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .bolha.decisao{border-left-color:var(--blue);}
   .busca-proc{position:relative;}
   .sugs{position:absolute;left:0;right:0;top:100%;margin-top:3px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:10;max-height:300px;overflow:auto;}
   .sug{display:block;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--paper);padding:8px 11px;cursor:pointer;}
@@ -111,7 +113,7 @@
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel-3);color:var(--paper);border:1px solid var(--line-strong);border-radius:10px;padding:10px 16px;z-index:80;font-size:.84rem;}
   @media (max-width:700px){
     header{padding:12px 14px;} main{padding:12px 14px 50px;}
-    #nova .grade{grid-template-columns:1fr;}
+    #nova .grade,#nova .caixas2{grid-template-columns:1fr;}
     .topo-val{grid-template-columns:1fr;}
     .lado{grid-row:auto;grid-column:1;text-align:left;min-width:0;}
     .pergunta{white-space:normal;}
@@ -135,7 +137,10 @@
         <div class="busca-proc"><label class="r" for="n-cli">Cliente</label><input id="n-cli" placeholder="Digite o nome" autocomplete="off"><div class="sugs" id="s-cli" hidden></div></div>
         <div><label class="r" for="n-prazo">Prazo fatal</label><input id="n-prazo" type="date"></div>
       </div>
-      <textarea id="n-perg" placeholder="O que precisa ser decidido? Ex.: saiu sentença parcialmente procedente — embargos antes da apelação ou apelação direto?"></textarea>
+      <div class="caixas2">
+        <div><label class="r" for="n-dec">Resumo da decisão do juiz</label><textarea id="n-dec" placeholder="O que a decisão disse? Ex.: julgou parcialmente procedente, negou os danos morais e fixou honorários em 10%."></textarea></div>
+        <div><label class="r" for="n-perg">Dúvida de quem lança o prazo</label><textarea id="n-perg" placeholder="O que precisa ser decidido? Ex.: embargos antes da apelação ou apelação direto?"></textarea></div>
+      </div>
       <div class="linha-bt">
         <label class="chk"><input type="checkbox" id="n-urg"> Urgente</label>
         <span id="n-val-box"></span>
@@ -166,7 +171,7 @@
   // valConfig, valAvisos, valContadores) e valem as mesmas regras do Firestore e do Storage.
   const TAB_ID = 'validacoes-processuais';
   const PERM_CAMPOS = [['criar', 'Pedir validação'], ['responder', 'Validar (responder)'], ['esclarecer', 'Perguntar de novo'], ['concluir', 'Concluir'], ['reabrir', 'Reabrir'], ['historico', 'Ver todas'], ['admin', 'Administrar']];
-  const ROT_MSG = { solicitacao: 'Pergunta', orientacao: 'Orientação', esclarecimento: 'Nova pergunta', conclusao: 'Concluída', reabertura: 'Reaberta', alteracao: 'Alteração', correcao: 'Correção' };
+  const ROT_MSG = { solicitacao: 'Dúvida', orientacao: 'Solução', esclarecimento: 'Nova dúvida', conclusao: 'Concluída', reabertura: 'Reaberta', alteracao: 'Alteração', correcao: 'Correção' };
 
   const $ = function(id){ return document.getElementById(id); };
   const esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
@@ -197,7 +202,7 @@
   // situação vista por quem está olhando
   function visao(v){
     if (v.status === 'concluida') return { cls: 'ok', txt: 'Concluída' };
-    if (v.proximaAcaoUid === eu.uid) return v.status === 'respondida' ? { cls: 'analisar', txt: 'Orientação recebida — concluir ou perguntar' } : { cls: 'vez', txt: 'Aguardando sua resposta' };
+    if (v.proximaAcaoUid === eu.uid) return v.status === 'respondida' ? { cls: 'analisar', txt: 'Solução recebida — concluir ou perguntar' } : { cls: 'vez', txt: 'Aguardando sua resposta' };
     return { cls: 'agu', txt: 'Aguardando ' + primeiroNome(v.proximaAcaoUid) };
   }
   function vencida(v){ return v.status !== 'concluida' && v.prazoFatal && v.prazoFatal < hojeISO(); }
@@ -259,7 +264,11 @@
       const txt = cor[m.id] ? cor[m.id].texto : m.texto;
       const evento = (m.tipo === 'conclusao' && !txt) || m.tipo === 'alteracao' || m.tipo === 'reabertura' && !txt;
       let corpo = esc(txt || '');
-      if (m.tipo === 'solicitacao') corpo = [m.resumo ? 'Publicação: ' + esc(m.resumo) : '', m.analise ? 'Análise: ' + esc(m.analise) : '', m.sugestao ? 'Sugestão: ' + esc(m.sugestao) : '', esc(txt)].filter(Boolean).join('\n\n');
+      if (m.tipo === 'solicitacao') corpo = [m.analise ? 'Análise: ' + esc(m.analise) : '', m.sugestao ? 'Sugestão: ' + esc(m.sugestao) : '', esc(txt)].filter(Boolean).join('\n\n');
+      const rotM = esc(m.autorNome) + ' · ' + esc(quando(m.em)) + (cor[m.id] ? ' · corrigida' : '');
+      // pedido: caixa "Decisão do juiz" ao lado da "Dúvida"; a "Solução" (orientação) aparece depois como terceira caixa
+      if (m.tipo === 'solicitacao' && m.resumo) return '<div class="bolha decisao"><div class="rot">Decisão do juiz · ' + rotM + '</div>' + esc(m.resumo) + '</div>' +
+        '<div class="bolha solicitacao"><div class="rot">Dúvida · ' + rotM + '</div>' + (corpo || '<span class="aviso">(sem dúvida escrita)</span>') + anexosHtml(m.anexos) + '</div>';
       return '<div class="bolha ' + esc(m.tipo) + (evento ? ' evento' : '') + '"><div class="rot">' + esc(ROT_MSG[m.tipo] || m.tipo) + ' · ' + esc(m.autorNome) + ' · ' + esc(quando(m.em)) + (cor[m.id] ? ' · corrigida' : '') + '</div>' + corpo + anexosHtml(m.anexos) + '</div>';
     }).join('');
   }
@@ -267,7 +276,7 @@
     const anex = '<label class="btn sec" style="cursor:pointer;">📎 Anexar<input type="file" multiple hidden data-arq="' + esc(v.id) + '"></label><span class="arqs">' + esc((anexosResp[v.id] || []).map(function(a){ return a.name; }).join(', ')) + '</span>';
     const caixa = function(ph){ return '<div class="responder"><textarea data-resp="' + esc(v.id) + '" placeholder="' + esc(ph) + '">' + esc(rascunho[v.id] || '') + '</textarea>'; };
     if ((v.status === 'aguardando' || v.status === 'aguardando_nova') && v.validadorUid === eu.uid && pode('responder'))
-      return caixa('Sua orientação: qual providência adotar?') + '<div class="linha-bt">' + anex + '<span class="st" data-st="' + esc(v.id) + '"></span><button type="button" class="btn" data-acao="orientacao" data-v="' + esc(v.id) + '">Enviar orientação</button></div></div>';
+      return caixa('Solução: qual providência adotar?') + '<div class="linha-bt">' + anex + '<span class="st" data-st="' + esc(v.id) + '"></span><button type="button" class="btn" data-acao="orientacao" data-v="' + esc(v.id) + '">Enviar solução</button></div></div>';
     if (v.status === 'respondida' && v.solicitanteUid === eu.uid)
       return caixa('Se ficou dúvida, escreva aqui e clique em "Perguntar de novo". Para concluir, pode deixar em branco ou anotar o que foi feito.') + '<div class="linha-bt">' + anex + '<span class="st" data-st="' + esc(v.id) + '"></span>' +
         (pode('esclarecer') ? '<button type="button" class="btn sec" data-acao="esclarecimento" data-v="' + esc(v.id) + '">Perguntar de novo</button>' : '') +
@@ -335,7 +344,7 @@
     let texto = (ta ? ta.value : '').trim();
     const falha = function(t){ if (stEl) { stEl.textContent = t; stEl.style.color = 'var(--red-bright)'; } else alert(t); };
     if (tipo === 'reabertura') { texto = (prompt('Motivo para reabrir (a validação volta para ' + nomeDe(v.validadorUid) + '):') || '').trim(); if (!texto) return; }
-    if ((tipo === 'orientacao' || tipo === 'esclarecimento') && !texto) return falha(tipo === 'orientacao' ? 'Escreva a orientação.' : 'Escreva a dúvida.');
+    if ((tipo === 'orientacao' || tipo === 'esclarecimento') && !texto) return falha(tipo === 'orientacao' ? 'Escreva a solução.' : 'Escreva a dúvida.');
     const arquivos = tipo === 'conclusao' || tipo === 'reabertura' ? [] : (anexosResp[id] || []);
     const eA = conferir(arquivos); if (eA) return falha(eA);
     const mRef = db.collection('validacoes').doc(id).collection('mensagens').doc();
@@ -355,7 +364,7 @@
     }).then(function(){
       delete rascunho[id]; delete anexosResp[id];
       if (tipo === 'conclusao' || tipo === 'orientacao' || tipo === 'esclarecimento') { abertos[id] = false; parar(id); }
-      toast({ orientacao: 'Orientação enviada.', esclarecimento: 'Pergunta enviada.', conclusao: 'Validação concluída.', reabertura: 'Validação reaberta.' }[tipo]);
+      toast({ orientacao: 'Solução enviada.', esclarecimento: 'Pergunta enviada.', conclusao: 'Validação concluída.', reabertura: 'Validação reaberta.' }[tipo]);
       render();
     }).catch(function(e){ botao.disabled = false; falha('Não foi possível salvar: ' + (e.code === 'permission-denied' || e.code === 'storage/unauthorized' ? 'sem permissão.' : e.message)); });
   }
@@ -442,12 +451,12 @@
   function fecharNova(){ const f = $('nova'); f.classList.remove('aberta'); f.reset(); novosArqs = []; $('n-arqs-l').textContent = ''; }
   function enviarNova(e){
     e.preventDefault();
-    const s = $('n-st'), proc = $('n-proc').value.trim(), cli = $('n-cli').value.trim(), perg = $('n-perg').value.trim(), validador = ($('n-val') || {}).value || '';
+    const s = $('n-st'), proc = $('n-proc').value.trim(), cli = $('n-cli').value.trim(), perg = $('n-perg').value.trim(), dec = $('n-dec').value.trim().slice(0, 20000), validador = ($('n-val') || {}).value || '';
     // nada é obrigatório; só é preciso haver alguém para validar (cadastrado em Permissões)
     if (!validador) { s.textContent = 'Nenhum validador cadastrado em Permissões.'; s.style.color = 'var(--red-bright)'; return; }
     const eA = conferir(novosArqs); if (eA) { s.textContent = eA; s.style.color = 'var(--red-bright)'; return; }
     const dig = soDig(proc), numDig = dig.length >= 15 ? dig : '';
-    const assunto = (perg.split('\n')[0] || (proc ? 'Processo ' + proc : '') || cli || 'Validação sem descrição').slice(0, 160);
+    const assunto = (perg.split('\n')[0] || dec.split('\n')[0] || (proc ? 'Processo ' + proc : '') || cli || 'Validação sem descrição').slice(0, 160);
     const contraria = escolhido && escolhido.contraria || '', casoId = escolhido && escolhido.casoId || '';
     const vRef = db.collection('validacoes').doc(), mRef = vRef.collection('mensagens').doc(), cRef = db.collection('valContadores').doc('seq');
     const bt = $('n-ok'); bt.disabled = true; s.style.color = '';
@@ -463,8 +472,8 @@
             solicitanteUid: eu.uid, solicitanteNome: eu.nome, validadorUid: validador, validadorNome: nomeDe(validador), participantes: [eu.uid, validador], status: 'aguardando', proximaAcaoUid: validador,
             criadoEm: FV.serverTimestamp(), atualizadoEm: FV.serverTimestamp(), ultimaMov: { tipo: 'solicitacao', porUid: eu.uid, porNome: eu.nome, em: FV.serverTimestamp(), msgId: mRef.id },
             rodada: 1, origemDados: escolhido ? 'agenda' : 'manual', reaberturas: 0 });
-          t.set(mRef, { tipo: 'solicitacao', autorUid: eu.uid, autorNome: eu.nome, texto: perg, resumo: '', analise: '', sugestao: '', anexos: anexos, em: FV.serverTimestamp(), rodada: 1 });
-          t.set(db.collection('valAvisos').doc(), { para: validador, de: eu.uid, deNome: eu.nome, validacaoId: vRef.id, codigo: codigo, tipo: 'nova', titulo: assunto.slice(0, 300), trecho: perg.slice(0, 300), em: FV.serverTimestamp(), lida: false });
+          t.set(mRef, { tipo: 'solicitacao', autorUid: eu.uid, autorNome: eu.nome, texto: perg, resumo: dec, analise: '', sugestao: '', anexos: anexos, em: FV.serverTimestamp(), rodada: 1 });
+          t.set(db.collection('valAvisos').doc(), { para: validador, de: eu.uid, deNome: eu.nome, validacaoId: vRef.id, codigo: codigo, tipo: 'nova', titulo: assunto.slice(0, 300), trecho: (perg || dec).slice(0, 300), em: FV.serverTimestamp(), lida: false });
           return codigo;
         });
       });
