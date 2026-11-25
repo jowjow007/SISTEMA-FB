@@ -635,6 +635,23 @@ function casoPorNumero(n){ var d = soDig(n); if (!d) return null; return ix().ca
 var DJEN_OABS = [['163443', 'MG']];
 function limparHtml(t){ var d = new DOMParser().parseFromString('<div>' + String(t || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n') + '</div>', 'text/html'); return (d.body.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim(); }
 function sincronizarDjen(){ buscarDjen(); }
+// O DJEN (comunicaapi.pje.jus.br) responde "500" com frequência e volta em seguida: repete sozinho
+// (3, 8, 15, 30 e 45 s) antes de mostrar erro. Erros 4xx (pedido errado) não se repetem.
+var DJEN_ESPERAS = [3000, 8000, 15000, 30000, 45000];
+function djenComRepeticao(url, st, pag){
+  function tentar(k){
+    return fetch(url).then(function(r){
+      if (r.ok) return r.json();
+      var e = new Error('o DJEN respondeu ' + r.status + (r.status >= 500 ? ' (instabilidade no site do CNJ)' : '')); e.status = r.status; throw e;
+    }).catch(function(e){
+      var passageiro = !e.status || e.status >= 500 || e.status === 429;
+      if (!passageiro || k >= DJEN_ESPERAS.length) throw e;
+      if (st) st.textContent = 'O DJEN não respondeu (página ' + pag + '). Tentando de novo… (' + (k + 2) + 'ª tentativa)';
+      return new Promise(function(res){ setTimeout(res, DJEN_ESPERAS[k]); }).then(function(){ return tentar(k + 1); });
+    });
+  }
+  return tentar(0);
+}
 function buscarDjen(){
   if (perfil() === 'estagiario') return toast('Seu perfil só consulta as publicações.');
   var ini0 = D.djenAtualizadoEm ? mais(-3, D.djenAtualizadoEm.slice(0, 10)) : mais(-30);
@@ -649,7 +666,7 @@ function buscarDjen(){
     bt.disabled = true; st.textContent = 'Consultando o DJEN…';
     function pagina(o, n){
       var url = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao?numeroOab=' + o[0] + '&ufOab=' + o[1] + '&dataDisponibilizacaoInicio=' + ini + '&dataDisponibilizacaoFim=' + fim + '&itensPorPagina=100&pagina=' + n;
-      return fetch(url).then(function(r){ if (!r.ok) throw new Error('DJEN respondeu ' + r.status); return r.json(); }).then(function(j){
+      return djenComRepeticao(url, st, n).then(function(j){
         var itens = j.items || []; achadas = achadas.concat(itens); st.textContent = 'Consultando o DJEN… ' + achadas.length + ' encontradas';
         return itens.length === 100 ? pagina(o, n + 1) : null; });
     }
@@ -662,7 +679,7 @@ function buscarDjen(){
           status:'nova', atividadeId:null, tratadaPor:null, tratadaEm:null, obs:'', trazidaPor:EU, trazidaEm:agora()}); });
       return salvar().then(function(){ return db.collection('agTeste_config').doc('geral').set({djenAtualizadoEm:agora()}, {merge:true}); }).then(function(){
         f.remove(); toast(achadas.length + ' publicações no período; ' + novas + ' nova(s).'); render(); });
-    }).catch(function(e){ bt.disabled = false; st.textContent = 'Não foi possível consultar o DJEN: ' + e.message; });
+    }).catch(function(e){ bt.disabled = false; st.textContent = 'Não foi possível consultar o DJEN depois de várias tentativas: ' + e.message + '. Tente de novo em alguns minutos.'; });
   };
 }
 

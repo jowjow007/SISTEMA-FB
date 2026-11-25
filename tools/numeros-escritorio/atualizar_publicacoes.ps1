@@ -73,12 +73,18 @@ $pagina = 1
 $totalCount = $null
 do {
     $url = "https://comunicaapi.pje.jus.br/api/v1/comunicacao?numeroOab=$NumeroOab&ufOab=$UfOab&dataDisponibilizacaoInicio=$DataInicio&dataDisponibilizacaoFim=$DataFim&itensPorPagina=$ItensPorPagina&pagina=$pagina"
-    try {
-        $resp = Invoke-RestMethod -Uri $url -Method Get -Headers @{ Accept = "application/json" } -TimeoutSec 60
-    } catch {
-        Write-Warning ("Falha na pagina " + $pagina + " : " + $_.Exception.Message + ". Tentando novamente em 3s...")
-        Start-Sleep -Seconds 3
-        $resp = Invoke-RestMethod -Uri $url -Method Get -Headers @{ Accept = "application/json" } -TimeoutSec 60
+    # O DJEN responde 500 com frequencia e volta em seguida: ate 7 tentativas (esperas de 3 s a 5 min).
+    $esperas = @(3, 10, 30, 60, 120, 300)
+    $resp = $null
+    for ($k = 0; $k -le $esperas.Count; $k++) {
+        try {
+            $resp = Invoke-RestMethod -Uri $url -Method Get -Headers @{ Accept = "application/json" } -TimeoutSec 60
+            break
+        } catch {
+            if ($k -ge $esperas.Count) { throw }
+            Write-Warning ("Falha na pagina " + $pagina + " : " + $_.Exception.Message + ". Tentando novamente em " + $esperas[$k] + "s...")
+            Start-Sleep -Seconds $esperas[$k]
+        }
     }
     if ($null -eq $totalCount) { $totalCount = $resp.count }
     if ($resp.items) { foreach ($it in $resp.items) { $allItems.Add($it) } }

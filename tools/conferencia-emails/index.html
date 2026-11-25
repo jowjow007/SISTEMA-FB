@@ -103,6 +103,8 @@
   .lista{display:flex;flex-direction:column;gap:8px;}
   .lote{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:.8rem;}
   .lote[hidden]{display:none;}
+  .lote.fechado{background:transparent;border:0;padding:0;}
+  .lote.fechado .bt.p{font-size:.76rem;letter-spacing:.04em;padding:7px 14px;}
   .lote b{font-family:var(--font-display,inherit);}
   .lote label{display:inline-flex;gap:6px;align-items:center;cursor:pointer;}
   .lote .qtd{color:var(--muted);}
@@ -410,7 +412,7 @@
     if (!outras.length) return '';
     const nomes = outras.map(nomeCaixaCopia);
     const txt = nomes.length === 1 ? nomes[0] : nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
-    return '<span class="copia" title="Este e-mail foi enviado também para ' + escapeHtml(txt) + '">📋 Também enviado para: ' + escapeHtml(txt) + '</span>';
+    return '<span class="copia" title="Este e-mail foi enviado também para ' + escapeHtml(txt) + '">CC: ' + escapeHtml(txt) + '</span>';
   }
   const DIAS_VISAO_ADMIN = 30;
   const POR_PAGINA = 100;
@@ -651,7 +653,7 @@
       const extra = (s === 'ignorado' && m.ignoradoMotivo ? '<div class="motivo"><b>Motivo para ignorar:</b> ' + escapeHtml(m.ignoradoMotivo) + '</div>' : '') +
         (rec && rec.recado && !fechado(s) ? '<div class="motivo"><b>Recado de ' + escapeHtml(rec.porNome || nomeDe(rec.porEmail)) + ':</b> ' + escapeHtml(rec.recado) + '</div>' : '');
       return '<div class="mail ' + s + '">' +
-        '<div><div class="linha1">' + (eu.dono && !fechado(s) ? '<input type="checkbox" class="sel" data-sel="' + escapeHtml(m.id) + '"' + (selecao[m.id] ? ' checked' : '') + ' aria-label="Selecionar este e-mail">' : '') + '<span class="caixa ' + escapeHtml(filtroCaixa || m.caixa) + '">' + escapeHtml(CAIXAS[filtroCaixa || m.caixa] || m.caixa) + '</span>' + avisoCopia(m) +
+        '<div><div class="linha1">' + (eu.dono && modoLote && !fechado(s) ? '<input type="checkbox" class="sel" data-sel="' + escapeHtml(m.id) + '"' + (selecao[m.id] ? ' checked' : '') + ' aria-label="Selecionar este e-mail">' : '') + '<span class="caixa ' + escapeHtml(filtroCaixa || m.caixa) + '">' + escapeHtml(CAIXAS[filtroCaixa || m.caixa] || m.caixa) + '</span>' + avisoCopia(m) +
           '<span class="assunto">' + escapeHtml(m.assunto) + '</span></div>' +
           '<div class="de">' + escapeHtml(m.deNome) + (m.deEmail && m.deEmail !== m.deNome ? ' &lt;' + escapeHtml(m.deEmail) + '&gt;' : '') +
           ' · recebido ' + quando(data(m.recebidoEm)) + para + veio + '</div></div>' +
@@ -681,17 +683,20 @@
 
   // ---------- ações em lote (só o dono): marca vários e-mails de uma vez como "sem necessidade de resposta" ----------
   var MOTIVO_LOTE = 'Sem necessidade de resposta';
-  var selecao = {}, loteVisiveis = [];
+  var selecao = {}, loteVisiveis = [], modoLote = false;
   function pintarLote(sels){
     loteVisiveis = sels;
     const el = $('lote');
     if (!eu.dono || abaAtual !== 'conf' || !sels.length) { el.hidden = true; el.innerHTML = ''; return; }
-    const n = sels.filter(function(m){ return selecao[m.id]; }).length, todos = n === sels.length;
     el.hidden = false;
-    el.innerHTML = '<b>Ações em lote</b>' +
+    // fechado: só o botão vermelho; ao clicar aparecem os quadradinhos, e a ação só quando há algum marcado
+    if (!modoLote) { el.className = 'lote fechado'; el.innerHTML = '<button type="button" class="bt p" id="lote-abrir">AÇÕES EM LOTE</button>'; return; }
+    const n = sels.filter(function(m){ return selecao[m.id]; }).length, todos = n === sels.length;
+    el.className = 'lote';
+    el.innerHTML = '<button type="button" class="bt" id="lote-fechar" title="Sair das ações em lote">✕ Cancelar</button>' +
       '<label><input type="checkbox" class="sel" id="lote-todos"' + (todos ? ' checked' : '') + '> Selecionar todos (' + sels.length + ')</label>' +
-      '<span class="qtd" id="lote-qtd">' + (n ? n + (n === 1 ? ' selecionado' : ' selecionados') : 'Marque os quadradinhos dos e-mails') + '</span>' +
-      '<button type="button" class="bt p" id="lote-sem"' + (n ? '' : ' disabled') + '>Sem necessidade de resposta</button>';
+      '<span class="qtd" id="lote-qtd">' + (n ? n + (n === 1 ? ' selecionado' : ' selecionados') : 'Marque os e-mails') + '</span>' +
+      (n ? '<button type="button" class="bt p" id="lote-sem">Sem necessidade de resposta</button>' : '');
     const t = $('lote-todos'); t.indeterminate = n > 0 && !todos;
   }
   function marcarSemResposta(){
@@ -705,7 +710,7 @@
       const b = db.batch();
       pt.forEach(function(id){ b.update(db.collection('emailsConferencia').doc(id), { status: 'ignorado', ignoradoPor: eu.email, ignoradoEm: ts, ignoradoMotivo: MOTIVO_LOTE }); });
       return b.commit();
-    })).then(function(){ selecao = {}; toast(ids.length + (ids.length === 1 ? ' e-mail marcado' : ' e-mails marcados') + ' como sem necessidade de resposta.'); repintar(); })
+    })).then(function(){ selecao = {}; modoLote = false; toast(ids.length + (ids.length === 1 ? ' e-mail marcado' : ' e-mails marcados') + ' como sem necessidade de resposta.'); repintar(); })
       .catch(function(err){ toast('Não foi possível marcar: ' + err.message); repintar(); });
   }
   document.addEventListener('change', function(e){
@@ -713,7 +718,12 @@
     if (c.dataset && c.dataset.sel) { if (c.checked) selecao[c.dataset.sel] = true; else delete selecao[c.dataset.sel]; pintarLote(loteVisiveis); return; }
     if (c.id === 'lote-todos') { selecao = {}; if (c.checked) loteVisiveis.forEach(function(m){ selecao[m.id] = true; }); renderConf(); }
   });
-  document.addEventListener('click', function(e){ if (e.target.closest && e.target.closest('#lote-sem')) marcarSemResposta(); });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest) return;
+    if (e.target.closest('#lote-sem')) { marcarSemResposta(); return; }
+    if (e.target.closest('#lote-abrir')) { modoLote = true; selecao = {}; renderConf(); return; }
+    if (e.target.closest('#lote-fechar')) { modoLote = false; selecao = {}; renderConf(); }
+  });
 
   // Data e hora da última rodada do robô (todos veem); o administrador vê também o resumo e eventuais erros.
   function renderSub(){
