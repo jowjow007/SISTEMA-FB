@@ -361,6 +361,16 @@
   .emoji-popover.open{display:grid;}
   .emoji-popover button{background:none;border:none;font-size:1.15rem;cursor:pointer;padding:4px;border-radius:6px;line-height:1;}
   .emoji-popover button:hover{background:var(--panel-3);}
+  .fila-anexos{display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .fila-anexos.show{display:flex;}
+  .fila-anexo{display:flex;align-items:center;gap:7px;max-width:240px;border:1px solid var(--line-strong);border-radius:10px;padding:4px 6px 4px 4px;background:var(--panel-2,rgba(255,255,255,.04));font-size:.74rem;}
+  .fila-anexo img{width:38px;height:38px;object-fit:cover;border-radius:7px;flex:0 0 auto;}
+  .fila-anexo .ic{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:var(--panel-3,rgba(255,255,255,.08));flex:0 0 auto;font-size:1.1rem;}
+  .fila-anexo .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .fila-anexo .nm small{display:block;color:var(--muted);}
+  .fila-anexo button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 4px;flex:0 0 auto;}
+  .envio-bg{position:fixed;right:14px;bottom:14px;z-index:90;display:none;max-width:320px;background:var(--panel-3,#332524);color:var(--paper,#ece6e1);border:1px solid var(--line-strong);border-radius:10px;padding:8px 12px;font-size:.76rem;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .envio-bg.show{display:block;}
   .photo-preview-row{display:none;align-items:center;gap:8px;margin-bottom:8px;}
   .photo-preview-row.show{display:flex;}
   .photo-preview-row img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line-strong);}
@@ -467,7 +477,9 @@
   .audio-preview-row .st{font-size:.74rem;color:var(--muted);white-space:nowrap;}
   .audio-preview-row button{background:none;border:1px solid var(--line-strong);border-radius:8px;padding:5px 10px;color:inherit;font-size:.76rem;}
   .msg-audio{display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:100%;}
-  .msg-audio audio{width:100%;height:36px;}
+  .msg-audio audio{flex:1;min-width:0;height:36px;}
+  .msg-audio-linha{display:flex;align-items:center;gap:8px;}
+  .msg-audio-dur{font-size:.78rem;font-weight:600;opacity:.8;white-space:nowrap;font-variant-numeric:tabular-nums;}
   .msg-transc{font-size:.8rem;line-height:1.45;opacity:.92;border-left:3px solid currentColor;padding:2px 0 2px 8px;white-space:pre-wrap;}
   .msg-transc-st{font-size:.74rem;opacity:.7;font-style:italic;}
   .msg-transc-btn{align-self:flex-start;background:none;border:1px solid currentColor;border-radius:8px;color:inherit;opacity:.85;font-size:.74rem;padding:3px 10px;cursor:pointer;}
@@ -609,20 +621,21 @@
           <span class="st" id="audio-preview-st"></span>
           <button id="btn-remover-audio" type="button">Remover</button>
         </div>
+        <div class="fila-anexos" id="fila-anexos"></div>
         <div class="composer-row">
-          <button class="icon-btn" id="btn-anexar" title="Anexar foto">
+          <button class="icon-btn" id="btn-anexar" title="Anexar fotos">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
               <circle cx="12" cy="13" r="4"></circle>
             </svg>
           </button>
-          <input type="file" id="foto-input" accept="image/*" hidden>
-          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documento">
+          <input type="file" id="foto-input" accept="image/*" multiple hidden>
+          <button class="icon-btn" id="btn-anexar-doc" title="Anexar documentos">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
             </svg>
           </button>
-          <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.odt,.ods" hidden>
+          <input type="file" id="doc-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.odt,.ods" multiple hidden>
           <button class="icon-btn" id="btn-emoji" title="Emoji"></button>
           <div class="emoji-popover" id="emoji-popover"></div>
           <textarea id="composer-input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
@@ -632,7 +645,8 @@
           </button>
           <button class="send-btn" id="btn-enviar" title="Enviar"></button>
         </div>
-        <div class="media-hint">Texto, fotos, documentos (até 10 MB) e áudio de até 5 minutos, com transcrição automática.</div>
+        <div class="media-hint">Texto, fotos e documentos (vários de uma vez, até 10 MB cada) e áudio de até 5 minutos, com transcrição automática.</div>
+        <div class="envio-bg" id="envio-bg" role="status" aria-live="polite"></div>
       </div>
     </div>
   </section>
@@ -1815,7 +1829,7 @@
       }
       if (m.tipo === 'audio'){
         var auSrc = urlDeMidia(m.audioUrl || '');
-        out += '<div class="msg-audio">' + (auSrc ? '<audio controls preload="none" src="' + auSrc + '"></audio>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
+        out += '<div class="msg-audio">' + (auSrc ? '<div class="msg-audio-linha"><audio controls preload="none" src="' + auSrc + '"></audio>' + (m.audioDuracao ? '<span class="msg-audio-dur" title="Duração do áudio">' + mmss(m.audioDuracao) + '</span>' : '') + '</div>' : '<div class="msg-doc msg-doc-falhou">Áudio não chegou ao servidor</div>') +
           (m.transcricao ? '<div class="msg-transc"><span class="rot">Transcrição</span>' + escapeHtml(m.transcricao) + '</div>'
             : m.transcricaoStatus === 'vazio' ? '<div class="msg-transc-st">sem fala para transcrever</div>'
             : (m.transcricaoStatus === 'pendente' && m.criadoEm && m.criadoEm.toMillis && Date.now() - m.criadoEm.toMillis() < 300000) || !m.criadoEm || transcrevendoIds[m.id] ? '<div class="msg-transc-st">transcrevendo…</div>'
@@ -2065,35 +2079,10 @@
   }
 
   els.btnAnexar.addEventListener('click', function(){ els.fotoInput.click(); });
-  function processarFotoParaEnvio(file){
-    // Mostra preview local imediato; faz upload ao Storage em paralelo
-    var localUrl = URL.createObjectURL(file);
-    limparComposerDoc();
-    novaFotoUrl = null; // ainda fazendo upload
-    els.photoPreviewImg.src = localUrl;
-    els.photoPreviewRow.classList.add('show');
-    els.btnEnviar.disabled = true;
-    els.btnEnviar.title = 'Enviando imagem…';
-    subindoAnexo = true;
-    comprimirFoto(file).then(function(url){
-      novaFotoUrl = url;
-      els.photoPreviewImg.src = url;
-      els.btnEnviar.disabled = false;
-      els.btnEnviar.title = '';
-      anexoTerminou(true);
-    }).catch(function(err){
-      limparComposerFoto();
-      els.btnEnviar.disabled = false;
-      els.btnEnviar.title = '';
-      anexoTerminou(false);
-      alert(err.message || 'Não foi possível enviar a imagem.');
-    });
-  }
+  function processarFotoParaEnvio(file){ adicionarNaFila([file]); }
 
   els.fotoInput.addEventListener('change', function(){
-    var file = els.fotoInput.files[0];
-    if (!file) return;
-    processarFotoParaEnvio(file);
+    adicionarNaFila(els.fotoInput.files);
     els.fotoInput.value = '';
   });
   els.btnRemoverFoto.addEventListener('click', limparComposerFoto);
@@ -2128,39 +2117,84 @@
 
   els.btnAnexarDoc.addEventListener('click', function(){ els.docInput.click(); });
   els.docInput.addEventListener('change', function(){
-    var file = els.docInput.files[0];
-    if (!file) return;
-    processarDocParaEnvio(file);
-  });
-  function processarDocParaEnvio(file){
-    if (file.size > LIMITE_DOCUMENTO_BYTES){
-      alert('Esse arquivo tem ' + formatBytes(file.size) + ' — o limite para documentos no chat é 10 MB.');
-      els.docInput.value = '';
-      return;
-    }
-    limparComposerFoto();
-    novoDocumento = { storageUrl: null, dataUrl: null, nome: file.name, tipo: file.type || '', tamanho: file.size };
-    els.docPreviewNome.textContent = file.name;
-    els.docPreviewTamanho.textContent = formatBytes(file.size) + ' — enviando…';
-    els.docPreviewRow.classList.add('show');
-    els.btnEnviar.disabled = true;
-    els.btnEnviar.title = 'Enviando arquivo…';
-    subindoAnexo = true;
-    fazerUploadDocumento(file).then(function(doc){
-      novoDocumento = doc;
-      els.docPreviewTamanho.textContent = formatBytes(doc.tamanho);
-      els.btnEnviar.disabled = false;
-      els.btnEnviar.title = '';
-      anexoTerminou(true);
-    }).catch(function(err){
-      limparComposerDoc();
-      els.btnEnviar.disabled = false;
-      els.btnEnviar.title = '';
-      anexoTerminou(false);
-      alert(err.message || 'Não foi possível enviar o arquivo.');
-    });
+    adicionarNaFila(els.docInput.files);
     els.docInput.value = '';
+  });
+  function processarDocParaEnvio(file){ adicionarNaFila([file]); }
+
+  // ---- fila de anexos: escolhe vários, clica em Enviar na hora e o envio segue em segundo plano ----
+  // Cada arquivo vira uma mensagem; o texto digitado vai junto do primeiro. O envio guarda a conversa de destino,
+  // então dá para trocar de conversa enquanto os arquivos sobem.
+  var filaAnexos = [];          // [{file, tipo:'foto'|'documento', previa}]
+  var enviosEmCurso = 0, enviosTotal = 0, enviosFeitos = 0;
+  function adicionarNaFila(lista){
+    if (!activeId) return;
+    var recusados = [];
+    Array.prototype.forEach.call(lista || [], function(file){
+      if (/^image\//.test(file.type)) filaAnexos.push({ file: file, tipo: 'foto', previa: URL.createObjectURL(file) });
+      else if (!EXT_DOC_RE.test(file.name)) recusados.push(file.name + ' (tipo não aceito)');
+      else if (file.size > LIMITE_DOCUMENTO_BYTES) recusados.push(file.name + ' (' + formatBytes(file.size) + ', o limite é 10 MB)');
+      else filaAnexos.push({ file: file, tipo: 'documento', previa: null });
+    });
+    if (filaAnexos.length > 20) { recusados.push('mais de 20 arquivos de uma vez (ficaram os 20 primeiros)'); filaAnexos.slice(20).forEach(function(a){ if (a.previa) URL.revokeObjectURL(a.previa); }); filaAnexos = filaAnexos.slice(0, 20); }
+    if (recusados.length) alert('Não foi possível anexar:\n- ' + recusados.join('\n- ') + '\n\nFormatos aceitos: imagens, PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP, RAR, ODT e ODS.');
+    pintarFila();
+    els.composerInput.focus();
   }
+  function pintarFila(){
+    var box = document.getElementById('fila-anexos');
+    box.classList.toggle('show', filaAnexos.length > 0);
+    box.innerHTML = filaAnexos.map(function(a, i){
+      return '<div class="fila-anexo">' + (a.previa ? '<img src="' + a.previa + '" alt="">' : '<span class="ic">📄</span>') +
+        '<span class="nm">' + escapeHtml(a.file.name || 'imagem') + '<small>' + formatBytes(a.file.size) + '</small></span>' +
+        '<button type="button" data-tirar="' + i + '" title="Tirar da lista" aria-label="Tirar ' + escapeHtml(a.file.name || 'imagem') + '">✕</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('[data-tirar]'), function(b){ b.onclick = function(){
+      var a = filaAnexos.splice(+b.getAttribute('data-tirar'), 1)[0]; if (a && a.previa) URL.revokeObjectURL(a.previa); pintarFila(); }; });
+  }
+  function limparFila(revogar){ if (revogar) filaAnexos.forEach(function(a){ if (a.previa) URL.revokeObjectURL(a.previa); }); filaAnexos = []; pintarFila(); }
+  function avisoEnvio(texto){
+    var el = document.getElementById('envio-bg');
+    el.textContent = texto || ''; el.classList.toggle('show', !!texto);
+  }
+  function atualizarAvisoEnvio(){
+    if (enviosEmCurso > 0) avisoEnvio('⏳ Enviando arquivos: ' + enviosFeitos + ' de ' + enviosTotal + ' prontos. Pode continuar usando o chat.');
+    else { avisoEnvio('✓ Arquivos enviados.'); setTimeout(function(){ if (!enviosEmCurso) avisoEnvio(''); }, 2500); enviosTotal = 0; enviosFeitos = 0; }
+  }
+  function subirAnexo(conv, a){
+    var stamp = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    if (a.tipo === 'foto') {
+      return comprimirParaBlob(a.file).then(function(blob){ return uploadParaStorage(blob, 'chat/' + conv + '/' + myUid + '/' + stamp + '_foto.jpg'); })
+        .then(function(url){ return { fotoUrl: url }; });
+    }
+    var ext = (a.file.name.split('.').pop() || 'bin').toLowerCase();
+    return uploadParaStorage(a.file, 'chat/' + conv + '/' + myUid + '/' + stamp + '_doc.' + ext)
+      .then(function(url){ return { documentoUrl: url, documentoNome: a.file.name, documentoTipo: a.file.type || '', documentoTamanho: a.file.size }; });
+  }
+  // envia a fila em segundo plano, um arquivo por mensagem, na ordem escolhida
+  function enviarFilaEmSegundoPlano(conv, itens, texto, resposta){
+    enviosEmCurso++; enviosTotal += itens.length; atualizarAvisoEnvio();
+    var falhas = [];
+    var cadeia = Promise.resolve();
+    itens.forEach(function(a, i){
+      cadeia = cadeia.then(function(){
+        return subirAnexo(conv, a).then(function(dados){
+          var msgData = { autorUid: myUid, tipo: a.tipo, texto: i === 0 && texto ? texto : null, fotoUrl: dados.fotoUrl || null, fotoBase64: null,
+            documentoUrl: dados.documentoUrl || null, documentoBase64: null, documentoNome: dados.documentoNome || null, documentoTipo: dados.documentoTipo || null,
+            documentoTamanho: dados.documentoTamanho || null, encaminhada: false, encaminhadaDeAutorNome: null, respondendoA: i === 0 ? resposta : null,
+            criadoEm: FV.serverTimestamp(), lidaPor: [myUid] };
+          return postMessageTo(conv, msgData, resumoMensagem(msgData));
+        }).catch(function(e){ falhas.push((a.file.name || 'imagem') + ': ' + (e && e.message || e)); })
+          .then(function(){ enviosFeitos++; if (a.previa) URL.revokeObjectURL(a.previa); atualizarAvisoEnvio(); });
+      });
+    });
+    return cadeia.then(function(){
+      enviosEmCurso--; atualizarAvisoEnvio();
+      if (falhas.length) alert('Não foi possível enviar ' + (falhas.length === 1 ? 'este arquivo' : 'estes arquivos') + ':\n- ' + falhas.join('\n- ') + '\n\nAnexe de novo, por favor.');
+    });
+  }
+  // fechar a página no meio do envio perderia os arquivos que ainda não subiram
+  window.addEventListener('beforeunload', function(e){ if (enviosEmCurso > 0) { e.preventDefault(); e.returnValue = ''; } });
   els.btnRemoverDoc.addEventListener('click', limparComposerDoc);
 
   // Arrastar um arquivo para dentro da conversa aberta já anexa (como no WhatsApp)
@@ -2186,12 +2220,7 @@
     if (!activeId) return;
     var files = e.dataTransfer.files;
     if (!files || !files.length) return;
-    var file = files[0];
-    if (files.length > 1) alert('Dá para anexar um arquivo por mensagem — vou anexar "' + file.name + '". Envie os outros em seguida.');
-    if (/^image\//.test(file.type)) processarFotoParaEnvio(file);
-    else if (EXT_DOC_RE.test(file.name)) processarDocParaEnvio(file);
-    else alert('Esse tipo de arquivo não pode ser enviado no chat. Formatos aceitos: imagens, PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP, RAR, ODT e ODS.');
-    els.composerInput.focus();
+    adicionarNaFila(files);
   });
 
   function resumoMensagem(m){
@@ -2302,6 +2331,14 @@
     }
     if (novoDocumento && !novoDocumento.storageUrl && !novoDocumento.dataUrl){ limparComposerDoc(); alert('O arquivo não terminou de subir. Anexe de novo, por favor.'); return; }
     var texto = els.composerInput.value.trim();
+    if (filaAnexos.length && !novoAudio) {
+      var resposta = replyTarget ? { mensagemId: replyTarget.id, autorNome: nomeDe(replyTarget.autorUid), resumo: resumoMensagem(replyTarget).slice(0, 140) } : null;
+      var itens = filaAnexos.slice();
+      filaAnexos = []; pintarFila();
+      els.composerInput.value = ''; els.composerInput.style.height = 'auto'; cancelarResposta();
+      enviarFilaEmSegundoPlano(activeId, itens, texto, resposta);
+      return;
+    }
     if (novoAudio && !novoAudio.url){ limparComposerAudio(); alert('O áudio não terminou de subir. Grave de novo, por favor.'); return; }
     if (!texto && !novaFotoUrl && !novoDocumento && !novoAudio) return;
     enviandoMsg = true;

@@ -66,6 +66,12 @@
   #nova label.r{display:block;font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:4px;}
   #nova input:not([type=checkbox]),#nova textarea,#nova select{width:100%;}
   #nova textarea{min-height:90px;resize:vertical;line-height:1.45;margin-top:10px;}
+  .busca-proc{position:relative;}
+  .sugs{position:absolute;left:0;right:0;top:100%;margin-top:3px;background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:10;max-height:300px;overflow:auto;}
+  .sug{display:block;width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--paper);padding:8px 11px;cursor:pointer;}
+  .sug:hover,.sug.foco{background:var(--panel-2);}
+  .sug b{font-size:.83rem;} .sug small{display:block;font-size:.73rem;color:var(--muted);margin-top:2px;}
+  .sug-info{padding:8px 11px;font-size:.76rem;color:var(--muted);}
   .linha-bt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
   .linha-bt .st{flex:1;font-size:.8rem;color:var(--muted);}
   .arqs{font-size:.76rem;color:var(--muted);}
@@ -125,8 +131,8 @@
   <div id="app" style="display:none;">
     <form id="nova" autocomplete="off">
       <div class="grade">
-        <div><label class="r" for="n-proc">Nº do processo<span style="color:var(--red-bright)">*</span></label><input id="n-proc" placeholder="0000000-00.0000.0.00.0000"></div>
-        <div><label class="r" for="n-cli">Cliente<span style="color:var(--red-bright)">*</span></label><input id="n-cli"></div>
+        <div class="busca-proc"><label class="r" for="n-proc">Nº do processo</label><input id="n-proc" placeholder="Digite o início do número" autocomplete="off"><div class="sugs" id="s-proc" hidden></div></div>
+        <div class="busca-proc"><label class="r" for="n-cli">Cliente</label><input id="n-cli" placeholder="Digite o nome" autocomplete="off"><div class="sugs" id="s-cli" hidden></div></div>
         <div><label class="r" for="n-prazo">Prazo fatal</label><input id="n-prazo" type="date"></div>
       </div>
       <textarea id="n-perg" placeholder="O que precisa ser decidido? Ex.: saiu sentença parcialmente procedente — embargos antes da apelação ou apelação direto?"></textarea>
@@ -354,6 +360,74 @@
     }).catch(function(e){ botao.disabled = false; falha('Não foi possível salvar: ' + (e.code === 'permission-denied' || e.code === 'storage/unauthorized' ? 'sem permissão.' : e.message)); });
   }
 
+  // ---------- sugestões ao digitar: processos da Agenda (Astrea) e das validações anteriores ----------
+  // Só quem tem a aba Agenda lê agTeste_*; para os demais, as sugestões vêm só das validações já feitas.
+  const FONTE = { p: null, lista: [], pronta: false };
+  let escolhido = null;
+  function carregarFonte(){
+    if (FONTE.p) return FONTE.p;
+    FONTE.p = Promise.all([db.collection('agTeste_casos').get(), db.collection('agTeste_clientes').get()]).then(function(r){
+      const cli = {}; r[1].docs.forEach(function(d){ const x = d.data(); cli[d.id] = x.nome || x.razaoSocial || ''; });
+      const mapa = {};
+      r[0].docs.forEach(function(d){
+        const k = d.data(), nd = soDig(k.numero), chave = nd.length >= 15 ? nd : 'caso:' + d.id;
+        const nomes = (k.clientes || []).map(function(id){ return cli[id] || ''; }).filter(Boolean);
+        if (mapa[chave]) { nomes.forEach(function(n){ if (mapa[chave].clientes.indexOf(n) < 0) mapa[chave].clientes.push(n); }); if (!mapa[chave].contraria && k.contraria) mapa[chave].contraria = k.contraria; return; }
+        mapa[chave] = { numeroDig: nd.length >= 15 ? nd : '', numero: k.numero || '', clientes: nomes, contraria: k.contraria || '', titulo: k.titulo || '', orgao: k.orgao || '', casoId: d.id };
+      });
+      FONTE.lista = Object.keys(mapa).map(function(k){ return mapa[k]; });
+    }).catch(function(){ FONTE.lista = []; }).then(function(){ FONTE.pronta = true; });
+    return FONTE.p;
+  }
+  function fonteCompleta(){
+    const l = FONTE.lista.slice(), vistos = {};
+    l.forEach(function(x){ if (x.numeroDig) vistos[x.numeroDig] = 1; });
+    VALS.forEach(function(v){ const p = v.processo || {}; const chave = v.numeroDig || ('v:' + norm(p.numero) + '|' + norm(p.cliente));
+      if (vistos[chave] || (!v.numeroDig && !p.cliente)) return; vistos[chave] = 1;
+      l.push({ numeroDig: v.numeroDig || '', numero: p.numero || '', clientes: p.cliente ? [p.cliente] : [], contraria: p.contraria || '', titulo: '', orgao: '', casoId: p.casoId || '' }); });
+    return l;
+  }
+  function buscar(q, porNome){
+    const d = soDig(q), palavras = norm(q).split(/\s+/).filter(function(w){ return w.length >= 2; });
+    if (!porNome && d.length >= 3) {
+      return fonteCompleta().map(function(x){ const n = x.numeroDig || soDig(x.numero); const i = n.indexOf(d); return [i === 0 ? 2 : i > 0 ? 1 : 0, x]; })
+        .filter(function(r){ return r[0]; }).sort(function(a, b){ return b[0] - a[0]; }).slice(0, 8).map(function(r){ return r[1]; });
+    }
+    if (norm(q).replace(/[^a-z]/g, '').length < 3) return [];
+    return fonteCompleta().filter(function(x){ const t = norm(x.clientes.join(' ') + ' ' + x.contraria + ' ' + x.titulo);
+      return palavras.every(function(w){ return t.indexOf(w) >= 0; }); }).slice(0, 8);
+  }
+  function ligarSugestoes(campo, caixa, porNome){
+    const inp = $(campo), box = $(caixa); let sugs = [], foco = -1;
+    const pintar = function(){
+      const q = inp.value.trim(); sugs = buscar(q, porNome); foco = -1;
+      if ((porNome ? norm(q).replace(/[^a-z]/g, '').length : Math.max(soDig(q).length, norm(q).replace(/[^a-z]/g, '').length)) < 3) { box.hidden = true; return; }
+      box.hidden = false;
+      box.innerHTML = (!FONTE.pronta ? '<div class="sug-info">Carregando processos…</div>' : '') +
+        (sugs.length ? sugs.map(function(x, i){ return '<button type="button" class="sug" data-i="' + i + '"><b>' + esc(fmtCnj(x.numeroDig || x.numero) || 'Sem número') + '</b>' +
+          '<small>' + esc(x.clientes.join(', ') || '—') + (x.contraria ? ' x ' + esc(x.contraria) : '') + (x.titulo ? ' · ' + esc(x.titulo) : '') + '</small></button>'; }).join('')
+          : (FONTE.pronta ? '<div class="sug-info">Nada encontrado. Pode digitar normalmente.</div>' : ''));
+      box.querySelectorAll('[data-i]').forEach(function(b){ b.onmousedown = function(e){ e.preventDefault(); escolher(sugs[+b.dataset.i]); }; });
+    };
+    const escolher = function(x){
+      escolhido = x; box.hidden = true;
+      $('n-proc').value = fmtCnj(x.numeroDig || x.numero) || $('n-proc').value;
+      if (x.clientes.length) $('n-cli').value = x.clientes.join(', ');
+      $('n-perg').focus();
+    };
+    inp.addEventListener('input', function(){ escolhido = null; pintar(); });
+    inp.addEventListener('focus', pintar);
+    inp.addEventListener('blur', function(){ setTimeout(function(){ box.hidden = true; }, 150); });
+    inp.addEventListener('keydown', function(e){
+      const bts = box.querySelectorAll('.sug'); if (box.hidden || !bts.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); foco = (foco + (e.key === 'ArrowDown' ? 1 : -1) + bts.length) % bts.length; bts.forEach(function(b, i){ b.classList.toggle('foco', i === foco); }); }
+      else if (e.key === 'Enter' && foco >= 0) { e.preventDefault(); escolher(sugs[foco]); }
+      else if (e.key === 'Escape') box.hidden = true;
+    });
+    FONTE.redesenhar = FONTE.redesenhar || [];
+    FONTE.redesenhar.push(function(){ if (document.activeElement === inp) pintar(); });
+  }
+
   // ---------- nova validação (cadastro rápido) ----------
   function validadores(){ return Object.keys(PERMS).filter(function(u){ return PERMS[u].responder && u !== eu.uid; }); }
   function abrirNova(){
@@ -361,17 +435,20 @@
     const vs = validadores(), padrao = vs.indexOf(CONFIG.validadorPadrao) >= 0 ? CONFIG.validadorPadrao : vs[0] || '';
     $('n-val-box').innerHTML = vs.length > 1 ? '<label class="chk">Validador: <select id="n-val">' + vs.map(function(u){ return '<option value="' + esc(u) + '"' + (u === padrao ? ' selected' : '') + '>' + esc(nomeDe(u)) + '</option>'; }).join('') + '</select></label>'
       : vs.length ? '<span class="aviso">Vai para ' + esc(nomeDe(padrao)) + '</span><input type="hidden" id="n-val" value="' + esc(padrao) + '">' : '<span class="aviso" style="color:var(--red-bright)">Nenhum validador cadastrado em Permissões.</span><input type="hidden" id="n-val" value="">';
+    escolhido = null;
+    carregarFonte().then(function(){ (FONTE.redesenhar || []).forEach(function(f){ f(); }); });
     $('n-proc').focus();
   }
   function fecharNova(){ const f = $('nova'); f.classList.remove('aberta'); f.reset(); novosArqs = []; $('n-arqs-l').textContent = ''; }
   function enviarNova(e){
     e.preventDefault();
     const s = $('n-st'), proc = $('n-proc').value.trim(), cli = $('n-cli').value.trim(), perg = $('n-perg').value.trim(), validador = ($('n-val') || {}).value || '';
-    const falta = []; if (!proc) falta.push('nº do processo'); if (!cli) falta.push('cliente'); if (!perg) falta.push('o que precisa ser decidido'); if (!validador) falta.push('validador');
-    if (falta.length) { s.textContent = 'Preencha: ' + falta.join(', ') + '.'; s.style.color = 'var(--red-bright)'; return; }
+    // nada é obrigatório; só é preciso haver alguém para validar (cadastrado em Permissões)
+    if (!validador) { s.textContent = 'Nenhum validador cadastrado em Permissões.'; s.style.color = 'var(--red-bright)'; return; }
     const eA = conferir(novosArqs); if (eA) { s.textContent = eA; s.style.color = 'var(--red-bright)'; return; }
     const dig = soDig(proc), numDig = dig.length >= 15 ? dig : '';
-    const assunto = perg.split('\n')[0].slice(0, 160) || 'Validação';
+    const assunto = (perg.split('\n')[0] || (proc ? 'Processo ' + proc : '') || cli || 'Validação sem descrição').slice(0, 160);
+    const contraria = escolhido && escolhido.contraria || '', casoId = escolhido && escolhido.casoId || '';
     const vRef = db.collection('validacoes').doc(), mRef = vRef.collection('mensagens').doc(), cRef = db.collection('valContadores').doc('seq');
     const bt = $('n-ok'); bt.disabled = true; s.style.color = '';
     enviarArquivos(vRef.id, mRef.id, novosArqs, s).then(function(anexos){
@@ -381,11 +458,11 @@
           const n = c.exists ? (c.data().n || 0) + 1 : 1;
           if (c.exists) t.update(cRef, { n: n }); else t.set(cRef, { n: 1 });
           const codigo = 'VAL-' + String(n).padStart(4, '0');
-          t.set(vRef, { seq: n, codigo: codigo, processo: { numero: numDig || proc, cliente: cli, tipoAcao: '', contraria: '', outrasPartes: '', polo: '', orgao: '', comarca: '', advogado: '', casoId: '', localizado: false },
+          t.set(vRef, { seq: n, codigo: codigo, processo: { numero: numDig || proc, cliente: cli, tipoAcao: '', contraria: contraria, outrasPartes: '', polo: '', orgao: '', comarca: '', advogado: '', casoId: casoId, localizado: !!escolhido },
             numeroDig: numDig, assunto: assunto, dataPublicacao: '', prazoFatal: $('n-prazo').value || '', prazoValidacao: '', prioridade: $('n-urg').checked ? 'urgente' : 'normal',
             solicitanteUid: eu.uid, solicitanteNome: eu.nome, validadorUid: validador, validadorNome: nomeDe(validador), participantes: [eu.uid, validador], status: 'aguardando', proximaAcaoUid: validador,
             criadoEm: FV.serverTimestamp(), atualizadoEm: FV.serverTimestamp(), ultimaMov: { tipo: 'solicitacao', porUid: eu.uid, porNome: eu.nome, em: FV.serverTimestamp(), msgId: mRef.id },
-            rodada: 1, origemDados: 'manual', reaberturas: 0 });
+            rodada: 1, origemDados: escolhido ? 'agenda' : 'manual', reaberturas: 0 });
           t.set(mRef, { tipo: 'solicitacao', autorUid: eu.uid, autorNome: eu.nome, texto: perg, resumo: '', analise: '', sugestao: '', anexos: anexos, em: FV.serverTimestamp(), rodada: 1 });
           t.set(db.collection('valAvisos').doc(), { para: validador, de: eu.uid, deNome: eu.nome, validacaoId: vRef.id, codigo: codigo, tipo: 'nova', titulo: assunto.slice(0, 300), trecho: perg.slice(0, 300), em: FV.serverTimestamp(), lida: false });
           return codigo;
@@ -466,6 +543,7 @@
     $('gate').style.display = 'none'; $('app').style.display = '';
     $('b-nova').onclick = function(){ if ($('nova').classList.contains('aberta')) fecharNova(); else abrirNova(); };
     $('n-cancelar').onclick = fecharNova; $('nova').onsubmit = enviarNova;
+    ligarSugestoes('n-proc', 's-proc', false); ligarSugestoes('n-cli', 's-cli', true);
     $('n-arqs').onchange = function(){ novosArqs = novosArqs.concat(Array.prototype.slice.call(this.files)); this.value = ''; $('n-arqs-l').textContent = novosArqs.map(function(a){ return a.name; }).join(', '); };
     $('b-perm').onclick = abrirPermissoes;
     $('busca').oninput = function(){ busca = this.value; if (busca && filtro !== 'todas') filtro = 'todas'; render(); };
