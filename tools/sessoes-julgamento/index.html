@@ -143,6 +143,10 @@
   .decisao .res{font-family:var(--font-display);font-size:1.3rem;font-weight:600;margin-bottom:6px;}
   textarea,input,select{font-family:inherit;}
   .campo{margin-bottom:12px;}
+  .campo.faltando input,.campo.faltando select{border-color:#e5484d !important;box-shadow:0 0 0 2px rgba(229,72,77,.25);}
+  .campo.faltando label{color:#e5484d;}
+  .falta-topo.info{background:rgba(80,140,255,.12);border-color:#5b8cff;color:#cfe0ff;}
+  .falta-topo{background:rgba(229,72,77,.12);border:1px solid #e5484d;color:#ffb4b6;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-weight:600;font-size:.88rem;}
   .campo label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;}
   .campo input,.campo select,.campo textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);font-size:.88rem;outline:none;}
   .campo textarea{min-height:90px;resize:vertical;line-height:1.5;}
@@ -590,7 +594,7 @@
         + campoFicha('Ocorrência', (r.sistema ? r.sistema + ' ' : '') + '#' + r.ocorrencia) + campoFicha('Unidade', r.unidade) + campoFicha('Morador(a)', r.morador)
         + campoFicha('Classificação', r.classificacao) + campoFicha('Penalidade aplicada', r.penalidade)
         + campoFicha('Data do fato', [dataBR(r.dataFato), r.horaFato].filter(Boolean).join(' · ')) + campoFicha('Notificação', dataBR(r.dataNotificacao))
-        + campoFicha('Pedido de recurso', dataBR(r.dataRecurso)) + campoFicha('Quem pediu a abertura', r.quemAbriu) + '</div>';
+        + campoFicha('Pedido de recurso', dataBR(r.dataRecurso)) + campoFicha('Quem pediu a abertura', [r.quemAbriu, r.formaRecebimento ? 'por ' + r.formaRecebimento : ''].filter(Boolean).join(', ')) + '</div>';
       h += r.fatos ? '<h3>Dos fatos</h3><div class="texto">' + esc(r.fatos) + '</div>' : '';
       h += r.historicoUnidade ? '<h3>Histórico da unidade</h3><div class="texto">' + esc(r.historicoUnidade) + '</div>' : '';
       h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
@@ -672,6 +676,7 @@
       return '<button type="button" class="' + (i === state.editarPasso ? 'on' : '') + '" data-edpasso="' + i + '"><span class="n">' + (i + 1) + '</span>' + p + '</button>';
     }).join('') + '</div>';
     var p = state.editarPasso;
+    h += '<div class="falta-topo" id="ed-falta" style="display:none;"></div>';
     if (p === 0) {
       var pt = rascunho.penalidadeTipo || '';
       h += '<div class="g2">'
@@ -684,9 +689,9 @@
         + '<div id="multa-box" class="g2" style="grid-column:1/-1;' + (pt === 'multa' ? '' : 'display:none;') + '">'
         + '<div class="campo"><label>Valor da multa *</label><input id="ed-multaValor" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="' + esc(rascunho.multaValor ? reais(rascunho.multaValor) : '') + '"></div>'
         + inp('multaVencimento', 'Vencimento da multa *', '', 'date') + '</div>'
-        + inp('dataFato', 'Data do fato', '', 'date') + inp('horaFato', 'Horário aproximado', '12h54')
+        + inp('dataFato', 'Data do fato', '', 'date') + '<div class="campo"><label>Horário aproximado</label><input id="ed-horaFato" inputmode="numeric" autocomplete="off" placeholder="só números, ex.: 1254 → 12h54min" value="' + esc(rascunho.horaFato || '') + '"></div>'
         + inp('dataNotificacao', 'Data da notificação', '', 'date') + inp('dataRecurso', 'Data do pedido de recurso', '', 'date')
-        + inp('quemAbriu', 'Quem pediu a abertura', 'Síndica, por e-mail') + '</div>'
+        + sel('quemAbriu', 'Quem pediu a abertura', QUEM_ABRIU) + sel('formaRecebimento', 'Forma de recebimento', FORMAS_RECEBIMENTO) + '</div>'
         + (!r.id ? '<div class="aviso">Depois de salvar, os arquivos (ocorrência, provas, recurso do morador) entram no passo <b>3. Arquivos</b>.</div>' : '');
     } else if (p === 1) {
       h += area('fatos', 'Dos fatos', 'O que aconteceu, com data e hora.')
@@ -740,6 +745,16 @@
     return h;
   }
   var SISTEMAS = ['BRCondos', 'Almah'];
+  var QUEM_ABRIU = ['Síndica', 'Morador'];
+  var FORMAS_RECEBIMENTO = ['Telefone', 'E-mail', 'WhatsApp', 'Sistema'];
+  // horário digitado só com números: "1254" → "12h54min", "9" → "9h"
+  function formatarHora(txt){
+    var d = String(txt || '').replace(/\D/g, '').slice(0, 4);
+    if (!d) return '';
+    if (d.length <= 2) return d + 'h';
+    var h = d.slice(0, d.length - 2), m = d.slice(-2);
+    return h + 'h' + m + 'min';
+  }
   var CLASSIFICACOES = ['USO INADEQUADO DA INFRAESTRUTURA DO CONDOMÍNIO.', 'ADEQUAÇÃO', 'ALTA VELOCIDADE', 'ALUGUEL POR TEMPORADA (AIRBNB)', 'ÁREAS DE LAZER',
     'ATUALIZAÇÃO CADASTRAL', 'AUT - ARMÁRIO INTELIGENTE', 'AUT - FALHA DE COMUNICAÇÃO', 'AUT - ORDEM DE SERVIÇO', 'BARULHO', 'CARREGADOR ELÉTRICO',
     'CIGARRO/FUMÍGENO', 'CIRCULAÇÃO ANIMAIS', 'CONDUTA ANTISSOCIAL', 'CONDUTA INADEQUADA', 'CONSERVAÇÃO DO LOTE', 'CRIANÇAS', 'DANOS', 'DESACATO URBANIDADE',
@@ -774,7 +789,7 @@
   function area(k, rot, ph){
     return '<div class="campo"><label>' + esc(rot) + '</label><textarea id="ed-' + k + '" placeholder="' + esc(ph || '') + '">' + esc(rascunho[k] || '') + '</textarea></div>';
   }
-  var CAMPOS_TEXTO = ['sistema', 'ocorrencia', 'unidade', 'morador', 'titulo', 'classificacao', 'penalidadeTipo', 'multaVencimento', 'dataFato', 'horaFato', 'dataNotificacao', 'dataRecurso', 'quemAbriu',
+  var CAMPOS_TEXTO = ['sistema', 'ocorrencia', 'unidade', 'morador', 'titulo', 'classificacao', 'penalidadeTipo', 'multaVencimento', 'dataFato', 'horaFato', 'dataNotificacao', 'dataRecurso', 'quemAbriu', 'formaRecebimento',
                       'fatos', 'alegacoes', 'fundamentos', 'observacoes', 'historicoUnidade', 'parecer', 'conclusao'];
   function lerFormulario(){
     CAMPOS_TEXTO.forEach(function(k){ var el = document.getElementById('ed-' + k); if (el) rascunho[k] = el.value.trim(); });
@@ -801,7 +816,21 @@
       if (rascunho.penalidadeTipo === 'multa' && !(rascunho.multaValor > 0)) falta.push('valor da multa');
       if (rascunho.penalidadeTipo === 'multa' && !rascunho.multaVencimento) falta.push('vencimento da multa');
     }
-    if (falta.length) { if (st) st.innerHTML = '<span class="err">Preencha: ' + esc(falta.join(', ')) + '.</span>'; return; }
+    document.querySelectorAll('.campo.faltando').forEach(function(c){ c.classList.remove('faltando'); });
+    var topo = document.getElementById('ed-falta');
+    if (falta.length) {
+      var msg = 'Para salvar' + (irPara === 2 ? ' e anexar os arquivos' : '') + ', preencha: ' + falta.join(', ') + '.';
+      if (st) st.innerHTML = '<span class="err">' + esc(msg) + '</span>';
+      if (topo) { topo.textContent = msg; topo.style.display = 'block'; }
+      var mapa = { 'nº da ocorrência':'ocorrencia', 'unidade':'unidade', 'sistema':'sistema', 'classificação':'classificacao', 'penalidade (Notificação ou Multa)':'penalidadeTipo',
+                   'valor da multa':'multaValor', 'vencimento da multa':'multaVencimento' };
+      var primeiro = null;
+      falta.forEach(function(f){ var el = document.getElementById('ed-' + mapa[f]); if (el) { el.closest('.campo').classList.add('faltando'); if (!primeiro) primeiro = el; } });
+      if (primeiro) { primeiro.scrollIntoView({ block:'center', behavior:'smooth' }); try { primeiro.focus({ preventScroll:true }); } catch (e) {} }
+      else if (topo) topo.scrollIntoView({ block:'center' });
+      return;
+    }
+    if (topo) { topo.className = 'falta-topo info'; topo.textContent = irPara === 2 ? 'Salvando os dados para abrir os Arquivos…' : 'Salvando…'; topo.style.display = 'block'; }
     var s = sessoes[rascunho.sessaoId];
     var dados = {};
     CAMPOS_TEXTO.forEach(function(k){ dados[k] = rascunho[k] || ''; });
@@ -820,9 +849,13 @@
     })).then(function(){
       var novo = !rascunho.id; rascunho.id = ref.id;
       if (st) st.innerHTML = '<span class="ok">Salvo.</span>';
+      if (topo) topo.style.display = 'none';
       if (irPara != null) { state.editarPasso = irPara; mostrar(true); }
       else if (novo) { state.editarPasso = 1; mostrar(true); }
-    }).catch(function(e){ st.innerHTML = '<span class="err">Não foi possível salvar: ' + esc(e.message) + '</span>'; });
+    }).catch(function(e){
+      if (st) st.innerHTML = '<span class="err">Não foi possível salvar: ' + esc(e.message) + '</span>';
+      if (topo) { topo.className = 'falta-topo'; topo.textContent = 'Não foi possível salvar: ' + e.message; topo.style.display = 'block'; topo.scrollIntoView({ block:'center' }); }
+    });
   }
 
   // envio dos arquivos para o Storage, um por vez, com barra de progresso
@@ -1507,6 +1540,12 @@
   // valor da multa: só números, já formatado em reais enquanto digita
   app.addEventListener('input', function(e){
     var t = e.target;
+    if (t.id === 'ed-horaFato') {
+      // apagar com o "h"/"min" no fim tira o último número (senão a máscara devolveria o mesmo texto)
+      var dg = t.value.replace(/[^0-9]/g, '').slice(0, 4);
+      if (/^delete/.test(e.inputType || '') && dg === (t.dataset.dig || '')) dg = dg.slice(0, -1);
+      t.dataset.dig = dg; t.value = formatarHora(dg); return;
+    }
     if (t.id !== 'ed-multaValor') return;
     var v = valorDeReais(t.value);
     t.value = v ? reais(v) : '';
