@@ -4,6 +4,6 @@
 //    Certificados push da Web).
 // Enquanto estiverem vazios, o portal não oferece as notificações (nada muda para ninguém).
 var PUSH_CONFIG = {
-  workerUrl: '',
-  vapidKey: ''
+  workerUrl: 'https://portal-fb-push.jowjow07.workers.dev',
+  vapidKey: 'BHmKTfZ50e0Aw7QVKKvOm7soRyPYy1A1EBBRZpPPpkNSzvqYxSl1aBTIJHADE39K-eLMp1lOkafP94BEX_4cP6Q'
 };

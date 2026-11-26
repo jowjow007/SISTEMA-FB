@@ -16,8 +16,9 @@
 //   GOOGLE_SA_EMAIL        (Secret) "client_email" do JSON da conta de serviço
 //   GOOGLE_SA_PRIVATE_KEY  (Secret) "private_key" do mesmo JSON (com BEGIN/END PRIVATE KEY)
 //   FIREBASE_PROJECT_ID    (variável normal, opcional) padrão: sistema-fb-4cce5
-// Papéis da conta de serviço no projeto do portal: "Firebase Cloud Messaging API Admin" e
-// "Cloud Datastore User".
+// Papéis da conta de serviço no projeto do portal: "Administrador da API Firebase Cloud Messaging" e
+// "Leitor do Cloud Datastore" (só leitura: se a chave vazar, não altera o banco). Com leitura apenas, apagar
+// aparelhos desativados falha em silêncio; o próprio portal limpa os antigos quando a pessoa entra.
 // ============================================================
 
 const ALLOWED_ORIGINS = ['https://portal.fonsecaebraga.com.br', 'https://jowjow007.github.io'];

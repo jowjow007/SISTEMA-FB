@@ -119,6 +119,7 @@
     .pergunta{white-space:normal;}
     .btn{min-height:40px;}
   }
+  .bolha a.lk{color:var(--blue,#6aa7ff);text-decoration:underline;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -256,6 +257,14 @@
     return h + '</div>';
   }
   function anexosHtml(l){ return l && l.length ? '<div>' + l.map(function(a){ return '<button type="button" class="anexo" data-anexo="' + esc(a.caminho) + '">📎 ' + esc(a.nome) + '</button>'; }).join('') + '</div>' : ''; }
+  // links digitados nas mensagens viram clicáveis (abrem em outra aba; no app do Windows, no navegador)
+  function comLinks(txt){
+    return esc(txt || '').replace(/(\bhttps?:\/\/[^\s<]+|\bwww\.[^\s<]+)/gi, function(u){
+      var fim = (u.match(/[.,;:!?)\]]+$/) || [''])[0], url = fim ? u.slice(0, -fim.length) : u;
+      var href = /^www\./i.test(url) ? 'https://' + url : url;
+      return '<a class="lk" href="' + href + '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + fim;
+    });
+  }
   function conversaHtml(v){
     const msgs = MSGS[v.id];
     if (!msgs) return '<div class="aviso">Carregando…</div>';
@@ -263,11 +272,11 @@
     return msgs.filter(function(m){ return m.tipo !== 'correcao'; }).map(function(m){
       const txt = cor[m.id] ? cor[m.id].texto : m.texto;
       const evento = (m.tipo === 'conclusao' && !txt) || m.tipo === 'alteracao' || m.tipo === 'reabertura' && !txt;
-      let corpo = esc(txt || '');
-      if (m.tipo === 'solicitacao') corpo = [m.analise ? 'Análise: ' + esc(m.analise) : '', m.sugestao ? 'Sugestão: ' + esc(m.sugestao) : '', esc(txt)].filter(Boolean).join('\n\n');
+      let corpo = comLinks(txt || '');
+      if (m.tipo === 'solicitacao') corpo = [m.analise ? 'Análise: ' + comLinks(m.analise) : '', m.sugestao ? 'Sugestão: ' + comLinks(m.sugestao) : '', comLinks(txt)].filter(Boolean).join('\n\n');
       const rotM = esc(m.autorNome) + ' · ' + esc(quando(m.em)) + (cor[m.id] ? ' · corrigida' : '');
       // pedido: caixa "Decisão do juiz" ao lado da "Dúvida"; a "Solução" (orientação) aparece depois como terceira caixa
-      if (m.tipo === 'solicitacao' && m.resumo) return '<div class="bolha decisao"><div class="rot">Decisão do juiz · ' + rotM + '</div>' + esc(m.resumo) + '</div>' +
+      if (m.tipo === 'solicitacao' && m.resumo) return '<div class="bolha decisao"><div class="rot">Decisão do juiz · ' + rotM + '</div>' + comLinks(m.resumo) + '</div>' +
         '<div class="bolha solicitacao"><div class="rot">Dúvida · ' + rotM + '</div>' + (corpo || '<span class="aviso">(sem dúvida escrita)</span>') + anexosHtml(m.anexos) + '</div>';
       return '<div class="bolha ' + esc(m.tipo) + (evento ? ' evento' : '') + '"><div class="rot">' + esc(ROT_MSG[m.tipo] || m.tipo) + ' · ' + esc(m.autorNome) + ' · ' + esc(quando(m.em)) + (cor[m.id] ? ' · corrigida' : '') + '</div>' + corpo + anexosHtml(m.anexos) + '</div>';
     }).join('');

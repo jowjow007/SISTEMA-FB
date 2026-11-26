@@ -680,14 +680,23 @@ service cloud.firestore {
     function tipoDoCriadorDeDocumentos(t) {
       return t in ['procuracao', 'substabelecimento', 'hipossuficiencia', 'termo_repasse', 'recibo', 'carta_preposicao', 'peticao_ciencia'];
     }
+    // 26/11/2026: contratos que o dono gera ficam "sigiloso" — só ele vê. Os da equipe (sigiloso == false) todos com
+    // acesso a Contratos veem. Quem não é o dono consulta com filtro (sigiloso == false, ou os próprios), senão a
+    // consulta é negada. Os documentos do Criador de Documentos (procuração, recibo…) nunca são sigilosos.
     match /contratosGerados/{docId} {
-      allow read: if temAbaRestrita('contratos-msmo451y') || (isEquipe() && tipoDoCriadorDeDocumentos(resource.data.tipo));
+      allow read: if isDonoConferencia()
+                  || (isEquipe() && tipoDoCriadorDeDocumentos(resource.data.tipo))
+                  || (temAbaRestrita('contratos-msmo451y') && (resource.data.sigiloso == false || resource.data.criadoPorUid == request.auth.uid));
       allow create: if (temAbaRestrita('contratos-msmo451y') || (isEquipe() && tipoDoCriadorDeDocumentos(request.resource.data.tipo)))
                     && request.resource.data.criadoPorUid == request.auth.uid
                     && request.resource.data.tipo is string
                     && request.resource.data.nomeDisplay is string
-                    && request.resource.data.dados is map;
-      allow update: if false;
+                    && request.resource.data.dados is map
+                    && (request.resource.data.get('sigiloso', false) == false || isDonoConferencia());
+      // só o dono marca/desmarca o sigilo (é assim que os contratos antigos dele são marcados na primeira abertura)
+      allow update: if isDonoConferencia()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sigiloso'])
+                    && request.resource.data.sigiloso is bool;
       allow delete: if isAtivo() && (resource.data.criadoPorUid == request.auth.uid || isAdmin());
     }
     match /peticoes_historico/{docId} {

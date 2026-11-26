@@ -83,9 +83,11 @@ if (tipo) document.getElementById('filtro-tipo').value = tipo;
 auth.onAuthStateChanged(function(user){
   if(!user){ document.getElementById('lista').innerHTML = '<p class="msg">Faça login no Portal e abra esta página novamente.</p>'; return; }
   // coleção compartilhada com o Contratos: filtra só os tipos do Criador de Documentos
-  db.collection('contratosGerados').orderBy('criadoEm','desc').limit(1000).onSnapshot(function(snap){
+  // consulta só os tipos do Criador de Documentos (é o que as regras deixam ler; os contratos sigilosos ficam fora)
+  db.collection('contratosGerados').where('tipo', 'in', DOCUMENTOS_TIPOS).onSnapshot(function(snap){
+    var ms = function(t){ return t && t.toMillis ? t.toMillis() : Date.now(); };
     itens = snap.docs.map(function(d){ return {id:d.id, data:d.data()}; })
-      .filter(function(it){ return DOCUMENTOS_TIPOS.indexOf(it.data.tipo) >= 0; });
+      .sort(function(a, b){ return ms(b.data.criadoEm) - ms(a.data.criadoEm); }).slice(0, 1000);
     desenhar();
   }, function(e){
     var p = document.createElement('p'); p.className = 'msg'; p.style.color = 'var(--err)';

@@ -1455,7 +1455,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v293</span>
+      <span class="version-tag">v294</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -3244,8 +3244,19 @@
       }).then(function(token){
         if (!token) return 'sem-token';
         const chave = token.slice(-32).replace(/[^A-Za-z0-9]/g, 'x');
-        const dados = {}; dados[chave] = { token: token, em: firebase.firestore.FieldValue.serverTimestamp(), aparelho: navigator.userAgent.slice(0, 160) };
-        return db.collection('pushTokens').doc(currentProfile.uid).set({ tokens: dados }, { merge: true }).then(function(){ return 'ok'; });
+        // o Worker só lê (conta de serviço com papel de leitura): a limpeza dos aparelhos antigos é feita aqui.
+        // Fica com este aparelho + os 7 mais recentes dos outros, e descarta os que não renovam há 90 dias.
+        const ref = db.collection('pushTokens').doc(currentProfile.uid);
+        return ref.get().catch(function(){ return null; }).then(function(snap){
+          const atuais = (snap && snap.exists && snap.data().tokens) || {};
+          const limite = Date.now() - 90 * 864e5, ms = function(t){ return t && t.toMillis ? t.toMillis() : 0; };
+          const outros = Object.keys(atuais).filter(function(k){ return k !== chave && atuais[k] && atuais[k].token && ms(atuais[k].em) >= limite; })
+            .sort(function(x, y){ return ms(atuais[y].em) - ms(atuais[x].em); }).slice(0, 7);
+          const tokens = {};
+          outros.forEach(function(k){ tokens[k] = atuais[k]; });
+          tokens[chave] = { token: token, em: firebase.firestore.FieldValue.serverTimestamp(), aparelho: navigator.userAgent.slice(0, 160) };
+          return ref.set({ tokens: tokens }).then(function(){ return 'ok'; });
+        });
       });
     });
   }

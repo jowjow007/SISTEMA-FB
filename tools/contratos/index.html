@@ -279,6 +279,7 @@
   .ctr-subnav button{padding:8px 14px;border-radius:9px 9px 0 0;border:1px solid var(--line-strong);border-bottom:none;background:var(--panel-2);color:var(--muted);font-weight:600;font-size:.78rem;cursor:pointer;}
   .ctr-subnav button.active{background:var(--red);color:#fff;border-color:var(--red);}
   #ctr-assoc iframe{display:block;width:100%;height:calc(100vh - 46px);border:none;}
+.hist-sigilo{margin-right:6px;font-size:.85em;}
 </style>
 </head>
 <body>
@@ -2360,10 +2361,14 @@ function resumoDocumento(d){
   else if(d.tipo==='proposta_condominio'){ nome=d.condominio.razaoSocial; valor='R$ '+d.propostaCondominio.honInicial; }
   return { nome: nome||'(sem nome)', valor: valor||'' };
 }
+// contratos do dono ficam sigilosos (só ele vê); os da equipe, todos com acesso a Contratos veem
+const DONO_CONTRATOS = 'jonathan@fonsecaebraga.com.br';
+function souDono(){ return !!(currentUser && String(currentUser.email||'').toLowerCase()===DONO_CONTRATOS); }
 function salvarHistorico(d){
   if(!currentUser || !window.__db) return;
   const { nome, valor } = resumoDocumento(d);
   window.__db.collection('contratosGerados').add({
+    sigiloso: souDono(),
     tipo: d.tipo,
     nomeDisplay: nome,
     valorDisplay: valor,
@@ -2451,7 +2456,7 @@ function renderHistorico(docs){
     row.className='hist-row';
     row.innerHTML=`
       <button type="button" class="hist-main">
-        <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${esc(item.nomeDisplay)}</div>
+        <div class="hist-nome"><span class="hist-tipo">${esc(labelTipo(item.tipo))}</span>${item.sigiloso?'<span class="hist-sigilo" title="Sigiloso: só você vê este contrato">🔒</span>':''}${esc(item.nomeDisplay)}</div>
         <div class="hist-meta">${esc(item.valorDisplay||'')}${item.valorDisplay&&item.dataDisplay?' · ':''}${esc(item.dataDisplay||'')}</div>
       </button>
       <div class="hist-acoes"><button type="button" class="hist-dl">Baixar PDF</button><button type="button" class="hist-dl hist-aplicar" title="Usa os dados do cliente deste documento em outro modelo (proposta, contrato…)">Aplicar dados</button></div>
@@ -2490,12 +2495,39 @@ function renderHistorico(docs){
 }
 function carregarHistorico(){
   if(!window.__db) return;
-  window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(150)
-    .onSnapshot(snap=>{
-      renderHistorico(snap.docs.map(doc=>doc.data()));
-    }, err=>{
-      document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message;
-    });
+  const erro = err=>{ document.getElementById('historico-msg').textContent = 'Não foi possível carregar o histórico: '+err.message; };
+  if(souDono()){
+    window.__db.collection('contratosGerados').orderBy('criadoEm','desc').limit(150)
+      .onSnapshot(snap=>renderHistorico(snap.docs.map(doc=>doc.data())), erro);
+    marcarSigiloAntigos();
+    return;
+  }
+  // demais pessoas: os contratos da equipe (não sigilosos) + os próprios; a ordem é feita aqui (sem índice composto)
+  const partes = { equipe: [], meus: [] };
+  const juntar = ()=>{
+    const vistos = {}, todos = [];
+    partes.equipe.concat(partes.meus).forEach(x=>{ if(!vistos[x.id]){ vistos[x.id]=1; todos.push(x.d); } });
+    todos.sort((a,b)=>((b.criadoEm&&b.criadoEm.toMillis?b.criadoEm.toMillis():Date.now())-(a.criadoEm&&a.criadoEm.toMillis?a.criadoEm.toMillis():Date.now())));
+    renderHistorico(todos);
+  };
+  const col = window.__db.collection('contratosGerados');
+  col.where('sigiloso','==',false).onSnapshot(snap=>{ partes.equipe = snap.docs.map(doc=>({id:doc.id, d:doc.data()})); juntar(); }, erro);
+  col.where('criadoPorUid','==',currentUser.uid).onSnapshot(snap=>{ partes.meus = snap.docs.map(doc=>({id:doc.id, d:doc.data()})); juntar(); }, erro);
+}
+// primeira abertura do dono: marca os documentos antigos (sem o campo "sigiloso"): os contratos dele viram sigilosos,
+// o resto fica visível à equipe. Roda sempre que ele abre, mas só grava o que ainda não tem o campo.
+let sigiloMarcado = false;
+function marcarSigiloAntigos(){
+  if(sigiloMarcado || !souDono()) return; sigiloMarcado = true;
+  window.__db.collection('contratosGerados').get().then(snap=>{
+    const faltam = snap.docs.filter(doc=>typeof doc.data().sigiloso !== 'boolean');
+    for(let i=0;i<faltam.length;i+=400){
+      const lote = window.__db.batch();
+      faltam.slice(i,i+400).forEach(doc=>{ const x = doc.data();
+        lote.update(doc.ref, { sigiloso: TIPOS_DESTA_ABA.indexOf(x.tipo)>=0 && x.criadoPorUid===currentUser.uid }); });
+      lote.commit().catch(e=>console.warn('marcar sigilo:', e));
+    }
+  }).catch(e=>console.warn('marcar sigilo:', e));
 }
 (function initFirebase(){
   if(typeof firebaseConfig==='undefined' || !firebaseConfig || firebaseConfig.apiKey==='COLE_AQUI_SUA_API_KEY'){
