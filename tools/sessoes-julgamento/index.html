@@ -214,7 +214,7 @@
   var STORAGE_HOST = firebase.__emuladores ? 'http://127.0.0.1:9199' : 'https://firebasestorage.googleapis.com';
 
   var CATEGORIAS = [
-    { id:'ocorrencia', rot:'Ocorrência (BRCondos)' },
+    { id:'ocorrencia', rot:'Ocorrência (BRCondos / Almah)' },
     { id:'prova', rot:'Provas (vídeos, fotos, prints)' },
     { id:'recurso', rot:'Recurso do morador' },
     { id:'resumo', rot:'Resumo do escritório' },
@@ -587,7 +587,7 @@
     var p = state.passo;
     if (p === 0) {
       h += '<div class="ficha">'
-        + campoFicha('Ocorrência', '#' + r.ocorrencia) + campoFicha('Unidade', r.unidade) + campoFicha('Morador(a)', r.morador)
+        + campoFicha('Ocorrência', (r.sistema ? r.sistema + ' ' : '') + '#' + r.ocorrencia) + campoFicha('Unidade', r.unidade) + campoFicha('Morador(a)', r.morador)
         + campoFicha('Classificação', r.classificacao) + campoFicha('Penalidade aplicada', r.penalidade)
         + campoFicha('Data do fato', [dataBR(r.dataFato), r.horaFato].filter(Boolean).join(' · ')) + campoFicha('Notificação', dataBR(r.dataNotificacao))
         + campoFicha('Pedido de recurso', dataBR(r.dataRecurso)) + campoFicha('Quem pediu a abertura', r.quemAbriu) + '</div>';
@@ -665,18 +665,29 @@
       + '<div class="barra"><h2>' + (r.id ? 'Recurso #' + esc(r.ocorrencia) : 'Novo recurso') + '</h2><span class="espaco"></span>'
       + (r.id ? '<button type="button" class="btn sec peq" data-recurso="' + esc(r.id) + '">👁 Ver como o conselho</button>' : '')
       + (r.id ? '<button type="button" class="btn ghost peq" id="excluir-recurso">Excluir</button>' : '') + '</div>';
-    h += '<div class="passos">' + PASSOS_ED.map(function(p, i){
-      return '<button type="button" class="' + (i === state.editarPasso ? 'on' : '') + '" data-edpasso="' + i + '"' + (!r.id && i >= 2 ? ' disabled title="Salve os dados primeiro"' : '') + '><span class="n">' + (i + 1) + '</span>' + p + '</button>';
+    // "Decisão e ementa" só aparece depois do julgamento (data passada, marcada como julgada ou com decisão já lançada)
+    var passosEd = PASSOS_ED.filter(function(p, i){ return i < 3 || (r.id && podeDecidir(recursos[r.id] || r)); });
+    if (state.editarPasso >= passosEd.length) state.editarPasso = 0;
+    h += '<div class="passos">' + passosEd.map(function(p, i){
+      return '<button type="button" class="' + (i === state.editarPasso ? 'on' : '') + '" data-edpasso="' + i + '"><span class="n">' + (i + 1) + '</span>' + p + '</button>';
     }).join('') + '</div>';
     var p = state.editarPasso;
     if (p === 0) {
+      var pt = rascunho.penalidadeTipo || '';
       h += '<div class="g2">'
-        + inp('ocorrencia', 'Nº da ocorrência *', '305211') + inp('unidade', 'Unidade *', 'Bloco 2, nº 807')
-        + inp('morador', 'Morador(a)') + inp('titulo', 'Título da ocorrência', 'Estacionamento irregular')
-        + inp('classificacao', 'Classificação', 'Estacionamento') + inp('penalidade', 'Penalidade aplicada', 'Notificação + multa de R$ 821,70')
+        + sel('sistema', 'Sistema *', SISTEMAS) + inp('ocorrencia', 'Nº da ocorrência *', '305211')
+        + inp('unidade', 'Unidade *', 'Bloco 2, nº 807') + inp('morador', 'Morador(a)')
+        + inp('titulo', 'Título da ocorrência', 'Estacionamento irregular') + sel('classificacao', 'Classificação *', CLASSIFICACOES)
+        + '<div class="campo"><label>Penalidade aplicada *</label><select id="ed-penalidadeTipo"><option value="">SELECIONE</option>'
+        + '<option value="notificacao"' + (pt === 'notificacao' ? ' selected' : '') + '>Notificação</option><option value="multa"' + (pt === 'multa' ? ' selected' : '') + '>Multa</option></select>'
+        + (!pt && rascunho.penalidade ? '<div class="small muted" style="margin-top:4px;">Cadastro antigo: "' + esc(rascunho.penalidade) + '". Escolha Notificação ou Multa.</div>' : '') + '</div>'
+        + '<div id="multa-box" class="g2" style="grid-column:1/-1;' + (pt === 'multa' ? '' : 'display:none;') + '">'
+        + '<div class="campo"><label>Valor da multa *</label><input id="ed-multaValor" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="' + esc(rascunho.multaValor ? reais(rascunho.multaValor) : '') + '"></div>'
+        + inp('multaVencimento', 'Vencimento da multa *', '', 'date') + '</div>'
         + inp('dataFato', 'Data do fato', '', 'date') + inp('horaFato', 'Horário aproximado', '12h54')
         + inp('dataNotificacao', 'Data da notificação', '', 'date') + inp('dataRecurso', 'Data do pedido de recurso', '', 'date')
-        + inp('quemAbriu', 'Quem pediu a abertura', 'Síndica, por e-mail') + '</div>';
+        + inp('quemAbriu', 'Quem pediu a abertura', 'Síndica, por e-mail') + '</div>'
+        + (!r.id ? '<div class="aviso">Depois de salvar, os arquivos (ocorrência, provas, recurso do morador) entram no passo <b>3. Arquivos</b>.</div>' : '');
     } else if (p === 1) {
       h += area('fatos', 'Dos fatos', 'O que aconteceu, com data e hora.')
         + area('alegacoes', 'Alegações do morador (resumo do recurso)', 'O que o morador diz em sua defesa.')
@@ -728,16 +739,48 @@
     h += '<div class="navpassos"><span class="small muted" id="ed-status"></span><button type="button" class="btn" id="ed-salvar">' + (r.id ? 'Salvar alterações' : 'Salvar e continuar') + '</button></div>';
     return h;
   }
+  var SISTEMAS = ['BRCondos', 'Almah'];
+  var CLASSIFICACOES = ['USO INADEQUADO DA INFRAESTRUTURA DO CONDOMÍNIO.', 'ADEQUAÇÃO', 'ALTA VELOCIDADE', 'ALUGUEL POR TEMPORADA (AIRBNB)', 'ÁREAS DE LAZER',
+    'ATUALIZAÇÃO CADASTRAL', 'AUT - ARMÁRIO INTELIGENTE', 'AUT - FALHA DE COMUNICAÇÃO', 'AUT - ORDEM DE SERVIÇO', 'BARULHO', 'CARREGADOR ELÉTRICO',
+    'CIGARRO/FUMÍGENO', 'CIRCULAÇÃO ANIMAIS', 'CONDUTA ANTISSOCIAL', 'CONDUTA INADEQUADA', 'CONSERVAÇÃO DO LOTE', 'CRIANÇAS', 'DANOS', 'DESACATO URBANIDADE',
+    'DESCARTE DE RESÍDUOS/LIXO', 'ELEVADORES', 'ENTRADA E SAÍDA DE VEÍCULOS', 'ESPAÇOS DE FESTAS', 'ESTACIONAMENTO', 'EVENTO CARONA', 'FACHADA', 'FUMO',
+    'HALLS SOCIAIS', 'INSTALAÇÃO AR CONDICIONADO', 'MUDANÇAS', 'NÃO USO DE MÁSCARA', 'OBJETOS HALLS/ÁREAS COMUNS', 'OBJETOS PELA JANELA', 'OBRAS', 'OUTROS',
+    'PISCINA', 'PONTO DE GÁS/BOTIJÃO DE GÁS', 'PORTARIA', 'PRESTADORES DE SERVIÇOS', 'QUIOSQUES', 'SEGURANÇA E MONITORAMENTO', 'VAGA DE VISITANTES',
+    'VAGAS DE GARAGEM', 'VAZAMENTOS / INFILTRAÇÕES', 'VISITANTES NA PISCINA'];
+  // lista fixa; um valor antigo (digitado antes da lista) continua aparecendo até alguém trocar
+  function sel(k, rot, opcoes){
+    var v = rascunho[k] || '';
+    var ops = opcoes.slice(); if (v && ops.indexOf(v) < 0) ops.unshift(v);
+    return '<div class="campo"><label>' + esc(rot) + '</label><select id="ed-' + k + '"><option value="">SELECIONE</option>'
+      + ops.map(function(o){ return '<option' + (o === v ? ' selected' : '') + (opcoes.indexOf(o) < 0 ? ' value="' + esc(o) + '">' + esc(o) + ' (cadastro antigo)' : '>' + esc(o)) + '</option>'; }).join('') + '</select></div>';
+  }
+  function reais(n){ return 'R$ ' + Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+  function valorDeReais(txt){ var d = String(txt || '').replace(/\D/g, ''); return d ? parseInt(d, 10) / 100 : 0; }
+  function textoPenalidade(r){
+    if (r.penalidadeTipo === 'notificacao') return 'Notificação';
+    if (r.penalidadeTipo === 'multa') return 'Multa de ' + reais(r.multaValor) + (r.multaVencimento ? ' — vencimento ' + dataBR(r.multaVencimento) : '');
+    return r.penalidade || '';
+  }
+  function podeDecidir(r){
+    if (!r) return false;
+    if (r.decisao && r.decisao.resultado) return true;
+    if (realizadaOc(r)) return true;
+    var d = dataDaOcorrencia(r);
+    return !!d && new Date(d.length > 10 ? d : d + 'T23:59') <= new Date();
+  }
   function inp(k, rot, ph, tipo){
     return '<div class="campo"><label>' + esc(rot) + '</label><input id="ed-' + k + '" ' + (tipo ? 'type="' + tipo + '" ' : '') + 'value="' + esc(rascunho[k] || '') + '" placeholder="' + esc(ph || '') + '"></div>';
   }
   function area(k, rot, ph){
     return '<div class="campo"><label>' + esc(rot) + '</label><textarea id="ed-' + k + '" placeholder="' + esc(ph || '') + '">' + esc(rascunho[k] || '') + '</textarea></div>';
   }
-  var CAMPOS_TEXTO = ['ocorrencia', 'unidade', 'morador', 'titulo', 'classificacao', 'penalidade', 'dataFato', 'horaFato', 'dataNotificacao', 'dataRecurso', 'quemAbriu',
+  var CAMPOS_TEXTO = ['sistema', 'ocorrencia', 'unidade', 'morador', 'titulo', 'classificacao', 'penalidadeTipo', 'multaVencimento', 'dataFato', 'horaFato', 'dataNotificacao', 'dataRecurso', 'quemAbriu',
                       'fatos', 'alegacoes', 'fundamentos', 'observacoes', 'historicoUnidade', 'parecer', 'conclusao'];
   function lerFormulario(){
     CAMPOS_TEXTO.forEach(function(k){ var el = document.getElementById('ed-' + k); if (el) rascunho[k] = el.value.trim(); });
+    var mv = document.getElementById('ed-multaValor'); if (mv) rascunho.multaValor = valorDeReais(mv.value);
+    if (rascunho.penalidadeTipo !== 'multa' && document.getElementById('ed-penalidadeTipo')) { rascunho.multaValor = 0; rascunho.multaVencimento = ''; }
+    if (rascunho.penalidadeTipo) rascunho.penalidade = textoPenalidade(rascunho);
   }
   function abrirEdicao(id, sessaoId){
     var base = id ? recursos[id] : { sessaoId:sessaoId, condominioSlug:(sessoes[sessaoId] || {}).condominioSlug };
@@ -745,13 +788,25 @@
     rascunho.id = id || null;
     ir('editar', { editarPasso:0 });
   }
-  function salvarRecurso(){
+  function salvarRecurso(irPara){
     lerFormulario();
     var st = document.getElementById('ed-status');
-    if (!rascunho.ocorrencia || !rascunho.unidade) { st.innerHTML = '<span class="err">Preencha o nº da ocorrência e a unidade.</span>'; return; }
+    var falta = [];
+    if (!rascunho.ocorrencia) falta.push('nº da ocorrência');
+    if (!rascunho.unidade) falta.push('unidade');
+    if (document.getElementById('ed-sistema')) {   // conferência dos campos fixos só no passo "Dados" (cadastro antigo continua editável nos outros passos)
+      if (!rascunho.sistema) falta.push('sistema');
+      if (!rascunho.classificacao) falta.push('classificação');
+      if (!rascunho.penalidadeTipo) falta.push('penalidade (Notificação ou Multa)');
+      if (rascunho.penalidadeTipo === 'multa' && !(rascunho.multaValor > 0)) falta.push('valor da multa');
+      if (rascunho.penalidadeTipo === 'multa' && !rascunho.multaVencimento) falta.push('vencimento da multa');
+    }
+    if (falta.length) { if (st) st.innerHTML = '<span class="err">Preencha: ' + esc(falta.join(', ')) + '.</span>'; return; }
     var s = sessoes[rascunho.sessaoId];
     var dados = {};
     CAMPOS_TEXTO.forEach(function(k){ dados[k] = rascunho[k] || ''; });
+    dados.multaValor = rascunho.multaValor || 0;
+    dados.penalidade = textoPenalidade(rascunho);
     dados.ocorrencia = dados.ocorrencia.replace(/^#/, '');
     Object.assign(dados, { sessaoId:rascunho.sessaoId, condominioSlug:s.condominioSlug, condominioNome:s.condominioNome || nomeCondo(s.condominioSlug),
       liberado:!!s.liberada, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid });
@@ -764,14 +819,17 @@
       return ref.set(dados);
     })).then(function(){
       var novo = !rascunho.id; rascunho.id = ref.id;
-      st.innerHTML = '<span class="ok">Salvo.</span>';
-      if (novo) { state.editarPasso = 1; mostrar(true); }
+      if (st) st.innerHTML = '<span class="ok">Salvo.</span>';
+      if (irPara != null) { state.editarPasso = irPara; mostrar(true); }
+      else if (novo) { state.editarPasso = 1; mostrar(true); }
     }).catch(function(e){ st.innerHTML = '<span class="err">Não foi possível salvar: ' + esc(e.message) + '</span>'; });
   }
 
   // envio dos arquivos para o Storage, um por vez, com barra de progresso
   function enviarArquivos(files, categoria, recursoId, statusEl){
-    var r = recursos[recursoId];
+    // recurso recém-criado: a lista ainda pode não ter chegado do banco; o rascunho tem o condomínio
+    var r = recursos[recursoId] || (rascunho && rascunho.id === recursoId ? rascunho : null);
+    if (!r || !r.condominioSlug) { statusEl.innerHTML = '<span class="err">Salve os dados do recurso antes de enviar arquivos.</span>'; return Promise.resolve(0); }
     var fila = Array.prototype.slice.call(files);
     var enviados = 0;
     function proximo(){
@@ -1108,10 +1166,10 @@
       + '<span>Na impressão, escolha <b>Salvar como PDF</b>, margens <b>Nenhuma</b> e marque <b>Gráficos de plano de fundo</b>.</span></div>'
       + '<div class="pg"><div class="faixa"></div>'
       + '<header><img src="' + t(logo) + '" alt="Fonseca e Braga Sociedade de Advogados"><div class="tit"><h1>Análise do Escritório</h1>'
-      + '<div class="sub">' + t(condo) + (r.titulo || r.classificacao ? ' · ' + t(r.titulo || r.classificacao) : '') + '</div><span class="oc">Ocorrência #' + t(r.ocorrencia) + '</span></div></header>'
+      + '<div class="sub">' + t(condo) + (r.titulo || r.classificacao ? ' · ' + t(r.titulo || r.classificacao) : '') + '</div><span class="oc">Ocorrência ' + (r.sistema ? t(r.sistema) + ' ' : '') + '#' + t(r.ocorrencia) + '</span></div></header>'
       + '<div class="conteudo" id="conteudo">'
       + '<div class="chips">' + chip('casa', '#a3232b', 'Unidade', r.unidade) + chip('pessoa', '#2b5fab', 'Morador(a)', r.morador || 'não informado')
-      + chip('etiqueta', '#7b4bb7', 'Classificação', r.classificacao || r.titulo) + chip('moeda', '#c77700', 'Penalidade aplicada', r.penalidade) + '</div>'
+      + chip('etiqueta', '#7b4bb7', 'Classificação', r.classificacao || r.titulo) + chip('moeda', '#c77700', 'Penalidade aplicada', textoPenalidade(r)) + '</div>'
       + '<div class="linha-tempo">' + marco('olho', 'Fato', [dataBR(r.dataFato), r.horaFato].filter(Boolean).join(' · ')) + marco('sino', 'Notificação', dataBR(r.dataNotificacao))
       + marco('envelope', 'Recurso', dataBR(r.dataRecurso)) + marco('calendario', 'Julgamento', jul ? dataHoraBR(jul) : '') + '</div>'
       + (blocos ? '<div class="blocos">' + blocos + '</div>' : '<div class="vazio-a">Preencha os fatos, as alegações e os fundamentos no cadastro da ocorrência.</div>')
@@ -1446,8 +1504,16 @@
     var filtro = document.getElementById('ed-filtro-ementario');
     if (filtro) filtro.addEventListener('input', function(){ state.filtroEmentario = filtro.value; var pos = filtro.selectionStart; filtro.blur(); mostrar(true); var f2 = document.getElementById('ed-filtro-ementario'); f2.focus(); f2.setSelectionRange(pos, pos); });
   }
+  // valor da multa: só números, já formatado em reais enquanto digita
+  app.addEventListener('input', function(e){
+    var t = e.target;
+    if (t.id !== 'ed-multaValor') return;
+    var v = valorDeReais(t.value);
+    t.value = v ? reais(v) : '';
+  });
   app.addEventListener('change', function(e){
     var t = e.target;
+    if (t.id === 'ed-penalidadeTipo') { var mb = document.getElementById('multa-box'); if (mb) mb.style.display = t.value === 'multa' ? '' : 'none'; }
     if (t.id === 'ed-arquivos') { enviarArquivos(t.files, document.getElementById('ed-categoria').value, rascunho.id, document.getElementById('upl-status')); t.value = ''; }
     if (t.id === 'ed-categoria') state.categoriaUp = t.value;
     if (t.id === 'importar') { importarPacote(t.files); t.value = ''; }
@@ -1466,7 +1532,13 @@
     if (d.sessao) { ir('sessao', { sessaoId:d.sessao }); return; }
     if (d.voltarSessao) { ir('sessao', { sessaoId:d.voltarSessao }); return; }
     if (d.passo != null) { state.passo = parseInt(d.passo, 10); mostrar(true); window.scrollTo(0, 0); return; }
-    if (d.edpasso != null) { if (state.view === 'editar' && state.editarPasso < 2) lerFormulario(); state.editarPasso = parseInt(d.edpasso, 10); mostrar(true); return; }
+    if (d.edpasso != null) {
+      var alvo = parseInt(d.edpasso, 10);
+      if (state.view === 'editar' && state.editarPasso < 2) lerFormulario();
+      // recurso ainda não salvo: ir para "Arquivos" salva os dados primeiro (antes o botão ficava travado sem explicar)
+      if (state.view === 'editar' && !rascunho.id && alvo >= 2) { salvarRecurso(alvo); return; }
+      state.editarPasso = alvo; mostrar(true); return;
+    }
     if (d.abrir) { abrirProva(d.abrir); return; }
     if (d.ver) { verArquivo(d.ver); return; }
     if (d.analisePdf) { analisePdf(d.analisePdf); return; }

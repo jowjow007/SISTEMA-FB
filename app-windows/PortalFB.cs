@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("288.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("288.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("289.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("289.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "288";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "289";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -139,10 +139,60 @@ namespace PortalFB
             }
         }
 
+        // O Windows guarda em cache a figura do atalho (inclusive o fixado na barra de tarefas) pelo caminho "PortalFB.exe,0":
+        // trocar o ícone dentro do .exe não muda o que aparece. Uma vez por troca de ícone, grava o ícone vermelho num arquivo
+        // com nome novo, aponta para ele os atalhos do app (menu Iniciar, área de trabalho e fixados na barra) e avisa o Windows.
+        const string ICONE_MARCA = "barra-vermelho-1";
+        [DllImport("shell32.dll")] static extern void SHChangeNotify(int evento, uint flags, IntPtr a, IntPtr b);
+        static void AtualizarIconeDosAtalhos()
+        {
+#if TESTE
+            return;
+#endif
+            try
+            {
+                using (RegistryKey k = Registry.CurrentUser.CreateSubKey(@"Software\PortalFB"))
+                {
+                    if ((k.GetValue("IconeAtalhos") as string) == ICONE_MARCA) return;
+                    string ico = Path.Combine(Pasta, "icone-" + ICONE_MARCA + ".ico");
+                    using (Stream st = Assembly.GetExecutingAssembly().GetManifestResourceStream("portal-fb-barra.ico"))
+                    {
+                        if (st == null) return;
+                        using (FileStream f = File.Create(ico)) st.CopyTo(f);
+                    }
+                    var atalhos = new System.Collections.Generic.List<string> {
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), NOME + ".lnk"),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NOME + ".lnk") };
+                    string fixados = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar");
+                    if (Directory.Exists(fixados)) atalhos.AddRange(Directory.GetFiles(fixados, "*.lnk"));
+                    Type t = Type.GetTypeFromProgID("WScript.Shell");
+                    object shell = Activator.CreateInstance(t);
+                    foreach (string a in atalhos)
+                    {
+                        if (!File.Exists(a)) continue;
+                        try
+                        {
+                            object lnk = t.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { a });
+                            Type tl = lnk.GetType();
+                            string alvo = tl.InvokeMember("TargetPath", BindingFlags.GetProperty, null, lnk, null) as string;
+                            if (!string.Equals(alvo, ExeInstalado, StringComparison.OrdinalIgnoreCase)) continue;   // só atalhos deste app
+                            tl.InvokeMember("IconLocation", BindingFlags.SetProperty, null, lnk, new object[] { ico + ",0" });
+                            tl.InvokeMember("Save", BindingFlags.InvokeMethod, null, lnk, null);
+                        }
+                        catch { }
+                    }
+                    SHChangeNotify(0x08000000, 0, IntPtr.Zero, IntPtr.Zero);   // SHCNE_ASSOCCHANGED: o Windows relê os ícones
+                    k.SetValue("IconeAtalhos", ICONE_MARCA);
+                }
+            }
+            catch { }
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         static void Iniciar()
         {
             ExtrairLoader();
+            ThreadPool.QueueUserWorkItem(delegate { AtualizarIconeDosAtalhos(); });
             Microsoft.Web.WebView2.Core.CoreWebView2Environment.SetLoaderDllFolderPath(Path.Combine(Pasta, "bin"));
             string versao = null;
             try { versao = Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString(); } catch { }

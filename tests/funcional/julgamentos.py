@@ -101,9 +101,11 @@ def main():
         pm.click('#nova-ocorrencia')
         F.caso(G, '"+ Nova ocorrência" abre o formulário (sem criar sessão na tela)', F.esperar(pm, "!!document.getElementById('ed-ocorrencia')", 10000),
                pm.evaluate("document.getElementById('app').innerText.slice(0, 300)").replace(chr(10), ' '))
-        for k, v in (('ocorrencia', '900001'), ('unidade', 'Bloco 9, nº 101'), ('morador', 'Morador Fictício'), ('titulo', 'Tráfego em contramão'),
-                     ('classificacao', 'Trânsito'), ('penalidade', 'Notificação + multa de R$ 100,00')):
+        for k, v in (('ocorrencia', '900001'), ('unidade', 'Bloco 9, nº 101'), ('morador', 'Morador Fictício'), ('titulo', 'Tráfego em contramão')):
             pm.fill('#ed-' + k, v)
+        # campos fixos (25/11/2026): sistema, classificação da lista e penalidade Notificação/Multa com valor e vencimento
+        pm.select_option('#ed-sistema', 'BRCondos'); pm.select_option('#ed-classificacao', 'ENTRADA E SAÍDA DE VEÍCULOS'); pm.select_option('#ed-penalidadeTipo', 'multa')
+        pm.click('#ed-multaValor'); pm.keyboard.type('10000'); pm.fill('#ed-multaVencimento', '2026-11-30')
         pm.click('#ed-salvar')
         F.caso(G, 'salva o recurso e segue para "Fatos e fundamentos"', F.ate(lambda: F.ler(f'recursosJulgamento/{rec_id}') is not None, 10) and F.esperar(pm, "!!document.getElementById('ed-fatos')", 10000))
         pm.fill('#ed-fatos', 'No dia 01/10/2026, veículo fictício trafegou na contramão.')
