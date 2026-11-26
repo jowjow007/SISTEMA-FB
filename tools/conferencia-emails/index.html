@@ -19,7 +19,6 @@
   });
 })();
 </script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
 <style>
   body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:url('../../assets/bg-texture.jpg') repeat;background-size:280px auto;opacity:.05;}
 
@@ -150,6 +149,11 @@
   .toast{position:fixed;z-index:30;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel-3);border:1px solid var(--line-strong);color:var(--paper);padding:9px 16px;border-radius:9px;font-size:.8rem;display:none;}
 
   .periodos{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .baixar-box{position:relative;display:inline-block;}
+  .baixar-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:var(--panel);border:1px solid var(--line-strong);border-radius:9px;padding:4px;display:flex;flex-direction:column;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .baixar-menu[hidden]{display:none;}
+  .baixar-menu button{background:transparent;border:0;color:var(--paper);text-align:left;padding:8px 10px;border-radius:6px;font:inherit;font-size:.8rem;cursor:pointer;}
+  .baixar-menu button:hover,.baixar-menu button:focus{background:var(--panel-3);outline:none;}
   .periodos .baixar{margin-left:auto;}
   /* Relatório — painel no mesmo desenho da Agenda — Astrea (Números do Escritório) */
   :root{--track:rgba(236,230,225,.09);--sombra:0 1px 2px rgba(0,0,0,.25),0 6px 18px rgba(0,0,0,.18);}
@@ -349,7 +353,13 @@
       <button type="button" class="chip" data-p="pers">Personalizado</button>
       <span id="r-pers" style="display:none;gap:6px;align-items:center;font-size:.78rem;"><input type="date" id="r-de"> até <input type="date" id="r-ate"></span>
       <select id="r-caixa"><option value="">Todas as caixas</option></select>
-      <button type="button" class="bt baixar" id="r-baixar">📥 Baixar planilha</button>
+      <span class="baixar-box"><button type="button" class="bt baixar" id="r-baixar" aria-haspopup="true" aria-expanded="false">🖨️ Relatório para imprimir ▾</button>
+        <span class="baixar-menu" id="r-baixar-menu" hidden>
+          <button type="button" data-plan="">Todas as caixas</button>
+          <button type="button" data-plan="meu">Meu e-mail</button>
+          <button type="button" data-plan="condominio">Condomínio</button>
+          <button type="button" data-plan="juridico">Jurídico</button>
+        </span></span>
     </div>
     <div class="pz-grid">
       <div class="pz-card pz-gauge-card" id="pz-g0"></div>
@@ -363,7 +373,7 @@
       <div class="pz-card pz-meio" id="pz-faixas"></div>
     </div>
     <div class="pz-card pz-rem" id="pz-rem"></div>
-    <p class="resumo" style="margin-top:10px;">A planilha traz o período escolhido: remetentes, e-mails (com os textos), pontos de atenção e o que o robô descartou.</p>
+    <p class="resumo" style="margin-top:10px;">O relatório para imprimir traz o período escolhido, da caixa que você escolher: resumo, o que precisa de atenção, os números por responsável e a lista de e-mails com um quadradinho para marcar o que foi conferido.</p>
   </section>
 </main>
 
@@ -832,11 +842,11 @@
     }
     return { de: de, ate: ate };
   }
-  function doPeriodo(){
-    const r = intervalo(), cx = $('r-caixa').value;
+  function doPeriodo(caixa){
+    const r = intervalo(), cx = caixa === undefined ? $('r-caixa').value : caixa;
     return todos.filter(function(m){
       const d = data(m.recebidoEm);
-      return d && d >= r.de && d <= r.ate && (!cx || m.caixa === cx);
+      return d && d >= r.de && d <= r.ate && (!cx || m.caixa === cx || (m.tambemEm || []).indexOf(cx) >= 0);
     });
   }
   function porRemetente(L){
@@ -1095,59 +1105,131 @@
   }
 
   // Planilha do período: remetentes, e-mails (com textos), pontos de atenção e o que o robô descartou.
-  function baixarPlanilha(){
-    if (typeof XLSX === 'undefined') { toast('Não foi possível carregar o gerador de planilhas. Recarregue a página.'); return; }
-    const btn = $('r-baixar'); btn.disabled = true; btn.textContent = 'Gerando…';
-    const r = intervalo(), L = doPeriodo().sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); });
-    const situacao = function(m){ return { respondido: 'Respondido (robô)', manual: 'Marcado à mão', ignorado: 'Ignorado', atrasado: 'Sem resposta (+24 h)', pendente: 'Sem resposta' }[st(m)]; };
-    const remet = porRemetente(L).sort(function(a, b){ return b.total - a.total; }).map(function(x){
-      return { 'Remetente': x.nome, 'E-mail': x.email, 'Caixa': x.caixas.map(function(c){ return CAIXAS[c] || c; }).join(', '), 'E-mails': x.total,
-        'Respondidos': x.resp, 'Sem resposta': x.pend, 'Marcados à mão': x.manual, 'Ignorados': x.ign,
-        'Tempo médio de resposta': duracao(x.media), 'Último e-mail': x.ultimo ? dataHora(x.ultimo) : '' };
-    });
-    const emails = L.map(function(m){
-      const t = textos[m.id] || {};
-      return { 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa, 'Remetente': m.deNome, 'E-mail do remetente': m.deEmail,
-        'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Situação': situacao(m),
-        'Respondido por': m.respondidoPor ? nomeDe(m.respondidoPor) : '', 'Respondido em': dataHora(data(m.respondidoEm)),
-        'Tempo de resposta': duracao(horasResposta(m)), 'E-mail recebido': t.recebidoTexto || m.trecho || '',
-        'Resposta': t.respostaTexto || '', 'Anotação (marcado à mão)': t.nota || '' };
-    });
-    const atencao = [];
+  // ---------- relatório para imprimir (no lugar da planilha) ----------
+  // Abre uma página A4 com a logo, o resumo com ícones, uma legenda explicando cada situação e as listas
+  // com um quadradinho "Conferido" para marcar à caneta. caixa '' = todas.
+  // a logo vai embutida (data:) no relatório: a janela nova, escrita do zero, nem sempre carrega imagens por endereço
+  var LOGO_REL = null;
+  function carregarLogoRel(){
+    if (LOGO_REL) return;
+    fetch(new URL('../../assets/logo-light-small.png', location.href).href).then(function(r){ return r.ok ? r.blob() : null; }).then(function(b){
+      if (!b) return; const fr = new FileReader(); fr.onload = function(){ LOGO_REL = fr.result; }; fr.readAsDataURL(b);
+    }).catch(function(){});
+  }
+  function relatorioImpressao(caixa){
+    const r = intervalo(), L = doPeriodo(caixa || '').sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); });
+    const e = escapeHtml;
+    const ic = function(nome, cor){ return '<span class="ic" style="color:' + cor + '">' + (ICONES[nome] || '') + '</span>'; };
+    const SIT = {
+      respondido: { rot: 'Respondido', ico: 'check', cor: '#2e7d32', exp: 'O robô encontrou a resposta no Gmail.' },
+      manual:     { rot: 'Marcado à mão', ico: 'check', cor: '#9a6b00', exp: 'Alguém marcou como respondido (telefone, WhatsApp, pessoalmente…).' },
+      pendente:   { rot: 'Sem resposta', ico: 'relogio', cor: '#c77700', exp: 'Ainda aguardando resposta, dentro de ' + PRAZO_H + ' h.' },
+      atrasado:   { rot: 'Sem resposta há +' + PRAZO_H + ' h', ico: 'alerta', cor: '#b3261e', exp: 'Passou de ' + PRAZO_H + ' h sem resposta — precisa de atenção.' },
+      ignorado:   { rot: 'Ignorado', ico: 'ignorado', cor: '#6b6b6b', exp: 'Tirado da conferência, com motivo (ex.: sem necessidade de resposta).' }
+    };
+    const n = function(f){ return L.filter(f).length; };
+    const resp = n(function(m){ const s = st(m); return s === 'respondido' || s === 'manual'; });
+    const semResp = L.filter(function(m){ return !fechado(st(m)); }).sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); });
+    const atras = n(function(m){ return st(m) === 'atrasado'; }), ign = n(function(m){ return st(m) === 'ignorado'; });
+    const tempos = L.map(horasResposta).filter(function(h){ return h != null; });
+    const media = tempos.length ? tempos.reduce(function(a, b){ return a + b; }, 0) / tempos.length : null;
+    const foraPrazo = tempos.filter(function(h){ return h > PRAZO_H; }).length;
+    const pct = function(x){ return L.length ? Math.round(x * 100 / L.length) + '%' : '—'; };
+    const nomeCx = caixa ? (CAIXAS[caixa] || caixa) : 'Todas as caixas';
+    const per = (r.de.getTime() > 0 ? r.de.toLocaleDateString('pt-BR') : (L.length ? data(L[0].recebidoEm).toLocaleDateString('pt-BR') : '—')) + ' a ' + r.ate.toLocaleDateString('pt-BR');
+    const cc = function(m){ const o = [m.caixa].concat(m.tambemEm || []).filter(function(k){ return k !== (caixa || m.caixa); }); return o.map(function(k){ return CAIXAS[k] || k; }).join(', '); };
+    const sit = function(m){ const x = SIT[st(m)] || SIT.pendente; return '<span class="sit" style="color:' + x.cor + '">' + ic(x.ico, x.cor) + e(x.rot) + '</span>'; };
+
+    // por responsável
+    const pr = {};
     L.forEach(function(m){
-      const s = st(m), t = textos[m.id] || {}, h = horasResposta(m);
-      const add = function(tipo, det){ atencao.push({ 'Ponto de atenção': tipo, 'Recebido': dataHora(data(m.recebidoEm)), 'Caixa': CAIXAS[m.caixa] || m.caixa,
-        'Remetente': m.deNome + ' <' + m.deEmail + '>', 'Assunto': m.assunto, 'Responsável': nomesResp(m), 'Detalhe': det }); };
-      if (s === 'atrasado' || s === 'pendente') add('Sem resposta', 'Aguardando há ' + idade(horasDesde(data(m.recebidoEm))).replace('há ', ''));
-      if (s === 'manual' && !t.respostaTexto) add('Marcado à mão sem resposta no Gmail', t.nota ? 'Anotação: ' + t.nota : 'Sem anotação');
-      if (s === 'ignorado') add('Ignorado', (m.ignoradoPor ? 'Por ' + nomeDe(m.ignoradoPor) + ' em ' + dataHora(data(m.ignoradoEm)) + ' — ' : '') + (m.ignoradoMotivo ? 'Motivo: ' + m.ignoradoMotivo : 'Tirado da conferência no portal'));
-      if ((s === 'respondido' || s === 'manual') && h != null && h > PRAZO_H) add('Respondido depois de ' + PRAZO_H + ' h', 'Levou ' + duracao(h));
+      const k = nomesResp(m) || '—'; const g = pr[k] || (pr[k] = { nome: k, total: 0, resp: 0, pend: 0, atras: 0, ign: 0, t: [] });
+      const s = st(m); g.total++;
+      if (s === 'respondido' || s === 'manual') g.resp++; else if (s === 'ignorado') g.ign++; else { g.pend++; if (s === 'atrasado') g.atras++; }
+      const h = horasResposta(m); if (h != null) g.t.push(h);
     });
-    db.collection('emailsConferenciaDescartes').where('recebidoEm', '>=', r.de).where('recebidoEm', '<=', r.ate).get().then(function(snap){
-      const motivos = { automatico: 'Automático / remetente ignorado', foraDasCaixas: 'Não endereçado às caixas (cópia, Cco, outro endereço)' };
-      return snap.docs.map(function(d){ return d.data(); }).sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); }).map(function(x){
-        return { 'Recebido': dataHora(data(x.recebidoEm)), 'Remetente': x.deNome, 'E-mail do remetente': x.deEmail, 'Para': x.para, 'Assunto': x.assunto, 'Motivo': motivos[x.motivo] || x.motivo };
-      });
-    }).catch(function(){ return [{ 'Aviso': 'Não foi possível ler a lista de descartados.' }]; }).then(function(descartes){
-      const wb = XLSX.utils.book_new();
-      const aba = function(nome, linhas, larguras){
-        const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ 'Aviso': 'Nada neste período.' }]);
-        if (linhas.length && larguras) ws['!cols'] = larguras.map(function(w){ return { wch: w }; });
-        XLSX.utils.book_append_sheet(wb, ws, nome);
-      };
-      aba('Remetentes', remet, [30, 32, 22, 9, 12, 13, 15, 10, 22, 17]);
-      aba('E-mails', emails, [16, 12, 26, 30, 40, 16, 20, 16, 16, 14, 80, 80, 50]);
-      aba('Pontos de atenção', atencao, [34, 16, 12, 44, 40, 16, 50]);
-      aba('Descartados pelo robô', descartes, [16, 26, 32, 36, 50, 44]);
-      const iso = function(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-      const primeiro = L.length ? data(L[0].recebidoEm) : r.de;
-      XLSX.writeFile(wb, 'conferencia-emails_' + iso(r.de.getTime() ? r.de : primeiro) + '_a_' + iso(r.ate) + '.xlsx');
-    }).finally(function(){ btn.disabled = false; btn.textContent = '📥 Baixar planilha'; });
+    const linhasResp = Object.keys(pr).map(function(k){ return pr[k]; }).sort(function(a, b){ return b.total - a.total; }).map(function(g){
+      const md = g.t.length ? g.t.reduce(function(a, b){ return a + b; }, 0) / g.t.length : null;
+      return '<tr><td><b>' + e(g.nome) + '</b></td><td class="n">' + g.total + '</td><td class="n ok">' + g.resp + '</td><td class="n' + (g.pend ? ' pend' : '') + '">' + g.pend +
+        '</td><td class="n' + (g.atras ? ' atr' : '') + '">' + g.atras + '</td><td class="n">' + g.ign + '</td><td>' + (md == null ? '—' : e(duracao(md))) + '</td></tr>';
+    }).join('');
+
+    const linhaEmail = function(m, i, atencao){
+      const s = st(m), h = horasResposta(m);
+      const quando = atencao ? e(idade(horasDesde(data(m.recebidoEm))).replace('há ', '')) + ' esperando'
+        : (s === 'respondido' || s === 'manual') ? (m.respondidoEm ? e(dataHora(data(m.respondidoEm))) : '') + (h != null ? '<br><small>levou ' + e(duracao(h)) + '</small>' : '')
+        : s === 'ignorado' ? '<small>' + e(m.ignoradoMotivo || '') + '</small>' : '—';
+      return '<tr><td class="n">' + (i + 1) + '</td><td>' + e(dataHora(data(m.recebidoEm))) + '</td>' +
+        '<td><b>' + e(m.deNome || '') + '</b><br><small>' + e(m.deEmail || '') + '</small></td>' +
+        '<td>' + e(m.assunto || '') + (cc(m) ? '<br><small class="cc">CC: ' + e(cc(m)) + '</small>' : '') + '</td>' +
+        '<td>' + e(nomesResp(m) || '—') + '</td>' + (atencao ? '' : '<td>' + sit(m) + '</td>') + '<td>' + quando + '</td><td class="caixinha"><span></span></td></tr>';
+    };
+    const cabTab = function(atencao){ return '<thead><tr><th>#</th><th>Recebido</th><th>Remetente</th><th>Assunto</th><th>Responsável</th>' + (atencao ? '' : '<th>Situação</th>') +
+      '<th>' + (atencao ? 'Esperando' : 'Resposta') + '</th><th class="caixinha-cab">Conferido</th></tr></thead>'; };
+    const card = function(nome, cor, num, rot, sub){ return '<div class="card"><div class="ci" style="color:' + cor + ';background:' + cor + '14">' + (ICONES[nome] || '') + '</div><div><b>' + num + '</b><span>' + rot + '</span>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></div>'; };
+    const logo = LOGO_REL || new URL('../../assets/logo-light-small.png', location.href).href;
+    const agora = new Date();
+
+    const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da Conferência de E-mails — ' + e(nomeCx) + '</title><style>' +
+      '@page{size:A4;margin:14mm 12mm 16mm;@bottom-center{content:"Fonseca e Braga Sociedade de Advogados · Conferência de E-mails · página " counter(page) " de " counter(pages);font:8pt Georgia,serif;color:#888;}}' +
+      '*{box-sizing:border-box;}body{margin:0;font:10pt/1.4 "Segoe UI",Arial,sans-serif;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+      '.folha{max-width:190mm;margin:0 auto;padding:18px 0;}' +
+      '.barra{position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;padding:10px;display:flex;gap:8px;justify-content:center;z-index:5;}' +
+      '.barra button{font:600 10pt "Segoe UI",Arial;border-radius:8px;padding:8px 16px;cursor:pointer;border:1px solid #bbb;background:#fff;}.barra .imp{background:#a3232b;border-color:#a3232b;color:#fff;}' +
+      'header{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid #a3232b;padding-bottom:12px;}' +
+      'header img{height:54px;}header .tit{text-align:right;}header h1{font:700 15pt Georgia,serif;margin:0;color:#7a1a20;}header p{margin:2px 0 0;font-size:9pt;color:#555;}' +
+      '.selo{display:inline-block;background:#a3232b;color:#fff;border-radius:20px;padding:2px 12px;font-weight:700;font-size:9pt;margin-top:4px;}' +
+      'h2{font:700 11.5pt Georgia,serif;color:#7a1a20;margin:18px 0 8px;display:flex;align-items:center;gap:8px;break-after:avoid;}h2 .num{background:#a3232b;color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font:700 10pt Arial;}' +
+      '.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}' +
+      '.card{border:1px solid #e3d6d6;border-radius:10px;padding:9px 10px;display:flex;gap:10px;align-items:center;break-inside:avoid;}' +
+      '.card .ci{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none;}.card .ci svg{width:20px;height:20px;}' +
+      '.card b{display:block;font-size:15pt;line-height:1.1;}.card span{display:block;font-size:8.5pt;color:#444;}.card small{display:block;font-size:7.5pt;color:#888;}' +
+      '.leg{border:1px dashed #cdb;border-radius:10px;background:#fbf8f6;padding:9px 12px;margin-top:12px;font-size:8.6pt;break-inside:avoid;}.leg b.t{display:block;margin-bottom:4px;color:#7a1a20;}' +
+      '.leg ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;}.leg li{display:flex;gap:6px;align-items:flex-start;}' +
+      '.ic{display:inline-flex;width:13px;height:13px;flex:none;vertical-align:-2px;margin-right:4px;}.ic svg{width:13px;height:13px;}' +
+      'table{width:100%;border-collapse:collapse;font-size:8.4pt;}thead{display:table-header-group;}tr{break-inside:avoid;}' +
+      'th{background:#7a1a20;color:#fff;text-align:left;padding:5px 6px;font-weight:600;}td{border-bottom:1px solid #e8e0e0;padding:5px 6px;vertical-align:top;}' +
+      'tbody tr:nth-child(even) td{background:#faf6f6;}td.n{text-align:center;}td.ok{color:#2e7d32;font-weight:700;}td.pend{color:#c77700;font-weight:700;}td.atr{color:#b3261e;font-weight:700;}' +
+      'small{color:#777;font-size:7.6pt;}small.cc{color:#2b5fab;font-weight:600;}.sit{display:inline-flex;align-items:center;font-weight:600;white-space:nowrap;}' +
+      '.caixinha{text-align:center;width:58px;}.caixinha span{display:inline-block;width:14px;height:14px;border:1.5px solid #555;border-radius:3px;}.caixinha-cab{text-align:center;}' +
+      '.vazio{border:1px solid #d7e8d7;background:#f3faf3;color:#2e7d32;border-radius:10px;padding:10px 12px;font-weight:600;}' +
+      '.assin{margin-top:26px;display:grid;grid-template-columns:1fr 1fr;gap:30px;font-size:8.6pt;color:#555;break-inside:avoid;}.assin div{border-top:1px solid #777;padding-top:4px;text-align:center;}' +
+      '@media print{.barra{display:none;}.folha{padding:0;max-width:none;}}' +
+      '</style></head><body>' +
+      '<div class="barra"><button class="imp" onclick="print()">🖨️ Imprimir</button><button onclick="close()">Fechar</button></div>' +
+      '<div class="folha"><header><img src="' + e(logo) + '" alt="Fonseca e Braga Sociedade de Advogados"><div class="tit"><h1>Relatório da Conferência de E-mails</h1>' +
+      '<div class="selo">' + e(nomeCx) + '</div><p>Período: <b>' + e(per) + '</b></p><p>Gerado em ' + e(dataHora(agora)) + ' por ' + e(eu.nome || eu.email) + '</p></div></header>' +
+      '<div class="cards">' +
+        card('envelope', '#7a1a20', L.length, 'E-mails recebidos', 'no período') +
+        card('check', '#2e7d32', resp, 'Respondidos', pct(resp) + ' do total') +
+        card('relogio', '#c77700', semResp.length, 'Sem resposta', semResp.length ? 'veja a parte 1' : 'tudo em dia') +
+        card('alerta', '#b3261e', atras, 'Sem resposta há +' + PRAZO_H + ' h', atras ? 'prioridade' : 'nenhum atrasado') +
+        card('barras', '#2b5fab', media == null ? '—' : duracao(media), 'Tempo médio de resposta', foraPrazo ? foraPrazo + ' respondido(s) depois de ' + PRAZO_H + ' h' : 'todos dentro de ' + PRAZO_H + ' h') +
+        card('ignorado', '#6b6b6b', ign, 'Ignorados', 'sem necessidade de resposta, propaganda…') +
+      '</div>' +
+      '<div class="leg"><b class="t">Como ler este relatório</b><ul>' +
+        Object.keys(SIT).map(function(k){ const x = SIT[k]; return '<li>' + ic(x.ico, x.cor) + '<span><b style="color:' + x.cor + '">' + e(x.rot) + ':</b> ' + e(x.exp) + '</span></li>'; }).join('') +
+        '<li><span class="ic" style="color:#2b5fab">' + ICONES.envelope + '</span><span><b style="color:#2b5fab">CC:</b> o e-mail também foi enviado para outra caixa.</span></li>' +
+        '<li><span class="caixinha" style="width:auto"><span></span></span><span>&nbsp;<b>Conferido:</b> marque à caneta cada linha que você conferiu.</span></li>' +
+      '</ul></div>' +
+      '<h2><span class="num">1</span>Precisam de atenção — sem resposta</h2>' +
+      (semResp.length ? '<table>' + cabTab(true) + '<tbody>' + semResp.map(function(m, i){ return linhaEmail(m, i, true); }).join('') + '</tbody></table>'
+        : '<div class="vazio">✓ Nenhum e-mail sem resposta neste período.</div>') +
+      '<h2><span class="num">2</span>Por responsável</h2>' +
+      (linhasResp ? '<table><thead><tr><th>Responsável</th><th>Recebidos</th><th>Respondidos</th><th>Sem resposta</th><th>+' + PRAZO_H + ' h</th><th>Ignorados</th><th>Tempo médio</th></tr></thead><tbody>' + linhasResp + '</tbody></table>' : '<div class="vazio">Nada neste período.</div>') +
+      '<h2><span class="num">3</span>Todos os e-mails do período (' + L.length + ')</h2>' +
+      (L.length ? '<table>' + cabTab(false) + '<tbody>' + L.map(function(m, i){ return linhaEmail(m, i, false); }).join('') + '</tbody></table>' : '<div class="vazio">Nenhum e-mail neste período.</div>') +
+      '<div class="assin"><div>Conferido por</div><div>Data</div></div>' +
+      '</div></body></html>';
+    const w = window.open('', '_blank');
+    if (!w) { toast('O navegador bloqueou a nova janela. Permita pop-ups para o portal e tente de novo.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
   }
 
   // ---------- abas e repintura ----------
   function abrirAba(a){
     abaAtual = a;
+    if (a === 'rel') carregarLogoRel();
     ['conf', 'env', 'hist', 'rel'].forEach(function(x){ $('painel-' + x).classList.toggle('ativo', x === a); });
     document.querySelectorAll('[data-aba]').forEach(function(b){ b.classList.toggle('ativa', b.dataset.aba === a); });
     repintar();
@@ -1273,6 +1355,15 @@
   }
   $('e-q').addEventListener('input', function(){ if (abaAtual === 'env') renderEnv(); });
 
+  // ---------- relatório para imprimir: escolha da caixa ----------
+  document.addEventListener('click', function(e){
+    const mn = $('r-baixar-menu'); if (!mn || mn.hidden) return;
+    const op = e.target.closest && e.target.closest('[data-plan]');
+    if (op) { mn.hidden = true; $('r-baixar').setAttribute('aria-expanded', 'false'); relatorioImpressao(op.dataset.plan); return; }
+    if (!(e.target.closest && e.target.closest('.baixar-box'))) { mn.hidden = true; $('r-baixar').setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', function(e){ const mn = $('r-baixar-menu'); if (e.key === 'Escape' && mn && !mn.hidden) { mn.hidden = true; $('r-baixar').focus(); } });
+
   // ---------- ações ----------
   document.addEventListener('click', function(e){
     const t = e.target.closest('[data-aba],[data-st],[data-cx],[data-ok],[data-ign],[data-env],[data-reabrir],[data-conv],[data-rem],[data-ir],[data-p],[data-ordem],[data-g-cx],[data-g-st],#rem-mais,#h-mais,#h-limpa-rem,#r-baixar');
@@ -1285,7 +1376,7 @@
     if (t.dataset.ir !== undefined) { $('h-rem').value = t.dataset.ir; $('h-st').value = ''; histLimite = POR_PAGINA; abrirAba('hist'); window.scrollTo(0, 0); return; }
     if (t.id === 'h-limpa-rem') { e.preventDefault(); $('h-rem').value = ''; renderHist(); return; }
     if (t.id === 'h-mais') { histLimite += POR_PAGINA; renderHist(); return; }
-    if (t.id === 'r-baixar') { baixarPlanilha(); return; }
+    if (t.id === 'r-baixar') { carregarLogoRel(); const mn = $('r-baixar-menu'); mn.hidden = !mn.hidden; t.setAttribute('aria-expanded', String(!mn.hidden)); return; }
     if (t.dataset.p) {
       periodo = t.dataset.p;
       document.querySelectorAll('[data-p]').forEach(function(b){ b.classList.toggle('on', b === t); });

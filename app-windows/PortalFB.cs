@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("286.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("286.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("287.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("287.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "286";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "287";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -50,6 +50,23 @@ namespace PortalFB
         [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
         [DllImport("user32.dll")] static extern uint GetDpiForSystem();
         // fator da escala da tela (1,25 em 125%) — tamanhos fixos de janela são multiplicados por ele
+        // Ícones: o .exe (barra de tarefas, atalhos, fixado) usa o vermelho, portal-fb.ico;
+        // a barra de título da janela continua com o ícone antigo, portal-fb-titulo.ico (recurso embutido).
+        [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
+        static Icon iconeTitulo, iconeBarra;
+        public static void Icones(Form f)
+        {
+            // o WinForms pode reaplicar o ícone do formulário ao mostrar a janela: repete uma vez ao aparecer
+            if (!(f.Tag is string && (string)f.Tag == "icones")) { if (f.Tag == null) f.Tag = "icones"; f.Shown += delegate { Icones(f); }; }
+            try {
+                if (iconeBarra == null) iconeBarra = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (iconeTitulo == null)
+                    using (Stream st = Assembly.GetExecutingAssembly().GetManifestResourceStream("portal-fb-titulo.ico"))
+                        if (st != null) iconeTitulo = new Icon(st, SystemInformation.SmallIconSize);
+                if (iconeTitulo != null) SendMessage(f.Handle, 0x80, IntPtr.Zero, iconeTitulo.Handle);    // WM_SETICON, ICON_SMALL: barra de título
+                if (iconeBarra != null) SendMessage(f.Handle, 0x80, new IntPtr(1), iconeBarra.Handle);    // ICON_BIG: barra de tarefas e Alt+Tab
+            } catch { }
+        }
         public static float Escala() { try { uint d = GetDpiForSystem(); if (d >= 96) return d / 96f; } catch { } return 1f; }
         static void NitidezNaEscalaDaTela()
         {
@@ -428,6 +445,7 @@ namespace PortalFB
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            Programa.Icones(this);
             try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
             // Windows 11: barra na mesma cor do topo do portal (some visualmente), texto claro
             try { int cor = 33 | (21 << 8) | (21 << 16), texto = 225 | (230 << 8) | (236 << 16);
@@ -688,6 +706,7 @@ namespace PortalFB
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            Programa.Icones(this);
             try { int sim = 1; DwmSetWindowAttribute(Handle, 20, ref sim, 4); } catch { }
             // Windows 11: barra na mesma cor do topo do portal (some visualmente), texto claro
             try { int cor = 33 | (21 << 8) | (21 << 16), texto = 225 | (230 << 8) | (236 << 16);
