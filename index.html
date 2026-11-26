@@ -1455,7 +1455,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v292</span>
+      <span class="version-tag">v293</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1928,6 +1928,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js" integrity="sha384-qhzYx5B1KizZLjRTmJkBWYES6I+tL9Qz1J8BmFNo/18Ix+AtopUC1cuY3VW43Pe0" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="firebase-config.js"></script>
+<script src="push-config.js"></script>
 <script src="autorizacao-restrita.js"></script>
 <script src="admin-config.js"></script>
 <script src="comunicados.js"></script>
@@ -3210,6 +3211,63 @@
     try { const u = new URL(location.href); u.searchParams.delete('agenda'); history.replaceState(null, '', u.pathname + u.search + location.hash); } catch(e) {}
     abrirAtividadeAgenda(id);
   }
+  // ---------- Notificações do Chat no celular (26/11/2026) ----------
+  // Cada aparelho que ativa recebe um "token" do Firebase Cloud Messaging, guardado em pushTokens/{uid}.tokens.
+  // Quem envia uma mensagem avisa o Worker portal-fb-push, que manda a notificação aos outros participantes.
+  // No app do Windows (WebView2) não se usa: lá já existe o número na barra de tarefas.
+  // endereço montado em duas partes: o servidor de teste procura a última <script> do Firebase pelo texto "firebasejs/…"
+  const MESSAGING_SDK = 'https://www.gstatic.com/firebase' + 'js/10.13.0/firebase-messaging-compat.js';
+  const MESSAGING_SRI = 'sha384-q5pH/c0PBNCVtPqAcBNjJO91NFMFqLoZnywxg92jCgx4nXDQ227xbpsCfewFVVzd';
+  function pushPronto(){
+    return typeof PUSH_CONFIG !== 'undefined' && !!PUSH_CONFIG.workerUrl && !!PUSH_CONFIG.vapidKey
+      && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !(window.chrome && window.chrome.webview);
+  }
+  let messagingCarregando = null;
+  function carregarMessaging(){
+    if (firebase.messaging) return Promise.resolve();
+    if (messagingCarregando) return messagingCarregando;
+    messagingCarregando = new Promise(function(ok, falha){
+      const s = document.createElement('script');
+      s.src = MESSAGING_SDK; s.integrity = MESSAGING_SRI; s.crossOrigin = 'anonymous';
+      s.onload = ok; s.onerror = function(){ messagingCarregando = null; falha(new Error('não foi possível carregar o serviço de notificações')); };
+      document.head.appendChild(s);
+    });
+    return messagingCarregando;
+  }
+  function registrarPush(pedir){
+    if (!pushPronto() || !currentProfile) return Promise.resolve('indisponivel');
+    const perm = Notification.permission === 'granted' ? Promise.resolve('granted') : (pedir ? Notification.requestPermission() : Promise.resolve(Notification.permission));
+    return perm.then(function(r){
+      if (r !== 'granted') return r;
+      return Promise.all([carregarMessaging(), navigator.serviceWorker.ready]).then(function(x){
+        return firebase.messaging().getToken({ vapidKey: PUSH_CONFIG.vapidKey, serviceWorkerRegistration: x[1] });
+      }).then(function(token){
+        if (!token) return 'sem-token';
+        const chave = token.slice(-32).replace(/[^A-Za-z0-9]/g, 'x');
+        const dados = {}; dados[chave] = { token: token, em: firebase.firestore.FieldValue.serverTimestamp(), aparelho: navigator.userAgent.slice(0, 160) };
+        return db.collection('pushTokens').doc(currentProfile.uid).set({ tokens: dados }, { merge: true }).then(function(){ return 'ok'; });
+      });
+    });
+  }
+  function abrirConversaChat(id){
+    if (!id) return;
+    const chat = acharTabPermitida(function(l){ return l.indexOf('chat') !== -1; });
+    if (!chat) return;
+    selectTab(chat.id);
+    chamarNaFerramenta(chat.id, '__abrirConversaPorId', [id]);
+  }
+  let conversaDoLinkTratada = false;
+  function abrirConversaDoLink(){
+    if (conversaDoLinkTratada) return;
+    let id = null; try { id = new URLSearchParams(location.search).get('conversa'); } catch(e) {}
+    conversaDoLinkTratada = true; if (!id) return;
+    try { const u = new URL(location.href); u.searchParams.delete('conversa'); history.replaceState(null, '', u.pathname + u.search + location.hash); } catch(e) {}
+    abrirConversaChat(id.slice(0, 200));
+  }
+  // toque na notificação com o portal já aberto: o service worker pede para abrir a conversa
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function(ev){
+    if (ev.data && typeof ev.data.fbAbrirConversa === 'string') abrirConversaChat(ev.data.fbAbrirConversa.slice(0, 200));
+  });
   window.addEventListener('message', function(ev){
     if (ev.origin !== location.origin || !ev.data || typeof ev.data.fbAbrirAgenda !== 'string') return;
     abrirAtividadeAgenda(ev.data.fbAbrirAgenda.slice(0, 200));
@@ -4641,8 +4699,22 @@
     if (currentProfile && currentProfile.tipoColaborador === 'clt') item('download', 'Meus holerites', function(){ fecharMenuMobile(); abrirMeusHolerites(); });
     if (!ehContaCliente(currentProfile.role)) item('download', 'Logomarcas e papéis de parede', function(){ fecharMenuMobile(); abrirDownloadLogo(); });
     if (currentProfile && currentProfile.role === 'admin') item('grid', 'Versão nova (teste)', function(){ location.href = '/novo/'; });
+    // notificações do Chat (Android e iPhone com o app na tela de início): avisam cada mensagem nova, mesmo com o app fechado
+    if (pushPronto() && Notification.permission !== 'denied') {
+      const ativas = Notification.permission === 'granted';
+      item('chat', ativas ? 'Notificações do chat: ativas' : 'Ativar notificações do chat', function(b){
+        const rot = b.querySelector('span:last-child');
+        rot.textContent = 'Ativando…';
+        registrarPush(true).then(function(r){
+          rot.textContent = r === 'ok' ? 'Notificações do chat: ativas' : r === 'denied' ? 'Bloqueadas (libere nas configurações do celular)' : 'Não foi possível ativar agora';
+          if (r === 'ok') { naoLidasAvisadas = -1; avisoNaoLidasForaDaPagina(mhChatUnread || 0); }
+        }).catch(function(e){ rot.textContent = 'Não foi possível ativar: ' + (e.message || e); });
+      });
+    } else if (pushPronto()) {
+      item('chat', 'Notificações bloqueadas (libere nas configurações do celular)', function(){});
+    }
     // iPhone (app na tela de início, iOS 16.4+): o número de mensagens no ícone só aparece depois que a pessoa permite notificações
-    if ('setAppBadge' in navigator && 'Notification' in window && Notification.permission === 'default') {
+    if (!pushPronto() && 'setAppBadge' in navigator && 'Notification' in window && Notification.permission === 'default') {
       item('chat', 'Mostrar nº de mensagens no ícone', function(b){
         Notification.requestPermission().then(function(r){
           if (r === 'granted') { naoLidasAvisadas = -1; avisoNaoLidasForaDaPagina(mhChatUnread || 0); b.remove(); }
@@ -4834,6 +4906,8 @@
     agendarPreloadAbas(allowed);
     abrirTarefaDoLink();
     abrirAgendaDoLink();
+    abrirConversaDoLink();
+    if (pushPronto() && Notification.permission === 'granted') registrarPush(false).catch(function(e){ console.warn('notificações:', e && e.message || e); });   // renova o registro do aparelho a cada entrada
 
     applySearchFilter();
   }

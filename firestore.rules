@@ -291,6 +291,15 @@ service cloud.firestore {
                     && request.resource.data.lida == true && request.resource.data.lidaEm == request.time;
       allow delete: if isAdmin() || (isAtivo() && resource.data.para == request.auth.uid);
     }
+    // Notificações do Chat no celular (26/11/2026): cada pessoa guarda só os próprios aparelhos (tokens do Firebase
+    // Cloud Messaging). Quem lê para enviar é o Worker portal-fb-push, com a conta de serviço (fora destas regras).
+    match /pushTokens/{uid} {
+      allow read, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isAtivo() && request.auth.uid == uid
+                            && request.resource.data.keys().hasOnly(['tokens'])
+                            && request.resource.data.tokens is map
+                            && request.resource.data.tokens.size() <= 20;
+    }
     // Dados que antes ficavam no HTML público (painel de Números, clientes de Condomínios e relatórios em PDF).
     // Números › Clientes, Juízo & Ação e Efetividade ficam em documentos próprios (áreas restritas).
     match /dadosPrivados/{chave} {

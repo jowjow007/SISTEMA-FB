@@ -764,6 +764,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js" integrity="sha384-I6aFwEp+2h4APt6+0RW32Ej4KnvuY3aO+maGRYNKNZtt2W2Hz/pEiyd+VJSm9QvQ" crossorigin="anonymous"></script>
 <script src="../../firebase-config.js"></script>
 <script src="../assistente-ia/gemini-config.js"></script>
+<script src="../../push-config.js"></script>
 <script>
 (function(){
   "use strict";
@@ -2335,7 +2336,19 @@
         });
         return db.collection('conversas').doc(conversaId).update(updates);
       });
-    }).then(function(){ return refMsg.id; });
+    }).then(function(){ avisarCelulares(conversaId, refMsg.id); return refMsg.id; });
+  }
+  // Notificação no celular dos outros participantes (Worker portal-fb-push). O Worker confere com o login de quem
+  // enviou que a mensagem é dela e que ela está na conversa. Falhar aqui nunca atrapalha o envio.
+  function avisarCelulares(conversaId, msgId){
+    try {
+      if (typeof PUSH_CONFIG === 'undefined' || !PUSH_CONFIG.workerUrl || !auth.currentUser) return;
+      auth.currentUser.getIdToken().then(function(t){
+        return fetch(PUSH_CONFIG.workerUrl, { method: 'POST', keepalive: true,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+          body: JSON.stringify({ conversaId: conversaId, msgId: msgId }) });
+      }).catch(function(e){ console.warn('notificação no celular', e); });
+    } catch (e) {}
   }
 
   function enviarMensagem(){
@@ -2673,6 +2686,14 @@
   // Chamado pelo portal (card de aniversário / tempo de escritório): abre a conversa com a pessoa
   // e deixa a mensagem de parabéns escrita no campo, para quem quiser editar antes de enviar.
   var conversasProntas = false;
+  // abre uma conversa pelo id (toque na notificação do celular)
+  window.__abrirConversaPorId = function(id, tentativa){
+    if (!myUid || !conversasProntas){
+      if ((tentativa || 0) < 60) setTimeout(function(){ window.__abrirConversaPorId(id, (tentativa || 0) + 1); }, 250);
+      return;
+    }
+    if (id && conversas.some(function(c){ return c.id === id; })) selecionarConversa(id);
+  };
   window.__abrirConversaCom = function(uid, texto, tentativa){
     if (!myUid || !conversasProntas){
       if ((tentativa || 0) < 60) setTimeout(function(){ window.__abrirConversaCom(uid, texto, (tentativa || 0) + 1); }, 250);

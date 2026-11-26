@@ -105,3 +105,36 @@ self.addEventListener('fetch', (event) => {
         .then((cached) => cached || (req.mode === 'navigate' ? caches.match(OFFLINE_FALLBACK) : undefined)))
   );
 });
+
+// ---------- Notificações do Chat (26/11/2026) ----------
+// O Worker portal-fb-push manda pelo Firebase Cloud Messaging só dados (título, texto, conversa, link);
+// aqui o celular mostra a notificação. Uma notificação por conversa (a nova substitui a anterior e toca de novo).
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { const j = event.data ? event.data.json() : {}; d = j.data || j || {}; } catch (e) { d = {}; }
+  const titulo = d.title || 'Portal FB';
+  const opcoes = {
+    body: d.body || 'Nova mensagem no Chat',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/badge-96.png',
+    tag: d.tag || 'chat',
+    renotify: true,
+    data: { link: d.link || './', conversaId: d.conversaId || '' }
+  };
+  event.waitUntil(self.registration.showNotification(titulo, opcoes));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const dados = event.notification.data || {};
+  const conversaId = dados.conversaId || '';
+  const link = new URL(dados.link || './', self.location.href).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
+    const aberto = lista.find((c) => c.url.indexOf(self.location.origin) === 0);
+    if (aberto) {
+      aberto.postMessage({ fbAbrirConversa: conversaId });
+      return aberto.focus();
+    }
+    return self.clients.openWindow(link);
+  }));
+});
