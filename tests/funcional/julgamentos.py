@@ -185,6 +185,7 @@ def main():
         F.caso(G, 'abre a imagem pela API do Storage com o login dela (sem link público)',
                F.esperar(pc, "!!document.querySelector('.prova img[src^=\"blob:\"]')", 15000), F.telas())
         foto(pc, '3-conselho-provas')
+        pc.keyboard.press('Escape')   # a imagem abre por cima, em tela cheia (visor)
         F.caso(G, 'a abertura da prova fica registrada na auditoria (quem e o quê)',
                F.ate(lambda: any(d.get('uid') == U['cons'] and 'IMAGEM' in d.get('arquivo', '') for _, d in F.listar('acessosProvasJulgamento')), 10))
         pc.click('[data-passo="2"]')

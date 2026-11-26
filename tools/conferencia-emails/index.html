@@ -152,9 +152,14 @@
   .baixar-box{position:relative;display:inline-block;}
   .baixar-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:var(--panel);border:1px solid var(--line-strong);border-radius:9px;padding:4px;display:flex;flex-direction:column;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
   .baixar-menu[hidden]{display:none;}
+  .baixar-menu{min-width:230px;}
+  .bm-rot{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px 3px;}
+  .bm-tipo{display:flex;gap:4px;padding:0 6px 4px;}
+  .baixar-menu .bm-tipo button{flex:1;text-align:center;border:1px solid var(--line-strong);padding:6px 6px;font-size:.74rem;}
+  .baixar-menu .bm-tipo button.on{background:var(--red);border-color:var(--red);color:#fff;}
   .baixar-menu button{background:transparent;border:0;color:var(--paper);text-align:left;padding:8px 10px;border-radius:6px;font:inherit;font-size:.8rem;cursor:pointer;}
   .baixar-menu button:hover,.baixar-menu button:focus{background:var(--panel-3);outline:none;}
-  .periodos .baixar{margin-left:auto;}
+  .periodos .baixar-box{margin-left:auto;}
   /* Relatório — painel no mesmo desenho da Agenda — Astrea (Números do Escritório) */
   :root{--track:rgba(236,230,225,.09);--sombra:0 1px 2px rgba(0,0,0,.25),0 6px 18px rgba(0,0,0,.18);}
   :root[data-theme="light"]{--track:#efe8e2;--sombra:0 1px 2px rgba(60,25,20,.05),0 6px 18px rgba(60,25,20,.06);}
@@ -284,7 +289,7 @@
     .bts{justify-content:flex-start;}
     .trecho{white-space:normal;}
     .conversa{grid-template-columns:1fr;}
-    .periodos .baixar{margin-left:0;}
+    .periodos .baixar-box{margin-left:0;}
   }
 </style>
 </head>
@@ -355,6 +360,9 @@
       <select id="r-caixa"><option value="">Todas as caixas</option></select>
       <span class="baixar-box"><button type="button" class="bt baixar" id="r-baixar" aria-haspopup="true" aria-expanded="false">🖨️ Relatório para imprimir ▾</button>
         <span class="baixar-menu" id="r-baixar-menu" hidden>
+          <span class="bm-rot">Quais e-mails</span>
+          <span class="bm-tipo"><button type="button" class="on" data-rtipo="completo">Completo</button><button type="button" data-rtipo="pend">Só os não respondidos</button></span>
+          <span class="bm-rot">Caixa</span>
           <button type="button" data-plan="">Todas as caixas</button>
           <button type="button" data-plan="meu">Meu e-mail</button>
           <button type="button" data-plan="condominio">Condomínio</button>
@@ -1116,8 +1124,11 @@
       if (!b) return; const fr = new FileReader(); fr.onload = function(){ LOGO_REL = fr.result; }; fr.readAsDataURL(b);
     }).catch(function(){});
   }
-  function relatorioImpressao(caixa){
-    const r = intervalo(), L = doPeriodo(caixa || '').sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); });
+  // tipo: 'completo' (todos os e-mails) ou 'pend' (só os não respondidos)
+  function relatorioImpressao(caixa, tipo){
+    const soPend = tipo === 'pend';
+    const r = intervalo(), L = doPeriodo(caixa || '').filter(function(m){ return !soPend || !fechado(st(m)); })
+      .sort(function(a, b){ return data(a.recebidoEm) - data(b.recebidoEm); });
     const e = escapeHtml;
     const ic = function(nome, cor){ return '<span class="ic" style="color:' + cor + '">' + (ICONES[nome] || '') + '</span>'; };
     const SIT = {
@@ -1150,6 +1161,7 @@
     });
     const linhasResp = Object.keys(pr).map(function(k){ return pr[k]; }).sort(function(a, b){ return b.total - a.total; }).map(function(g){
       const md = g.t.length ? g.t.reduce(function(a, b){ return a + b; }, 0) / g.t.length : null;
+      if (soPend) return '<tr><td><b>' + e(g.nome) + '</b></td><td class="n pend">' + g.pend + '</td><td class="n' + (g.atras ? ' atr' : '') + '">' + g.atras + '</td></tr>';
       return '<tr><td><b>' + e(g.nome) + '</b></td><td class="n">' + g.total + '</td><td class="n ok">' + g.resp + '</td><td class="n' + (g.pend ? ' pend' : '') + '">' + g.pend +
         '</td><td class="n' + (g.atras ? ' atr' : '') + '">' + g.atras + '</td><td class="n">' + g.ign + '</td><td>' + (md == null ? '—' : e(duracao(md))) + '</td></tr>';
     }).join('');
@@ -1166,6 +1178,33 @@
     };
     const cabTab = function(atencao){ return '<thead><tr><th>#</th><th>Recebido</th><th>Remetente</th><th>Assunto</th><th>Responsável</th>' + (atencao ? '' : '<th>Situação</th>') +
       '<th>' + (atencao ? 'Esperando' : 'Resposta') + '</th><th class="caixinha-cab">Conferido</th></tr></thead>'; };
+    // ficha de cada e-mail: tudo o que o portal sabe dele (dados, situação, texto recebido, resposta e anotação)
+    const LIM = 8000;
+    const txt = function(t){ t = String(t || ''); return e(t.length > LIM ? t.slice(0, LIM) + '…' : t) + (t.length > LIM ? '<br><small>(texto longo: cortado aqui; a íntegra está no Gmail)</small>' : ''); };
+    const campo = function(rot, val){ return val ? '<div><dt>' + rot + '</dt><dd>' + val + '</dd></div>' : ''; };
+    const ficha = function(m, i){
+      const s = st(m), t = textos[m.id] || {}, h = horasResposta(m), rec = data(m.recebidoEm);
+      const resposta = (s === 'respondido' || s === 'manual')
+        ? e(nomeDe(m.respondidoPor) || '—') + (m.respondidoEm ? ' em ' + e(dataHora(data(m.respondidoEm))) : '') + (h != null ? ' · levou ' + e(duracao(h)) : '') + (s === 'manual' ? ' · marcado à mão' : ' · encontrada no Gmail pelo robô')
+        : '';
+      const espera = !fechado(s) ? e(idade(horasDesde(rec)).replace('há ', '')) + ' esperando resposta' : '';
+      return '<div class="ficha"><div class="f-topo"><span class="fn">' + (i + 1) + '</span><div class="f-tit"><b>' + e(m.assunto || '(sem assunto)') + '</b>' + sit(m) + '</div>' +
+          '<span class="f-conf"><span class="caixinha"><span></span></span> Conferido</span></div>' +
+        '<dl class="f-grade">' +
+          campo('Recebido em', e(dataHora(rec)) + (espera ? ' · <b class="atr">' + espera + '</b>' : '')) +
+          campo('Caixa', e(CAIXAS[m.caixa] || m.caixa) + (cc(m) ? ' · <span class="cc">CC: ' + e(cc(m)) + '</span>' : '')) +
+          campo('De', '<b>' + e(m.deNome || '') + '</b> &lt;' + e(m.deEmail || '') + '&gt;') +
+          campo('Para', e(m.para || '')) +
+          campo('Responsável', e(nomesResp(m) || '—')) +
+          campo('Encaminhado', m.atribuidoPor ? 'por ' + e(nomeDe(m.atribuidoPor)) + (m.atribuidoEm ? ' em ' + e(dataHora(data(m.atribuidoEm))) : '') : '') +
+          campo('Resposta', resposta) +
+          campo('Ignorado', s === 'ignorado' ? (m.ignoradoPor ? 'por ' + e(nomeDe(m.ignoradoPor)) : '') + (m.ignoradoEm ? ' em ' + e(dataHora(data(m.ignoradoEm))) : '') + (m.ignoradoMotivo ? ' — motivo: <b>' + e(m.ignoradoMotivo) + '</b>' : '') : '') +
+        '</dl>' +
+        '<div class="f-txt"><div class="f-rot">📩 Mensagem recebida</div>' + (t.recebidoTexto ? txt(t.recebidoTexto) : '<i>' + e(m.trecho || 'Texto ainda não carregado pelo robô.') + '</i>') + '</div>' +
+        (t.respostaTexto ? '<div class="f-txt resp"><div class="f-rot">✉️ Resposta enviada' + (t.respostaPor ? ' por ' + e(nomeDe(t.respostaPor)) : '') + (t.respostaEm ? ' em ' + e(dataHora(data(t.respostaEm))) : '') + '</div>' + txt(t.respostaTexto) + '</div>' : '') +
+        (t.nota ? '<div class="f-txt nota"><div class="f-rot">✍️ Anotação de quem marcou à mão</div>' + txt(t.nota) + '</div>' : '') +
+        '<div class="f-obs">Observações: </div></div>';
+    };
     const card = function(nome, cor, num, rot, sub){ return '<div class="card"><div class="ci" style="color:' + cor + ';background:' + cor + '14">' + (ICONES[nome] || '') + '</div><div><b>' + num + '</b><span>' + rot + '</span>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></div>'; };
     const logo = LOGO_REL || new URL('../../assets/logo-light-small.png', location.href).href;
     const agora = new Date();
@@ -1194,31 +1233,44 @@
       '.caixinha{text-align:center;width:58px;}.caixinha span{display:inline-block;width:14px;height:14px;border:1.5px solid #555;border-radius:3px;}.caixinha-cab{text-align:center;}' +
       '.vazio{border:1px solid #d7e8d7;background:#f3faf3;color:#2e7d32;border-radius:10px;padding:10px 12px;font-weight:600;}' +
       '.assin{margin-top:26px;display:grid;grid-template-columns:1fr 1fr;gap:30px;font-size:8.6pt;color:#555;break-inside:avoid;}.assin div{border-top:1px solid #777;padding-top:4px;text-align:center;}' +
+      '.ficha{border:1px solid #e3d6d6;border-left:4px solid #a3232b;border-radius:8px;padding:9px 11px;margin:0 0 9px;font-size:8.8pt;break-inside:avoid;}' +
+      '.f-topo{display:flex;gap:9px;align-items:flex-start;}.fn{background:#7a1a20;color:#fff;border-radius:6px;min-width:22px;text-align:center;font-weight:700;font-size:8.5pt;padding:1px 5px;}' +
+      '.f-tit{flex:1;display:flex;flex-direction:column;gap:2px;}.f-tit b{font-size:10pt;}.f-conf{font-size:8pt;color:#555;white-space:nowrap;display:flex;align-items:center;gap:4px;}.f-conf .caixinha{width:auto;}' +
+      '.f-grade{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;margin:7px 0 6px;}.f-grade div{display:flex;gap:6px;}.f-grade dt{color:#7a1a20;font-weight:600;min-width:78px;}.f-grade dd{margin:0;word-break:break-word;}' +
+      '.cc{color:#2b5fab;font-weight:600;}.atr{color:#b3261e;}' +
+      '.f-txt{background:#faf7f6;border:1px solid #eee3e0;border-radius:6px;padding:6px 8px;margin-top:5px;white-space:pre-wrap;word-break:break-word;font-size:8.4pt;line-height:1.45;}' +
+      '.f-txt.resp{background:#f3f8f3;border-color:#dcebdc;}.f-txt.nota{background:#fdf8ec;border-color:#efe3c2;}.f-rot{font-weight:700;color:#444;margin-bottom:2px;white-space:normal;}' +
+      '.f-obs{margin-top:7px;border-bottom:1px solid #999;height:18px;font-size:8pt;color:#666;}' +
       '@media print{.barra{display:none;}.folha{padding:0;max-width:none;}}' +
       '</style></head><body>' +
       '<div class="barra"><button class="imp" onclick="print()">🖨️ Imprimir</button><button onclick="close()">Fechar</button></div>' +
       '<div class="folha"><header><img src="' + e(logo) + '" alt="Fonseca e Braga Sociedade de Advogados"><div class="tit"><h1>Relatório da Conferência de E-mails</h1>' +
-      '<div class="selo">' + e(nomeCx) + '</div><p>Período: <b>' + e(per) + '</b></p><p>Gerado em ' + e(dataHora(agora)) + ' por ' + e(eu.nome || eu.email) + '</p></div></header>' +
-      '<div class="cards">' +
+      '<div class="selo">' + e(nomeCx) + ' · ' + (soPend ? 'só os não respondidos' : 'completo') + '</div><p>Período: <b>' + e(per) + '</b></p><p>Gerado em ' + e(dataHora(agora)) + ' por ' + e(eu.nome || eu.email) + '</p></div></header>' +
+      (soPend ? '<div class="cards">' +
+        card('relogio', '#c77700', L.length, 'Sem resposta', L.length ? 'cada um tem uma ficha abaixo' : 'tudo em dia') +
+        card('alerta', '#b3261e', atras, 'Sem resposta há +' + PRAZO_H + ' h', atras ? 'prioridade' : 'nenhum atrasado') +
+        card('pessoas', '#2b5fab', Object.keys(pr).length, 'Responsáveis com pendência', 'veja a parte 1') +
+      '</div>' : '<div class="cards">' +
         card('envelope', '#7a1a20', L.length, 'E-mails recebidos', 'no período') +
         card('check', '#2e7d32', resp, 'Respondidos', pct(resp) + ' do total') +
         card('relogio', '#c77700', semResp.length, 'Sem resposta', semResp.length ? 'veja a parte 1' : 'tudo em dia') +
         card('alerta', '#b3261e', atras, 'Sem resposta há +' + PRAZO_H + ' h', atras ? 'prioridade' : 'nenhum atrasado') +
         card('barras', '#2b5fab', media == null ? '—' : duracao(media), 'Tempo médio de resposta', foraPrazo ? foraPrazo + ' respondido(s) depois de ' + PRAZO_H + ' h' : 'todos dentro de ' + PRAZO_H + ' h') +
         card('ignorado', '#6b6b6b', ign, 'Ignorados', 'sem necessidade de resposta, propaganda…') +
-      '</div>' +
+      '</div>') +
       '<div class="leg"><b class="t">Como ler este relatório</b><ul>' +
         Object.keys(SIT).map(function(k){ const x = SIT[k]; return '<li>' + ic(x.ico, x.cor) + '<span><b style="color:' + x.cor + '">' + e(x.rot) + ':</b> ' + e(x.exp) + '</span></li>'; }).join('') +
         '<li><span class="ic" style="color:#2b5fab">' + ICONES.envelope + '</span><span><b style="color:#2b5fab">CC:</b> o e-mail também foi enviado para outra caixa.</span></li>' +
         '<li><span class="caixinha" style="width:auto"><span></span></span><span>&nbsp;<b>Conferido:</b> marque à caneta cada linha que você conferiu.</span></li>' +
       '</ul></div>' +
-      '<h2><span class="num">1</span>Precisam de atenção — sem resposta</h2>' +
+      (soPend ? '' : '<h2><span class="num">1</span>Precisam de atenção — sem resposta</h2>' +
       (semResp.length ? '<table>' + cabTab(true) + '<tbody>' + semResp.map(function(m, i){ return linhaEmail(m, i, true); }).join('') + '</tbody></table>'
-        : '<div class="vazio">✓ Nenhum e-mail sem resposta neste período.</div>') +
-      '<h2><span class="num">2</span>Por responsável</h2>' +
-      (linhasResp ? '<table><thead><tr><th>Responsável</th><th>Recebidos</th><th>Respondidos</th><th>Sem resposta</th><th>+' + PRAZO_H + ' h</th><th>Ignorados</th><th>Tempo médio</th></tr></thead><tbody>' + linhasResp + '</tbody></table>' : '<div class="vazio">Nada neste período.</div>') +
-      '<h2><span class="num">3</span>Todos os e-mails do período (' + L.length + ')</h2>' +
-      (L.length ? '<table>' + cabTab(false) + '<tbody>' + L.map(function(m, i){ return linhaEmail(m, i, false); }).join('') + '</tbody></table>' : '<div class="vazio">Nenhum e-mail neste período.</div>') +
+        : '<div class="vazio">✓ Nenhum e-mail sem resposta neste período.</div>')) +
+      '<h2><span class="num">' + (soPend ? 1 : 2) + '</span>Por responsável</h2>' +
+      (linhasResp ? '<table><thead><tr><th>Responsável</th>' + (soPend ? '<th>Sem resposta</th><th>Há mais de ' + PRAZO_H + ' h</th>'
+        : '<th>Recebidos</th><th>Respondidos</th><th>Sem resposta</th><th>+' + PRAZO_H + ' h</th><th>Ignorados</th><th>Tempo médio</th>') + '</tr></thead><tbody>' + linhasResp + '</tbody></table>' : '<div class="vazio">Nada neste período.</div>') +
+      '<h2><span class="num">' + (soPend ? 2 : 3) + '</span>' + (soPend ? 'Fichas dos e-mails sem resposta' : 'Todos os e-mails do período — ficha completa') + ' (' + L.length + ')</h2>' +
+      (L.length ? L.map(ficha).join('') : '<div class="vazio">' + (soPend ? '✓ Nenhum e-mail sem resposta neste período.' : 'Nenhum e-mail neste período.') + '</div>') +
       '<div class="assin"><div>Conferido por</div><div>Data</div></div>' +
       '</div></body></html>';
     const w = window.open('', '_blank');
@@ -1355,11 +1407,14 @@
   }
   $('e-q').addEventListener('input', function(){ if (abaAtual === 'env') renderEnv(); });
 
-  // ---------- relatório para imprimir: escolha da caixa ----------
+  // ---------- relatório para imprimir: completo ou só os não respondidos, e a caixa ----------
+  var tipoRel = 'completo';
   document.addEventListener('click', function(e){
     const mn = $('r-baixar-menu'); if (!mn || mn.hidden) return;
+    const tp = e.target.closest && e.target.closest('[data-rtipo]');
+    if (tp) { tipoRel = tp.dataset.rtipo; mn.querySelectorAll('[data-rtipo]').forEach(function(b){ b.classList.toggle('on', b === tp); }); return; }
     const op = e.target.closest && e.target.closest('[data-plan]');
-    if (op) { mn.hidden = true; $('r-baixar').setAttribute('aria-expanded', 'false'); relatorioImpressao(op.dataset.plan); return; }
+    if (op) { mn.hidden = true; $('r-baixar').setAttribute('aria-expanded', 'false'); relatorioImpressao(op.dataset.plan, tipoRel); return; }
     if (!(e.target.closest && e.target.closest('.baixar-box'))) { mn.hidden = true; $('r-baixar').setAttribute('aria-expanded', 'false'); }
   });
   document.addEventListener('keydown', function(e){ const mn = $('r-baixar-menu'); if (e.key === 'Escape' && mn && !mn.hidden) { mn.hidden = true; $('r-baixar').focus(); } });

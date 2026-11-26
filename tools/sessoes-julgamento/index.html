@@ -121,6 +121,22 @@
   .prova .cab{display:flex;gap:8px;align-items:center;font-size:.8rem;margin-bottom:8px;}
   .prova .cab b{flex:1 1 auto;word-break:break-word;}
   .prova video,.prova img{width:100%;border-radius:8px;background:#000;display:block;max-height:240px;object-fit:contain;}
+  .miniatura{position:relative;display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in;}
+  .miniatura .lupa{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:.72rem;font-weight:600;border-radius:6px;padding:3px 8px;}
+  .visor{position:fixed;inset:0;z-index:200;background:rgba(8,6,6,.96);display:flex;flex-direction:column;}
+  .visor-topo{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#fff;background:rgba(0,0,0,.4);}
+  .visor-tit{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .visor .espaco{flex:1;}
+  .visor-bt{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size:.82rem;cursor:pointer;text-decoration:none;white-space:nowrap;}
+  .visor-bt.fechar{font-size:1rem;padding:5px 12px;}
+  .visor-corpo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;overflow:auto;}
+  .visor-corpo.pdf{display:block;padding:12px;text-align:center;}
+  .visor-corpo.pdf canvas{display:block;margin:0 auto 12px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.5);max-width:100%;height:auto !important;}
+  .visor-img{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+  .visor-seta{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:64px;border:0;border-radius:10px;background:rgba(0,0,0,.45);color:#fff;font-size:2rem;cursor:pointer;}
+  .visor-seta.esq{left:8px;} .visor-seta.dir{right:8px;}
+  .visor-msg{color:#ddd;padding:40px 16px;text-align:center;font-size:.9rem;}
+  .parecer-box{border:1px solid var(--line-strong,#444);border-left:4px solid var(--gold,#c9a227);border-radius:10px;padding:10px 14px;margin:10px 0;}
   .prova .abrir{width:100%;padding:24px 8px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--panel);color:var(--paper);cursor:pointer;font-family:inherit;font-size:.82rem;}
   .grupo-provas{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);margin:16px 0 8px;font-weight:700;}
   .decisao{border:2px solid var(--gold);border-radius:14px;padding:16px;background:var(--panel-2);}
@@ -578,6 +594,9 @@
       h += r.fatos ? '<h3>Dos fatos</h3><div class="texto">' + esc(r.fatos) + '</div>' : '';
       h += r.historicoUnidade ? '<h3>Histórico da unidade</h3><div class="texto">' + esc(r.historicoUnidade) + '</div>' : '';
       h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
+      if (r.parecer || r.conclusao) h += '<div class="parecer-box"><h3 style="margin:0 0 4px;">Parecer do escritório' + (PARECERES[r.parecer] ? ': <span style="color:' + PARECERES[r.parecer].cor + '">' + esc(PARECERES[r.parecer].rot) + '</span>' : '') + '</h3>'
+        + (r.conclusao ? '<div class="texto" style="margin:0;">' + esc(r.conclusao) + '</div>' : '') + '</div>';
+      h += '<div class="barra" style="margin-top:14px;"><button type="button" class="btn sec peq" data-analise-pdf="' + esc(r.id) + '">📄 Análise do escritório (PDF de uma folha)</button></div>';
     } else if (p === 1) {
       h += telaProvas(r);
     } else if (p === 2) {
@@ -611,9 +630,9 @@
         var url = urlsProvas[p.caminho];
         var corpo = !url ? '<button type="button" class="abrir" data-abrir="' + esc(p.caminho) + '">' + ic + ' Abrir ' + (/^video/.test(p.tipo) ? 'vídeo' : /^image/.test(p.tipo) ? 'imagem' : /^audio/.test(p.tipo) ? 'áudio' : 'documento') + ' (' + tamanho(p.tamanho || 0) + ')</button>'
           : /^video/.test(p.tipo) ? '<video controls preload="metadata" src="' + url + '"></video>'
-          : /^image/.test(p.tipo) ? '<a href="' + url + '" target="_blank" rel="noopener"><img src="' + url + '" alt="' + esc(p.nome) + '"></a>'
+          : /^image/.test(p.tipo) ? '<button type="button" class="miniatura" data-ver="' + esc(p.caminho) + '" title="Ver em tela cheia"><img src="' + url + '" alt="' + esc(p.nome) + '"><span class="lupa">⤢ Tela cheia</span></button>'
           : /^audio/.test(p.tipo) ? '<audio controls src="' + url + '" style="width:100%;"></audio>'
-          : '<a class="btn sec" href="' + url + '" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;">📄 Abrir PDF em outra aba</a>';
+          : '<button type="button" class="btn sec" data-ver="' + esc(p.caminho) + '" style="display:block;width:100%;">📄 Abrir documento em tela cheia</button>';
         return '<div class="prova"><div class="cab">' + ic + ' <b>' + esc(p.nome) + '</b></div>' + corpo + '</div>';
       }).join('') + '</div>';
     });
@@ -663,7 +682,12 @@
         + area('alegacoes', 'Alegações do morador (resumo do recurso)', 'O que o morador diz em sua defesa.')
         + area('fundamentos', 'Fundamentos da penalidade', 'Artigos do Regimento/Convenção e do Código Civil aplicados.')
         + area('observacoes', 'Observações do escritório', 'Pontos de atenção para o conselho.')
-        + area('historicoUnidade', 'Histórico da unidade', 'Outras ocorrências da mesma unidade (nº e assunto).');
+        + area('historicoUnidade', 'Histórico da unidade', 'Outras ocorrências da mesma unidade (nº e assunto).')
+        + '<div class="campo"><label>Parecer do escritório</label><select id="ed-parecer"><option value="">Sem recomendação</option>'
+        + Object.keys(PARECERES).map(function(k){ return '<option value="' + k + '"' + (rascunho.parecer === k ? ' selected' : '') + '>' + esc(PARECERES[k].rot) + '</option>'; }).join('') + '</select></div>'
+        + area('conclusao', 'Conclusão do escritório', 'Em poucas linhas: por que o escritório recomenda manter, cancelar ou modular.')
+        + '<div class="aviso">Estes campos formam a <b>Análise do escritório</b>: um PDF de uma folha, colorido e com ícones, que o conselho também vê. '
+        + (rascunho.id ? '<button type="button" class="btn sec peq" data-analise-rascunho="1" style="margin-left:6px;">📄 Ver a análise em PDF</button>' : 'Salve para gerar o PDF.') + '</div>';
     } else if (p === 2) {
       h += '<div class="aviso">Os arquivos ficam no portal só para a leitura do conselho e saem <b>' + DIAS_PROVAS + ' dias depois do julgamento</b>. '
         + 'O original continua no Google Drive do escritório (guarda de 10 anos).</div>'
@@ -711,7 +735,7 @@
     return '<div class="campo"><label>' + esc(rot) + '</label><textarea id="ed-' + k + '" placeholder="' + esc(ph || '') + '">' + esc(rascunho[k] || '') + '</textarea></div>';
   }
   var CAMPOS_TEXTO = ['ocorrencia', 'unidade', 'morador', 'titulo', 'classificacao', 'penalidade', 'dataFato', 'horaFato', 'dataNotificacao', 'dataRecurso', 'quemAbriu',
-                      'fatos', 'alegacoes', 'fundamentos', 'observacoes', 'historicoUnidade'];
+                      'fatos', 'alegacoes', 'fundamentos', 'observacoes', 'historicoUnidade', 'parecer', 'conclusao'];
   function lerFormulario(){
     CAMPOS_TEXTO.forEach(function(k){ var el = document.getElementById('ed-' + k); if (el) rascunho[k] = el.value.trim(); });
   }
@@ -862,8 +886,254 @@
     w.document.close();
   }
 
+  // ---------------------------------------------------------------- visor em tela cheia (imagens e PDFs)
+  // Imagens e PDFs abrem aqui mesmo, por cima da página e em tela cheia: o endereço "blob:" do arquivo não abre
+  // em outra aba no app do Windows nem no celular. O PDF é desenhado pelo pdf.js (funciona também no Android).
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  var PDFJS_SRI = 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
+  var PDFJS_WORKER_SRI = 'sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2';
+  var pdfjsPronto = null;
+  function carregarPdfjs(){
+    if (pdfjsPronto) return pdfjsPronto;
+    pdfjsPronto = new Promise(function(ok, falha){
+      var s = document.createElement('script');
+      s.src = PDFJS + 'pdf.min.js'; s.integrity = PDFJS_SRI; s.crossOrigin = 'anonymous';
+      s.onload = ok; s.onerror = function(){ falha(new Error('não foi possível carregar o leitor de PDF')); };
+      document.head.appendChild(s);
+    }).then(function(){
+      // o "worker" vem do mesmo CDN, conferido pelo hash, e roda a partir de um blob (worker de outro domínio não é permitido)
+      return fetch(PDFJS + 'pdf.worker.min.js', { integrity:PDFJS_WORKER_SRI }).then(function(r){ return r.text(); }).then(function(t){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([t], { type:'text/javascript' }));
+        return window.pdfjsLib;
+      });
+    });
+    pdfjsPronto.catch(function(){ pdfjsPronto = null; });
+    return pdfjsPronto;
+  }
+  var visorAberto = null;
+  function fecharVisor(){
+    if (!visorAberto) return;
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+    visorAberto.remove(); visorAberto = null;
+    document.removeEventListener('keydown', teclaVisor);
+  }
+  function teclaVisor(e){
+    if (!visorAberto) return;
+    if (e.key === 'Escape') { fecharVisor(); return; }
+    if (e.key === 'ArrowRight' && visorAberto._prox) visorAberto._prox(1);
+    if (e.key === 'ArrowLeft' && visorAberto._prox) visorAberto._prox(-1);
+  }
+  function montarVisor(titulo, url, nome){
+    fecharVisor();
+    var v = document.createElement('div');
+    v.className = 'visor'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', titulo);
+    v.innerHTML = '<div class="visor-topo"><span class="visor-tit"></span><span class="espaco"></span>'
+      + '<a class="visor-bt" download>⬇ Baixar</a><button type="button" class="visor-bt" data-visor="cheia" title="Tela cheia">⤢</button>'
+      + '<button type="button" class="visor-bt fechar" data-visor="fechar" aria-label="Fechar">✕</button></div><div class="visor-corpo"></div>';
+    v.querySelector('.visor-tit').textContent = titulo;
+    var a = v.querySelector('a.visor-bt'); a.href = url; a.setAttribute('download', nome || 'arquivo');
+    v.addEventListener('click', function(e){
+      var b = e.target.closest('[data-visor]');
+      if (b && b.dataset.visor === 'fechar') { fecharVisor(); return; }
+      if (b && b.dataset.visor === 'cheia') { telaCheia(v); return; }
+      if (e.target.classList.contains('visor-corpo') && v._fundoFecha) fecharVisor();
+    });
+    document.body.appendChild(v);
+    document.addEventListener('keydown', teclaVisor);
+    visorAberto = v;
+    telaCheia(v);
+    return v;
+  }
+  function telaCheia(el){
+    try {
+      if (document.fullscreenElement) { document.exitFullscreen(); return; }
+      var f = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (f) { var p = f.call(el); if (p && p.catch) p.catch(function(){}); }
+    } catch (e) {}
+  }
+  function verImagem(caminho){
+    var r = recursos[state.recursoId];
+    var imgs = (r.provas || []).filter(function(p){ return /^image/.test(p.tipo) && urlsProvas[p.caminho]; });
+    var i = Math.max(0, imgs.findIndex(function(p){ return p.caminho === caminho; }));
+    var v = montarVisor('', '', '');
+    v._fundoFecha = true;
+    var corpo = v.querySelector('.visor-corpo');
+    function pintar(){
+      var p = imgs[i];
+      v.querySelector('.visor-tit').textContent = p.nome + (imgs.length > 1 ? '  (' + (i + 1) + ' de ' + imgs.length + ')' : '');
+      var a = v.querySelector('a.visor-bt'); a.href = urlsProvas[p.caminho]; a.setAttribute('download', p.nome);
+      corpo.innerHTML = '<img class="visor-img" alt="">' + (imgs.length > 1 ? '<button type="button" class="visor-seta esq" aria-label="Anterior">‹</button><button type="button" class="visor-seta dir" aria-label="Próxima">›</button>' : '');
+      corpo.querySelector('img').src = urlsProvas[p.caminho];
+      corpo.querySelector('img').alt = p.nome;
+      var e = corpo.querySelector('.esq'), d = corpo.querySelector('.dir');
+      if (e) e.onclick = function(ev){ ev.stopPropagation(); v._prox(-1); };
+      if (d) d.onclick = function(ev){ ev.stopPropagation(); v._prox(1); };
+    }
+    v._prox = function(n){ i = (i + n + imgs.length) % imgs.length; pintar(); };
+    // deslizar o dedo no celular troca de foto
+    var x0 = null;
+    corpo.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, { passive:true });
+    corpo.addEventListener('touchend', function(e){ if (x0 == null || imgs.length < 2) return; var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) v._prox(dx < 0 ? 1 : -1); x0 = null; });
+    pintar();
+  }
+  function verPdf(url, nome){
+    var v = montarVisor(nome, url, nome);
+    var corpo = v.querySelector('.visor-corpo');
+    corpo.classList.add('pdf');
+    corpo.innerHTML = '<div class="visor-msg">Abrindo o documento…</div>';
+    carregarPdfjs().then(function(lib){ return lib.getDocument(url).promise; }).then(function(doc){
+      corpo.innerHTML = '';
+      var largura = Math.min(corpo.clientWidth - 24, 1100);
+      var cadeia = Promise.resolve();
+      for (var n = 1; n <= doc.numPages; n++) (function(n){
+        cadeia = cadeia.then(function(){ return doc.getPage(n); }).then(function(pg){
+          if (!visorAberto) return;
+          var base = pg.getViewport({ scale:1 }), escala = largura / base.width, dpr = window.devicePixelRatio || 1;
+          var vp = pg.getViewport({ scale:escala * dpr });
+          var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+          c.style.width = (vp.width / dpr) + 'px'; c.style.height = (vp.height / dpr) + 'px';
+          corpo.appendChild(c);
+          return pg.render({ canvasContext:c.getContext('2d'), viewport:vp }).promise;
+        });
+      })(n);
+      return cadeia;
+    }).catch(function(e){
+      corpo.innerHTML = '<div class="visor-msg">Não foi possível mostrar o PDF aqui (' + esc(e.message || String(e)) + '). Use o botão <b>⬇ Baixar</b>.</div>';
+    });
+  }
+  function verArquivo(caminho){
+    var r = recursos[state.recursoId];
+    var pv = (r.provas || []).find(function(p){ return p.caminho === caminho; }) || {};
+    var url = urlsProvas[caminho];
+    if (!url) { abrirProva(caminho, true); return; }
+    if (/^image/.test(pv.tipo)) verImagem(caminho);
+    else if (pv.tipo === 'application/pdf') verPdf(url, pv.nome || 'documento.pdf');
+  }
+
+  // ---------------------------------------------------------------- análise do escritório em PDF (uma folha)
+  var PARECERES = {
+    manter:   { rot:'Manter a penalidade', cor:'#b3261e', ico:'martelo' },
+    cancelar: { rot:'Cancelar a penalidade', cor:'#2e7d32', ico:'check' },
+    modular:  { rot:'Modular a penalidade', cor:'#c77700', ico:'balanca' }
+  };
+  var ICA = (function(){
+    var s = function(c){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + c + '</svg>'; };
+    return {
+      casa: s('<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
+      pessoa: s('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+      etiqueta: s('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>'),
+      moeda: s('<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.6-3.1-1.6"/><path d="M12 6v2M12 16v2"/>'),
+      olho: s('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+      balao: s('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.2A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/>'),
+      livro: s('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 7h6"/>'),
+      relogio: s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+      lampada: s('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>'),
+      balanca: s('<path d="M12 3v18M7 21h10"/><path d="M5 7h14"/><path d="m5 7-3 6a3 3 0 0 0 6 0z"/><path d="m19 7-3 6a3 3 0 0 0 6 0z"/>'),
+      check: s('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'),
+      martelo: s('<path d="m14 13-8.5 8.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/>'),
+      calendario: s('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+      sino: s('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+      envelope: s('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+      escudo: s('<path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>')
+    };
+  })();
+  var LOGO_ANALISE = null;
+  function analisePdf(id, deRascunho){
+    if (deRascunho) lerFormulario();
+    var r = deRascunho ? rascunho : recursos[id];
+    if (!r) return;
+    var w = window.open('', '_blank');
+    if (!w) { alert('Permita janelas pop-up para gerar o PDF.'); return; }
+    w.document.write('<p style="font:14px Segoe UI,Arial;margin:30px;">Montando a análise…</p>');
+    var base = location.href.replace(/tools\/sessoes-julgamento\/.*$/, '');
+    var logoUrl = base + 'assets/logo-light-small.png';
+    (LOGO_ANALISE ? Promise.resolve(LOGO_ANALISE) : fetch(logoUrl).then(function(x){ return x.ok ? x.blob() : null; }).then(function(b){
+      return !b ? logoUrl : new Promise(function(ok){ var fr = new FileReader(); fr.onload = function(){ LOGO_ANALISE = fr.result; ok(fr.result); }; fr.onerror = function(){ ok(logoUrl); }; fr.readAsDataURL(b); });
+    }).catch(function(){ return logoUrl; })).then(function(logo){
+      w.document.open(); w.document.write(htmlAnalise(r, logo)); w.document.close();
+    });
+  }
+  function htmlAnalise(r, logo){
+    var condo = r.condominioNome || nomeCondo(r.condominioSlug);
+    var par = PARECERES[r.parecer] || null;
+    var jul = dataDaOcorrencia(r);
+    var t = function(x){ return esc(String(x || '')); };
+    var chip = function(ic, cor, rot, val){ return val ? '<div class="chip"><span class="ci" style="color:' + cor + ';background:' + cor + '1a">' + ICA[ic] + '</span><div><small>' + rot + '</small><b>' + t(val) + '</b></div></div>' : ''; };
+    var marco = function(ic, rot, val){ return '<div class="marco' + (val ? '' : ' vazio') + '"><span class="bola">' + ICA[ic] + '</span><small>' + rot + '</small><b>' + (val ? t(val) : '—') + '</b></div>'; };
+    var bloco = function(n, ic, cor, tit, txt){ return txt ? '<section class="bloco" style="--c:' + cor + '"><h3><span class="bi">' + ICA[ic] + '</span><span class="bn">' + n + '</span>' + tit + '</h3><p>' + t(txt) + '</p></section>' : ''; };
+    var n = 0, num = function(){ return ++n; };
+    var blocos = [
+      bloco(r.fatos ? num() : 0, 'olho', '#2b5fab', 'O que aconteceu', r.fatos),
+      bloco(r.alegacoes ? num() : 0, 'balao', '#7b4bb7', 'O que o morador alega', r.alegacoes),
+      bloco(r.fundamentos ? num() : 0, 'livro', '#a3232b', 'Regras aplicáveis', r.fundamentos),
+      bloco(r.historicoUnidade ? num() : 0, 'relogio', '#1f8a7a', 'Histórico da unidade', r.historicoUnidade),
+      bloco(r.observacoes ? num() : 0, 'lampada', '#c77700', 'Pontos de atenção', r.observacoes)
+    ].join('');
+    var titulo = 'Análise do escritório — #' + (r.ocorrencia || '') + ' — ' + condo;
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + t(titulo) + '</title><style>'
+      + '@page{size:A4;margin:0;}*{box-sizing:border-box;}html{--fs:9.6pt;}'
+      + 'body{margin:0;background:#e9e4e4;font-family:"Segoe UI",Arial,sans-serif;color:#222;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + '.barra{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #ddd;padding:9px;display:flex;gap:8px;justify-content:center;align-items:center;font-size:12px;color:#555;flex-wrap:wrap;}'
+      + '.barra button{font:600 12.5px "Segoe UI",Arial;border-radius:8px;padding:7px 15px;cursor:pointer;border:1px solid #bbb;background:#fff;}.barra .imp{background:#a3232b;border-color:#a3232b;color:#fff;}'
+      + '.pg{width:210mm;height:297mm;margin:14px auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;}'
+      + '.faixa{height:5mm;background:linear-gradient(90deg,#5e1218,#a3232b 55%,#d0464f);}'
+      + 'header{display:flex;align-items:center;justify-content:space-between;gap:6mm;padding:5mm 12mm 3.5mm;border-bottom:.4mm solid #f0e3e3;}'
+      + 'header img{height:13mm;}header .tit{text-align:right;}header h1{margin:0;font:700 15pt Georgia,serif;color:#7a1a20;letter-spacing:.02em;}'
+      + 'header .sub{font-size:9pt;color:#555;margin-top:1mm;}header .oc{display:inline-block;margin-top:1.5mm;background:#a3232b;color:#fff;border-radius:20px;padding:.6mm 3.5mm;font-weight:700;font-size:9pt;}'
+      + '.conteudo{flex:1;padding:4mm 12mm 0;display:flex;flex-direction:column;gap:3.2mm;font-size:var(--fs);line-height:1.42;}'
+      + '.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:2.5mm;}'
+      + '.chip{display:flex;gap:2.2mm;align-items:center;border:.3mm solid #eadede;border-radius:3mm;padding:2mm 2.4mm;background:#fff;}'
+      + '.ci{width:8.5mm;height:8.5mm;border-radius:2.4mm;display:flex;align-items:center;justify-content:center;flex:none;}.ci svg{width:5mm;height:5mm;}'
+      + '.chip small{display:block;font-size:.78em;color:#888;text-transform:uppercase;letter-spacing:.04em;}.chip b{display:block;font-size:.98em;line-height:1.25;}'
+      + '.linha-tempo{display:grid;grid-template-columns:repeat(4,1fr);position:relative;padding:1mm 0;}'
+      + '.linha-tempo:before{content:"";position:absolute;left:12%;right:12%;top:5.2mm;height:.5mm;background:linear-gradient(90deg,#2b5fab,#7b4bb7,#c77700,#a3232b);}'
+      + '.marco{text-align:center;position:relative;}.marco .bola{width:9mm;height:9mm;margin:0 auto 1mm;border-radius:50%;background:#fff;border:.6mm solid #a3232b;color:#a3232b;display:flex;align-items:center;justify-content:center;position:relative;}'
+      + '.marco .bola svg{width:4.6mm;height:4.6mm;}.marco small{display:block;font-size:.78em;color:#888;text-transform:uppercase;letter-spacing:.04em;}.marco b{font-size:.95em;}.marco.vazio .bola{border-color:#ccc;color:#bbb;}'
+      + '.blocos{columns:2;column-gap:5mm;}'
+      + '.bloco{break-inside:avoid;margin:0 0 3.2mm;border:.3mm solid #ece4e4;border-top:1.1mm solid var(--c);border-radius:2.6mm;padding:2.6mm 3mm 2.6mm;background:#fff;}'
+      + '.bloco h3{display:flex;align-items:center;gap:1.8mm;margin:0 0 1.4mm;font:700 1.05em Georgia,serif;color:var(--c);}'
+      + '.bi{width:6.6mm;height:6.6mm;border-radius:1.8mm;background:var(--c);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;}.bi svg{width:4mm;height:4mm;}'
+      + '.bn{font:700 .8em Arial;color:#fff;background:#3a3a3a;border-radius:50%;width:4.4mm;height:4.4mm;display:inline-flex;align-items:center;justify-content:center;flex:none;}'
+      + '.bloco p{margin:0;white-space:pre-wrap;text-align:justify;}'
+      + '.parecer{border-radius:3mm;padding:3mm 4mm;display:flex;gap:3.5mm;align-items:flex-start;break-inside:avoid;}'
+      + '.parecer .pi{width:11mm;height:11mm;border-radius:3mm;display:flex;align-items:center;justify-content:center;color:#fff;flex:none;}.parecer .pi svg{width:6.5mm;height:6.5mm;}'
+      + '.parecer small{display:block;text-transform:uppercase;letter-spacing:.06em;font-size:.78em;font-weight:700;}.parecer .rot{font:700 1.3em Georgia,serif;margin:.4mm 0 1mm;}.parecer p{margin:0;white-space:pre-wrap;text-align:justify;}'
+      + '.vazio-a{color:#888;font-style:italic;}'
+      + 'footer{padding:2.6mm 12mm 4mm;display:flex;justify-content:space-between;gap:6mm;font-size:7.6pt;color:#777;border-top:.3mm solid #eee;margin-top:2mm;}'
+      + 'footer b{color:#7a1a20;}'
+      + '.cortado{position:absolute;right:12mm;bottom:11mm;background:#fff3cd;border:.3mm solid #e0b44c;color:#7a5600;font-size:7.5pt;padding:1mm 2.5mm;border-radius:2mm;}'
+      + '@media print{body{background:#fff;}.barra{display:none;}.pg{margin:0;box-shadow:none;}}'
+      + '</style></head><body>'
+      + '<div class="barra"><button class="imp" onclick="print()">🖨️ Imprimir / Salvar em PDF</button><button onclick="close()">Fechar</button>'
+      + '<span>Na impressão, escolha <b>Salvar como PDF</b>, margens <b>Nenhuma</b> e marque <b>Gráficos de plano de fundo</b>.</span></div>'
+      + '<div class="pg"><div class="faixa"></div>'
+      + '<header><img src="' + t(logo) + '" alt="Fonseca e Braga Sociedade de Advogados"><div class="tit"><h1>Análise do Escritório</h1>'
+      + '<div class="sub">' + t(condo) + (r.titulo || r.classificacao ? ' · ' + t(r.titulo || r.classificacao) : '') + '</div><span class="oc">Ocorrência #' + t(r.ocorrencia) + '</span></div></header>'
+      + '<div class="conteudo" id="conteudo">'
+      + '<div class="chips">' + chip('casa', '#a3232b', 'Unidade', r.unidade) + chip('pessoa', '#2b5fab', 'Morador(a)', r.morador || 'não informado')
+      + chip('etiqueta', '#7b4bb7', 'Classificação', r.classificacao || r.titulo) + chip('moeda', '#c77700', 'Penalidade aplicada', r.penalidade) + '</div>'
+      + '<div class="linha-tempo">' + marco('olho', 'Fato', [dataBR(r.dataFato), r.horaFato].filter(Boolean).join(' · ')) + marco('sino', 'Notificação', dataBR(r.dataNotificacao))
+      + marco('envelope', 'Recurso', dataBR(r.dataRecurso)) + marco('calendario', 'Julgamento', jul ? dataHoraBR(jul) : '') + '</div>'
+      + (blocos ? '<div class="blocos">' + blocos + '</div>' : '<div class="vazio-a">Preencha os fatos, as alegações e os fundamentos no cadastro da ocorrência.</div>')
+      + (par || r.conclusao ? '<div class="parecer" style="background:' + (par ? par.cor : '#555') + '12;border:.4mm solid ' + (par ? par.cor : '#999') + '55;">'
+        + '<span class="pi" style="background:' + (par ? par.cor : '#666') + '">' + ICA[par ? par.ico : 'escudo'] + '</span><div style="flex:1;">'
+        + '<small style="color:' + (par ? par.cor : '#555') + '">Parecer do escritório</small>' + (par ? '<div class="rot" style="color:' + par.cor + '">' + t(par.rot) + '</div>' : '')
+        + (r.conclusao ? '<p>' + t(r.conclusao) + '</p>' : '') + '</div></div>' : '')
+      + '</div>'
+      + '<footer><span><b>Fonseca e Braga Sociedade de Advogados</b> · documento de apoio ao Conselho. A decisão final é do Conselho, em sessão.</span><span>Gerado em ' + t(new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })) + '</span></footer>'
+      + '</div>'
+      // cabe em uma folha: começa em 11 pt e diminui a letra aos poucos até o conteúdo caber (mínimo 6,4 pt)
+      + '<script>(function(){var c=document.getElementById("conteudo"),pg=document.querySelector(".pg"),f=document.querySelector("footer");'
+      + 'function cabe(){return c.scrollHeight<=pg.clientHeight-f.offsetHeight-c.offsetTop+2&&c.scrollWidth<=c.clientWidth+1;}'
+      + 'function ajustar(){var fs=11;document.documentElement.style.setProperty("--fs",fs+"pt");while(!cabe()&&fs>6.4){fs=Math.round((fs-0.2)*10)/10;document.documentElement.style.setProperty("--fs",fs+"pt");}'
+      + 'if(!cabe()){var a=document.createElement("div");a.className="cortado";a.textContent="Texto longo: parte não coube na folha. Resuma os campos no cadastro.";pg.appendChild(a);}}'
+      + 'var img=document.querySelector("header img");function ir(){ajustar();setTimeout(function(){window.print();},350);}'
+      + 'if(img.complete)ir();else{img.onload=ir;img.onerror=ir;}})();<\/script>'
+      + '</body></html>';
+  }
+
   // ---------------------------------------------------------------- provas: leitura autenticada + trilha de auditoria
-  function abrirProva(caminho){
+  function abrirProva(caminho, mostrarDepois){
     var r = recursos[state.recursoId];
     var pv = (r.provas || []).find(function(p){ return p.caminho === caminho; });
     var bucket = firebase.app().options.storageBucket;
@@ -876,7 +1146,7 @@
       return resp.blob();
     }).then(function(blob){
       urlsProvas[caminho] = URL.createObjectURL(pv && pv.tipo ? new Blob([blob], { type:pv.tipo }) : blob);
-      setTimeout(function(){ mostrar(true); }, 0);
+      setTimeout(function(){ mostrar(true); if (mostrarDepois !== false && pv && (/^image/.test(pv.tipo) || pv.tipo === 'application/pdf')) verArquivo(caminho); }, 0);
       db.collection('acessosProvasJulgamento').add({ uid:me.uid, nome:me.nome, recursoId:r.id, condominioSlug:r.condominioSlug, arquivo:caminho, em:FV.serverTimestamp() }).catch(function(){});
     }).catch(function(e){
       var msg = /failed to fetch|networkerror|load failed/i.test(e.message || '') ? 'o Storage ainda não autoriza o portal a ler arquivos (CORS). Avise o administrador.' : e.message;
@@ -1198,6 +1468,9 @@
     if (d.passo != null) { state.passo = parseInt(d.passo, 10); mostrar(true); window.scrollTo(0, 0); return; }
     if (d.edpasso != null) { if (state.view === 'editar' && state.editarPasso < 2) lerFormulario(); state.editarPasso = parseInt(d.edpasso, 10); mostrar(true); return; }
     if (d.abrir) { abrirProva(d.abrir); return; }
+    if (d.ver) { verArquivo(d.ver); return; }
+    if (d.analisePdf) { analisePdf(d.analisePdf); return; }
+    if (d.analiseRascunho != null) { analisePdf(null, true); return; }
     if (d.removerProva != null) { removerProva(rascunho.id, parseInt(d.removerProva, 10)); return; }
     if (d.ementaPdf) { ementaPdf(d.ementaPdf); return; }
     if (d.aprovarConselho) { aprovarConselho(d.aprovarConselho); return; }
