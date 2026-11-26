@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("290.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("290.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("291.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("291.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "290";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "291";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -142,7 +142,7 @@ namespace PortalFB
         // O Windows guarda em cache a figura do atalho (inclusive o fixado na barra de tarefas) pelo caminho "PortalFB.exe,0":
         // trocar o ícone dentro do .exe não muda o que aparece. Uma vez por troca de ícone, grava o ícone vermelho num arquivo
         // com nome novo, aponta para ele os atalhos do app (menu Iniciar, área de trabalho e fixados na barra) e avisa o Windows.
-        const string ICONE_MARCA = "barra-vermelho-1";
+        const string ICONE_MARCA = "barra-original-85";
         [DllImport("shell32.dll")] static extern void SHChangeNotify(int evento, uint flags, IntPtr a, IntPtr b);
         static void AtualizarIconeDosAtalhos()
         {
