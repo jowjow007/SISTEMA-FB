@@ -1455,7 +1455,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v291</span>
+      <span class="version-tag">v292</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -4641,6 +4641,15 @@
     if (currentProfile && currentProfile.tipoColaborador === 'clt') item('download', 'Meus holerites', function(){ fecharMenuMobile(); abrirMeusHolerites(); });
     if (!ehContaCliente(currentProfile.role)) item('download', 'Logomarcas e papéis de parede', function(){ fecharMenuMobile(); abrirDownloadLogo(); });
     if (currentProfile && currentProfile.role === 'admin') item('grid', 'Versão nova (teste)', function(){ location.href = '/novo/'; });
+    // iPhone (app na tela de início, iOS 16.4+): o número de mensagens no ícone só aparece depois que a pessoa permite notificações
+    if ('setAppBadge' in navigator && 'Notification' in window && Notification.permission === 'default') {
+      item('chat', 'Mostrar nº de mensagens no ícone', function(b){
+        Notification.requestPermission().then(function(r){
+          if (r === 'granted') { naoLidasAvisadas = -1; avisoNaoLidasForaDaPagina(mhChatUnread || 0); b.remove(); }
+          else b.querySelector('span:last-child').textContent = 'Permissão negada (ative nos Ajustes)';
+        }).catch(function(){});
+      });
+    }
   }
 
   function slugify(s){
