@@ -61,7 +61,7 @@ try{ if(localStorage.getItem('fb-portal-theme') === 'light') document.documentEl
 <header>
   <h1 id="h-titulo">Minhas petições</h1>
   <p id="h-sub">Tudo o que você gerou no Formatador.</p>
-  <nav class="tipos"><a href="historico.html" id="t-pet">Petições</a><a href="historico.html?tipo=parecer" id="t-par">Pareceres</a><a href="historico.html?tipo=notificacao" id="t-not">Notificações</a></nav>
+  <nav class="tipos"><a href="historico.html" id="t-pet">Petições</a><a href="historico.html?tipo=parecer" id="t-par">Pareceres</a><a href="historico.html?tipo=notificacao" id="t-not">Notificações</a><a href="historico.html?tipo=termo" id="t-ter">Termos</a></nav>
 </header>
 <main>
   <div class="card">
@@ -80,12 +80,18 @@ var auth = firebase.auth(app), db = firebase.firestore(app);
 var itens = [], filtro = '';
 // históricos separados: ?tipo=parecer lista só os pareceres (título "PARECER ..."); sem o parâmetro, as petições
 var TIPO = new URLSearchParams(location.search).get('tipo');
-if(TIPO !== 'parecer' && TIPO !== 'notificacao') TIPO = 'peticao';
-var PARECER = TIPO === 'parecer', NOTIF = TIPO === 'notificacao';
+if(TIPO !== 'parecer' && TIPO !== 'notificacao' && TIPO !== 'termo') TIPO = 'peticao';
+var PARECER = TIPO === 'parecer', NOTIF = TIPO === 'notificacao', TERMO = TIPO === 'termo';
 var PAL = PARECER ? {varios:'parecer(es)', nenhum:'Nenhum parecer encontrado.', vazio:'Você ainda não gerou pareceres.'}
+        : TERMO ? {varios:'termo(s)', nenhum:'Nenhum termo encontrado.', vazio:'Você ainda não gerou termos.'}
         : NOTIF ? {varios:'notificação(ões)', nenhum:'Nenhuma notificação encontrada.', vazio:'Você ainda não gerou notificações.'}
                   : {varios:'petição(ões)', nenhum:'Nenhuma petição encontrada.', vazio:'Você ainda não gerou petições.'};
-document.getElementById(PARECER ? 't-par' : NOTIF ? 't-not' : 't-pet').className = 'ativo';
+document.getElementById(PARECER ? 't-par' : NOTIF ? 't-not' : TERMO ? 't-ter' : 't-pet').className = 'ativo';
+if(TERMO){
+  document.title = 'Meus termos — Fonseca e Braga';
+  document.getElementById('h-titulo').textContent = 'Meus termos';
+  document.getElementById('h-sub').textContent = 'Tudo o que você gerou na aba "Formatar termo".';
+}
 if(NOTIF){
   document.title = 'Minhas notificações — Fonseca e Braga';
   document.getElementById('h-titulo').textContent = 'Minhas notificações';
@@ -100,6 +106,7 @@ function tipoDoTitulo(t){
   t = String(t||'').trim();
   if(/^PARECER\b/i.test(t)) return 'parecer';
   if(/^(CONTRA[\s-]?)?NOTIFICA/i.test(t)) return 'notificacao';
+  if(/^(?:MODELO\s*\d*\s*[|:\-–—]\s*)?TERMO\b/i.test(t)) return 'termo';
   return 'peticao';
 }
 
@@ -173,8 +180,8 @@ function excluir(sel){
   if(!sel.length) return;
   var lista = sel.slice(0,8).map(function(it){ return '• '+nomePeticao(it.data); }).join('\n');
   if(sel.length > 8) lista += '\n… e mais '+(sel.length-8);
-  var msg = (sel.length === 1 ? (PARECER ? 'Excluir este parecer do histórico?' : NOTIF ? 'Excluir esta notificação do histórico?' : 'Excluir esta petição do histórico?')
-      : (PARECER ? 'Excluir estes '+sel.length+' pareceres do histórico?' : NOTIF ? 'Excluir estas '+sel.length+' notificações do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?'))
+  var msg = (sel.length === 1 ? (PARECER ? 'Excluir este parecer do histórico?' : TERMO ? 'Excluir este termo do histórico?' : NOTIF ? 'Excluir esta notificação do histórico?' : 'Excluir esta petição do histórico?')
+      : (PARECER ? 'Excluir estes '+sel.length+' pareceres do histórico?' : TERMO ? 'Excluir estes '+sel.length+' termos do histórico?' : NOTIF ? 'Excluir estas '+sel.length+' notificações do histórico?' : 'Excluir estas '+sel.length+' petições do histórico?'))
     + '\n\n'+lista+'\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
   if(!confirm(msg)) return;
   var lotes = [];

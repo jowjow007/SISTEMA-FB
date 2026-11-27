@@ -68,6 +68,9 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   /* aba "Formatar parecer": mesmo formulário, sem os campos próprios de petição */
   body:not(.modo-parecer) .so-parecer, body:not(.modo-notificacao) .so-notificacao,
   body.modo-parecer .so-peticao, body.modo-notificacao .so-peticao, body.modo-parecer .so-pet-not{display:none !important;}
+  /* aba "Formatar termo" (26/11/2026): título, partes (COMODANTE / COMODATÁRIO…), cláusulas numeradas e assinaturas lado a lado */
+  body:not(.modo-termo) .so-termo, body.modo-termo .so-peticao, body.modo-termo .so-pet-not, body.modo-termo .nao-termo,
+  body.modo-parecer .so-reu{display:none !important;}
   /* aba "Formatar notificação" (10/11/2026): título, destinatário, rótulos (ASSUNTO/NOTIFICANTE/NOTIFICADO), abertura e protocolo */
 
   /* gerador de nomenclatura (POP nº 008/2023) — antes ficava em Sistemas */
@@ -245,6 +248,13 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
   .dc-destinatario .l1{font-weight:bold;}
   .dc-rotulo.bloco{text-align:justify;margin-bottom:3mm;line-height:1.45;}
   .dc-assinatura .funcao{font-size:11.5pt;}
+  .dc-parte{font-size:11.5pt;text-align:justify;margin-bottom:4mm;line-height:1.45;}
+  .dc-parte .rot{display:block;font-weight:bold;text-transform:uppercase;}
+  .dc-clausula{font-size:11.5pt;text-align:justify;margin-bottom:3mm;}
+  .dc-sigs-termo{display:grid;grid-template-columns:1fr 1fr;gap:16mm 12mm;margin-top:16mm;font-size:11pt;}
+  .dc-sigs-termo.um{grid-template-columns:minmax(0,9cm);justify-content:center;}
+  .dc-sigs-termo .ass{border-top:0.75pt solid #1a1a1a;padding-top:1.5mm;text-align:center;}
+  .dc-sigs-termo .nome{font-weight:bold;}
   .dc-protocolo{border:0.75pt solid #1a1a1a;padding:4mm 6mm 2mm;margin:8mm 0 0;font-size:11pt;break-inside:avoid;}
   .dc-protocolo .tit{text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:4mm;}
   .dc-protocolo .lin{margin-bottom:4mm;}
@@ -278,6 +288,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <button type="button" class="active" data-view="formatar">Formatar petição</button>
     <button type="button" data-view="parecer">Formatar parecer</button>
     <button type="button" data-view="notificacao">Formatar notificação</button>
+    <button type="button" data-view="termo">Formatar termo</button>
     <button type="button" data-view="nomenclatura">Nomenclatura</button>
   </div>
 </header>
@@ -292,7 +303,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
     <!-- histórico -->
     <div class="card" id="card-hist">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-        <h2 style="margin:0 0 12px;"><span class="so-peticao">Minhas últimas petições</span><span class="so-parecer">Meus últimos pareceres</span><span class="so-notificacao">Minhas últimas notificações</span></h2>
+        <h2 style="margin:0 0 12px;"><span class="so-peticao">Minhas últimas petições</span><span class="so-parecer">Meus últimos pareceres</span><span class="so-notificacao">Minhas últimas notificações</span><span class="so-termo">Meus últimos termos</span></h2>
         <a id="hist-todas" href="historico.html" target="_blank" rel="noopener" style="font-size:.74rem;color:var(--red-bright);white-space:nowrap;">Ver todas →</a>
       </div>
       <p class="desc" id="hist-msg">Faça login no Portal para ver o histórico.</p>
@@ -308,6 +319,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <h2>Importar do Word / Docs</h2>
       <p class="desc so-peticao">Cole aqui o texto da petição — o sistema detecta endereçamento, processo, tópicos e pedidos automaticamente.</p>
       <p class="desc so-parecer">Cole aqui o texto do parecer — o sistema detecta o título, a identificação (Interessado, Assunto…), os tópicos, as listas e a conclusão.</p>
+      <p class="desc so-termo">Cole aqui o texto do termo — o sistema detecta o título, as partes (COMODANTE, COMODATÁRIO…), as cláusulas numeradas, os parágrafos, o local e a data (em branco, se vierem com linhas) e quem assina.</p>
       <p class="desc so-notificacao">Cole aqui o texto da notificação — o sistema detecta o título, o destinatário, ASSUNTO / NOTIFICANTE / NOTIFICADO, a abertura, os tópicos, a assinatura, os anexos e o protocolo de recebimento.</p>
       <div class="field">
         <textarea id="import-txt" rows="7" placeholder="Cole aqui (Ctrl+V) o texto completo da petição..."></textarea>
@@ -318,7 +330,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
     <!-- tipo -->
     <div class="card">
-      <h2><span class="so-peticao">Tipo de peça</span><span class="so-parecer">Título</span><span class="so-notificacao">Título</span></h2>
+      <h2><span class="so-peticao">Tipo de peça</span><span class="so-parecer">Título</span><span class="so-notificacao">Título</span><span class="so-termo">Título</span></h2>
       <div class="field so-peticao">
         <select id="tipo-peca">
           <option value="PETIÇÃO INICIAL">Petição Inicial</option>
@@ -335,7 +347,7 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         </select>
       </div>
       <div class="field" id="f-livre" style="display:none;">
-        <label class="so-peticao">Título da peça</label><label class="so-parecer">Título do parecer</label><label class="so-notificacao">Título da notificação</label>
+        <label class="so-peticao">Título da peça</label><label class="so-parecer">Título do parecer</label><label class="so-notificacao">Título da notificação</label><label class="so-termo">Título do termo</label>
         <input id="titulo-livre" placeholder="TÍTULO EM MAIÚSCULAS">
       </div>
       <div class="field"><label>Subtítulo (opcional)</label><input id="subtitulo" placeholder="COM PEDIDO DE EFEITO SUSPENSIVO..."></div>
@@ -344,10 +356,10 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
     <!-- processo -->
     <div class="card">
-      <h2><span class="so-peticao">Processo</span><span class="so-parecer">Identificação</span><span class="so-notificacao">Identificação</span></h2>
+      <h2><span class="so-peticao">Processo</span><span class="so-parecer">Identificação</span><span class="so-notificacao">Identificação</span><span class="so-termo">Partes</span></h2>
       <div class="field so-peticao"><label>Número dos autos</label><input id="num-autos" placeholder="0000000-00.0000.8.13.0702"></div>
       <div class="field so-peticao"><label>Vara / Tribunal</label><input id="vara" placeholder="4ª Vara das Famílias da Comarca de Uberlândia/MG"></div>
-      <div class="field"><label><span class="so-peticao">Partes abaixo do nº dos autos (opcional)</span><span class="so-parecer">Abaixo do título — um por linha (Interessado, Assunto…)</span><span class="so-notificacao">Abaixo do destinatário — um por linha (ASSUNTO:, NOTIFICANTE:, NOTIFICADO:)</span></label><textarea id="partes-rotulo" rows="2" placeholder="Embargante: NOME&#10;Embargado: NOME"></textarea></div>
+      <div class="field"><label><span class="so-peticao">Partes abaixo do nº dos autos (opcional)</span><span class="so-parecer">Abaixo do título — um por linha (Interessado, Assunto…)</span><span class="so-notificacao">Abaixo do destinatário — um por linha (ASSUNTO:, NOTIFICANTE:, NOTIFICADO:)</span><span class="so-termo">Uma parte por linha — PAPEL: qualificação (ex.: COMODANTE: EMPRESA X, CNPJ…)</span></label><textarea id="partes-rotulo" rows="2" placeholder="Embargante: NOME&#10;Embargado: NOME"></textarea></div>
     </div>
 
     <!-- endereçamento -->
@@ -372,10 +384,11 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
     <!-- tópicos -->
     <div class="card">
-      <h2>Tópicos</h2>
-      <p class="desc">Cada tópico vira uma seção. Um tópico começando com "RAZÕES", "CONTRARRAZÕES" ou "MINUTA" abre nova página e reinicia a numeração.</p>
-      <label style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="opt-num" checked> Numerar parágrafos (1., 2., 3.…)</label>
-      <label style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="opt-rom" checked> Títulos com algarismos romanos (I —, II —…)</label>
+      <h2><span class="nao-termo">Tópicos</span><span class="so-termo">Cláusulas</span></h2>
+      <p class="desc so-termo">Escreva as cláusulas como no termo (1. Entrega. Texto…). O número e o nome de cada cláusula saem em negrito, assim como "Parágrafo único.". Linha em maiúsculas vira título de seção.</p>
+      <p class="desc nao-termo">Cada tópico vira uma seção. Um tópico começando com "RAZÕES", "CONTRARRAZÕES" ou "MINUTA" abre nova página e reinicia a numeração.</p>
+      <label class="nao-termo" style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:6px;cursor:pointer;"><input type="checkbox" id="opt-num" checked> Numerar parágrafos (1., 2., 3.…)</label>
+      <label class="nao-termo" style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="opt-rom" checked> Títulos com algarismos romanos (I —, II —…)</label>
       <div id="tops-list"></div>
       <button class="btn-add" id="btn-top">+ Adicionar tópico</button>
     </div>
@@ -395,8 +408,9 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <div class="field"><label>Local</label><input id="local" value="Uberlândia/MG"></div>
         <div class="field"><label>Data</label><input id="data-f" type="date"></div>
       </div>
+      <label class="so-termo" style="display:flex;gap:7px;align-items:center;font-size:.76rem;margin:-2px 0 10px;cursor:pointer;"><input type="checkbox" id="opt-data-branco"> Local e data em branco (linhas para preencher à mão)</label>
       <div class="field">
-        <label>Assinantes (na ordem em que assinam)</label>
+        <label><span class="nao-termo">Assinantes (na ordem em que assinam)</span><span class="so-termo">Quem assina (as partes, na ordem) — use "Outra pessoa (digitar)": nome em cima e, se quiser, o papel na linha de baixo</span></label>
         <div id="sigs-list"></div>
         <select id="sig-add" class="btn-add" style="text-align:center;"><option value="">+ Adicionar assinante…</option></select>
         <div class="hint" style="font-size:.68rem;color:var(--muted);margin-top:5px;">Escolha os usuários: vem o nome completo e a OAB (quem não tem OAB sai com o CPF). Dá para ajustar o texto de cada um.</div>
@@ -410,8 +424,8 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
       <p class="desc">O Google Docs cria o documento já com o timbrado do escritório, para os ajustes finais. O PDF usa a impressão do navegador.</p>
       <p class="section-lbl">Nome do arquivo (POP 008/2023)</p>
       <div class="grid2">
-        <div class="field"><label><span class="so-peticao">Autor</span><span class="so-parecer">Interessado</span><span class="so-notificacao">Notificante</span></label><input id="nom-autor" class="nom-in"></div>
-        <div class="field so-pet-not"><label><span class="so-peticao">Réu</span><span class="so-notificacao">Notificado</span></label><input id="nom-reu" class="nom-in"></div>
+        <div class="field"><label><span class="so-peticao">Autor</span><span class="so-parecer">Interessado</span><span class="so-notificacao">Notificante</span><span class="so-termo">Parte 1</span></label><input id="nom-autor" class="nom-in"></div>
+        <div class="field so-reu"><label><span class="so-peticao">Réu</span><span class="so-notificacao">Notificado</span><span class="so-termo">Parte 2</span></label><input id="nom-reu" class="nom-in"></div>
         <div class="field"><label>Valor (opcional)</label><input id="nom-valor" class="nom-in"></div>
         <div class="field"><label>Criador</label><input id="nom-criador" class="nom-in"></div>
       </div>
@@ -560,21 +574,26 @@ function tipoDoTitulo(t){
   t = String(t||'').trim();
   if(/^PARECER\b/i.test(t)) return 'parecer';
   if(/^(CONTRA[\s-]?)?NOTIFICA/i.test(t)) return 'notificacao';
+  if(TERMO_TITULO_RE.test(t)) return 'termo';
   return 'peticao';
 }
-function modoAtual(){ return document.body.classList.contains('modo-parecer') ? 'parecer' : document.body.classList.contains('modo-notificacao') ? 'notificacao' : 'peticao'; }
-var TITULO_PADRAO = { parecer:'PARECER JURÍDICO', notificacao:'NOTIFICAÇÃO EXTRAJUDICIAL' };
-var NOME_DOC = { peticao:'petição', parecer:'parecer', notificacao:'notificação' };
+// "TERMO DE COMODATO…", "MODELO 01 | TERMO DE…"
+var TERMO_TITULO_RE = /^(?:MODELO\s*\d*\s*[|:\-–—]\s*)?TERMO\b/i;
+function modoAtual(){ var c = document.body.classList; return c.contains('modo-parecer') ? 'parecer' : c.contains('modo-notificacao') ? 'notificacao' : c.contains('modo-termo') ? 'termo' : 'peticao'; }
+var TITULO_PADRAO = { parecer:'PARECER JURÍDICO', notificacao:'NOTIFICAÇÃO EXTRAJUDICIAL', termo:'TERMO' };
+var NOME_DOC = { peticao:'petição', parecer:'parecer', notificacao:'notificação', termo:'termo' };
 function definirModo(modo){
   if(modo === true) modo = 'parecer'; else if(!modo) modo = 'peticao';
   document.body.classList.toggle('modo-parecer', modo === 'parecer');
   document.body.classList.toggle('modo-notificacao', modo === 'notificacao');
+  document.body.classList.toggle('modo-termo', modo === 'termo');
   var sel = document.getElementById('tipo-peca'), livre = document.getElementById('titulo-livre');
   var atual = sel.value === 'outro' ? tipoDoTitulo(livre.value) : 'peticao';
   if(modo !== 'peticao' && atual !== modo){ sel.value = 'outro'; livre.value = TITULO_PADRAO[modo]; sel.dispatchEvent(new Event('change')); }
   if(modo === 'peticao' && atual !== 'peticao'){ sel.value = 'PETIÇÃO INICIAL'; livre.value = ''; sel.dispatchEvent(new Event('change')); }
-  document.getElementById('import-txt').placeholder = 'Cole aqui (Ctrl+V) o texto completo d' + (modo === 'parecer' ? 'o parecer...' : modo === 'notificacao' ? 'a notificação...' : 'a petição...');
+  document.getElementById('import-txt').placeholder = 'Cole aqui (Ctrl+V) o texto completo d' + (modo === 'parecer' ? 'o parecer...' : modo === 'notificacao' ? 'a notificação...' : modo === 'termo' ? 'o termo...' : 'a petição...');
   document.getElementById('partes-rotulo').placeholder = modo === 'parecer' ? 'Interessado: NOME\nAssunto: ...'
+    : modo === 'termo' ? 'COMODANTE: EMPRESA X, CNPJ nº ..., com sede em ...\nCOMODATÁRIO: Razão social ____, CNPJ nº ____'
     : modo === 'notificacao' ? 'ASSUNTO: ...\nNOTIFICANTE: NOME, qualificação...\nNOTIFICADO: NOME...' : 'Embargante: NOME\nEmbargado: NOME';
   document.getElementById('subtitulo').placeholder = modo === 'parecer' ? 'MINUTA PARA REVISÃO...' : modo === 'notificacao' ? '(opcional)' : 'COM PEDIDO DE EFEITO SUSPENSIVO...';
   document.getElementById('enderecamento').placeholder = modo === 'notificacao'
@@ -779,7 +798,7 @@ function setSigs(lista){
 setSigs([]);
 
 // ══ LIVE LISTENERS ════════════════════════════════════════════
-['num-autos','vara','enderecamento','local','data-f','opt-num','opt-rom','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){
+['num-autos','vara','enderecamento','local','data-f','opt-num','opt-rom','opt-data-branco','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){
   var el2 = document.getElementById(id); if(el2) el2.addEventListener('change', render);
   var el = document.getElementById(id); if(el) el.addEventListener('input', render);
 });
@@ -795,6 +814,8 @@ function excluirPeticoes(itens){
   var parecer = itens.every(function(it){ return ehParecer(it.data); });
   var notif = itens.every(function(it){ return ehNotificacao(it.data); });
   if(notif) return excluirNotificacoes(itens, lista);
+  if(itens.every(function(it){ return tipoDoTitulo(it.data.titulo) === 'termo'; }))
+    return excluirNotificacoes(itens, lista, itens.length === 1 ? 'Excluir este termo do histórico?' : 'Excluir estes ' + itens.length + ' termos do histórico?');
   var msg = (itens.length === 1 ? (parecer ? 'Excluir este parecer do histórico?' : 'Excluir esta petição do histórico?')
       : (parecer ? 'Excluir estes ' + itens.length + ' pareceres do histórico?' : 'Excluir estas ' + itens.length + ' petições do histórico?'))
     + '\n\n' + lista + '\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
@@ -821,8 +842,8 @@ function carregarHistorico(){
       document.getElementById('hist-list').innerHTML = '<p style="font-size:.76rem;color:var(--err);">Erro ao carregar histórico: '+esc(e.message)+'</p>';
     });
 }
-function excluirNotificacoes(itens, lista){
-  var msg = (itens.length === 1 ? 'Excluir esta notificação do histórico?' : 'Excluir estas ' + itens.length + ' notificações do histórico?')
+function excluirNotificacoes(itens, lista, pergunta){
+  var msg = (pergunta || (itens.length === 1 ? 'Excluir esta notificação do histórico?' : 'Excluir estas ' + itens.length + ' notificações do histórico?'))
     + '\n\n' + lista + '\n\nOs documentos no Google Drive não são apagados. Esta ação não pode ser desfeita.';
   if(!confirm(msg)) return Promise.resolve(false);
   var lotes = [];
@@ -847,7 +868,7 @@ function desenharHistorico(){
   document.getElementById('hist-del').disabled = true;
   if(!histItens.length){
     tools.style.display = 'none';
-    list.innerHTML = '<p style="font-size:.76rem;color:var(--muted);">'+(parecer ? 'Nenhum parecer gerado ainda.' : 'Nenhuma petição gerada ainda.')+'</p>';
+    list.innerHTML = '<p style="font-size:.76rem;color:var(--muted);">'+({parecer:'Nenhum parecer gerado ainda.', notificacao:'Nenhuma notificação gerada ainda.', termo:'Nenhum termo gerado ainda.'}[modo] || 'Nenhuma petição gerada ainda.')+'</p>';
     return;
   }
   tools.style.display = 'flex';
@@ -947,6 +968,7 @@ function aplicarOpcoes(d){
   document.getElementById('apos-pedidos').value = d.aposPedidos || '';
   document.getElementById('apos-assinatura').value = d.aposAssinatura || '';
   document.getElementById('partes-rotulo').value = d.rotulos || '';
+  document.getElementById('opt-data-branco').checked = !!d.dataEmBranco;
 }
 
 // ══ COLETAR DADOS ═════════════════════════════════════════════
@@ -982,7 +1004,8 @@ function coletar(){
     aposAssinatura: document.getElementById('apos-assinatura').value.trim(),
     rotulos: document.getElementById('partes-rotulo').value.trim(),
     numerar: document.getElementById('opt-num').checked,
-    romanos: document.getElementById('opt-rom').checked
+    romanos: document.getElementById('opt-rom').checked,
+    dataEmBranco: document.getElementById('opt-data-branco').checked
   };
 }
 
@@ -1185,7 +1208,49 @@ function assinaturas(d){
 }
 
 // estrutura única do documento: alimenta o preview/PDF e o Word/Docs
+// ══ TERMO (aba "Formatar termo", 26/11/2026) ══════════════════
+// título; partes ("PAPEL: qualificação", o papel numa linha em negrito); cláusulas com a numeração de quem escreveu
+// ("1. Entrega." em negrito); "Parágrafo único." em negrito; local e data (ou linhas em branco); assinaturas lado a lado
+var LINHA_DATA_BRANCO = '________________________, _____ de _______________ de ________.';
+var PARTE_RE = /^([A-ZÀ-Ý][A-ZÀ-Ý\s\/()º°.-]{1,48}?)\s*:\s*(.*)$/;
+var CLAUSULA_RE = /^(\d{1,2}(?:\.\d{1,2})*)[.)]\s+(.*)$/;
+var PARAGRAFO_RE = /^(Par[áa]grafo\s+(?:[úu]nico|primeiro|segundo|terceiro|quarto|quinto|sexto|\d{1,2}\s*[º°o]?))\s*[.:\-–—]\s*(.*)$/i;
+function partirClausula(resto){
+  // nome curto da cláusula até o primeiro ponto: "Entrega. Nos termos…" (no máximo 8 palavras, começa com maiúscula)
+  var m = resto.match(/^([A-ZÀ-Ý][^.;:!?]{1,70}?[.:])\s+(\S.*)$/);
+  if(m && m[1].split(/\s+/).length <= 8 && !/\d{2,}/.test(m[1])) return [m[1], m[2]];
+  return ['', resto];
+}
+function montarTermo(d){
+  var B = [];
+  if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
+  String(d.rotulos||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(l){
+    var m = l.match(PARTE_RE);
+    B.push(m ? {t:'parte', rot:m[1].trim(), texto:m[2].trim()} : {t:'clausula', n:'', tit:'', texto:l});
+  });
+  d.topicos.forEach(function(tp){
+    if((tp.titulo||'').trim()) B.push({t:'secao', texto:tp.titulo.trim().toUpperCase()});
+    var ps = paragrafos(tp.texto);
+    ps.forEach(function(p){
+      var m = p.match(CLAUSULA_RE), mp = p.match(PARAGRAFO_RE), ma = p.match(/^([a-z])[.)]\s+(.*)$/);
+      if(m){ var c = partirClausula(m[2]); B.push({t:'clausula', n:m[1]+'.', tit:c[0], texto:c[1]}); return; }
+      if(mp){ B.push({t:'clausula', n:'', tit:mp[1].replace(/^./, function(x){ return x.toUpperCase(); })+'.', texto:mp[2]}); return; }
+      if(ma){ B.push({t:'alinea', letra:ma[1]+')', texto:ma[2]}); return; }
+      if(BULLET_RE.test(p)){ B.push({t:'alinea', letra:'•', texto:p.replace(BULLET_RE, '')}); return; }
+      if(ehMaiusculas(p) && p.length < 160 && !/_{4,}/.test(p)){ B.push({t:'secao', texto:p}); return; }
+      B.push({t:'clausula', n:'', tit:'', texto:p});
+    });
+  });
+  if(d.dataEmBranco) B.push({t:'local', texto:LINHA_DATA_BRANCO, termo:true});
+  else if(d.local || d.data) B.push({t:'local', texto:(d.local||'')+(d.local&&d.data?', ':'')+dataExt(d.data)+'.', termo:true});
+  var sigs = assinaturas(d);
+  if(sigs.length) B.push({t:'sigTermo', lista:sigs});
+  if(d.aposAssinatura){ B.push({t:'aposSig'}); paragrafos(d.aposAssinatura).forEach(function(p){ B.push({t:'clausula', n:'', tit:'', texto:p}); }); }
+  return B;
+}
+
 function montarBlocos(d){
+  if(tipoDoTitulo(d.titulo) === 'termo') return montarTermo(d);
   var B = [], parecer = ehParecer(d), notif = ehNotificacao(d);
   function blocoTitulo(){
     if(d.titulo) B.push({t:'titulo', texto:d.titulo.toUpperCase(), sub:(d.subtitulo||'').toUpperCase()});
@@ -1402,11 +1467,16 @@ function sugerirNomenclatura(d){
     var nome1 = function(rot){ var m = (d.rotulos||'').match(new RegExp('^\\s*' + rot + '\\s*:\\s*(.+)$', 'im')); return m ? m[1].replace(/\*\*/g, '').split(/,|\s+[—–-]\s+/)[0].trim() : ''; };
     autor = nome1('NOTIFICANTES?'); reu = nome1('NOTIFICAD[OA]S?');
   }
+  if(tipoDoTitulo(d.titulo) === 'termo'){
+    var ps = String(d.rotulos||'').split('\n').map(function(l){ return l.match(PARTE_RE); }).filter(Boolean);
+    var nomeParte = function(m){ if(!m) return ''; var n = m[2].replace(/\*\*/g, '').split(',')[0].replace(/_+/g, '').trim(); return (!n || /^raz[ãa]o social$/i.test(n)) ? m[1].trim() : n; };
+    autor = nomeParte(ps[0]); reu = nomeParte(ps[1]);
+  }
   if(ehParecer(d)){
     var mi = (d.rotulos||'').match(/^\s*(?:Interessad[oa]s?|Consulente)\s*:\s*(.+)$/im);
     autor = mi ? mi[1].replace(/\*\*/g, '').trim() : ''; reu = '';
   }
-  var criador = (d.sigNome || meuNome || (currentUser && currentUser.displayName) || '').trim().split(/\s+/)[0] || '';
+  var criador = ((tipoDoTitulo(d.titulo) === 'termo' ? '' : d.sigNome) || meuNome || (currentUser && currentUser.displayName) || '').trim().split(/\s+/)[0] || '';
   var sug = {autor:autor, reu:reu, criador:criador};
   Object.keys(sug).forEach(function(k){
     var el = document.getElementById('nom-'+k);
@@ -1460,7 +1530,13 @@ function buildBody(d){
                               : '<div class="dc-p'+(b.semRecuo?' no-indent':'')+'">'+rico(b.texto, b.negrito)+'</div>';
       case 'pedido':   return '<div class="dc-item"><span class="dc-item-num">'+b.letra+'</span><span class="dc-item-body">'+rico(b.texto)+'</span></div>';
       case 'fech':     return '<div class="dc-fechamento">'+(b.parecer ? 'É o parecer,<br>salvo melhor juízo.' : 'Nestes Termos,<br>Pede Deferimento.')+'</div>';
-      case 'local':    return '<div class="dc-local">'+esc(b.texto)+'</div>';
+      case 'local':    return '<div class="dc-local"'+(b.termo?' style="margin:8mm 0 0"':'')+'>'+esc(b.texto)+'</div>';
+      case 'parte':    return '<div class="dc-parte"'+(/_{4,}/.test(b.texto)?' style="text-align:left"':'')+'><span class="rot">'+esc(b.rot)+'</span>'+rico(b.texto)+'</div>';
+      case 'clausula': return '<div class="dc-clausula"'+(/_{4,}/.test(b.texto)?' style="text-align:left"':'')+'>'+(b.n||b.tit ? '<strong>'+esc((b.n ? b.n+' ' : '')+b.tit)+'</strong> ' : '')+rico(b.texto)+'</div>';
+      case 'sigTermo': return '<div class="dc-sigs-termo'+(b.lista.length === 1 ? ' um' : '')+'">'+b.lista.map(function(s){
+                         return '<div class="ass"><div class="nome">'+esc(s.nome.toUpperCase())+'</div>'
+                           +(rotuloDoc(s)?'<div>'+esc(rotuloDoc(s))+'</div>':'')+(s.funcao?'<div>'+esc(s.funcao)+'</div>':'')+'</div>';
+                       }).join('')+'</div>';
       case 'sig':      return '<div class="dc-sigs">'+b.lista.map(function(s){
                          return '<div class="dc-assinatura"><div class="nome">'+esc(s.nome.toUpperCase())+'</div>'
                            +(rotuloDoc(s)?'<div class="oab">'+esc(rotuloDoc(s))+'</div>':'')
@@ -1617,6 +1693,7 @@ function wP(runs, o){
   if(o.num) ppr +='<w:numPr><w:ilvl w:val="0"/><w:numId w:val="'+o.num+'"/></w:numPr>';
   if(o.box) ppr += '<w:pBdr>' + ['top','left','bottom','right'].map(function(s){
     return '<w:'+s+' w:val="single" w:sz="12" w:space="4" w:color="1A1A1A"/>'; }).join('') + '</w:pBdr>';
+  if(o.topo) ppr += '<w:pBdr><w:top w:val="single" w:sz="6" w:space="4" w:color="1A1A1A"/></w:pBdr>';
   if(o.tabs) ppr += '<w:tabs><w:tab w:val="left" w:pos="'+o.tabs+'"/></w:tabs>';
   ppr += '<w:spacing w:before="'+(o.before||0)+'" w:after="'+(o.after==null?200:o.after)+'" w:line="'+(o.line||360)+'" w:lineRule="auto"/>';
   if(o.ind) ppr += '<w:ind '+o.ind+'/>';
@@ -1642,6 +1719,31 @@ function wTabela(linhas){
     }
     x += '</w:tr>';
   });
+  return x + '</w:tbl>' + wP('', {after:120});
+}
+
+// assinaturas do termo: duas por linha, cada uma com o traço em cima (borda superior) e o nome/papel abaixo
+function wSigsTermo(lista){
+  var cols = lista.length === 1 ? 1 : 2, larg = cols === 1 ? 5103 : Math.floor(larguraTextoDocx / 2), x = '';
+  var sem = ['top','left','bottom','right','insideH','insideV'].map(function(s){ return '<w:'+s+' w:val="nil"/>'; }).join('');
+  x += '<w:tbl><w:tblPr><w:tblW w:w="'+(larg*cols)+'" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>'+sem+'</w:tblBorders>'
+    + '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="284" w:type="dxa"/><w:right w:w="284" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>';
+  for(var c = 0; c < cols; c++) x += '<w:gridCol w:w="'+larg+'"/>';
+  x += '</w:tblGrid>';
+  for(var i = 0; i < lista.length; i += cols){
+    x += '<w:tr><w:trPr><w:cantSplit/></w:trPr>';
+    for(var k = 0; k < cols; k++){
+      var s = lista[i+k], cel = '';
+      if(s){
+        if(i) cel += wVazio() + wVazio() + wVazio();
+        cel += wP(wRun(s.nome.toUpperCase(),{b:1, sz:22}), {jc:'center', after:0, line:260, topo:1});
+        if(rotuloDoc(s)) cel += wP(wRun(rotuloDoc(s),{sz:22}), {jc:'center', after:0, line:260});
+        if(s.funcao) cel += wP(wRun(s.funcao,{sz:22}), {jc:'center', after:0, line:260});
+      } else cel = wP('', {after:0});
+      x += '<w:tc><w:tcPr><w:tcW w:w="'+larg+'" w:type="dxa"/></w:tcPr>' + cel + '</w:tc>';
+    }
+    x += '</w:tr>';
+  }
   return x + '</w:tbl>' + wP('', {after:120});
 }
 
@@ -1693,7 +1795,10 @@ function docxBody(d){
         x += wVazio();
         x += wP(wRun(b.parecer ? 'É o parecer,' : 'Nestes Termos,'), {jc:'center', after:0});
         x += wP(wRun(b.parecer ? 'salvo melhor juízo.' : 'Pede Deferimento.'), {jc:'center'}); break;
-      case 'local':    x += wP(wRun(b.texto), {jc:'center'}); break;
+      case 'local':    x += b.termo ? wVazio() + wP(wRun(b.texto), {jc:'center'}) : wP(wRun(b.texto), {jc:'center'}); break;
+      case 'parte':    x += wP(wRun(b.rot.toUpperCase(),{b:1}), {jc:'left', after:0, line:300, junto:1}) + wP(wRico(b.texto), {jc:/_{4,}/.test(b.texto) ? 'left' : 'both', after:200, line:300}); break;
+      case 'clausula': x += wP((b.n||b.tit ? wRun((b.n ? b.n+' ' : '')+b.tit+' ',{b:1}) : '') + wRico(b.texto), {jc:/_{4,}/.test(b.texto) ? 'left' : 'both', after:160}); break;
+      case 'sigTermo': x += wVazio() + wVazio() + wSigsTermo(b.lista); break;
       case 'sig':
         b.lista.forEach(function(s){
           x += wVazio() + wVazio();
@@ -1769,6 +1874,7 @@ document.getElementById('btn-limpar').addEventListener('click', function(){
   setSigs([]);
   ['num-autos','vara','enderecamento','subtitulo','apos-titulo','apos-pedidos','apos-assinatura','partes-rotulo'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('opt-num').checked = true; document.getElementById('opt-rom').checked = true;
+  document.getElementById('opt-data-branco').checked = false;
   document.getElementById('reqs-list').innerHTML=''; document.getElementById('reds-list').innerHTML='';
   document.getElementById('tops-list').innerHTML=''; document.getElementById('peds-list').innerHTML='';
   reqCount=0; redCount=0;
@@ -1784,16 +1890,24 @@ document.getElementById('docs-notif-close').addEventListener('click', function()
 document.getElementById('btn-importar').addEventListener('click', function(){
   var raw = document.getElementById('import-txt').value;
   if(!raw.trim()){ alert('Cole o texto da petição antes de importar.'); return; }
-  var resultado = (modoAtual() === 'notificacao' || /^\s*(?:\*\*)?\s*(CONTRA[\s-]?)?NOTIFICA/i.test(raw)) ? parsearNotificacao(raw) : parsearPeticao(raw);
+  var primeira = (String(raw).replace(/\*\*/g, '').split('\n').filter(function(l){ return l.trim(); })[0] || '').trim();
+  var resultado = (modoAtual() === 'termo' || TERMO_TITULO_RE.test(primeira)) ? parsearTermo(raw)
+    : (modoAtual() === 'notificacao' || /^\s*(?:\*\*)?\s*(CONTRA[\s-]?)?NOTIFICA/i.test(raw)) ? parsearNotificacao(raw) : parsearPeticao(raw);
   preencherFormulario(resultado);
   var st = document.getElementById('import-status');
   st.style.display = 'block';
   st.style.color = 'var(--ok)';
   var achados = [];
   if(resultado.titulo) achados.push('título');
-  if(resultado.topicos.length) achados.push(resultado.topicos.length + (resultado.topicos.length > 1 ? ' tópicos' : ' tópico'));
+  if(resultado.termo){
+    var nP = resultado.rotulos ? resultado.rotulos.split('\n').length : 0, nC = (resultado.topicos.map(function(t){ return t.texto; }).join('\n').match(/^\d{1,2}[.)]\s/gm) || []).length;
+    if(nP) achados.push(nP + (nP > 1 ? ' partes' : ' parte'));
+    if(nC) achados.push(nC + (nC > 1 ? ' cláusulas' : ' cláusula'));
+    if(resultado.sigNome) achados.push((1 + resultado.sigExtra.length) + ' assinatura' + (resultado.sigExtra.length ? 's' : ''));
+  }
+  if(!resultado.termo && resultado.topicos.length) achados.push(resultado.topicos.length + (resultado.topicos.length > 1 ? ' tópicos' : ' tópico'));
   if(resultado.pedidos.length) achados.push(resultado.pedidos.length + (resultado.pedidos.length > 1 ? ' pedidos' : ' pedido'));
-  var nSig = (resultado.sigOab ? 1 : 0) + resultado.sigExtra.length;
+  var nSig = resultado.termo ? 0 : (resultado.sigOab ? 1 : 0) + resultado.sigExtra.length;
   if(nSig) achados.push(nSig + (nSig > 1 ? ' advogados' : ' advogado'));
   st.textContent = '✓ Campos preenchidos' + (achados.length ? ' (' + achados.join(', ') + ')' : '') + ' — revise e ajuste conforme necessário.';
 });
@@ -2064,6 +2178,91 @@ function ehTituloNumerado(l){
   var m = String(l||'').match(/^(?:\d{1,2}[.)]?|[IVXL]{1,5}\s*[—–.-])\s*([A-ZÀ-Ý].*)$/);
   return !!m && ehMaiusculas(m[1]) && l.length <= 180 && !/[.;:,]$/.test(l);
 }
+// termo colado: título, partes, corpo das cláusulas, local/data e as assinaturas (traços + nomes)
+function parsearTermo(raw){
+  // linha só de traços (assinaturas) sumiria no desmarkdown como "linha horizontal": vira um marcador com o nº de traços
+  var cru = String(raw||'').replace(/\r\n?/g,'\n').split('\n').map(function(l){
+    return /^[_\s]+$/.test(l) && /_{5,}/.test(l) ? '[[TRACOS ' + l.split(/[^_]+/).filter(function(x){ return x.length >= 5; }).length + ']]' : l;
+  }).join('\n');
+  var linhas = desmarkdown(cru).replace(/\u00a0/g,' ').split('\n').map(function(l){ return l.replace(/\s+$/, '').replace(/^\s+/, ''); });
+  var res = { processo:'', vara:'', enderecamento:'', titulo:'', requerentes:[], requeridos:[], topicos:[], pedidos:[],
+    local:'', data:'', sigNome:'', sigOab:'', sigUf:'', sigCpf:'', sigFuncao:'', sigExtra:[], subtitulo:'', aposTitulo:'',
+    aposPedidos:'', aposAssinatura:'', rotulos:'', numerar:true, romanos:true, dataEmBranco:false, termo:true };
+  var i = 0;
+  while(i < linhas.length && !linhas[i]) i++;
+  if(i < linhas.length && linhas[i].length <= 160){ res.titulo = linhas[i].replace(/[.:]$/, '').toUpperCase(); i++; }
+  if(!TERMO_TITULO_RE.test(res.titulo)) res.titulo = res.titulo ? 'TERMO — ' + res.titulo : 'TERMO';
+  function ehInicioCorpo(l){ return CLAUSULA_RE.test(l) || /^CL[ÁA]USULA\b/i.test(l) || PARAGRAFO_RE.test(l); }
+  function ehPapel(l){ return l.length <= 40 && ehMaiusculas(l) && !/[.,;]$/.test(l) && !ehInicioCorpo(l) && !/_{3,}/.test(l) && l.split(/\s+/).length <= 4; }
+  // partes: "PAPEL" numa linha e a qualificação abaixo, ou "PAPEL: qualificação"
+  var partes = [], papeis = [];
+  for(; i < linhas.length; i++){
+    var l = linhas[i];
+    if(!l) continue;
+    if(ehInicioCorpo(l)) break;
+    var mPapel = l.match(PARTE_RE);
+    if(ehPapel(l)){
+      var q = [], j = i + 1;
+      while(j < linhas.length && !linhas[j]) j++;
+      while(j < linhas.length && linhas[j] && !ehPapel(linhas[j]) && !ehInicioCorpo(linhas[j])){ q.push(linhas[j]); j++; }
+      if(!q.length) break;
+      partes.push(l + ': ' + q.join(' ')); papeis.push(l); i = j - 1; continue;
+    }
+    if(mPapel && mPapel[1].split(/\s+/).length <= 4 && ehMaiusculas(mPapel[1])){ partes.push(mPapel[1].trim() + ': ' + mPapel[2].trim()); papeis.push(mPapel[1].trim()); continue; }
+    break;
+  }
+  res.rotulos = partes.join('\n');
+  // fecho: a última linha de local/data (com linhas em branco ou "Cidade, 26 de novembro de 2026")
+  var DATA_RE = /^(.{0,60}?),?\s*(_{2,}|\d{1,2})\s+de\s+(_{2,}|[a-zç]+)\s+de\s+(_{2,}|\d{4})\.?$/i, kData = -1;
+  for(var k = linhas.length - 1; k >= i; k--){ if(linhas[k] && linhas[k].length <= 140 && DATA_RE.test(linhas[k])){ kData = k; break; } }
+  var fim = kData >= 0 ? kData : linhas.length;
+  // sem data: as assinaturas começam na primeira linha só de traços depois da última cláusula
+  if(kData < 0){ for(var k2 = linhas.length - 1; k2 >= i; k2--){ if(/^\[\[TRACOS \d+\]\]$/.test(linhas[k2])) fim = k2; else if(linhas[k2] && fim !== linhas.length && k2 < fim - 2) break; } }
+  res.topicos = [{titulo:'', texto:linhas.slice(i, fim).join('\n').replace(/\[\[TRACOS \d+\]\]/g, '______________________________').replace(/\n{3,}/g, '\n\n').trim()}];
+  if(kData >= 0){
+    var md = linhas[kData].match(DATA_RE);
+    if(/_{2,}/.test(md[2] + md[3] + md[4])){ res.dataEmBranco = true; }
+    else {
+      var mes = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'].indexOf(md[3].toLowerCase());
+      res.local = md[1].replace(/[,\s]+$/, '').trim();
+      if(mes >= 0) res.data = md[4] + '-' + String(mes + 1).padStart(2, '0') + '-' + String(md[2]).padStart(2, '0');
+    }
+  }
+  // assinaturas: linha de traços (um grupo por pessoa) e, abaixo, os nomes (separados por tab ou 2+ espaços)
+  var sigs = [], resto = [], cauda = linhas.slice(kData >= 0 ? kData + 1 : fim);
+  function dividir(l, n){
+    var ps = l.split(/\t+|\s{2,}/).map(function(x){ return x.trim(); }).filter(Boolean);
+    if(ps.length >= n || n < 2) return ps;
+    // "ELIAR DISTRIBUIDORA DE TABACOS COMODATÁRIO": separa pelo papel de uma das partes no fim da linha
+    for(var p = 0; p < papeis.length; p++){
+      var pa = papeis[p].toUpperCase(), u = l.toUpperCase();
+      if(u.length > pa.length && u.slice(-pa.length) === pa) return [l.slice(0, l.length - pa.length).trim(), l.slice(-pa.length)];
+    }
+    return ps;
+  }
+  for(var c = 0; c < cauda.length; c++){
+    var lc = cauda[c];
+    if(!lc) continue;
+    var mT = lc.match(/^\[\[TRACOS (\d+)\]\]$/);
+    if(mT){
+      var n = +mT[1], nomes = [], funcoes = [];
+      var c2 = c + 1; while(c2 < cauda.length && !cauda[c2]) c2++;
+      if(c2 < cauda.length && !/^\[\[TRACOS/.test(cauda[c2])){ nomes = dividir(cauda[c2], n); c = c2; }
+      var c3 = c + 1;
+      if(c3 < cauda.length && cauda[c3] && !/^\[\[TRACOS/.test(cauda[c3]) && !/:$/.test(cauda[c3])){
+        var f = dividir(cauda[c3], n);
+        if(f.length === nomes.length && nomes.length > 1){ funcoes = f; c = c3; }
+      }
+      nomes.forEach(function(nm, z){ sigs.push({nome:nm, oab:'', uf:'', cpf:'', funcao:funcoes[z] || ''}); });
+      continue;
+    }
+    resto.push(lc);
+  }
+  if(sigs.length){ res.sigNome = sigs[0].nome; res.sigFuncao = sigs[0].funcao; res.sigExtra = sigs.slice(1); }
+  res.aposAssinatura = resto.join('\n').replace(/\[\[TRACOS \d+\]\]/g, '______________________________');
+  return res;
+}
+
 function parsearNotificacao(raw){
   var linhas = desmarkdown(String(raw||'').replace(/\r\n?/g,'\n')).replace(/ /g,' ').split('\n').map(function(l){ return l.trim(); });
   // fecho com campos em branco do modelo ("[data]", "[Nome do advogado]"): quem assina vem do formulário
