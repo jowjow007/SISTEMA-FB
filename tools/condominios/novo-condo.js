@@ -62,13 +62,14 @@ function ncInicio() {
   NC = { arquivos: [], rascunho: null, nome: '', docs: {} };
   ncCaixa('<p class="nc-lead">Como você quer começar?</p><div class="nc-opcoes">'
     + '<a class="nc-opcao" href="lista-documentos-novo-condominio.pdf" download="Lista de documentos - Novo condomínio - Fonseca e Braga.pdf"><b>Baixar a lista de documentos</b><span>PDF no timbrado do escritório, com capa, para enviar ao síndico ou à administradora.</span></a>'
-    + '<button type="button" class="nc-opcao" data-nc="enviar"><b>Enviar os documentos</b><span>O portal lê os PDFs, preenche a ficha e você confere antes de salvar.</span></button></div>');
+    + '<button type="button" class="nc-opcao" data-nc="enviar"><b>Enviar os documentos</b><span>O portal lê os PDFs, preenche a ficha e você confere antes de salvar.</span></button>'
+    + '<button type="button" class="nc-opcao" data-nc="sem-docs"><b>Começar sem documentos</b><span>Só o nome é obrigatório. Preencha o que já tiver e complete a ficha e os documentos depois.</span></button></div>');
 }
 function ncTelaEnvio() {
   ncCaixa('<p class="nc-lead">Selecione os PDFs do condomínio: Convenção, Regimento, ata de eleição, cartão CNPJ e ficha da administradora.</p>'
     + '<label class="btn secondary" style="cursor:pointer;">Escolher os PDFs<input type="file" id="nc-arquivos" accept="application/pdf,.pdf" multiple hidden></label>'
     + '<div id="nc-lista" class="nc-lista"></div><p id="nc-status" class="nc-status" role="status"></p>'
-    + '<div class="fc-acoes"><button type="button" class="btn ghost" data-nc="inicio">Voltar</button><button type="button" class="btn" data-nc="ler" id="nc-ler" disabled>Ler os documentos</button></div>');
+    + '<div class="fc-acoes"><button type="button" class="btn ghost" data-nc="inicio">Voltar</button><button type="button" class="btn ghost" data-nc="sem-docs">Continuar sem documentos</button><button type="button" class="btn" data-nc="ler" id="nc-ler" disabled>Ler os documentos</button></div>');
 }
 function ncScript(src) {
   return new Promise(function (ok, erro) {
@@ -133,8 +134,13 @@ function ncExtrair(textos) {
   var cn = /CONDOM[ÍI]NIO[^\n]{0,90}?CNPJ[^\d]{0,25}(\d{2}[. ]?\d{3}[. ]?\d{3}\s?\/\s?\d{4}\s?-?\s?\d{2})/i.exec(tudo);
   if (cn && ncCnpjValido(cn[1])) r.cnpj = cn[1].replace(/\s/g, '');
   // título em maiúsculas pode quebrar em duas linhas; em texto corrido o nome vai até a vírgula ou o fim da linha
-  var nm = /(?:CONVENÇÃO|CONVENCAO|REGIMENTO INTERNO)\s+(?:DE\s+CONDOM[ÍI]NIO\s+)?D[OA]\s+((?:CONDOM[ÍI]NIO|EDIF[ÍI]CIO|RESIDENCIAL)(?:\s+[A-ZÀ-Ú0-9'&-]+){1,8})/.exec(tudo)
-    || /(?:Conven[çc][ãa]o|Regimento Interno)\s+(?:de\s+Condom[íi]nio\s+)?d[oa]\s+((?:Condom[íi]nio|Edif[íi]cio|Residencial)\s+[^\n,.;]{2,70})/.exec(tudo);
+  // texto corrido como "nos termos desta Convenção do Condomínio e leis vigentes" não é nome: depois de
+  // "Condomínio" o nome começa com maiúscula e nunca com conectivo (e, de, que...)
+  var ruim = /^(?:condom[íi]nio|edif[íi]cio|residencial)\s+(?:e|é|de|do|da|dos|das|que|a|o|as|os|em|no|na|ou|para|por|com|se|ao|à)\b/i;
+  var nm = null, m, rxs = [
+    /(?:CONVENÇÃO|CONVENCAO|REGIMENTO INTERNO)\s+(?:DE\s+CONDOM[ÍI]NIO\s+)?D[OA]\s+((?:CONDOM[ÍI]NIO|EDIF[ÍI]CIO|RESIDENCIAL)(?:\s+[A-ZÀ-Ú0-9'&-]+){1,8})/g,
+    /(?:Conven[çc][ãa]o|Regimento Interno)\s+(?:de\s+Condom[íi]nio\s+)?d[oa]\s+((?:Condom[íi]nio|Edif[íi]cio|Residencial)\s+[A-ZÀ-Ú0-9][^\n,.;]{1,70})/g];
+  rxs.forEach(function (rx) { while (!nm && (m = rx.exec(tudo))) if (!ruim.test(m[1].replace(/\s+/g, ' '))) nm = m; });
   if (nm) r.nomeCompleto = nm[1].replace(/\s+/g, ' ').replace(/^(.{12,}?)\s+(?:CONDOM[ÍI]NIO|CNPJ)\b.*$/, '$1').trim();
   var en = /situad[oa]\s+(?:na|no|à)\s+((?:Rua|Avenida|Av\.|Alameda|Rodovia)[^\n;]{5,110})/i.exec(tudo);
   if (en) r.endereco = en[1].replace(/\s+/g, ' ').replace(/[,.]\s*$/, '').trim();
@@ -149,6 +155,16 @@ function ncExtrair(textos) {
   }
   return r;
 }
+// sem nome confiável no texto, usa o nome do arquivo: "GRANDVERSE GARDEN - Convenção.pdf" → "Grandverse Garden"
+function ncNomeDoArquivo(arqs) {
+  for (var i = 0; i < arqs.length; i++) {
+    var s = String(arqs[i].name || '').replace(/\.[a-z0-9]{2,4}$/i, '')
+      .replace(/\b(conven[çc][ãa]o|regimento(\s+interno)?|condom[íi]nio|edif[íi]cio|ficha(\s+cadastral)?|de|do|da)\b/gi, ' ')
+      .replace(/[-_–—()]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (s.replace(/[^A-Za-zÀ-ú]/g, '').length >= 3) return s.toLowerCase().replace(/(^|\s)(\S)/g, function (x, a, b) { return a + b.toUpperCase(); });
+  }
+  return '';
+}
 function ncLer() {
   var st = document.getElementById('nc-status'), bt = document.getElementById('nc-ler');
   var aviso = function (m) { if (st) st.textContent = m; };
@@ -162,6 +178,7 @@ function ncLer() {
   });
   cadeia.then(function () {
     NC.rascunho = ncExtrair(textos);
+    if (!NC.rascunho.nomeCompleto) { var pelo = ncNomeDoArquivo(NC.arquivos); if (pelo) NC.rascunho.nomeCompleto = 'Condomínio ' + pelo; }
     NC.nome = (NC.rascunho.nomeCompleto || '').replace(/^(condom[íi]nio|edif[íi]cio)\s+(residencial\s+)?/i, '');
     ncTelaConferir('');
   }).catch(function (e) { console.warn('novo condomínio', e); aviso('Não foi possível ler: ' + e.message); if (bt) bt.disabled = false; });
@@ -172,7 +189,10 @@ function ncTelaConferir(msg) {
     .replace('data-fc="salvar"', 'data-nc="salvar"').replace('data-fc="cancelar"', 'data-nc="fechar"')
     .replace('data-fc="colar"', 'data-nc="colar"').replace('data-fc="mais-cons"', 'data-nc="mais-cons"').replace(/data-fc="tirar-cons"/g, 'data-nc="tirar-cons"');
   var docs = ['convencao', 'regimento'].map(function (k) { return (k === 'convencao' ? 'Convenção' : 'Regimento') + ': ' + (NC.docs[k] ? fcEsc(NC.docs[k].name) : 'não enviado'); }).join(' · ');
-  ncCaixa('<div class="fc-aviso" style="background:var(--red-pale);color:var(--text);">Confira cada campo. O que o portal não encontrou com segurança ficou em branco.</div>'
+  var semDocs = !NC.arquivos.length;
+  ncCaixa('<div class="fc-aviso" style="background:var(--red-pale);color:var(--text);">' + (semDocs
+      ? 'Só o nome curto é obrigatório. Preencha o que já tiver; o resto pode ser completado depois em "Ver a ficha completa › ✎ Editar a ficha", e a Convenção e o Regimento pelo botão "Enviar convenções e regimentos".'
+      : 'Confira cada campo. O que o portal não encontrou com segurança ficou em branco. Só o nome curto é obrigatório.') + '</div>'
     + '<label class="fc-f" style="margin-bottom:10px;"><span>Nome curto no portal (obrigatório)</span><input id="nc-nome" value="' + fcEsc(NC.nome) + '" placeholder="Ex.: Jardim das Flores"></label>'
     + '<p class="nc-status">' + docs + '</p>' + form);
   if (msg) { var s = document.getElementById('fc-status'); if (s) s.textContent = msg; }
@@ -231,6 +251,7 @@ document.addEventListener('click', function (ev) {
   if (a === 'fechar') return ncFechar();
   if (a === 'enviar') return ncTelaEnvio();
   if (a === 'ler') return ncLer();
+  if (a === 'sem-docs') { NC.arquivos = []; NC.docs = {}; NC.rascunho = { administradora: {}, banco: {}, sindico: {}, subsindico: {}, conselho: [], blocos: [] }; NC.nome = ''; return ncTelaConferir(''); }
   if (a === 'salvar') return ncSalvar(b);
   var caixa = document.getElementById('nc-modal');
   if (a === 'mais-cons' || a === 'tirar-cons' || a === 'colar') {
