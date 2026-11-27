@@ -2468,6 +2468,19 @@
     if (novoAudio){ msgData.audioUrl = novoAudio.url; msgData.audioTipo = novoAudio.tipo; msgData.audioDuracao = novoAudio.duracao; msgData.audioTamanho = novoAudio.tamanho; msgData.transcricao = null; msgData.transcricaoStatus = 'pendente'; }
     var preview = resumoMensagem(msgData);
     var convDoEnvio = activeId;
+    // 27/11/2026: texto puro sai na hora — a caixa limpa já, a mensagem aparece na conversa (escrita local do
+    // Firestore) e o envio termina em segundo plano; se falhar, o texto volta para a caixa
+    if (tipo === 'texto') {
+      var respostaAntes = replyTarget;
+      els.composerInput.value = ''; els.composerInput.style.height = 'auto'; cancelarResposta();
+      enviandoMsg = false; els.btnEnviar.disabled = false;
+      postMessageTo(convDoEnvio, msgData, preview).catch(function(e){
+        if (activeId === convDoEnvio && !els.composerInput.value) { els.composerInput.value = texto; if (respostaAntes) iniciarResposta(respostaAntes); }
+        alert('Não foi possível enviar a mensagem: ' + e.message + '\nO texto voltou para a caixa; tente de novo.');
+      });
+      try { els.composerInput.focus(); } catch (e) {}
+      return;
+    }
     postMessageTo(activeId, msgData, preview).then(function(msgId){
       if (audioEnviado && msgId) transcreverMensagem(convDoEnvio, msgId, audioEnviado.blob, audioEnviado.tipo);
       els.composerInput.value = '';

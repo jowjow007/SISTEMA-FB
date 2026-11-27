@@ -1492,7 +1492,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v298</span>
+      <span class="version-tag">v299</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -5382,7 +5382,12 @@
     if (!t) return;
     ensureIframe(t);
     iframes[tabId].classList.add('active');
+    contarUsoAba(tabId);
   }
+  // quanto cada pessoa usa cada aba (só neste aparelho): decide o que vale pré-carregar ao entrar
+  const USO_ABAS_KEY = 'fb-uso-abas';
+  function lerUsoAbas(){ try { return JSON.parse(localStorage.getItem(USO_ABAS_KEY) || '{}') || {}; } catch(e) { return {}; } }
+  function contarUsoAba(id){ try { const u = lerUsoAbas(); u[id] = (u[id] || 0) + 1; localStorage.setItem(USO_ABAS_KEY, JSON.stringify(u)); } catch(e) {} }
 
   // Rodinha do mouse sobre um bloco que só rola para o lado (Kanban, faixas de sub-abas,
   // tabelas largas): rola o próprio bloco, como nos sites grandes. Vale para o Portal e
@@ -5445,12 +5450,20 @@
     // No celular, abrir todas as ferramentas de uma vez (cada uma com seu próprio Firebase)
     // deixava a entrada lenta: lá cada aba carrega só quando é aberta.
     if (window.matchMedia('(max-width: 860px)').matches) return;
-    const fila = allowed.slice();
+    // 27/11/2026: antes abria TODAS as ferramentas liberadas (cada uma com o próprio Firebase e os próprios
+    // "ouvintes" de dados) — com 25–30 abas, o portal ficava lento para trocar de página e o Chat demorava
+    // para enviar. Agora: só o Chat (avisos de mensagem) e as 3 abas que esta pessoa mais usa neste aparelho;
+    // as outras carregam no primeiro clique e depois ficam abertas.
+    const uso = lerUsoAbas();
+    const chat = allowed.filter(function(t){ return (t.label || '').toLowerCase().indexOf('chat') !== -1; });
+    const maisUsadas = allowed.filter(function(t){ return chat.indexOf(t) === -1 && uso[t.id] > 0; })
+      .sort(function(a, b){ return (uso[b.id] || 0) - (uso[a.id] || 0); }).slice(0, 3);
+    const fila = chat.concat(maisUsadas);
     const proxima = function(){
       const t = fila.shift();
       if (!t) return;
       ensureIframe(t);
-      setTimeout(proxima, 700);
+      setTimeout(proxima, 1500);
     };
     setTimeout(proxima, 1500);
   }
