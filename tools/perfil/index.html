@@ -197,6 +197,20 @@
       <input type="text" id="endereco-input">
     </div>
     <div class="field">
+      <label>E-mail de acesso (login)</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="email" id="email-acesso" disabled style="flex:1;">
+        <button type="button" class="btn" id="email-trocar-btn" style="width:auto;padding:9px 14px;font-size:.8rem;">Alterar</button>
+      </div>
+      <div id="email-troca" style="display:none;margin-top:8px;border:1px dashed var(--line-strong);border-radius:8px;padding:10px;">
+        <input type="email" id="email-novo" placeholder="Novo e-mail" autocomplete="email" style="margin-bottom:8px;">
+        <input type="password" id="email-senha" placeholder="Sua senha atual (para confirmar que é você)" autocomplete="current-password" style="margin-bottom:8px;">
+        <p class="hint" style="margin:0 0 8px;">Vamos mandar um link de confirmação para o novo e-mail. O e-mail de acesso só muda depois que você clicar no link; até lá, continue entrando com o atual.</p>
+        <button type="button" class="btn" id="email-enviar-btn" style="width:auto;padding:9px 14px;font-size:.8rem;">Enviar link de confirmação</button>
+        <div class="msg-err" id="email-msg" style="text-align:left;"></div>
+      </div>
+    </div>
+    <div class="field">
       <label>E-mail alternativo</label>
       <input type="email" id="email-alt-input" placeholder="diferente do e-mail de acesso">
     </div>
@@ -388,8 +402,41 @@
         els.telefoneInput.value = formatarTelefone(u.telefone || '');
         els.enderecoInput.value = u.endereco || '';
         els.emailAltInput.value = u.emailAlternativo || '';
+        // e-mail já confirmado pelo link: o cadastro passa a ter o novo
+        if (user.email && u.email !== user.email) db.collection('users').doc(user.uid).update({ email: user.email }).catch(function(){});
       }
+      document.getElementById('email-acesso').value = user.email || '';
     });
+  });
+
+  // ---------- troca do e-mail de acesso (26/11/2026): senha atual + link de confirmação no novo e-mail ----------
+  document.getElementById('email-trocar-btn').addEventListener('click', function(){
+    const box = document.getElementById('email-troca');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('email-enviar-btn').addEventListener('click', function(){
+    const btn = this, msg = document.getElementById('email-msg'), user = auth.currentUser;
+    const novo = document.getElementById('email-novo').value.trim().toLowerCase(), senha = document.getElementById('email-senha').value;
+    function aviso(t, ok){ msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : '#ffb4ae'; msg.style.display = 'block'; }
+    if (!user) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(novo)) return aviso('Digite um e-mail válido.');
+    if (novo === (user.email || '').toLowerCase()) return aviso('Esse já é o seu e-mail de acesso.');
+    if (!senha) return aviso('Digite sua senha atual.');
+    btn.disabled = true; aviso('Enviando…', true);
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, senha);
+    user.reauthenticateWithCredential(cred).then(function(){
+      return user.verifyBeforeUpdateEmail(novo, { url: location.origin + '/' });
+    }).then(function(){
+      document.getElementById('email-senha').value = '';
+      aviso('Pronto! Enviamos um link para ' + novo + '. Abra esse e-mail e clique no link para confirmar. Depois, entre no portal com o novo e-mail.', true);
+    }).catch(function(e){
+      const c = (e && e.code) || '';
+      aviso(c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials' ? 'Senha atual incorreta.'
+        : c === 'auth/email-already-in-use' ? 'Esse e-mail já é usado por outra conta do portal.'
+        : c === 'auth/invalid-email' ? 'E-mail inválido.'
+        : c === 'auth/too-many-requests' ? 'Muitas tentativas. Espere alguns minutos e tente de novo.'
+        : 'Não foi possível enviar: ' + ((e && e.message) || e));
+    }).then(function(){ btn.disabled = false; });
   });
 
   els.salvarBtn.addEventListener('click', function(){

@@ -293,7 +293,7 @@
       admin = me.role === 'admin';
       document.getElementById('quem').textContent = me.nome + (equipe ? ' · escritório' : '');
       if (!equipe) return carregarConselho();
-      if (admin) return carregarEquipe();
+      if (admin) { espelharConselho(); return carregarEquipe(); }
       // na equipe, as Sessões são área restrita: sub-aba "sessoes-julgamento" da aba Condomínios (Editar abas)
       return db.collection('configPortal').doc('abas').get().then(function(c){
         var tid = c.exists ? c.data().condominios : '';
@@ -307,6 +307,20 @@
     });
   });
 
+  // 26/11/2026: o vínculo do conselho também fica no cadastro (users/{uid}.conselho), que é o que a regra das provas lê
+  // (o Storage só pode consultar 2 documentos por pedido). Quando o admin abre as Sessões, acerta quem estiver diferente.
+  function espelharConselho(){
+    Promise.all([db.collection('conselhoMembros').get(), db.collection('users').get()]).then(function(r){
+      var vinc = {}; r[0].forEach(function(d){ vinc[d.id] = d.data().condominios || {}; });
+      var b = db.batch(), n = 0;
+      r[1].forEach(function(d){
+        var u = d.data(); if (!(d.id in vinc) && !Object.keys(u.conselho || {}).length) return;
+        var quer = vinc[d.id] || {};
+        if (JSON.stringify(ordenado(quer)) !== JSON.stringify(ordenado(u.conselho || {}))) { b.update(d.ref, { conselho:quer }); n++; }
+      });
+      if (n) return b.commit();
+    }).catch(function(e){ console.warn('espelho do conselho', e); });
+  }
   function carregarEquipe(){
     return db.collection('dadosPrivados').doc('condominios').get().then(function(snap){
       var lista = [];
@@ -598,7 +612,7 @@
       h += r.fatos ? '<h3>Dos fatos</h3><div class="texto">' + esc(r.fatos) + '</div>' : '';
       h += r.historicoUnidade ? '<h3>Histórico da unidade</h3><div class="texto">' + esc(r.historicoUnidade) + '</div>' : '';
       h += r.observacoes ? '<h3>Observações do escritório</h3><div class="texto">' + esc(r.observacoes) + '</div>' : '';
-      if (r.parecer || r.conclusao) h += '<div class="parecer-box"><h3 style="margin:0 0 4px;">Parecer do escritório' + (PARECERES[r.parecer] ? ': <span style="color:' + PARECERES[r.parecer].cor + '">' + esc(PARECERES[r.parecer].rot) + '</span>' : '') + '</h3>'
+      if (PARECERES[r.parecer]) h += '<div class="parecer-box"><h3 style="margin:0 0 4px;">Parecer do escritório' + (PARECERES[r.parecer] ? ': <span style="color:' + PARECERES[r.parecer].cor + '">' + esc(PARECERES[r.parecer].rot) + '</span>' : '') + '</h3>'
         + (r.conclusao ? '<div class="texto" style="margin:0;">' + esc(r.conclusao) + '</div>' : '') + '</div>';
       h += '<div class="barra" style="margin-top:14px;"><button type="button" class="btn sec peq" data-analise-pdf="' + esc(r.id) + '">📄 Análise do escritório (PDF de uma folha)</button></div>';
     } else if (p === 1) {
@@ -679,6 +693,9 @@
     h += '<div class="falta-topo" id="ed-falta" style="display:none;"></div>';
     if (p === 0) {
       var pt = rascunho.penalidadeTipo || '';
+      h += '<div class="aviso" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">📄 <span style="flex:1;min-width:200px;">Tem o PDF da ocorrência ("Acompanhar Ocorrência" do BRCondos)? O portal lê e preenche os campos; você só confere.</span>'
+        + '<label class="btn sec peq" style="cursor:pointer;">Ler o PDF da ocorrência<input type="file" id="ed-pdf-oc" accept="application/pdf,.pdf" style="display:none;"></label>'
+        + '<span id="ed-pdf-st" class="small muted"></span></div>';
       h += '<div class="g2">'
         + sel('sistema', 'Sistema *', SISTEMAS) + inp('ocorrencia', 'Nº da ocorrência *', '305211')
         + inp('unidade', 'Unidade *', 'Bloco 2, nº 807') + inp('morador', 'Morador(a)')
@@ -699,9 +716,10 @@
         + area('fundamentos', 'Fundamentos da penalidade', 'Artigos do Regimento/Convenção e do Código Civil aplicados.')
         + area('observacoes', 'Observações do escritório', 'Pontos de atenção para o conselho.')
         + area('historicoUnidade', 'Histórico da unidade', 'Outras ocorrências da mesma unidade (nº e assunto).')
+        + (historicoDaUnidade(rascunho) ? '<div style="margin:-6px 0 10px;"><button type="button" class="btn sec peq" id="ed-hist-auto">↻ Preencher com as outras ocorrências desta unidade no portal</button></div>' : '')
         + '<div class="campo"><label>Parecer do escritório</label><select id="ed-parecer"><option value="">Sem recomendação</option>'
         + Object.keys(PARECERES).map(function(k){ return '<option value="' + k + '"' + (rascunho.parecer === k ? ' selected' : '') + '>' + esc(PARECERES[k].rot) + '</option>'; }).join('') + '</select></div>'
-        + area('conclusao', 'Conclusão do escritório', 'Em poucas linhas: por que o escritório recomenda manter, cancelar ou modular.')
+        + '<div id="conclusao-box"' + (rascunho.parecer ? '' : ' style="display:none;"') + '>' + area('conclusao', 'Conclusão do escritório', 'Em poucas linhas: por que o escritório recomenda manter, cancelar ou modular.') + '</div>'
         + '<div class="aviso">Estes campos formam a <b>Análise do escritório</b>: um PDF de uma folha, colorido e com ícones, que o conselho também vê. '
         + (rascunho.id ? '<button type="button" class="btn sec peq" data-analise-rascunho="1" style="margin-left:6px;">📄 Ver a análise em PDF</button>' : 'Salve para gerar o PDF.') + '</div>';
     } else if (p === 2) {
@@ -796,7 +814,70 @@
     var mv = document.getElementById('ed-multaValor'); if (mv) rascunho.multaValor = valorDeReais(mv.value);
     if (rascunho.penalidadeTipo !== 'multa' && document.getElementById('ed-penalidadeTipo')) { rascunho.multaValor = 0; rascunho.multaVencimento = ''; }
     if (rascunho.penalidadeTipo) rascunho.penalidade = textoPenalidade(rascunho);
+    if (document.getElementById('ed-parecer') && !rascunho.parecer) rascunho.conclusao = '';
   }
+  // ---------- histórico da unidade (26/11/2026): as outras ocorrências do mesmo condomínio e da mesma unidade
+  function chaveUnidade(u){ return String(u || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\b(BLOCO|BL|TORRE|APTO?|APARTAMENTO|UNIDADE|CASA|N[O°º]?)\b/g, ' ').replace(/[^A-Z0-9]+/g, ' ').replace(/\b0+(\d)/g, '$1').trim(); }
+  function historicoDaUnidade(r){
+    var k = chaveUnidade(r.unidade); if (!k) return '';
+    return Object.values(recursos).filter(function(x){ return x.id !== r.id && x.condominioSlug === r.condominioSlug && chaveUnidade(x.unidade) === k; })
+      .sort(function(a, b){ return String(b.dataFato || '').localeCompare(String(a.dataFato || '')); })
+      .map(function(x){
+        var dec = x.decisao && x.decisao.resultado ? ({ mantida:'penalidade mantida', cancelada:'penalidade cancelada', modulada:'penalidade modulada' }[x.decisao.resultado] || x.decisao.resultado) : (realizadaOc(x) ? 'julgada' : 'aguardando julgamento');
+        return '#' + (x.ocorrencia || '') + ' — ' + (x.titulo || x.classificacao || 'sem título') + (x.dataFato ? ' (' + dataBR(x.dataFato) + ')' : '') + ' — ' + (x.penalidade || textoPenalidade(x) || '') + (dec ? ' — ' + dec : '');
+      }).join('\n');
+  }
+
+  // ---------- leitura do PDF "Acompanhar Ocorrência" do BRCondos (26/11/2026) ----------
+  function textoDoPdf(arq){
+    return carregarPdfjs().then(function(lib){ return arq.arrayBuffer().then(function(b){ return lib.getDocument({ data:b, isEvalSupported:false }).promise; }); })
+      .then(function(pdf){
+        var pags = [], cad = Promise.resolve();
+        for (var i = 1; i <= Math.min(pdf.numPages, 8); i++) (function(n){
+          cad = cad.then(function(){ return pdf.getPage(n); }).then(function(pg){ return pg.getTextContent(); }).then(function(c){
+            var linhas = [], y = null, atual = '';
+            c.items.forEach(function(it){ var yy = Math.round(it.transform[5]); if (y !== null && Math.abs(yy - y) > 2) { linhas.push(atual); atual = ''; } atual += (atual && !/\s$/.test(atual) && it.str && !/^\s/.test(it.str) ? ' ' : '') + it.str; y = yy; });
+            linhas.push(atual); pags[n - 1] = linhas.map(function(l){ return l.replace(/\s+/g, ' ').trim(); }).filter(Boolean).join('\n');
+          });
+        })(i);
+        return cad.then(function(){ return pags.join('\n'); });
+      });
+  }
+  function semAcento(x){ return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase(); }
+  function lerOcorrenciaBRCondos(txt){
+    var r = {}, m, plano = txt.replace(/\r/g, '');
+    if (/BRCONDOS/i.test(plano)) r.sistema = 'BRCondos'; else if (/ALMAH/i.test(plano)) r.sistema = 'Almah';
+    m = plano.match(/#\s?(\d{4,8})/); if (m) r.ocorrencia = m[1];
+    m = plano.match(/ENVOLVIDOS\s*\n?\s*([^\n]*?N[°ºo]\.?\s*\d+[A-Z]?)/i) || plano.match(/ENVOLVIDOS\s*\n\s*([^\n]{3,60})/i);
+    if (m) r.unidade = m[1].replace(/\s+\d+\s*[×x]\s*$/i, '').trim();
+    m = plano.match(/DATA DA OCORR[ÊE]NCIA[^\d]{0,8}(\d{2})\/(\d{2})\/(\d{4})(?:[^\d]{0,8}(\d{2}):(\d{2}))?/i);   // antes da data vem um ícone (caractere invisível)
+    if (m) { r.dataFato = m[3] + '-' + m[2] + '-' + m[1]; if (m[5]) r.horaFato = formatarHora(m[4] + m[5]); }
+    m = plano.match(/DATA DA OCORR[ÊE]NCIA[\s\S]{0,40}?\d{2}:\d{2}\s*\n([\s\S]{3,160}?)\s+(?:ABERTA|FECHADA|CONCLU[ÍI]DA|EM ANDAMENTO|ENCERRADA|CANCELADA)?\s*#\s?\d{4,8}/i);
+    if (m) r.titulo = m[1].replace(/\s*\n\s*/g, ' ').replace(/\s+(ABERTA|FECHADA|CONCLU[ÍI]DA|ENCERRADA)$/i, '').trim();
+    m = plano.match(/CLASSIFICA[ÇC][ÃA]O:\s*\n?\s*([\s\S]{2,80}?)\s*\n\s*LINHA DO TEMPO/i);
+    if (m) {
+      var cl = semAcento(m[1].replace(/\s+/g, ' ').trim());
+      var achou = CLASSIFICACOES.find(function(c){ return semAcento(c).replace(/[.]/g, '') === cl; }) || CLASSIFICACOES.find(function(c){ var sc = semAcento(c); return sc.indexOf(cl) >= 0 || cl.indexOf(sc.replace(/[.]/g, '')) >= 0; });
+      if (achou) r.classificacao = achou;
+    }
+    // lançamentos: "R$ 821,70 - Set/2026" / "MULTA 20/08/2026 ..." / "NOTIFICAÇÃO 20/08/2026 ..." e o nome do morador na linha seguinte
+    m = plano.match(/\bMULTA\s+(\d{2})\/(\d{2})\/(\d{4})/); var mN = plano.match(/\bNOTIFICA[ÇC][ÃA]O\s+(\d{2})\/(\d{2})\/(\d{4})/);
+    var mv = plano.match(/R\$\s?([\d.]+,\d{2})\s*-\s*[A-Za-zç]{3}\/\d{4}/);
+    if (m || mv) { r.penalidadeTipo = 'multa'; if (mv) r.multaValor = valorDeReais(mv[1]); }
+    else if (mN) r.penalidadeTipo = 'notificacao';
+    var mDN = mN || m; if (mDN) r.dataNotificacao = mDN[3] + '-' + mDN[2] + '-' + mDN[1];
+    m = plano.match(/(?:MULTA|NOTIFICA[ÇC][ÃA]O)\s+\d{2}\/\d{2}\/\d{4}[^\n]*\n(?:[^\n]*N[°ºo][^\n]*\n)?\s*([A-ZÀ-Ý][A-ZÀ-Ý' ]{4,80})\s*(?:\n|$)/);
+    if (m && !/BLOCO|N[°º]|NOTIFICA|MULTA/.test(m[1])) r.morador = m[1].trim().toLowerCase().replace(/(^|\s)(\S)/g, function(x, a, b){ return a + b.toUpperCase(); }).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, function(x){ return x.toLowerCase(); });
+    // textos da notificação: DA OCORRÊNCIA (fatos) e DAS NORMAS APLICÁVEIS (fundamentos)
+    var juntar = function(t){ return t.replace(/-\n(?=[a-zà-ÿ])/g, '').replace(/([^.:;!?])\n(?=[a-zà-ÿ0-9(])/g, '$1 ').replace(/\n{2,}/g, '\n').trim(); };
+    m = plano.match(/\nDA OCORR[ÊE]NCIA\s*\n([\s\S]+?)\n(?:DAS NORMAS APLIC[ÁA]VEIS|DO DIREITO|DA PENALIDADE|DA MULTA)/i);
+    if (m) r.fatos = juntar(m[1]).slice(0, 3000);
+    m = plano.match(/\nDAS NORMAS APLIC[ÁA]VEIS\s*\n([\s\S]+?)(?:\n(?:Diante do exposto|DA MULTA|DA PENALIDADE|Atenciosamente)|$)/i);
+    if (m) r.fundamentos = juntar(m[1]).slice(0, 3000);
+    if (!r.horaFato && r.fatos) { var mh = r.fatos.match(/(\d{1,2})h(\d{2})/); if (mh) r.horaFato = formatarHora(mh[1].padStart(2, '0') + mh[2]); }
+    return r;
+  }
+  window.__lerOcorrenciaBRCondos = lerOcorrenciaBRCondos;   // usado pelos testes
   function abrirEdicao(id, sessaoId){
     var base = id ? recursos[id] : { sessaoId:sessaoId, condominioSlug:(sessoes[sessaoId] || {}).condominioSlug };
     rascunho = JSON.parse(JSON.stringify(base, function(k, v){ return v && v.toDate ? undefined : v; }));
@@ -1166,7 +1247,7 @@
       + 'body{margin:0;background:#e9e4e4;font-family:"Segoe UI",Arial,sans-serif;color:#222;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
       + '.barra{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #ddd;padding:9px;display:flex;gap:8px;justify-content:center;align-items:center;font-size:12px;color:#555;flex-wrap:wrap;}'
       + '.barra button{font:600 12.5px "Segoe UI",Arial;border-radius:8px;padding:7px 15px;cursor:pointer;border:1px solid #bbb;background:#fff;}.barra .imp{background:#a3232b;border-color:#a3232b;color:#fff;}'
-      + '.pg{width:210mm;height:297mm;margin:14px auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;}'
+      + '.pg{width:210mm;min-height:297mm;margin:14px auto;background:#fff;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;}'
       + '.faixa{height:5mm;background:linear-gradient(90deg,#5e1218,#a3232b 55%,#d0464f);}'
       + 'header{display:flex;align-items:center;justify-content:space-between;gap:6mm;padding:5mm 12mm 3.5mm;border-bottom:.4mm solid #f0e3e3;}'
       + 'header img{height:13mm;}header .tit{text-align:right;}header h1{margin:0;font:700 15pt Georgia,serif;color:#7a1a20;letter-spacing:.02em;}'
@@ -1193,7 +1274,8 @@
       + 'footer{padding:2.6mm 12mm 4mm;display:flex;justify-content:space-between;gap:6mm;font-size:7.6pt;color:#777;border-top:.3mm solid #eee;margin-top:2mm;}'
       + 'footer b{color:#7a1a20;}'
       + '.cortado{position:absolute;right:12mm;bottom:11mm;background:#fff3cd;border:.3mm solid #e0b44c;color:#7a5600;font-size:7.5pt;padding:1mm 2.5mm;border-radius:2mm;}'
-      + '@media print{body{background:#fff;}.barra{display:none;}.pg{margin:0;box-shadow:none;}}'
+      + '@media print{body{background:#fff;}.barra{display:none;}.pg{margin:0;box-shadow:none;}.pg.multi{min-height:0;}}'
+      + '.pg.multi .conteudo{flex:none;}.pg.multi footer{margin-top:6mm;}'
       + '</style></head><body>'
       + '<div class="barra"><button class="imp" onclick="print()">🖨️ Imprimir / Salvar em PDF</button><button onclick="close()">Fechar</button>'
       + '<span>Na impressão, escolha <b>Salvar como PDF</b>, margens <b>Nenhuma</b> e marque <b>Gráficos de plano de fundo</b>.</span></div>'
@@ -1206,7 +1288,7 @@
       + '<div class="linha-tempo">' + marco('olho', 'Fato', [dataBR(r.dataFato), r.horaFato].filter(Boolean).join(' · ')) + marco('sino', 'Notificação', dataBR(r.dataNotificacao))
       + marco('envelope', 'Recurso', dataBR(r.dataRecurso)) + marco('calendario', 'Julgamento', jul ? dataHoraBR(jul) : '') + '</div>'
       + (blocos ? '<div class="blocos">' + blocos + '</div>' : '<div class="vazio-a">Preencha os fatos, as alegações e os fundamentos no cadastro da ocorrência.</div>')
-      + (par || r.conclusao ? '<div class="parecer" style="background:' + (par ? par.cor : '#555') + '12;border:.4mm solid ' + (par ? par.cor : '#999') + '55;">'
+      + (par ? '<div class="parecer" style="background:' + (par ? par.cor : '#555') + '12;border:.4mm solid ' + (par ? par.cor : '#999') + '55;">'
         + '<span class="pi" style="background:' + (par ? par.cor : '#666') + '">' + ICA[par ? par.ico : 'escudo'] + '</span><div style="flex:1;">'
         + '<small style="color:' + (par ? par.cor : '#555') + '">Parecer do escritório</small>' + (par ? '<div class="rot" style="color:' + par.cor + '">' + t(par.rot) + '</div>' : '')
         + (r.conclusao ? '<p>' + t(r.conclusao) + '</p>' : '') + '</div></div>' : '')
@@ -1215,9 +1297,10 @@
       + '</div>'
       // cabe em uma folha: começa em 11 pt e diminui a letra aos poucos até o conteúdo caber (mínimo 6,4 pt)
       + '<script>(function(){var c=document.getElementById("conteudo"),pg=document.querySelector(".pg"),f=document.querySelector("footer");'
-      + 'function cabe(){return c.scrollHeight<=pg.clientHeight-f.offsetHeight-c.offsetTop+2&&c.scrollWidth<=c.clientWidth+1;}'
-      + 'function ajustar(){var fs=11;document.documentElement.style.setProperty("--fs",fs+"pt");while(!cabe()&&fs>6.4){fs=Math.round((fs-0.2)*10)/10;document.documentElement.style.setProperty("--fs",fs+"pt");}'
-      + 'if(!cabe()){var a=document.createElement("div");a.className="cortado";a.textContent="Texto longo: parte não coube na folha. Resuma os campos no cadastro.";pg.appendChild(a);}}'
+      + 'function cabe(){var a4=pg.offsetWidth*297/210;return c.scrollHeight<=a4-f.offsetHeight-c.offsetTop+2&&c.scrollWidth<=c.clientWidth+1;}'
+      // 26/11/2026: tenta caber em uma folha diminuindo a letra só até 9 pt; texto maior continua nas folhas seguintes (antes era cortado)
+      + 'function ajustar(){var fs=11;document.documentElement.style.setProperty("--fs",fs+"pt");while(!cabe()&&fs>9){fs=Math.round((fs-0.2)*10)/10;document.documentElement.style.setProperty("--fs",fs+"pt");}'
+      + 'if(!cabe()){document.documentElement.style.setProperty("--fs","10pt");pg.classList.add("multi");}}'
       + 'var img=document.querySelector("header img");function ir(){ajustar();setTimeout(function(){window.print();},350);}'
       + 'if(img.complete)ir();else{img.onload=ir;img.onerror=ir;}})();<\/script>'
       + '</body></html>';
@@ -1326,11 +1409,46 @@
   function dataOcorrencia(){
     var r = recursos[state.recursoId], atual = dataDaOcorrencia(r);
     var txt = atual ? dataBR(atual) + (atual.length > 10 ? ' ' + atual.slice(11, 16) : '') : '';
-    var data = prompt('Data e hora do julgamento (dd/mm/aaaa hh:mm). Deixe em branco para "a definir":', txt); if (data === null) return;
-    var m = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2})[:h](\d{2}))?$/);
-    if (data.trim() && !m) { alert('Use o formato dd/mm/aaaa hh:mm (ex.: 15/12/2026 19:30).'); return; }
-    var iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '';
-    db.collection('recursosJulgamento').doc(r.id).update({ dataJulgamento:iso, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }).catch(function(e){ avisoErro(e.message); });
+    pedirDataHora(txt, function(data){
+      var m = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2})[:h](\d{2}))?$/);
+      if (data.trim() && !m) return 'Digite a data completa: dia, mês, ano (e a hora, se quiser). Ex.: 151220261930.';
+      if (m && (+m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || (m[4] && (+m[4] > 23 || +m[5] > 59)))) return 'Data ou hora inválida.';
+      var iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') + (m[4] ? 'T' + m[4].padStart(2, '0') + ':' + m[5] : '') : '';
+      db.collection('recursosJulgamento').doc(r.id).update({ dataJulgamento:iso, atualizadoEm:FV.serverTimestamp(), atualizadoPor:me.uid }).catch(function(e){ avisoErro(e.message); });
+    });
+  }
+  // caixinha da data e hora do julgamento (26/11/2026): só números; "151220261930" vira "15/12/2026 19:30" enquanto digita
+  function mascaraDataHora(dg){
+    dg = dg.slice(0, 12); var o = dg.slice(0, 2);
+    if (dg.length > 2) o += '/' + dg.slice(2, 4);
+    if (dg.length > 4) o += '/' + dg.slice(4, 8);
+    if (dg.length > 8) o += ' ' + dg.slice(8, 10);
+    if (dg.length > 10) o += ':' + dg.slice(10, 12);
+    return o;
+  }
+  function pedirDataHora(atual, ok){
+    var fundo = document.createElement('div');
+    fundo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;';
+    fundo.innerHTML = '<div style="background:var(--panel,#1b1414);border:1px solid var(--line-strong,#444);border-radius:12px;padding:18px;max-width:360px;width:100%;">'
+      + '<h3 style="margin:0 0 6px;">Data e hora do julgamento</h3><p class="small muted" style="margin:0 0 10px;">Digite só os números: dia, mês, ano e hora. Ex.: <b>151220261930</b> → 15/12/2026 19:30. Em branco = "a definir".</p>'
+      + '<input id="dh-in" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa hh:mm" style="width:100%;font-size:1.1rem;letter-spacing:.04em;">'
+      + '<div id="dh-err" class="small" style="color:#ffb4ae;min-height:1.2em;margin-top:6px;"></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;"><button type="button" class="btn sec peq" id="dh-cancel">Cancelar</button><button type="button" class="btn peq" id="dh-ok">Salvar</button></div></div>';
+    document.body.appendChild(fundo);
+    var inp = fundo.querySelector('#dh-in'), err = fundo.querySelector('#dh-err');
+    inp.value = atual || ''; inp.dataset.dig = (atual || '').replace(/\D/g, '');
+    inp.addEventListener('input', function(e){
+      var dg = inp.value.replace(/\D/g, '');
+      if (/^delete/.test(e.inputType || '') && dg === inp.dataset.dig) dg = dg.slice(0, -1);
+      inp.dataset.dig = dg; inp.value = mascaraDataHora(dg); err.textContent = '';
+    });
+    function fechar(){ fundo.remove(); }
+    function salvar(){ var e = ok(inp.value); if (e) { err.textContent = e; return; } fechar(); }
+    fundo.querySelector('#dh-cancel').addEventListener('click', fechar);
+    fundo.querySelector('#dh-ok').addEventListener('click', salvar);
+    inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') salvar(); else if (e.key === 'Escape') fechar(); });
+    fundo.addEventListener('click', function(e){ if (e.target === fundo) fechar(); });
+    setTimeout(function(){ inp.focus(); }, 30);
   }
   function atualizarOcorrencia(campos, pergunta){
     var r = recursos[state.recursoId];
@@ -1405,11 +1523,19 @@
     Promise.all([db.collection('users').get(), db.collection('conselhoMembros').get(), db.collection('tabs').get()]).then(function(r){
       pessoas = r[0].docs.map(function(d){ return Object.assign({ uid:d.id }, d.data()); });
       membros = {}; r[1].forEach(function(d){ membros[d.id] = d.data(); });
+      // espelho do vínculo no cadastro (é o que a regra das provas lê): acerta quem ainda não tem ou está diferente
+      var acertos = db.batch(), nAcertos = 0;
+      pessoas.forEach(function(u){
+        var vinc = (membros[u.uid] && membros[u.uid].condominios) || {};
+        if (JSON.stringify(ordenado(vinc)) !== JSON.stringify(ordenado(u.conselho || {}))) { acertos.update(db.collection('users').doc(u.uid), { conselho:vinc }); nAcertos++; }
+      });
+      if (nAcertos) acertos.commit().catch(function(e){ console.warn('espelho do conselho', e); });
       var t = r[2].docs.find(function(d){ return /(^|\/)tools\/condominios(\/|$)/.test(String(d.data().url || '')); });
       tabCondo = t ? t.id : null;
       mostrar(true);
     }).catch(function(e){ avisoErro('Não foi possível carregar os cadastros: ' + e.message); });
   }
+  function ordenado(o){ var r = {}; Object.keys(o || {}).sort().forEach(function(k){ r[k] = o[k]; }); return r; }
   // aprova a conta como cliente (só com a aba das sessões) e grava o vínculo com o condomínio
   function aprovarConselho(uid){
     var u = pessoas.find(function(x){ return x.uid === uid; });
@@ -1423,7 +1549,7 @@
     var nomes = Object.assign({}, atual.nomesCondominios || {}); nomes[slug] = nomeCondo(slug);
     var b = db.batch();
     b.set(db.collection('conselhoMembros').doc(uid), { nome:u.displayName || '', email:u.email || '', condominios:vinc, nomesCondominios:nomes, atualizadoPor:me.uid, atualizadoEm:FV.serverTimestamp() });
-    var upd = { role:papel === 'sindico' ? 'sindico' : 'conselheiro', tabs:FV.arrayUnion(tabCondo) };   // tipo de usuário = papel no conselho
+    var upd = { role:papel === 'sindico' ? 'sindico' : 'conselheiro', tabs:FV.arrayUnion(tabCondo), conselho:vinc };   // tipo de usuário = papel no conselho
     if (u.acesso !== 'ativo') Object.assign(upd, { acesso:'ativo', acessoAprovadoPor:me.uid, acessoAprovadoEm:FV.serverTimestamp() });
     b.update(db.collection('users').doc(uid), upd);
     b.delete(db.collection('organograma').doc(uid));   // o autocadastro cria o bloco no organograma; conselheiro não é da equipe
@@ -1432,7 +1558,10 @@
   function desvincular(uid){
     var u = pessoas.find(function(x){ return x.uid === uid; });
     if (!confirm('Tirar todos os vínculos de ' + (u.displayName || u.email) + ' com condomínios? Ela(e) deixa de ver as sessões na hora.')) return;
-    db.collection('conselhoMembros').doc(uid).delete().then(function(){ pessoas = null; mostrar(true); }).catch(function(e){ avisoErro(e.message); });
+    var b = db.batch();
+    b.delete(db.collection('conselhoMembros').doc(uid));
+    b.update(db.collection('users').doc(uid), { conselho:{} });
+    b.commit().then(function(){ pessoas = null; mostrar(true); }).catch(function(e){ avisoErro(e.message); });
   }
 
   // ---------------------------------------------------------------- importar pacote (pasta com pacote.json + arquivos)
@@ -1552,6 +1681,21 @@
   });
   app.addEventListener('change', function(e){
     var t = e.target;
+    if (t.id === 'ed-parecer') { var cb = document.getElementById('conclusao-box'); if (cb) cb.style.display = t.value ? '' : 'none'; }
+    if (t.id === 'ed-pdf-oc' && t.files && t.files[0]) {
+      var st = document.getElementById('ed-pdf-st'), arq = t.files[0]; t.value = '';
+      st.textContent = 'Lendo o PDF…';
+      textoDoPdf(arq).then(function(txt){
+        var lido = lerOcorrenciaBRCondos(txt), n = 0;
+        lerFormulario();
+        Object.keys(lido).forEach(function(k){ if (lido[k] && !rascunho[k]) { rascunho[k] = lido[k]; n++; } });
+        if (rascunho.penalidadeTipo) rascunho.penalidade = textoPenalidade(rascunho);
+        if (!rascunho.historicoUnidade && historicoDaUnidade(rascunho)) rascunho.historicoUnidade = historicoDaUnidade(rascunho);
+        mostrar(true);
+        var st2 = document.getElementById('ed-pdf-st');
+        if (st2) st2.textContent = n ? '✓ ' + n + ' campo(s) preenchido(s) a partir do PDF (só os que estavam em branco). Confira antes de salvar.' : 'Não encontrei campos novos neste PDF (os preenchidos não foram trocados).';
+      }).catch(function(err){ st.textContent = 'Não foi possível ler o PDF: ' + (err.message || err); });
+    }
     if (t.id === 'ed-penalidadeTipo') { var mb = document.getElementById('multa-box'); if (mb) mb.style.display = t.value === 'multa' ? '' : 'none'; }
     if (t.id === 'ed-arquivos') { enviarArquivos(t.files, document.getElementById('ed-categoria').value, rascunho.id, document.getElementById('upl-status')); t.value = ''; }
     if (t.id === 'ed-categoria') state.categoriaUp = t.value;
@@ -1567,6 +1711,7 @@
     if (d.verPor) { state.verPor = d.verPor; mostrar(true); return; }
     if (d.ir) { ir(d.ir); return; }
     if (d.editar) { e.stopPropagation(); abrirEdicao(d.editar); return; }
+    if (el.id === 'ed-hist-auto') { lerFormulario(); rascunho.historicoUnidade = historicoDaUnidade(rascunho); mostrar(true); return; }
     if (d.recurso) { ir('recurso', { recursoId:d.recurso, passo:0 }); return; }
     if (d.sessao) { ir('sessao', { sessaoId:d.sessao }); return; }
     if (d.voltarSessao) { ir('sessao', { sessaoId:d.voltarSessao }); return; }

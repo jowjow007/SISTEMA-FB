@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conferência BRCondos × Astrea — Fonseca e Braga</title>
+<!-- Conferência semanal (26/11/2026): a pessoa escolhe a planilha da agenda do Astrea e o(s) PDF(s) do BRCondos;
+     o portal lista as ocorrências (#número) que estão no BRCondos e não aparecem no Astrea. Tudo é lido aqui no
+     navegador: os arquivos não são enviados a lugar nenhum. -->
+<style>
+  :root{--ink:#161010;--paper:#211918;--card:#2a1f1e;--line:rgba(236,230,225,.14);--text:#ece6e1;--muted:#9c908b;--red:#8a231f;--red-bright:#a8332c;--gold:#b8862f;--ok:#6fcf8f;--warn:#e9c98a;}
+  :root[data-theme="light"]{--paper:#faf7f2;--card:#fff;--line:rgba(30,20,20,.14);--text:#221a19;--muted:#6f6360;--ok:#2e7d4f;--warn:#9a6a00;}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--paper:#faf7f2;--card:#fff;--line:rgba(30,20,20,.14);--text:#221a19;--muted:#6f6360;--ok:#2e7d4f;--warn:#9a6a00;}}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;}
+  main{max-width:1100px;margin:0 auto;padding:22px 16px 60px;}
+  a.voltar{color:var(--gold);font-size:.85rem;text-decoration:none;}
+  h1{font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;font-size:1.7rem;margin:10px 0 4px;}
+  .lead{color:var(--muted);margin:0 0 18px;font-size:.92rem;line-height:1.5;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:720px){.g2{grid-template-columns:1fr;}}
+  label.campo{display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px;}
+  input[type=text]{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:.9rem;}
+  input[type=file]{width:100%;font-size:.85rem;color:var(--text);}
+  .btn{background:var(--red);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer;font-size:.88rem;}
+  .btn:hover{background:var(--red-bright);} .btn:disabled{opacity:.5;cursor:default;}
+  .btn.sec{background:transparent;color:var(--text);border:1px solid var(--line);}
+  .st{font-size:.82rem;color:var(--muted);margin-top:8px;min-height:1.2em;}
+  .resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 14px;}
+  @media(max-width:720px){.resumo{grid-template-columns:1fr 1fr;}}
+  .num{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;}
+  .num b{display:block;font-size:1.5rem;} .num small{color:var(--muted);font-size:.74rem;}
+  .num.alerta b{color:#ff8a80;} .num.bom b{color:var(--ok);}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  td.n{font-weight:700;white-space:nowrap;}
+  details summary{cursor:pointer;font-weight:600;margin:8px 0;}
+  .ok-msg{color:var(--ok);font-weight:600;}
+  @media print{body{background:#fff;color:#000;}.nao-imprimir{display:none !important;}.card{border:none;padding:0;}a.voltar{display:none;}th,td{border-color:#ccc;}}
+</style>
+</head>
+<body>
+<main>
+  <a class="voltar nao-imprimir" href="index.html">← Voltar para Condomínios</a>
+  <h1>Conferência semanal BRCondos × Astrea</h1>
+  <p class="lead">Escolha a planilha da agenda exportada do Astrea e o PDF do BRCondos. O portal mostra as ocorrências (pelo número, ex.: #305211) que estão no BRCondos e <b>não</b> aparecem em nenhuma atividade do Astrea. Os arquivos são lidos aqui no seu computador e não são enviados a lugar nenhum.</p>
+  <div class="card nao-imprimir">
+    <div class="g2">
+      <div><label class="campo">1. Planilha do Astrea (Agenda.xlsx) — pode escolher mais de uma</label><input type="file" id="f-astrea" accept=".xlsx,.xls,.csv" multiple></div>
+      <div><label class="campo">2. PDF(s) do BRCondos (lista de ocorrências)</label><input type="file" id="f-br" accept="application/pdf,.pdf" multiple></div>
+    </div>
+    <div style="margin-top:12px;"><label class="campo">Condomínio (opcional — limita o Astrea às atividades desse condomínio, ex.: MIRANTE DAS BRISAS)</label><input type="text" id="f-condo" placeholder="deixe em branco para comparar com toda a planilha"></div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn" id="b-conferir">Conferir</button><button type="button" class="btn sec" id="b-imprimir" style="display:none;">🖨️ Imprimir / PDF</button></div>
+    <div class="st" id="st"></div>
+  </div>
+  <div id="res"></div>
+</main>
+<script>
+(function(){
+  try { var t = localStorage.getItem('fb-tema') || localStorage.getItem('tema'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  var XLSX_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js', XLSX_SRI = 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT';
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  var PDFJS_SRI = 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e';
+  var PDFJS_WORKER_SRI = 'sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2';
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+  function script(src, sri){ return new Promise(function(ok, erro){ var s = document.createElement('script'); s.src = src; s.integrity = sri; s.crossOrigin = 'anonymous'; s.onload = ok; s.onerror = function(){ erro(new Error('não foi possível carregar ' + src.split('/').pop())); }; document.head.appendChild(s); }); }
+  var pdfPronto = null;
+  function pdfjs(){
+    if (pdfPronto) return pdfPronto;
+    pdfPronto = script(PDFJS + 'pdf.min.js', PDFJS_SRI).then(function(){
+      return fetch(PDFJS + 'pdf.worker.min.js', { integrity:PDFJS_WORKER_SRI }).then(function(r){ return r.text(); }).then(function(t){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([t], { type:'text/javascript' })); return window.pdfjsLib; });
+    });
+    pdfPronto.catch(function(){ pdfPronto = null; });
+    return pdfPronto;
+  }
+  function semAcento(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase(); }
+  var NUM_RE = /#\s?(\d{5,7})\b/g;
+  // ---- Astrea: cada linha da agenda; o número da ocorrência aparece no título do caso, no título ou na observação
+  function lerAstrea(arq){
+    var leitura = window.XLSX ? Promise.resolve() : script(XLSX_URL, XLSX_SRI);
+    return leitura.then(function(){ return arq.arrayBuffer(); }).then(function(b){
+      var wb = XLSX.read(b, { type:'array', dense:true }); var ws = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws, { defval:'', raw:false });
+    });
+  }
+  // ---- BRCondos: texto do PDF linha a linha; cada #número com a linha em volta (título, unidade, data)
+  function lerPdf(arq){
+    return pdfjs().then(function(lib){ return arq.arrayBuffer().then(function(b){ return lib.getDocument({ data:b, isEvalSupported:false }).promise; }); })
+      .then(function(pdf){
+        var linhas = [], cad = Promise.resolve();
+        for (var i = 1; i <= pdf.numPages; i++) (function(n){
+          cad = cad.then(function(){ return pdf.getPage(n); }).then(function(pg){ return pg.getTextContent(); }).then(function(c){
+            var y = null, atual = '';
+            c.items.forEach(function(it){ var yy = Math.round(it.transform[5]); if (y !== null && Math.abs(yy - y) > 2) { linhas.push(atual.trim()); atual = ''; } atual += (atual ? ' ' : '') + it.str; y = yy; });
+            linhas.push(atual.trim());
+          });
+        })(i);
+        return cad.then(function(){ return linhas.filter(Boolean); });
+      });
+  }
+  function conferir(){
+    var fa = Array.prototype.slice.call($('f-astrea').files || []), fb = Array.prototype.slice.call($('f-br').files || []);
+    if (!fa.length || !fb.length) { $('st').textContent = 'Escolha a planilha do Astrea e o PDF do BRCondos.'; return; }
+    $('b-conferir').disabled = true; $('st').textContent = 'Lendo os arquivos…'; $('res').innerHTML = '';
+    var filtro = semAcento($('f-condo').value).trim();
+    var astrea = {}, linhasAstrea = 0, linhasFiltradas = 0, br = {};
+    Promise.all(fa.map(lerAstrea)).then(function(planilhas){
+      planilhas.forEach(function(rows){ rows.forEach(function(r){
+        linhasAstrea++;
+        var caso = r['Título do processo/caso/atendimento'] || '', tudo = [caso, r['Título'], r['Observação da atividade'], r['Etiquetas']].join(' · ');
+        if (filtro && semAcento(tudo).indexOf(filtro) < 0) return;
+        linhasFiltradas++;
+        var m; NUM_RE.lastIndex = 0;
+        while ((m = NUM_RE.exec(tudo))) { var n = m[1]; (astrea[n] = astrea[n] || { caso:caso, status:{}, n:0 }).n++; astrea[n].status[r['Status'] || '—'] = 1; }
+      }); });
+      return Promise.all(fb.map(lerPdf));
+    }).then(function(pdfs){
+      pdfs.forEach(function(linhas, k){ linhas.forEach(function(l, i){
+        var m; NUM_RE.lastIndex = 0;
+        while ((m = NUM_RE.exec(l))) {
+          var n = m[1]; if (br[n]) continue;
+          // contexto: a própria linha e, se ela for curta, a anterior (título costuma vir antes do número)
+          var ctx = l.length < 40 && i > 0 ? linhas[i - 1] + ' · ' + l : l;
+          br[n] = { ctx:ctx.slice(0, 220), arquivo:fb[k].name };
+        }
+      }); });
+      var faltam = Object.keys(br).filter(function(n){ return !astrea[n]; }).sort();
+      var batem = Object.keys(br).filter(function(n){ return astrea[n]; }).sort();
+      var soAstrea = Object.keys(astrea).filter(function(n){ return !br[n]; }).sort();
+      var h = '<div class="card"><h2 style="margin:0 0 4px;font-size:1.15rem;">Resultado' + (filtro ? ' — ' + esc($('f-condo').value.trim()) : '') + '</h2>'
+        + '<div class="st" style="margin:0 0 8px;">Conferido em ' + new Date().toLocaleDateString('pt-BR') + ' · Astrea: ' + fa.map(function(f){ return esc(f.name); }).join(', ') + ' (' + linhasFiltradas + ' de ' + linhasAstrea + ' atividades) · BRCondos: ' + fb.map(function(f){ return esc(f.name); }).join(', ') + '</div>'
+        + '<div class="resumo"><div class="num"><b>' + Object.keys(br).length + '</b><small>ocorrências no BRCondos</small></div>'
+        + '<div class="num ' + (faltam.length ? 'alerta' : 'bom') + '"><b>' + faltam.length + '</b><small>no BRCondos e NÃO no Astrea</small></div>'
+        + '<div class="num bom"><b>' + batem.length + '</b><small>nos dois sistemas</small></div>'
+        + '<div class="num"><b>' + soAstrea.length + '</b><small>só no Astrea</small></div></div>';
+      if (!Object.keys(br).length) h += '<p>Não encontrei números de ocorrência (#000000) no PDF do BRCondos. Confira se é a lista de ocorrências.</p>';
+      else if (!faltam.length) h += '<p class="ok-msg">✓ Todas as ocorrências do BRCondos têm atividade no Astrea.</p>';
+      else h += '<h3 style="margin:10px 0 6px;">Cadastrar no Astrea (' + faltam.length + ')</h3><table><tr><th>Ocorrência</th><th>No BRCondos</th></tr>'
+        + faltam.map(function(n){ return '<tr><td class="n">#' + n + '</td><td>' + esc(br[n].ctx) + '</td></tr>'; }).join('') + '</table>';
+      if (batem.length) h += '<details><summary>Nos dois sistemas (' + batem.length + ')</summary><table><tr><th>Ocorrência</th><th>Caso no Astrea</th><th>Situação no Astrea</th></tr>'
+        + batem.map(function(n){ return '<tr><td class="n">#' + n + '</td><td>' + esc(astrea[n].caso) + '</td><td>' + esc(Object.keys(astrea[n].status).join(', ')) + '</td></tr>'; }).join('') + '</table></details>';
+      if (soAstrea.length) h += '<details><summary>Só no Astrea (' + soAstrea.length + ') — podem ser de outro período ou de outro condomínio</summary><table><tr><th>Ocorrência</th><th>Caso no Astrea</th></tr>'
+        + soAstrea.map(function(n){ return '<tr><td class="n">#' + n + '</td><td>' + esc(astrea[n].caso) + '</td></tr>'; }).join('') + '</table></details>';
+      h += '</div>';
+      $('res').innerHTML = h; $('st').textContent = ''; $('b-imprimir').style.display = '';
+    }).catch(function(e){ $('st').textContent = 'Não foi possível ler: ' + (e.message || e); })
+      .then(function(){ $('b-conferir').disabled = false; });
+  }
+  $('b-conferir').addEventListener('click', conferir);
+  $('b-imprimir').addEventListener('click', function(){ document.querySelectorAll('details').forEach(function(d){ d.open = true; }); window.print(); });
+  window.__conferirBR = conferir;
+})();
+</script>
+</body>
+</html>

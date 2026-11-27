@@ -37,8 +37,10 @@ def semear():
     # membro com Condomínios mas SEM a sub-aba restrita das Sessões
     F.gravar(f"users/{U['semlib']}", {'email': 'semlib@exemplo.test', 'displayName': 'Membro Sem Liberação', 'role': 'membro', 'tabs': ['condominios'], 'acesso': 'ativo'})
     F.gravar('configPortal/abas', {'condominios': 'condominios'})
-    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['condominios'], 'acesso': 'ativo'})
-    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['condominios'], 'acesso': 'ativo'})
+    F.gravar(f"users/{U['cons']}", {'email': 'cons@exemplo.test', 'displayName': 'Conselheira Fictícia Alfa', 'role': 'conselheiro', 'tabs': ['condominios'], 'acesso': 'ativo',
+                                     'conselho': {'condominio-ficticio-alfa': 'conselheiro'}})   # espelho de conselhoMembros (regra das provas, 26/11/2026)
+    F.gravar(f"users/{U['cons2']}", {'email': 'cons2@exemplo.test', 'displayName': 'Síndico Fictício Beta', 'role': 'sindico', 'tabs': ['condominios'], 'acesso': 'ativo',
+                                      'conselho': {'condominio-ficticio-beta': 'sindico'}})
     # autocadastro de um conselheiro novo: entra como membro pendente, sem abas, e cria o próprio bloco no organograma
     F.gravar(f"users/{U['novo']}", {'email': 'novo@exemplo.test', 'displayName': 'Conselheiro Novo Fictício', 'role': 'membro', 'tabs': [], 'acesso': 'pendente'})
     F.gravar(f"organograma/{U['novo']}", {'displayName': 'Conselheiro Novo Fictício', 'email': 'novo@exemplo.test', 'deptoAtual': '', 'dataIngresso': ''})
@@ -131,6 +133,8 @@ def main():
         pm.click('.voltar[data-recurso]')
         F.esperar(pm, "!!document.getElementById('oc-data')", 10000)
         pm.click('#oc-data')
+        # 26/11/2026: caixinha só com números (era um prompt)
+        F.esperar(pm, "!!document.getElementById('dh-in')", 5000); pm.fill('#dh-in', ''); pm.type('#dh-in', '151120261930'); pm.click('#dh-ok')
         F.caso(G, 'marca a data do julgamento na ocorrência', F.ate(lambda: (F.ler(f'recursosJulgamento/{rec_id}') or {}).get('dataJulgamento') == '2026-11-15T19:30', 10)
                and F.esperar(pm, "document.body.innerText.includes('15/11/2026 às 19h30')", 8000))
         pm.click('#oc-liberar')

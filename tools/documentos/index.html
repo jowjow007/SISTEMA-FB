@@ -123,6 +123,19 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
 
   .tipo-hidden{display:none !important;}
 
+  /* Informativo processual (26/11/2026): formulário curto e a mensagem pronta para o WhatsApp na direita */
+  body.modo-informativo #card-historico, body.modo-informativo #card-exportar,
+  body.modo-informativo #doc-pages-wrap, body.modo-informativo #pag-status{display:none !important;}
+  #inf-preview-wrap{display:none;}
+  body.modo-informativo #inf-preview-wrap{display:block;}
+  .inf-zap{background:#0b141a;border-radius:14px;padding:18px;border:1px solid var(--line-strong);}
+  .inf-balao{background:#005c4b;color:#e9edef;border-radius:10px 2px 10px 10px;padding:10px 12px;font-size:.86rem;line-height:1.45;white-space:pre-wrap;word-break:break-word;margin-left:auto;max-width:100%;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
+  .inf-balao b{font-weight:700;} .inf-balao i{font-style:italic;}
+  .inf-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .inf-dica{font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.45;}
+  details.inf-mais{border:1px dashed var(--line-strong);border-radius:8px;padding:8px 10px;margin-top:6px;}
+  details.inf-mais summary{cursor:pointer;font-size:.8rem;font-weight:600;color:var(--silver);}
+
   /* Relatório de Cobranças: formulário na coluna esquerda (sticky), prévia na direita */
   body.modo-cobrancas .layout{grid-template-columns:minmax(360px,460px) 1fr;}
   body.modo-cobrancas #card-historico,
@@ -648,6 +661,34 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         </div>
       </div>
 
+      <!-- ===================== INFORMATIVO PROCESSUAL (WhatsApp) ===================== -->
+      <div class="card" data-tipo-only="informativo">
+        <h2>Informativo processual</h2>
+        <p class="desc">Preencha só o essencial: a mensagem sai pronta à direita, para copiar e mandar ao cliente pelo WhatsApp.</p>
+        <div class="grid2">
+          <div class="field"><label>Cliente (nome completo)</label><input id="inf-cliente" placeholder="Vagner Francisco Lima"></div>
+          <div class="field"><label>Tratamento</label><select id="inf-trat"><option value="Sr.">Sr.</option><option value="Sra.">Sra.</option><option value="">(só o nome)</option></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Parte contrária</label><input id="inf-contraria"></div>
+          <div class="field"><label>Nº do processo (e tribunal)</label><input id="inf-processo" placeholder="1.0000.20.080390-6/002 (TJMG - Uberlândia)"></div>
+        </div>
+        <div class="field"><label>Breve relato do caso</label><textarea id="inf-relato" rows="3"></textarea></div>
+        <div class="field"><label>O que aconteceu — título</label><input id="inf-tit-res" value="Resultado do Julgamento"></div>
+        <div class="field"><label>O que aconteceu — um ponto por linha</label><textarea id="inf-resultado" rows="4" placeholder="O julgamento foi parcialmente desfavorável:&#10;- Retirada da restituição: ...&#10;! Condenação em danos materiais: ...&#10;+ Mantida a justiça gratuita"></textarea>
+          <div class="inf-dica">Comece a linha com <b>+</b> para ✅, <b>-</b> para ❌ e <b>!</b> para ⚠️.</div></div>
+        <div class="field"><label>Próximos passos — um por linha</label><textarea id="inf-passos" rows="3" placeholder="Embargos de Declaração (no TJMG): ...&#10;Recurso Especial (no STJ): ..."></textarea></div>
+        <details class="inf-mais" id="inf-mais">
+          <summary>Riscos, recomendação e autorização (opcional)</summary>
+          <div class="field" style="margin-top:8px;"><label>Riscos (um por parágrafo)</label><textarea id="inf-riscos" rows="3"></textarea></div>
+          <label style="display:flex;gap:7px;align-items:center;font-size:.78rem;margin:2px 0 10px;cursor:pointer;"><input type="checkbox" id="inf-gratuita"> Cliente tem Justiça Gratuita (explica a proteção)</label>
+          <div class="field"><label>Recomendação</label><input id="inf-recomendacao" placeholder="nossa recomendação técnica é entrar com o recurso."></div>
+          <div class="field"><label>Pedir autorização para… (deixe em branco se não precisar)</label><input id="inf-autoriza" placeholder="a interposição do Recurso Especial ao STJ após o julgamento dos Embargos de Declaração"></div>
+          <div class="field"><label>Resposta negativa</label><input id="inf-nega" value="entrar com o recurso"></div>
+          <div class="field"><label>WhatsApp do cliente (opcional, para abrir a conversa)</label><input id="inf-fone" inputmode="tel" placeholder="(34) 99999-9999"></div>
+        </details>
+      </div>
+
       <!-- ===================== LOCAL E DATA (comum) ===================== -->
       <div class="card" data-tipo-only="procuracao substabelecimento hipossuficiencia termo_repasse recibo carta_preposicao peticao_ciencia">
         <h2>Local e data</h2>
@@ -678,6 +719,14 @@ var GOOGLE_CLIENT_ID = "433488688713-trijtb823p9m822lnr07fi3muca629cv.apps.googl
         <span class="status" id="pag-status">montando documento…</span>
       </div>
       <div id="doc-pages-wrap"><div id="doc-pages"></div></div>
+      <div id="inf-preview-wrap">
+        <div class="inf-zap"><div class="inf-balao" id="inf-balao"></div></div>
+        <div class="inf-acoes">
+          <button class="btn" id="inf-copiar" type="button">Copiar mensagem</button>
+          <button class="btn green" id="inf-zap" type="button">Abrir no WhatsApp</button>
+          <span class="hint" id="inf-status" style="align-self:center;font-size:.76rem;color:var(--muted);"></span>
+        </div>
+      </div>
       <div id="cob-preview-wrap">
         <div class="cob-resumo" id="cob-resumo" style="display:none">
           <div class="cob-stat"><div class="k">Boletos</div><div class="v" id="cob-res-qtd">—</div></div>
@@ -1654,6 +1703,7 @@ function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(ren
 
 function render(){
   if(currentTipo==='cobrancas') return;   // o relatório se monta sozinho dentro do próprio iframe
+  if(currentTipo==='informativo'){ renderInformativo(); return; }
   const status=document.getElementById('pag-status');
   const d = coletarDados();
   const erro = validar(d);
@@ -1685,6 +1735,72 @@ function render(){
   status.className='status ok';
 }
 
+/* ---------- Informativo processual (WhatsApp) ---------- */
+function infVal(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function infLinhas(id){ return infVal(id).split('\n').map(l=>l.trim()).filter(Boolean); }
+const INF_NUM=['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+function montarInformativo(){
+  const nome=infVal('inf-cliente'), trat=infVal('inf-trat'), fem=trat==='Sra.';
+  const primeiro=(nome.split(/\s+/)[0]||'');
+  const vocativo=trat ? trat+' '+primeiro : primeiro;
+  const o=fem?'a':'o', senhor=trat ? (fem?'a senhora':'o senhor') : 'você';
+  const t=[];
+  t.push('📋 *INFORMATIVO PROCESSUAL — CLIENTE: '+(nome||'NOME DO CLIENTE').toUpperCase()+'*');
+  t.push('Olá'+(vocativo?', '+vocativo:'')+'! Elaboramos este informativo para mantê-l'+o+' atualizad'+o+' sobre o andamento do seu processo de forma clara, objetiva e transparente.');
+  const dados=[];
+  if(nome) dados.push('Cliente / Parte: '+nome);
+  if(infVal('inf-contraria')) dados.push('Parte Contrária: '+infVal('inf-contraria'));
+  if(infVal('inf-processo')) dados.push('Número do Processo: '+infVal('inf-processo'));
+  if(dados.length) t.push('📌 *Dados do Processo*\n\n'+dados.join('\n\n'));
+  if(infVal('inf-relato')) t.push('📖 *Breve Relato do Caso*\n\n'+infVal('inf-relato'));
+  const res=infLinhas('inf-resultado').map(l=>{
+    if(/^\+\s*/.test(l)) return '✅ '+l.replace(/^\+\s*/,'');
+    if(/^-\s*/.test(l)) return '❌ '+l.replace(/^-\s*/,'');
+    if(/^!\s*/.test(l)) return '⚠️ '+l.replace(/^!\s*/,'');
+    return l;
+  });
+  if(res.length) t.push('⚖️ *'+(infVal('inf-tit-res')||'Resultado')+'*\n\n'+res.join('\n\n'));
+  const passos=infLinhas('inf-passos');
+  if(passos.length) t.push('🎯 *Estratégia Jurídica e Próximos Passos*\n\n'+passos.map((l,i)=>(INF_NUM[i]||((i+1)+'.'))+' '+l.replace(/^\d+[.)º°]?\s*/,'')).join('\n'));
+  const riscos=infVal('inf-riscos'), grat=document.getElementById('inf-gratuita').checked;
+  if(riscos||grat){
+    let r='⚠️ *Análise Transparente de Riscos e Proteções*\n\nPara que '+senhor+' tome sua decisão de forma segura, apresentamos os riscos e as proteções:';
+    if(riscos) r+='\n\n'+riscos.split(/\n\s*\n|\n/).map(x=>x.trim()).filter(Boolean).join('\n\n');
+    if(grat) r+='\n\n*Sua Proteção Financeira:* '+(senhor.charAt(0).toUpperCase()+senhor.slice(1))+' possui o benefício da Justiça Gratuita. Isso significa que:\n\nNão precisará pagar as custas/taxas do Tribunal para recorrer.\n\nCaso o recurso não seja aceito, eventuais custos ou honorários do processo ficam suspensos e não poderão ser cobrados enquanto mantida a gratuidade.';
+    t.push(r);
+  }
+  if(infVal('inf-recomendacao')) t.push('💡 *Recomendação*: _'+infVal('inf-recomendacao').replace(/_/g,'')+'_');
+  if(infVal('inf-autoriza')){
+    const a=infVal('inf-autoriza').replace(/^autorizo\s+/i,'').replace(/[.;]+$/,'');
+    const n=(infVal('inf-nega')||'entrar com o recurso').replace(/^não desejo\s+/i,'').replace(/[.;]+$/,'');
+    t.push('✍️ *Solicitação de Autorização Expressa*\n\n'+(vocativo?vocativo+', s':'S')+'olicitamos a gentileza de responder a esta mensagem confirmando expressamente:\n\n"Autorizo '+a+'."\n\nou\n\n"Não desejo '+n+'."');
+  }
+  t.push('Estamos à total disposição para esclarecer qualquer dúvida referente ao informativo ou aos próximos passos!');
+  return t.join('\n\n');
+}
+function zapParaHtml(txt){
+  const e=txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return e.replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?:;])/g,'$1<i>$2</i>');
+}
+function renderInformativo(){
+  const b=document.getElementById('inf-balao'); if(!b) return;
+  b.innerHTML=zapParaHtml(montarInformativo());
+}
+document.addEventListener('input',e=>{ if(currentTipo==='informativo' && e.target.closest && e.target.closest('[data-tipo-only="informativo"]')) renderInformativo(); });
+document.addEventListener('change',e=>{ if(currentTipo==='informativo' && e.target.closest && e.target.closest('[data-tipo-only="informativo"]')) renderInformativo(); });
+function infAviso(m){ const s=document.getElementById('inf-status'); s.textContent=m; clearTimeout(infAviso.t); infAviso.t=setTimeout(()=>{ s.textContent=''; },4000); }
+document.getElementById('inf-copiar').addEventListener('click',()=>{
+  const txt=montarInformativo();
+  const feito=()=>infAviso('✓ Mensagem copiada — cole no WhatsApp do cliente.');
+  const reserva=()=>{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); feito(); }catch(err){ infAviso('Não consegui copiar — selecione o texto e copie.'); } ta.remove(); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(feito).catch(reserva); else reserva();
+});
+document.getElementById('inf-zap').addEventListener('click',()=>{
+  let fone=infVal('inf-fone').replace(/\D/g,'');
+  if(fone && fone.length<=11) fone='55'+fone;
+  window.open('https://wa.me/'+(fone||'')+'?text='+encodeURIComponent(montarInformativo()),'_blank','noopener');
+});
+
 /* ---------- seletor de tipo de documento ---------- */
 const TIPOS=[
   {id:'procuracao', label:'Procuração', ready:true},
@@ -1694,7 +1810,8 @@ const TIPOS=[
   {id:'recibo', label:'Recibo', ready:true},
   {id:'carta_preposicao', label:'Carta de Preposição', ready:true},
   {id:'peticao_ciencia', label:'Petição de Ciência', ready:true},
-  {id:'cobrancas', label:'Relatório de Cobranças', ready:true}
+  {id:'cobrancas', label:'Relatório de Cobranças', ready:true},
+  {id:'informativo', label:'Informativo (WhatsApp)', ready:true}
 ];
 let currentTipo='procuracao';
 const seg=document.getElementById('tipo-seg');
@@ -1730,6 +1847,7 @@ function setTipo(id){
     if(comoFormatador) btnGerar.before(btnDocs); else btnDocs.before(btnGerar);
   }
   document.body.classList.toggle('modo-cobrancas', id==='cobrancas');
+  document.body.classList.toggle('modo-informativo', id==='informativo');
   const frameCob=document.getElementById('frame-cobrancas');
   if(id==='cobrancas' && !frameCob.getAttribute('src')) frameCob.setAttribute('src','../cobrancas/index.html?embed=1');
   render();

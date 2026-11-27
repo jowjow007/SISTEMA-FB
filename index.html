@@ -1455,7 +1455,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v296</span>
+      <span class="version-tag">v297</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -1779,6 +1779,11 @@
           <option value="sindico">Síndico</option>
         </select>
         <p id="dados-papel-hint" style="font-size:.68rem;color:var(--muted);margin:4px 0 0;display:none;">Você não pode alterar o próprio tipo de usuário por aqui.</p></div>
+      <div id="dados-conselho-wrap" style="display:none;grid-column:1/-1;border:1px dashed var(--line-strong);border-radius:8px;padding:10px;">
+        <label style="font-size:.75rem;color:var(--muted);">Conselho — condomínio(s) em que esta pessoa é <b id="dados-conselho-papel">conselheira</b> (vê as Sessões de Julgamento liberadas)</label>
+        <input type="text" id="dados-conselho-busca" placeholder="Procurar condomínio…" style="width:100%;margin:6px 0;padding:7px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
+        <div id="dados-conselho-lista" style="max-height:180px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 10px;font-size:.8rem;"></div>
+      </div>
       <div><label style="font-size:.75rem;color:var(--muted);">Tipo de colaborador <span style="opacity:.7;">(define o termo de patrimônio)</span></label>
         <select id="dados-tipo-colaborador" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--paper);">
           <option value="">— Não definido —</option>
@@ -2705,6 +2710,9 @@
         return;
       }
       currentProfile = Object.assign({}, doc.data(), {uid:user.uid, email:user.email});
+      // e-mail de acesso trocado pela própria pessoa (Perfil › Alterar, confirmado pelo link): o cadastro acompanha
+      if (user.email && doc.data().email && doc.data().email !== user.email && doc.data().acesso === 'ativo')
+        db.collection('users').doc(user.uid).update({ email: user.email }).catch(function(){});
 
       // Acesso explícito (revisão de segurança 01/11/2026): só entra quem o admin aprovou (acesso == 'ativo').
       // Cadastros de antes da migração (sem o campo) seguem o critério antigo até o admin rodar a migração.
@@ -3279,6 +3287,8 @@
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function(ev){
     if (ev.data && typeof ev.data.fbAbrirConversa === 'string') abrirConversaChat(ev.data.fbAbrirConversa.slice(0, 200));
   });
+  // com addEventListener a fila de mensagens do service worker só abre com startMessages()
+  try { if ('serviceWorker' in navigator && navigator.serviceWorker.startMessages) navigator.serviceWorker.startMessages(); } catch(e) {}
   window.addEventListener('message', function(ev){
     if (ev.origin !== location.origin || !ev.data || typeof ev.data.fbAbrirAgenda !== 'string') return;
     abrirAtividadeAgenda(ev.data.fbAbrirAgenda.slice(0, 200));
@@ -5759,6 +5769,7 @@
       const papelSelect = document.getElementById('dados-papel');
       editDadosPapelOriginal = dados.role || 'membro';
       papelSelect.value = editDadosPapelOriginal;
+      carregarConselhoDoUsuario(uid);
       const ehVocêMesmo = uid === currentProfile.uid;
       papelSelect.disabled = ehVocêMesmo;
       document.getElementById('dados-papel-hint').style.display = ehVocêMesmo ? 'block' : 'none';
@@ -5789,6 +5800,66 @@
       els.editDadosBackdrop.classList.add('show');
     });
   };
+
+  // ---------- conselho direto no cadastro (26/11/2026): conselhoMembros/{uid} + espelho users/{uid}.conselho ----------
+  let conselhoCondos = null, conselhoMarcados = {}, conselhoOriginal = {};
+  function mostrarCampoConselho(){
+    const papel = document.getElementById('dados-papel').value;
+    const ehConselho = papel === 'conselheiro' || papel === 'sindico';
+    document.getElementById('dados-conselho-wrap').style.display = ehConselho ? '' : 'none';
+    document.getElementById('dados-conselho-papel').textContent = papel === 'sindico' ? 'síndica(o)' : 'conselheira(o)';
+  }
+  function pintarConselho(){
+    const el = document.getElementById('dados-conselho-lista'), q = slugify(document.getElementById('dados-conselho-busca').value);
+    if (!conselhoCondos) { el.innerHTML = '<span style="color:var(--muted);">Carregando condomínios…</span>'; return; }
+    el.innerHTML = conselhoCondos.filter(function(c){ return !q || c.slug.indexOf(q) !== -1 || conselhoMarcados[c.slug]; }).map(function(c){
+      return '<label style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" class="dados-conselho-cb" value="' + escapeHtml(c.slug) + '"' + (conselhoMarcados[c.slug] ? ' checked' : '') + '><span>' + escapeHtml(c.nome) + '</span></label>';
+    }).join('') || '<span style="color:var(--muted);">Nenhum condomínio encontrado.</span>';
+  }
+  function carregarConselhoDoUsuario(uid){
+    conselhoMarcados = {}; conselhoOriginal = {};
+    document.getElementById('dados-conselho-busca').value = '';
+    mostrarCampoConselho(); pintarConselho();
+    const lista = conselhoCondos ? Promise.resolve() : db.collection('dadosPrivados').doc('condominios').get().then(function(snap){
+      const l = snap.exists ? ((JSON.parse(snap.data().json || '{}').condominios) || []) : [];
+      conselhoCondos = l.map(function(c){ return { slug: slugify(c.nome), nome: c.nome }; }).sort(function(a, b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+    }).catch(function(){ conselhoCondos = []; });
+    Promise.all([lista, db.collection('conselhoMembros').doc(uid).get().catch(function(){ return null; })]).then(function(r){
+      const v = (r[1] && r[1].exists && r[1].data().condominios) || {};
+      Object.keys(v).forEach(function(k){ if (v[k] === 'sindico' || v[k] === 'conselheiro') { conselhoMarcados[k] = true; conselhoOriginal[k] = v[k]; } });
+      Object.keys(conselhoMarcados).forEach(function(k){ if (!conselhoCondos.some(function(c){ return c.slug === k; })) conselhoCondos.push({ slug: k, nome: k }); });
+      pintarConselho();
+    });
+  }
+  document.getElementById('dados-papel').addEventListener('change', mostrarCampoConselho);
+  document.getElementById('dados-conselho-busca').addEventListener('input', pintarConselho);
+  document.getElementById('dados-conselho-lista').addEventListener('change', function(e){
+    if (e.target.classList.contains('dados-conselho-cb')) { if (e.target.checked) conselhoMarcados[e.target.value] = true; else delete conselhoMarcados[e.target.value]; }
+  });
+  // grava o vínculo junto com o cadastro: mesmo formato do painel "Conselheiros" das Sessões
+  function salvarConselhoDoUsuario(uid, papel, nome, email){
+    const ehConselho = papel === 'conselheiro' || papel === 'sindico';
+    const vinc = {}, nomes = {};
+    if (ehConselho) Object.keys(conselhoMarcados).forEach(function(k){
+      vinc[k] = papel; const c = (conselhoCondos || []).find(function(x){ return x.slug === k; }); nomes[k] = c ? c.nome : k;
+    });
+    const mudou = JSON.stringify(Object.keys(vinc).sort().map(function(k){ return k + vinc[k]; })) !== JSON.stringify(Object.keys(conselhoOriginal).sort().map(function(k){ return k + conselhoOriginal[k]; }));
+    if (!mudou) return Promise.resolve();
+    const b = db.batch();
+    if (Object.keys(vinc).length) {
+      b.set(db.collection('conselhoMembros').doc(uid), { nome: nome || '', email: email || '', condominios: vinc, nomesCondominios: nomes, atualizadoPor: currentProfile.uid, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+      const upd = { conselho: vinc };
+      return db.collection('configPortal').doc('abas').get().then(function(a){
+        const abaCondo = a.exists ? a.data().condominios : null;
+        if (abaCondo) upd.tabs = firebase.firestore.FieldValue.arrayUnion(abaCondo);
+        b.update(db.collection('users').doc(uid), upd);
+        return b.commit();
+      });
+    }
+    b.delete(db.collection('conselhoMembros').doc(uid));
+    b.update(db.collection('users').doc(uid), { conselho: {} });
+    return b.commit();
+  }
 
   function fecharModalEditDados(){
     els.editDadosBackdrop.classList.remove('show');
@@ -5867,7 +5938,9 @@
       db.collection('users').doc(editDadosTargetUid).update(usersPatch),
       db.collection('perfis').doc(editDadosTargetUid).set(perfilPatch, { merge: true }),
       db.collection('organograma').doc(editDadosTargetUid).set(organogramaPatch, { merge: true })
-    ]).then(fecharModalEditDados);
+    ]).then(function(){
+      return salvarConselhoDoUsuario(editDadosTargetUid, novoPapel, nomeCompleto, '').catch(function(e){ alert('Dados salvos, mas o vínculo do conselho não foi gravado: ' + e.message); });
+    }).then(fecharModalEditDados);
   });
 
   function fecharModalEditTabs(){

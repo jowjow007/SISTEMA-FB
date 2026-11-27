@@ -48,16 +48,51 @@ self.addEventListener('message', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== CACHE_CDN).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== CACHE_CDN && k !== CACHE_MIDIA).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
+
+// Fotos e áudios do Chat (26/11/2026): o que já foi aberto fica guardado neste aparelho e abre sem internet
+// (app do Windows e celular). Só a pasta chat/ do Storage; guarda até MIDIA_MAX arquivos (os mais antigos saem).
+const CACHE_MIDIA = 'portal-fb-chat-midia-v1';
+const MIDIA_MAX = 400;
+function ehMidiaChat(url) {
+  return url.hostname === 'firebasestorage.googleapis.com' && /\/o\/chat%2F/i.test(url.pathname) && url.searchParams.get('alt') === 'media';
+}
+function podarMidia(cache) {
+  return cache.keys().then((ks) => Promise.all(ks.slice(0, Math.max(0, ks.length - MIDIA_MAX)).map((k) => cache.delete(k)))).catch(() => null);
+}
+// áudio pede pedaços (Range): responde o pedaço a partir do arquivo inteiro guardado
+function pedacoDe(res, range) {
+  return res.arrayBuffer().then((buf) => {
+    const m = /bytes=(\d*)-(\d*)/.exec(range || '');
+    const total = buf.byteLength;
+    let ini = m && m[1] !== '' ? parseInt(m[1], 10) : 0, fim = m && m[2] !== '' ? parseInt(m[2], 10) : total - 1;
+    if (m && m[1] === '' && m[2] !== '') { ini = Math.max(0, total - parseInt(m[2], 10)); fim = total - 1; }
+    fim = Math.min(fim, total - 1);
+    return new Response(buf.slice(ini, fim + 1), { status: 206, statusText: 'Partial Content', headers: {
+      'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream', 'Content-Range': 'bytes ' + ini + '-' + fim + '/' + total,
+      'Content-Length': String(fim - ini + 1), 'Accept-Ranges': 'bytes' } });
+  });
+}
+function midiaChat(req) {
+  const chave = req.url, range = req.headers.get('range');
+  return caches.open(CACHE_MIDIA).then((cache) => cache.match(chave).then((guardado) => {
+    if (guardado) return range ? pedacoDe(guardado, range) : guardado;
+    return fetch(chave, { mode: 'cors', credentials: 'omit' }).then((res) => {
+      if (!res || !res.ok) return res;
+      return cache.put(chave, res.clone()).then(() => { podarMidia(cache); return range ? pedacoDe(res, range) : res; });
+    }).catch(() => fetch(req));
+  })).catch(() => fetch(req));
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  if (ehMidiaChat(url)) { event.respondWith(midiaChat(req)); return; }
   // Bibliotecas de CDN com versão fixa no endereço (Firebase, html2pdf, jsPDF, fontes): guardadas na primeira vez,
   // para o portal abrir sem internet (app para Windows). O endereço muda quando a versão muda, então não envelhecem.
   if (CDN_FIXOS.some((p) => req.url.indexOf(p) === 0)) {
@@ -130,10 +165,11 @@ self.addEventListener('notificationclick', (event) => {
   const conversaId = dados.conversaId || '';
   const link = new URL(dados.link || './', self.location.href).href;
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
-    const aberto = lista.find((c) => c.url.indexOf(self.location.origin) === 0);
+    // cada ferramenta do portal é um quadro (iframe) que também aparece aqui: a mensagem tem de ir para a janela
+    // principal, senão ela só volta para a frente na tela em que estava (era o caso: abria na página inicial)
+    const aberto = lista.find((c) => c.url.indexOf(self.location.origin) === 0 && c.frameType !== 'nested' && c.url.indexOf('/tools/') < 0);
     if (aberto) {
-      aberto.postMessage({ fbAbrirConversa: conversaId });
-      return aberto.focus();
+      return aberto.focus().catch(() => null).then(() => { aberto.postMessage({ fbAbrirConversa: conversaId }); });
     }
     return self.clients.openWindow(link);
   }));

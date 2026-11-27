@@ -511,8 +511,19 @@
   }
   .lightbox-backdrop.open{display:flex;}
   .lightbox-backdrop img{max-width:100%;max-height:100%;border-radius:8px;}
+  .lightbox-baixar{position:absolute;top:14px;right:14px;background:var(--red,#a3232b);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-weight:600;font-size:.84rem;cursor:pointer;z-index:2;}
 
+  #btn-mais-conv{display:none;font-size:1.15rem;line-height:1;padding:4px 10px;}
   @media(max-width:720px){
+    /* celular (26/11/2026): a barra da conversa ficava com 2-3 linhas de botões; agora só a lupa e os três pontinhos */
+    .thread-tags-row{flex-wrap:nowrap;}
+    .thread-tags-row .small-link-btn{display:none !important;}
+    .thread-tags-row #btn-busca-conv,.thread-tags-row #btn-mais-conv{display:inline-flex !important;}
+    .thread-tags-row #btn-busca-conv{font-size:0;gap:0;padding:7px 9px;}
+    .thread-tags-row #btn-busca-conv svg{width:17px;height:17px;}
+    .thread-head{flex-wrap:nowrap;}
+    .thread-head > div:not(.thread-tags-row){min-width:0;flex:1;}
+    .thread-title,.thread-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .sidebar{width:100%;position:absolute;inset:0;z-index:2;}
     .shell.thread-open .sidebar{display:none;}
     .thread{position:absolute;inset:0;}
@@ -586,6 +597,7 @@
           <button class="small-link-btn" id="btn-editar-grupo" style="display:none;"></button>
           <button class="small-link-btn" id="btn-arquivar"></button>
           <button class="small-link-btn danger" id="btn-excluir-conversa"></button>
+          <button class="small-link-btn" id="btn-mais-conv" type="button" title="Mais opções" aria-label="Mais opções">⋮</button>
         </div>
       </div>
       <div class="busca-conv" id="busca-conv">
@@ -755,6 +767,7 @@
   <div class="react-picker-body" id="react-picker-body"></div>
 </div>
 <div class="lightbox-backdrop" id="lightbox">
+  <button type="button" class="lightbox-baixar" id="lightbox-baixar" title="Salvar a foto no computador">⬇ Baixar</button>
   <img id="lightbox-img" src="">
 </div>
 
@@ -1565,7 +1578,7 @@
       if (timer && (Math.abs(t.clientX - x0) > 10 || Math.abs(t.clientY - y0) > 10)) { clearTimeout(timer); timer = null; }
     }, { passive: true });
     el.addEventListener('touchend', function(){ if (timer) { clearTimeout(timer); timer = null; } });
-    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); if (!modoSelecao && window.matchMedia && matchMedia('(pointer:fine)').matches) abrirMenuConversa(id); });
   }
 
   var acoesBackdrop = document.getElementById('acoes-sheet-backdrop');
@@ -1577,17 +1590,21 @@
     if (e.target === acoesBackdrop && Date.now() - menuAbertoEm > 450) fecharMenuConversa();
   });
 
-  function abrirMenuConversa(id){
+  function abrirMenuConversa(id, naConversa){
     var c = conversas.filter(function(x){ return x.id === id; })[0];
     if (!c) return;
     var prefs = tagsPorConversa[id] || {};
     var nome = tituloConversa(c);
+    var naoLidas = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
     acoesSheet.innerHTML = '<div class="titulo">' + escapeHtml(nome) + '</div>'
+      + (naConversa ? '' : '<button type="button" data-op="' + (naoLidas ? 'lida' : 'naolida') + '">' + icoSvg('check', 18) + (naoLidas ? 'Marcar como lida' : 'Marcar como não lida') + '</button>')
+      + (naConversa ? '<button type="button" data-op="naolida">' + icoSvg('check', 18) + 'Marcar como não lida</button>' : '')
+      + (naConversa && c.tipo === 'grupo' ? '<button type="button" data-op="editar">' + icoSvg('tag', 18) + 'Editar grupo</button>' : '')
       + '<button type="button" data-op="fixar">' + icoSvg(prefs.fixada ? 'starFilled' : 'starOutline', 18) + (prefs.fixada ? 'Desafixar' : 'Fixar') + '</button>'
       + '<button type="button" data-op="arquivar">' + icoSvg(prefs.arquivada ? 'unarchive' : 'archive', 18) + (prefs.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>'
       + '<button type="button" data-op="etiquetas">' + icoSvg('tag', 18) + 'Colocar etiqueta</button>'
       + '<button type="button" data-op="excluir" class="danger">' + icoSvg('trash', 18) + 'Excluir</button>'
-      + '<button type="button" data-op="selecionar">' + icoSvg('check', 18) + 'Selecionar várias</button>'
+      + (naConversa ? '' : '<button type="button" data-op="selecionar">' + icoSvg('check', 18) + 'Selecionar várias</button>')
       + '<button type="button" data-op="cancelar" class="cancelar">Cancelar</button>';
     Array.prototype.forEach.call(acoesSheet.querySelectorAll('[data-op]'), function(b){
       b.addEventListener('click', function(){
@@ -1604,11 +1621,24 @@
           excluirConversa(id);
         } else if (op === 'selecionar'){
           entrarModoSelecao(id);
+        } else if (op === 'naolida' || op === 'lida'){
+          marcarConversaLida(id, op === 'lida');
+        } else if (op === 'editar'){
+          els.btnEditarGrupo.click();
         }
       });
     });
     menuAbertoEm = Date.now();
     acoesBackdrop.classList.add('open');
+  }
+
+  // marcar como não lida (26/11/2026): a conversa volta a contar 1 não lida para mim (fica piscando na lista);
+  // se estava aberta, fecha — abrir de novo zera, como sempre
+  var marcadaPorMim = {};
+  function marcarConversaLida(id, lida){
+    if (!lida){ marcadaPorMim[id] = true; if (id === activeId) voltarParaListaVazia(); }
+    db.collection('conversas').doc(id).update({ ['naoLidoPor.' + myUid]: lida ? 0 : 1 })
+      .catch(function(e){ delete marcadaPorMim[id]; alert('Não foi possível marcar: ' + e.message); });
   }
 
   // ---------------- seleção de várias conversas (alterar em lote) ----------------
@@ -1706,6 +1736,9 @@
         .set({ excluidaAte: null }, { merge: true }).catch(function(){});
     }
     els.shell.classList.add('thread-open');
+    if (!conversaNoHistorico && window.matchMedia && matchMedia('(max-width:720px)').matches){
+      try { history.pushState({ fbChatConversa: id }, ''); conversaNoHistorico = true; } catch (e) {}
+    }
     els.threadEmpty.style.display = 'none';
     els.threadActive.style.display = 'flex';
     renderConvList();
@@ -1763,9 +1796,16 @@
     requestAnimationFrame(function(){ renderPendente = false; if (activeId) renderMensagens(); });
   }
 
+  var conversaNoHistorico = false;
   function fecharThreadMobile(){
     els.shell.classList.remove('thread-open');
+    if (conversaNoHistorico){ conversaNoHistorico = false; try { history.back(); } catch (e) {} }
   }
+  window.addEventListener('popstate', function(){
+    if (!conversaNoHistorico) return;
+    conversaNoHistorico = false;
+    els.shell.classList.remove('thread-open');
+  });
 
   function marcarComoLidas(){
     var refs = [];
@@ -2017,9 +2057,21 @@
     if (ev.target && ev.target.tagName === 'IMG' && grudadoNoFim) els.msgList.scrollTop = els.msgList.scrollHeight;
   }, true);
 
-  els.lightbox.addEventListener('click', function(){ els.lightbox.classList.remove('open'); });
+  els.lightbox.addEventListener('click', function(e){ if (e.target.id === 'lightbox-baixar') return; els.lightbox.classList.remove('open'); });
+  // ⬇ Baixar (26/11/2026): salva a foto no computador (no app do Windows vai para Downloads)
+  document.getElementById('lightbox-baixar').addEventListener('click', function(e){
+    e.stopPropagation();
+    var src = els.lightboxImg.src; if (!src) return;
+    var nome = 'foto-chat-' + new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '') + (/png/i.test(src.slice(0, 40)) ? '.png' : '.jpg');
+    var salvar = function(href){ var a = document.createElement('a'); a.href = href; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); };
+    if (/^data:|^blob:/.test(src)) return salvar(src);
+    fetch(src).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      .then(function(b){ var u = URL.createObjectURL(b); salvar(u); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); })
+      .catch(function(){ window.open(src, '_blank', 'noopener'); });
+  });
   // picker fecha só pelo X ou ao escolher emoji — não fecha com clique fora
   els.btnVoltar.addEventListener('click', fecharThreadMobile);
+  document.getElementById('btn-mais-conv').addEventListener('click', function(){ if (activeId) abrirMenuConversa(activeId, true); });
 
   // ---------------- envio de mensagens ----------------
 
@@ -2353,6 +2405,7 @@
 
   function enviarMensagem(){
     if (!activeId || enviandoMsg) return;
+    if (gravador && gravador.state === 'recording'){ enviarAposParar = true; pararGravacao(); return; }
     if (subindoAnexo){
       enviarAoTerminar = true;
       if (novoDocumento) els.docPreviewTamanho.textContent = formatBytes(novoDocumento.tamanho) + ' — enviando… a mensagem sai assim que o arquivo terminar de subir';
@@ -3167,7 +3220,9 @@
   document.getElementById('busca-conv-x').addEventListener('click', bcFechar);
 
   // ---------------- áudio: gravar, enviar e transcrever (Gemini, pelo proxy do Assistente IA) ----------------
-  var gravador = null, gravChunks = [], gravInicio = 0, gravTimer = null, novoAudio = null, AUDIO_MAX_SEG = 300;
+  var gravador = null, gravChunks = [], gravInicio = 0, gravTimer = null, novoAudio = null, AUDIO_MAX_SEG = 300, enviarAposParar = false;
+  var ICO_MIC = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7"></path></svg>';
+  var ICO_PARAR = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>';
   var btnMic = document.getElementById('btn-audio'), gravTempo = document.getElementById('grav-tempo');
   var audioRow = document.getElementById('audio-preview-row'), audioPrev = document.getElementById('audio-preview'), audioSt = document.getElementById('audio-preview-st');
   function mmss(seg){ seg = Math.round(seg || 0); return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0'); }
@@ -3188,16 +3243,19 @@
       gravador.ondataavailable = function(ev){ if (ev.data && ev.data.size) gravChunks.push(ev.data); };
       gravador.onstop = function(){
         stream.getTracks().forEach(function(t){ t.stop(); });
-        clearInterval(gravTimer); btnMic.classList.remove('gravando'); btnMic.title = 'Gravar áudio'; gravTempo.classList.remove('on');
+        clearInterval(gravTimer); btnMic.classList.remove('gravando'); btnMic.title = 'Gravar áudio'; btnMic.innerHTML = ICO_MIC; gravTempo.classList.remove('on');
+        var enviarJa = enviarAposParar; enviarAposParar = false;
         var dur = (Date.now() - gravInicio) / 1000;
         var mime = (gravador.mimeType || tipo || 'audio/webm').split(';')[0];
         var blob = new Blob(gravChunks, { type: mime }); gravador = null;
         if (dur < 1 || blob.size < 800) return;   // toque sem querer
         if (convDoAudio !== activeId) return;
-        prepararAudio(blob, mime, dur);
+        prepararAudio(blob, mime, dur, enviarJa);
       };
       gravInicio = Date.now(); gravador.start(1000);
-      btnMic.classList.add('gravando'); btnMic.title = 'Parar e anexar'; gravTempo.classList.add('on'); gravTempo.textContent = '0:00';
+      enviarAposParar = false;
+      btnMic.classList.add('gravando'); btnMic.title = 'Parar (o áudio fica pronto; clique no envelope para enviar)'; btnMic.innerHTML = ICO_PARAR;
+      els.btnEnviar.title = 'Parar e enviar o áudio'; gravTempo.classList.add('on'); gravTempo.textContent = '0:00';
       gravTimer = setInterval(function(){ var s = (Date.now() - gravInicio) / 1000; gravTempo.textContent = mmss(s); if (s >= AUDIO_MAX_SEG) pararGravacao(); }, 250);
     }).catch(function(){ alert('Sem acesso ao microfone. Permita o uso do microfone para o portal (no cadeado da barra de endereço) e tente de novo.'); });
   });
@@ -3259,19 +3317,21 @@
           function(e){ clearTimeout(to); throw e; });
     });
   }
-  function prepararAudio(blob, mime, dur){
+  function prepararAudio(blob, mime, dur, enviarJa){
     var ext = /mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
     novoAudio = { url: null, tipo: mime, duracao: Math.round(dur), tamanho: blob.size, blob: blob };
     var meu = novoAudio;
     audioPrev.src = URL.createObjectURL(blob); audioRow.classList.add('show');
-    audioSt.textContent = mmss(dur) + ' · enviando…';
-    els.btnEnviar.disabled = true; els.btnEnviar.title = 'Enviando áudio…'; subindoAnexo = true;
-    enviarAoTerminar = true;   // assim que terminar de subir, o áudio já sai (a transcrição vem depois, na própria mensagem)
+    audioSt.textContent = mmss(dur) + (enviarJa ? ' · enviando…' : ' · preparando…');
+    els.btnEnviar.title = enviarJa ? 'Enviando áudio…' : 'Enviar o áudio'; subindoAnexo = true;
+    // envelope durante a gravação: sai assim que terminar de subir; quadrado de parar: espera o envelope
+    // (clicar no envelope enquanto sobe também marca para sair assim que terminar)
+    enviarAoTerminar = !!enviarJa;
     var caminho = 'chat/' + activeId + '/' + myUid + '/' + Date.now() + '_audio.' + ext;
     uploadParaStorage(blob, caminho).then(function(url){
       if (novoAudio !== meu) return;
-      meu.url = url; audioSt.textContent = mmss(dur);
-      els.btnEnviar.disabled = false; els.btnEnviar.title = ''; anexoTerminou(true);
+      meu.url = url; audioSt.textContent = mmss(dur) + (enviarAoTerminar ? '' : ' · pronto — clique no envelope para enviar');
+      els.btnEnviar.disabled = false; els.btnEnviar.title = 'Enviar'; anexoTerminou(true);
     }).catch(function(err){
       if (novoAudio !== meu) return;
       limparComposerAudio(); els.btnEnviar.disabled = false; els.btnEnviar.title = ''; anexoTerminou(false);
@@ -3444,9 +3504,10 @@
           var atual = (c.naoLidoPor && c.naoLidoPor[myUid]) || 0;
           var anterior = naoLidoAnterior[c.id] || 0;
           var estaAberta = activeId === c.id && !document.hidden;
-          if (atual > anterior && c.ultimaMensagemAutor !== myUid && !estaAberta) {
+          if (atual > anterior && c.ultimaMensagemAutor !== myUid && !estaAberta && !marcadaPorMim[c.id]) {
             notificarNovaMensagem(c);
           }
+          if (atual === 0) delete marcadaPorMim[c.id];
         });
       }
       naoLidoAnterior = {};

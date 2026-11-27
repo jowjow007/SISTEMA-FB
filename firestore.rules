@@ -89,7 +89,10 @@ service cloud.firestore {
                       isAtivo() && request.auth.uid == userId
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cpf', 'rg', 'oab', 'estadoCivil',
                            'nacionalidade', 'telefone', 'endereco', 'emailAlternativo', 'dataIngresso', 'mustChangePassword',
-                           'pixTipo', 'pixChave', 'banco', 'agencia', 'conta', 'dadosBancariosEm', 'sugestoesNotificadas'])
+                           'pixTipo', 'pixChave', 'banco', 'agencia', 'conta', 'dadosBancariosEm', 'sugestoesNotificadas', 'email'])
+                      // e-mail de acesso (26/11/2026): só o que o próprio login já confirmou pelo link
+                      && (!('email' in request.resource.data.diff(resource.data).affectedKeys())
+                          || (request.auth.token.email_verified == true && request.resource.data.email == request.auth.token.email))
                       && (!('dataIngresso' in request.resource.data.diff(resource.data).affectedKeys())
                           || resource.data.get('dataIngresso', '') == '')
                       && request.resource.data.get('mustChangePassword', false) == false
