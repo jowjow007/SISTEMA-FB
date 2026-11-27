@@ -218,6 +218,8 @@ function ncSalvar(b) {
   }).then(function (d) {
     var dados = { condominio: nome, ficha: f, atualizadoPorUid: currentUser.uid, atualizadoPorNome: quem, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, n = parseInt(f.unidades, 10);
     if (n > 0) dados.unidades = n;
+    // o nome entra na lista da tela de cadastro (síndicos e conselheiros escolhem o condomínio)
+    db.collection('publico').doc('condominios').set({ nomes: firebase.firestore.FieldValue.arrayUnion(nome), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }).catch(function () {});
     return fcGravarFicha(slug, dados).then(function (semCpf) {
       CONDOMINIOS.length = 0; Array.prototype.push.apply(CONDOMINIOS, d.condominios);
       unidadesState.porSlug[slug] = Object.assign({}, unidadesState.porSlug[slug] || {}, { condominio: nome, ficha: semCpf }, n > 0 ? { unidades: n } : {});

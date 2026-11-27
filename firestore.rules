@@ -81,7 +81,11 @@ service cloud.firestore {
                       && request.resource.data.get('deptoAtual', '') == ''
                       && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'tabs', 'acesso', 'cpf', 'rg', 'oab',
                            'estadoCivil', 'nacionalidade', 'telefone', 'endereco', 'dataIngresso', 'pixTipo', 'pixChave',
-                           'banco', 'agencia', 'conta', 'deptoAtual', 'patrimonioVerTudo', 'createdAt'])
+                           'banco', 'agencia', 'conta', 'deptoAtual', 'patrimonioVerTudo', 'createdAt', 'pedidoCadastro'])
+                      // cadastro curto (27/11/2026): o que a pessoa pediu (cliente, síndico, conselho) — o admin aprova
+                      && (!('pedidoCadastro' in request.resource.data)
+                          || (request.resource.data.pedidoCadastro is map
+                              && request.resource.data.pedidoCadastro.get('tipo', '') in ['membro', 'cliente', 'sindico', 'conselheiro']))
                     );
       // a própria pessoa (ativa) só altera dados pessoais/bancários; papel, acesso, abas, remuneração, cargo,
       // permissões e visão do patrimônio são do admin. A data de entrada só pode ser preenchida enquanto vazia.
@@ -955,6 +959,14 @@ service cloud.firestore {
       return isAdmin() || (isEquipe() && exists(/databases/$(database)/documents/configPortal/abas)
                            && meuCadastro().get('tabs', []).hasAny([abaCondominios()])
                            && meuCadastro().get('subtabs', {}).get(abaCondominios(), []).hasAny(['sessoes-julgamento']));
+    }
+    // Nomes dos condomínios clientes para a tela de cadastro (aberta, sem login): só os nomes; o admin e quem
+    // cadastra condomínios mantêm a lista (27/11/2026)
+    match /publico/{docId} {
+      allow read: if docId == 'condominios';
+      allow write: if docId == 'condominios' && (isAdmin() || podeCadastrarCondo())
+                   && request.resource.data.keys().hasOnly(['nomes', 'atualizadoEm'])
+                   && request.resource.data.nomes is list && request.resource.data.nomes.size() <= 500;
     }
     match /configPortal/{docId} {
       allow read: if isAtivo();

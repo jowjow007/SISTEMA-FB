@@ -277,6 +277,25 @@
     padding:9px 11px;border-radius:8px;font-size:.82rem;margin-bottom:14px;display:none;
   }
   .hint{font-size:.72rem;color:var(--muted);margin-top:16px;line-height:1.5;}
+  /* cadastro: equipe do escritório × conselho do condomínio (27/11/2026) */
+  .cad-tipo{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:rgba(16,6,8,.55);border:1px solid rgba(255,255,255,.25);margin:4px 0 16px;}
+  .cad-tipo button{min-height:44px;border:none;border-radius:9px;background:transparent;color:rgba(255,255,255,.75);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;}
+  .cad-tipo button.on{background:var(--red);color:#fff;}
+  .cad-funcao{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .cad-funcao button{min-height:44px;border-radius:10px;border:1px solid rgba(255,255,255,.38);background:rgba(16,6,8,.62);color:#fff;font:inherit;font-size:.9rem;font-weight:600;cursor:pointer;}
+  .cad-funcao button.on{border:2px solid #f0c983;background:rgba(240,201,131,.16);color:#f6dca6;}
+  .cad-aceite{display:flex;gap:10px;align-items:flex-start;font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.85);margin:4px 0 14px;}
+  .cad-aceite input{width:20px;height:20px;flex:none;margin:1px 0 0;accent-color:#a8332c;}
+  #register-mode.modo-conselho .so-equipe, #register-mode:not(.modo-conselho) .so-conselho, #register-mode:not(.com-condo) .so-condo{display:none !important;}
+  .cad-pergunta{display:none;flex-direction:column;gap:10px;margin:6px 0 4px;}
+  #register-mode.perguntando .cad-pergunta{display:flex;}
+  #register-mode.perguntando #register-form, #register-mode.perguntando .cad-escolhido, #register-mode.perguntando .sub{display:none !important;}
+  .cad-pergunta p{margin:0 0 4px;color:rgba(255,255,255,.85);font-size:.95rem;}
+  .cad-pergunta button{min-height:56px;border-radius:12px;border:1px solid rgba(255,255,255,.38);background:rgba(16,6,8,.62);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer;text-align:left;padding:10px 16px;display:flex;flex-direction:column;gap:2px;}
+  .cad-pergunta button small{font-weight:400;font-size:.78rem;color:rgba(255,255,255,.7);}
+  .cad-pergunta button:hover,.cad-pergunta button:focus-visible{border-color:#f0c983;background:rgba(240,201,131,.14);outline:none;}
+  .cad-escolhido{font-size:.84rem;color:rgba(255,255,255,.85);margin:0 0 12px;}
+  .cad-escolhido a{color:#f0c983;}
   .login-box .field label{color:rgba(255,255,255,.7);}
   /* Campos do login (computador e celular): vidro escuro com letra branca semi-negrito —
      contrasta com qualquer parte da foto de fundo e não muda de cor ao digitar.
@@ -1277,7 +1296,16 @@
     </div>
     <div id="register-mode" style="display:none;">
       <h1>Criar conta</h1>
-      <p class="sub">Seu cadastro é criado na hora, mas nenhuma aba fica visível até o administrador liberar seu acesso.</p>
+      <div class="cad-pergunta" role="group" aria-label="Tipo de cadastro">
+        <p>Antes de começar: você é…</p>
+        <button type="button" data-cad-tipo="membro">Membro do escritório<small>Advogados, estagiários e equipe da Fonseca e Braga</small></button>
+        <button type="button" data-cad-tipo="cliente">Cliente<small>Acompanhar os serviços do escritório</small></button>
+        <button type="button" data-cad-tipo="sindico">Síndico(a)<small>Síndico de um condomínio atendido pelo escritório</small></button>
+        <button type="button" data-cad-tipo="conselheiro">Conselho do condomínio<small>Conselheiro(a) de um condomínio atendido pelo escritório</small></button>
+      </div>
+      <div class="cad-escolhido">Cadastro como <b id="cad-tipo-nome">Membro do escritório</b> · <a href="#" id="cad-trocar">trocar</a></div>
+      <p class="sub so-equipe">Seu cadastro é criado na hora, mas nenhuma aba fica visível até o administrador liberar seu acesso.</p>
+      <p class="sub so-conselho">Cadastro rápido. O escritório confere e libera o seu acesso.</p>
       <div class="error-msg" id="register-error"></div>
       <form id="register-form">
         <div class="field">
@@ -1288,11 +1316,11 @@
           <label>Sobrenome<span class="obrig">*</span></label>
           <input type="text" id="register-surname" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>CPF<span class="obrig">*</span></label>
           <input type="text" inputmode="numeric" id="register-cpf" placeholder="000.000.000-00" maxlength="14" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>RG<span class="obrig">*</span></label>
           <div style="display:flex;gap:8px;">
             <input type="text" inputmode="numeric" id="register-rg" placeholder="Número (se houver)" style="flex:1.6;">
@@ -1303,7 +1331,7 @@
             </select>
           </div>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>OAB <span style="opacity:.7;">(opcional)</span></label>
           <div style="display:flex;gap:8px;">
             <input type="text" inputmode="numeric" id="register-oab" placeholder="Número" style="flex:2;">
@@ -1313,7 +1341,7 @@
             </select>
           </div>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Estado civil<span class="obrig">*</span></label>
           <select id="register-estado-civil" required>
             <option value="" disabled selected>Selecione</option>
@@ -1322,7 +1350,7 @@
             <option value="uniao_estavel">União estável</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Nacionalidade<span class="obrig">*</span></label>
           <input type="text" id="register-nacionalidade" list="register-nacionalidade-opcoes" placeholder="Ex: brasileira" required>
           <datalist id="register-nacionalidade-opcoes">
@@ -1330,26 +1358,34 @@
             <option value="portuguesa"></option><option value="português"></option>
           </datalist>
         </div>
+        <div class="field so-condo">
+          <label>Condomínio<span class="obrig">*</span></label>
+          <select id="register-condominio"><option value="">Carregando os condomínios…</option></select>
+        </div>
+        <div class="field so-condo">
+          <label>Sua unidade (bloco e número)</label>
+          <input type="text" id="register-unidade" placeholder="Ex.: Bloco 2, nº 807">
+        </div>
         <div class="field">
-          <label>E-mail<span class="obrig">*</span></label>
+          <label><span class="so-equipe">E-mail</span><span class="so-conselho">E-mail (será o seu login)</span><span class="obrig">*</span></label>
           <input type="email" id="register-email" autocomplete="username" required>
         </div>
         <div class="field">
-          <label>Telefone<span class="obrig">*</span></label>
+          <label><span class="so-equipe">Telefone</span><span class="so-conselho">Celular (WhatsApp)</span><span class="obrig">*</span></label>
           <input type="tel" inputmode="numeric" id="register-telefone" placeholder="(00) 00000-0000" maxlength="15" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Endereço<span class="obrig">*</span></label>
           <input type="text" id="register-endereco" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Chave PIX (para receber pagamentos)<span class="obrig">*</span></label>
           <div style="display:flex;gap:8px;">
             <select id="register-pix-tipo" style="flex:1;"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="aleatoria">Chave aleatória</option></select>
             <input type="text" id="register-pix" placeholder="sua chave PIX" style="flex:2;" required>
           </div>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Banco, agência e conta <span style="opacity:.7;">(opcional)</span></label>
           <div style="display:flex;gap:8px;">
             <input type="text" id="register-banco" placeholder="Banco" style="flex:1.6;">
@@ -1361,15 +1397,15 @@
           <label>Senha<span class="obrig">*</span></label>
           <input type="password" id="register-password" autocomplete="new-password" placeholder="mín. 6 caracteres" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Data de nascimento<span class="obrig">*</span></label>
           <input type="date" id="register-birthdate" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Data de ingresso no escritório<span class="obrig">*</span></label>
           <input type="date" id="register-ingresso" required>
         </div>
-        <div class="field">
+        <div class="field so-equipe">
           <label>Foto (para o mural de aniversariantes)<span class="obrig">*</span></label>
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="register-photo-preview" style="width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line-strong);flex:0 0 auto;background-size:cover;background-position:center;"></div>
@@ -1381,7 +1417,8 @@
             <input type="file" id="register-photo-cam" accept="image/*" capture="user" hidden>
           </div>
         </div>
-        <button type="submit" class="btn" id="register-submit">Criar conta</button>
+        <label class="cad-aceite so-conselho"><input type="checkbox" id="register-aceite"><span>Li e concordo que meus dados sejam usados só para o meu acesso ao portal do escritório (LGPD) e que o que eu vir nele é sigiloso.</span></label>
+        <button type="submit" class="btn" id="register-submit"><span class="so-equipe">Criar conta</span><span class="so-conselho">Enviar cadastro</span></button>
       </form>
       <p class="hint">Já tem uma conta? <a href="#" id="show-login">Voltar para o login</a>.</p>
     </div>
@@ -1455,7 +1492,7 @@
       <div class="user-menu-dropdown" id="user-menu-dropdown"></div>
     </div>
     <div class="logout-wrap">
-      <span class="version-tag">v297</span>
+      <span class="version-tag">v298</span>
     </div>
   </div>
   <div id="body-wrap">
@@ -2441,7 +2478,47 @@
   });
 
   // ---------- Alternar login / cadastro ----------
+  // cadastro (27/11/2026): ao abrir, pergunta rápida — Membro do escritório (cadastro completo de sempre),
+  // Cliente, Síndico ou Conselho (cadastro curto). Síndico e Conselho escolhem o condomínio numa lista que vem
+  // de publico/condominios (só os nomes, mantida pelo portal quando um condomínio é cadastrado).
+  const CAD_NOMES = { membro: 'Membro do escritório', cliente: 'Cliente', sindico: 'Síndico(a)', conselheiro: 'Conselho do condomínio' };
+  let cadTipo = 'membro';
+  (function(){
+    const box = document.getElementById('register-mode');
+    function tipo(t){
+      cadTipo = t;
+      const curto = t !== 'membro', condo = t === 'sindico' || t === 'conselheiro';
+      box.classList.remove('perguntando');
+      box.classList.toggle('modo-conselho', curto);
+      box.classList.toggle('com-condo', condo);
+      document.getElementById('cad-tipo-nome').textContent = CAD_NOMES[t];
+      box.querySelectorAll('.so-equipe [required], .so-equipe [data-obrig]').forEach(function(el){
+        if (curto) { if (el.required) { el.dataset.obrig = '1'; el.required = false; } }
+        else if (el.dataset.obrig) { el.required = true; delete el.dataset.obrig; }
+      });
+      if (condo) carregarCondominiosCadastro();
+      const f = document.getElementById('register-name'); if (f) setTimeout(function(){ try { f.focus(); } catch (e) {} }, 30);
+    }
+    box.querySelectorAll('[data-cad-tipo]').forEach(function(b){ b.addEventListener('click', function(){ tipo(b.dataset.cadTipo); }); });
+    document.getElementById('cad-trocar').addEventListener('click', function(e){ e.preventDefault(); box.classList.add('perguntando'); });
+    window.__cadTipo = tipo;
+  })();
+  let cadCondosCarregados = false;
+  function carregarCondominiosCadastro(){
+    const sel = document.getElementById('register-condominio');
+    if (cadCondosCarregados) return;
+    db.collection('publico').doc('condominios').get().then(function(d){
+      const nomes = (d.exists && Array.isArray(d.data().nomes)) ? d.data().nomes.slice() : [];
+      nomes.sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
+      sel.innerHTML = '<option value="">Escolha o seu condomínio</option>' + nomes.map(function(n){ return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>'; }).join('')
+        + '<option value="__outro">Meu condomínio não está na lista</option>';
+      cadCondosCarregados = nomes.length > 0;
+    }).catch(function(){
+      sel.innerHTML = '<option value="">Não consegui carregar a lista</option><option value="__outro">Meu condomínio não está na lista</option>';
+    });
+  }
   els.showRegister.addEventListener('click', function(e){
+    document.getElementById('register-mode').classList.add('perguntando');
     e.preventDefault();
     els.loginMode.style.display = 'none';
     els.registerMode.style.display = 'block';
@@ -2545,6 +2622,62 @@
 
   // ---------- Cadastro (auto-atendimento, sem abas por padrão) ----------
   let cadastroEmAndamento = false;   // ver o submit do cadastro e o onAuthStateChanged
+  // cadastro curto (cliente, síndico, conselho): sem documentos, foto, banco nem data de ingresso; o pedido
+  // (tipo e condomínio) fica em users.pedidoCadastro e o admin aprova com um clique (Usuários › Aprovar acesso)
+  function enviarCadastroCurto(primeiroNome, sobrenome, nome, email, senha, telefone){
+    const condo = cadTipo === 'sindico' || cadTipo === 'conselheiro';
+    const sel = document.getElementById('register-condominio'), aceite = document.getElementById('register-aceite');
+    const vazios = [];
+    if (!primeiroNome) vazios.push(els.registerName);
+    if (!sobrenome) vazios.push(els.registerSurname);
+    if (!email) vazios.push(els.registerEmail);
+    if (senha.length < 6) vazios.push(els.registerPassword);
+    if (!telefone) vazios.push(els.registerTelefone);
+    if (condo && !sel.value) vazios.push(sel);
+    if (!aceite.checked) vazios.push(aceite.parentNode);
+    if (vazios.length) {
+      piscarCampos(vazios);
+      els.registerError.textContent = !aceite.checked && vazios.length === 1 ? 'Marque a caixa de concordância (LGPD) para enviar.' : 'Preencha os campos obrigatórios em destaque (com *).';
+      els.registerError.style.display = 'block';
+      return;
+    }
+    const nomeCondo = condo && sel.value !== '__outro' ? sel.value : '';
+    const pedido = { tipo: cadTipo, condominioNome: nomeCondo, condominioSlug: nomeCondo ? slugify(nomeCondo) : '',
+      condominioNaLista: !condo || sel.value !== '__outro', unidade: (document.getElementById('register-unidade').value || '').trim().slice(0, 80) };
+    els.registerSubmit.disabled = true;
+    cadastroEmAndamento = true;
+    let contaCriada = null;
+    auth.createUserWithEmailAndPassword(email, senha).then(function(cred){
+      contaCriada = cred.user;
+      const uid = cred.user.uid;
+      return Promise.all([
+        db.collection('users').doc(uid).set({
+          email: email, displayName: nome, role: 'membro', tabs: [], acesso: 'pendente', telefone: telefone,
+          deptoAtual: '', patrimonioVerTudo: false, pedidoCadastro: pedido,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        db.collection('perfis').doc(uid).set({ displayName: nome, email: email, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+      ]);
+    }).then(function(){
+      window.__portalSaidaLocal = true;
+      return auth.signOut().catch(function(){}).then(function(){
+        cadastroEmAndamento = false;
+        els.registerForm.reset();
+        els.registerMode.style.display = 'none';
+        els.loginMode.style.display = 'block';
+        els.loginError.textContent = 'Seu cadastro foi recebido. O escritório vai conferir e liberar o seu acesso.';
+        els.loginError.style.display = 'block';
+      });
+    }).catch(function(err){
+      if (contaCriada) window.__portalSaidaLocal = true;
+      const desfazer = contaCriada ? contaCriada.delete().catch(function(){ return auth.signOut(); }) : Promise.resolve();
+      return desfazer.catch(function(){}).then(function(){
+        cadastroEmAndamento = false;
+        els.registerError.textContent = traduzErro(err.code);
+        els.registerError.style.display = 'block';
+      });
+    }).finally(function(){ els.registerSubmit.disabled = false; });
+  }
   els.registerForm.addEventListener('submit', function(e){
     e.preventDefault();
     els.registerError.style.display = 'none';
@@ -2571,6 +2704,7 @@
     const pixEl = document.getElementById('register-pix');
     const pixChave = pixEl.value.trim();
 
+    if (cadTipo !== 'membro') return enviarCadastroCurto(primeiroNome, sobrenome, nome, email, senha, telefone);
     const camposObrigatorios = [
       { el: els.registerName, ok: !!primeiroNome },
       { el: els.registerSurname, ok: !!sobrenome },
@@ -2683,7 +2817,7 @@
       });
     }).finally(function(){
       els.registerSubmit.disabled = false;
-      els.registerSubmit.textContent = 'Criar conta';
+      els.registerSubmit.innerHTML = '<span class="so-equipe">Criar conta</span><span class="so-conselho">Enviar cadastro</span>';
     });
   });
 
@@ -4002,10 +4136,24 @@
     AREAS_RESTRITAS[t.id] = Object.assign({}, AREAS_RESTRITAS[t.id], { subabas: { 'sessoes-julgamento': 'Condomínios › Sessões de Julgamento' } });
     if (currentProfile.role !== 'admin' || condoAbaGravada === t.id) return;
     condoAbaGravada = t.id;
+    publicarNomesCondominios();
     const ref = db.collection('configPortal').doc('abas');
     ref.get().then(function(d){
       if (!d.exists || d.data().condominios !== t.id) return ref.set({ condominios: t.id }, { merge: true });
     }).catch(function(e){ condoAbaGravada = null; console.warn('configPortal/abas:', e.message); });
+  }
+  // Cadastro de síndico/conselho (27/11/2026): a tela de cadastro (sem login) lista os condomínios a partir de
+  // publico/condominios, que tem SÓ os nomes. Quando o admin entra, o portal confere com a lista de clientes
+  // (dadosPrivados/condominios) e atualiza; o "Novo Condomínio" também acrescenta o nome na hora.
+  function publicarNomesCondominios(){
+    Promise.all([db.collection('dadosPrivados').doc('condominios').get(), db.collection('publico').doc('condominios').get().catch(function(){ return null; })]).then(function(r){
+      if (!r[0].exists) return;
+      let lista = []; try { lista = (JSON.parse(r[0].data().json || '{}').condominios || []).map(function(c){ return String(c.nome || '').trim(); }).filter(Boolean); } catch (e) { return; }
+      lista = lista.filter(function(n, i){ return lista.indexOf(n) === i; }).sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); });
+      const atual = r[1] && r[1].exists ? (r[1].data().nomes || []).slice().sort(function(a, b){ return a.localeCompare(b, 'pt-BR'); }) : null;
+      if (atual && JSON.stringify(atual) === JSON.stringify(lista)) return;
+      return db.collection('publico').doc('condominios').set({ nomes: lista, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+    }).catch(function(e){ console.warn('publico/condominios:', e.message); });
   }
   function subscribeTabsCatalog(){
     db.collection('tabs').orderBy('order').onSnapshot(function(snap){
@@ -4215,6 +4363,14 @@
     try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage('piscar'); } catch (e) {}
     if (piscaTimer) return;
     piscaFase = false;
+    // app do Windows (27/11/2026): o aviso é o selo que "respira" na barra de tarefas; o título fica parado (o letreiro
+    // correndo junto deixava a barra desordenada)
+    if (window.chrome && window.chrome.webview){
+      const n0 = Math.max(0, mhChatUnread | 0);
+      document.title = '(' + (n0 > 99 ? '99+' : n0) + ') Chat · ' + (n0 === 1 ? 'nova mensagem' : 'novas mensagens');
+      piscaTimer = { app: true };
+      return;
+    }
     // letreiro: "(1) Chat · nova mensagem" corre no título, uma letra a cada 300 ms; o ícone pisca a cada ~1 s
     let tique = 0, desloc = -1;
     const passo = function(){
@@ -4246,7 +4402,7 @@
   }
   function pararPiscarChat(){
     if (!piscaTimer) return;
-    if (piscaTimer.worker) piscaTimer.worker.postMessage(0); else clearInterval(piscaTimer.id);
+    if (piscaTimer.worker) piscaTimer.worker.postMessage(0); else if (piscaTimer.id) clearInterval(piscaTimer.id);
     piscaTimer = null; piscaFase = false;
     document.title = tituloComNumero();
     const link = document.querySelector('link[rel~="icon"]');
@@ -5452,7 +5608,9 @@
     const n = (u.tabs || []).filter(function(id){ return tabsCatalog.some(function(t){ return t.id === id; }); }).length;
     return '<b>' + n + '</b> de ' + tabsCatalog.length;
   }
+  let usuariosAdmin = [];
   function renderUsersTable(users){
+    usuariosAdmin = users;
     const tbody = document.getElementById('users-tbody');
     pendingCount = users.filter(acessoPendente).length;
     updatePendingBadge();
@@ -5468,6 +5626,9 @@
       const pendente = acessoPendente(u);
       const situacao = u.acesso === 'bloqueado' ? '<span class="chip chip-pending">⛔ Bloqueado</span> '
         : (u.acesso === 'pendente' ? '<span class="chip chip-pending">⏳ Aguardando aprovação</span> '
+          + (u.pedidoCadastro && u.pedidoCadastro.tipo ? '<span class="chip chip-pending" title="O que a pessoa escolheu no cadastro">📝 ' + escapeHtml(CAD_NOMES[u.pedidoCadastro.tipo] || u.pedidoCadastro.tipo)
+            + (u.pedidoCadastro.condominioNome ? ' — ' + escapeHtml(u.pedidoCadastro.condominioNome) : (u.pedidoCadastro.tipo === 'sindico' || u.pedidoCadastro.tipo === 'conselheiro' ? ' — condomínio fora da lista' : ''))
+            + (u.pedidoCadastro.unidade ? ' (' + escapeHtml(u.pedidoCadastro.unidade) + ')' : '') + '</span> ' : '')
         : (!u.acesso ? '<span class="chip" title="Rode a migração de acesso (tools/admin-seguranca)">sem status</span> ' : ''));
       // até 6 abas à vista; o resto abre no "+N" (a linha não fica gigante)
       const VISIVEIS = 6, abasU = u.tabs || [];
@@ -5996,6 +6157,29 @@
 
   // Aprovação explícita: é o campo acesso == 'ativo' (e não as abas) que libera os dados nas regras do Firestore.
   window.__aprovarUser = function(uid){
+    const u = (usuariosAdmin || []).find(function(x){ return x.uid === uid; }) || {};
+    const p = u.pedidoCadastro || null;
+    // cadastro curto (cliente, síndico, conselho): aprova já com o tipo pedido; síndico/conselho ganham o
+    // vínculo com o condomínio e a aba Condomínios (onde ficam as Sessões de Julgamento)
+    if (p && p.tipo && p.tipo !== 'membro' && (!u.role || u.role === 'membro')) {
+      const condo = (p.tipo === 'sindico' || p.tipo === 'conselheiro') && p.condominioSlug;
+      if (!confirm('Aprovar ' + (u.displayName || u.email || '') + ' como ' + (CAD_NOMES[p.tipo] || p.tipo).toUpperCase()
+          + (condo ? ' do condomínio ' + p.condominioNome : '') + '?'
+          + (condo ? '\n\nA pessoa recebe a aba Condomínios e vê só as Sessões de Julgamento liberadas desse condomínio.' : '\n\nDepois, libere as abas em "Editar abas".'))) return;
+      const upd = { acesso: 'ativo', role: p.tipo, acessoAprovadoPor: currentProfile.uid, acessoAprovadoEm: firebase.firestore.FieldValue.serverTimestamp() };
+      const b = db.batch();
+      const pronto = condo ? db.collection('configPortal').doc('abas').get().then(function(a){
+        const abaCondo = a.exists ? a.data().condominios : null;
+        const vinc = {}; vinc[p.condominioSlug] = p.tipo; const nomes = {}; nomes[p.condominioSlug] = p.condominioNome;
+        upd.conselho = vinc;
+        if (abaCondo) upd.tabs = firebase.firestore.FieldValue.arrayUnion(abaCondo);
+        b.set(db.collection('conselhoMembros').doc(uid), { nome: u.displayName || '', email: u.email || '', condominios: vinc, nomesCondominios: nomes,
+          atualizadoPor: currentProfile.uid, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+      }) : Promise.resolve();
+      pronto.then(function(){ b.update(db.collection('users').doc(uid), upd); return b.commit(); })
+        .catch(function(err){ alert('Não foi possível aprovar: ' + err.message); });
+      return;
+    }
     if (!confirm('Aprovar o acesso deste usuário ao portal?\nDepois, libere as abas em "Editar abas".')) return;
     db.collection('users').doc(uid).update({ acesso: 'ativo', acessoAprovadoPor: currentProfile.uid,
       acessoAprovadoEm: firebase.firestore.FieldValue.serverTimestamp() })

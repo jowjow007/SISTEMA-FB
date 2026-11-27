@@ -21,8 +21,8 @@ using Microsoft.Win32;
 [assembly: AssemblyTitle("Portal FB")]
 [assembly: AssemblyProduct("Portal Fonseca e Braga")]
 [assembly: AssemblyCompany("Fonseca e Braga")]
-[assembly: AssemblyVersion("297.0.0.0")]   // VERSAO_PORTAL
-[assembly: AssemblyFileVersion("297.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyVersion("298.0.0.0")]   // VERSAO_PORTAL
+[assembly: AssemblyFileVersion("298.0.0.0")]   // VERSAO_PORTAL
 
 namespace PortalFB
 {
@@ -41,7 +41,7 @@ namespace PortalFB
         public const string CHAVE = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PortalFB";
 #endif
         public const string NOME = "Portal FB";
-        public const string VERSAO = "297";   // VERSAO_PORTAL (publicar.ps1)
+        public const string VERSAO = "298";   // VERSAO_PORTAL (publicar.ps1)
         public static readonly string ExeInstalado = Path.Combine(Pasta, "PortalFB.exe");
 
         // Nitidez: sem isto o Windows acha que o app não sabe lidar com a escala da tela (125%, 150%…),
@@ -528,17 +528,68 @@ namespace PortalFB
         [DllImport("user32.dll")] static extern bool FlashWindowEx(ref FLASHWINFO info);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
 
-        // mensagem nova com o app em segundo plano: o botão da barra de tarefas pisca até a pessoa abrir a janela
+        // mensagem nova com o app em segundo plano (27/11/2026): em vez do pisca-pisca laranja do Windows (irregular),
+        // o selo vermelho com o número "respira" sobre o ícone da barra de tarefas (acende e apaga devagar, ~2 s por
+        // ciclo) até a pessoa abrir a janela; aí volta ao selo parado.
+        static System.Windows.Forms.Timer respiro;
+        static IntPtr[] quadros;
+        static string quadrosDe = null;
+        static int fase = 0;
+        static Form janelaRespiro;
+        const int QUADROS = 24;
         public static void Piscar(Form janela)
         {
             try
             {
-                if (GetForegroundWindow() == janela.Handle) return;
-                var f = new FLASHWINFO { hwnd = janela.Handle, dwFlags = 2 | 12, uCount = 0, dwTimeout = 0 };   // FLASHW_TRAY | FLASHW_TIMERNOFG
-                f.cbSize = (uint)Marshal.SizeOf(typeof(FLASHWINFO));
-                FlashWindowEx(ref f);
+                if (GetForegroundWindow() == janela.Handle || ultimo <= 0) return;
+                janelaRespiro = janela;
+                if (respiro == null)
+                {
+                    respiro = new System.Windows.Forms.Timer { Interval = 85 };
+                    respiro.Tick += delegate { Respirar(); };
+                    janela.Activated += delegate { PararRespiro(); };
+                }
+                if (!respiro.Enabled) { fase = 0; respiro.Start(); }
             }
             catch { }
+        }
+        static void Respirar()
+        {
+            try
+            {
+                if (janelaRespiro == null || ultimo <= 0 || GetForegroundWindow() == janelaRespiro.Handle) { PararRespiro(); return; }
+                string txt = ultimo > 99 ? "99+" : ultimo.ToString();
+                if (quadrosDe != txt)
+                {
+                    LimparQuadros();
+                    quadros = new IntPtr[QUADROS];
+                    for (int i = 0; i < QUADROS; i++)
+                    {
+                        double k = (1 - Math.Cos(2 * Math.PI * i / QUADROS)) / 2;   // 0 → 1 → 0, suave
+                        quadros[i] = Desenhar(txt, (int)Math.Round(70 + 185 * k));
+                    }
+                    quadrosDe = txt;
+                }
+                if (barra == null) { barra = (ITaskbarList3)new TaskbarListCom(); barra.HrInit(); }
+                barra.SetOverlayIcon(janelaRespiro.Handle, quadros[fase % QUADROS], ultimo + (ultimo == 1 ? " mensagem não lida" : " mensagens não lidas"));
+                fase++;
+            }
+            catch { PararRespiro(); }
+        }
+        static void PararRespiro()
+        {
+            try
+            {
+                if (respiro != null) respiro.Stop();
+                if (janelaRespiro != null && barra != null)
+                    barra.SetOverlayIcon(janelaRespiro.Handle, ultimo > 0 ? iconeAtual : IntPtr.Zero, ultimo > 0 ? ultimo + (ultimo == 1 ? " mensagem não lida" : " mensagens não lidas") : "");
+            }
+            catch { }
+        }
+        static void LimparQuadros()
+        {
+            if (quadros != null) foreach (var q in quadros) if (q != IntPtr.Zero) DestroyIcon(q);
+            quadros = null; quadrosDe = null;
         }
         static ITaskbarList3 barra;
         static IntPtr iconeAtual = IntPtr.Zero;
@@ -556,11 +607,14 @@ namespace PortalFB
                 if (iconeAtual != IntPtr.Zero) DestroyIcon(iconeAtual);
                 iconeAtual = novo;
                 ultimo = n;
+                if (n == 0) PararRespiro();
             }
             catch { /* Windows sem barra de tarefas compatível: fica só o número no título da janela */ }
         }
 
-        static IntPtr Desenhar(string txt)
+        static IntPtr Desenhar(string txt) { return Desenhar(txt, 255); }
+        // alfa: 255 = selo cheio; menor = mais transparente (usado na respiração)
+        static IntPtr Desenhar(string txt, int alfa)
         {
             int lado = Math.Max(16, (int)Math.Round(16 * Programa.Escala()));   // o selo tem 16 px na escala 100%
             using (var bmp = new Bitmap(lado, lado, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
@@ -569,12 +623,13 @@ namespace PortalFB
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 g.Clear(Color.Transparent);
-                using (var fundo = new SolidBrush(Color.FromArgb(229, 57, 53))) g.FillEllipse(fundo, 0, 0, lado - 1, lado - 1);
-                using (var borda = new Pen(Color.White, Math.Max(1f, lado / 16f))) g.DrawEllipse(borda, 0.5f, 0.5f, lado - 2, lado - 2);
+                using (var fundo = new SolidBrush(Color.FromArgb(alfa, 229, 57, 53))) g.FillEllipse(fundo, 0, 0, lado - 1, lado - 1);
+                using (var borda = new Pen(Color.FromArgb(alfa, 255, 255, 255), Math.Max(1f, lado / 16f))) g.DrawEllipse(borda, 0.5f, 0.5f, lado - 2, lado - 2);
                 float tam = lado * (txt.Length > 2 ? 0.36f : txt.Length > 1 ? 0.48f : 0.62f);
                 using (var fonte = new Font("Segoe UI", tam, FontStyle.Bold, GraphicsUnit.Pixel))
                 using (var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-                    g.DrawString(txt, fonte, Brushes.White, new RectangleF(0, 0, lado, lado + 1), fmt);
+                using (var letra = new SolidBrush(Color.FromArgb(Math.Min(255, alfa + 40), 255, 255, 255)))
+                    g.DrawString(txt, fonte, letra, new RectangleF(0, 0, lado, lado + 1), fmt);
                 return bmp.GetHicon();
             }
         }

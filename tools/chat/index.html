@@ -99,6 +99,14 @@
     background-size:100% 100%;background-position:center;
   }
   .btn-arquivadas-pill:hover{filter:brightness(1.3);}
+  /* 27/11/2026: no lugar das arquivadas fica o filtro das prioritárias (estrela de Fixar) */
+  .btn-prio-pill{height:30px;padding:0 14px;border-radius:20px;border:1px solid #c9463c;cursor:pointer;color:#fff;font-size:.74rem;font-weight:700;
+    background:linear-gradient(180deg,#5c1a20,#3a0e14);display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .btn-prio-pill:hover{filter:brightness(1.25);}
+  .btn-prio-pill.on{box-shadow:0 0 0 2px var(--gold);}
+  .small-link-btn.on-arq{box-shadow:0 0 0 2px var(--gold);}
+  #btn-arq-celular{display:none;}
+  @media(max-width:720px){ #btn-arq-celular{display:inline-flex;margin-left:auto;} }
   .btn-arquivadas-pill.on{box-shadow:0 0 0 2px var(--gold);border-radius:20px;}
   .arquivadas-badge{
     position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;
@@ -552,13 +560,14 @@
       <div class="sidebar-head-top">
         <button class="icon-btn" id="btn-notif" title="Ativar notificações"></button>
         <h1>Chat Interno</h1>
+        <button class="small-link-btn" id="btn-arq-celular" type="button" title="Ver arquivadas">Arquivadas <span class="arq-qtd"></span></button>
       </div>
       <div class="search-row">
         <input type="text" id="busca-conversas" placeholder="Buscar conversas ou etiquetas...">
       </div>
       <div class="type-tabs" id="type-tabs">
         <button class="type-tab active" type="button" data-tipo="todos">Todos</button>
-        <button class="type-tab" type="button" data-tipo="prioritaria">Prioritária</button>
+        <button class="type-tab" type="button" data-tipo="naolidas">Não lidas</button>
       </div>
       <div class="tag-filter-row" id="tag-filter-row"></div>
       <div class="sidebar-actions-row">
@@ -568,8 +577,7 @@
           <span class="arquivadas-badge" id="etiquetas-filtro-badge" style="display:none;"></span>
         </div>
         <div class="btn-arquivadas-wrap">
-          <button class="btn-arquivadas-pill" id="btn-ver-arquivadas" title="Ver arquivadas" aria-label="Ver arquivadas"></button>
-          <span class="arquivadas-badge" id="arquivadas-badge" style="display:none;"></span>
+          <button class="btn-prio-pill" id="btn-prioritarias" type="button" title="Ver só as prioritárias (conversas fixadas com a estrela)" aria-pressed="false">★ Prioritárias</button>
         </div>
       </div>
     </div>
@@ -580,7 +588,7 @@
   <section class="thread" id="thread">
     <div class="thread-empty" id="thread-empty">
       <div class="big"></div>
-      <div>Selecione uma conversa ou inicie uma nova.</div>
+      <div>Selecione uma conversa ou inicie uma nova.<br><button type="button" class="small-link-btn" id="btn-arq-vazio" style="margin-top:12px;">Ver arquivadas <span class="arq-qtd"></span></button></div>
     </div>
 
     <div id="thread-active" style="display:none;flex:1;flex-direction:column;min-height:0;">
@@ -592,6 +600,7 @@
         </div>
         <div class="thread-tags-row">
           <button class="small-link-btn" id="btn-busca-conv" title="Procurar nesta conversa"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg> Procurar</button>
+          <button class="small-link-btn" id="btn-ver-arquivadas" type="button" title="Ver arquivadas">Arquivadas <span class="arq-qtd"></span></button>
           <button class="small-link-btn" id="btn-pin"></button>
           <button class="small-link-btn" id="btn-etiquetas"></button>
           <button class="small-link-btn" id="btn-editar-grupo" style="display:none;"></button>
@@ -831,7 +840,6 @@
     btnArquivar: document.getElementById('btn-arquivar'),
     btnExcluirConversa: document.getElementById('btn-excluir-conversa'),
     btnVerArquivadas: document.getElementById('btn-ver-arquivadas'),
-    arquivadasBadge: document.getElementById('arquivadas-badge'),
     msgList: document.getElementById('msg-list'),
     photoPreviewRow: document.getElementById('photo-preview-row'),
     photoPreviewImg: document.getElementById('photo-preview-img'),
@@ -1101,7 +1109,8 @@
   var editingTagId = null;    // etiqueta em edição no modal, ou null = criando nova
   var replyTarget = null;     // mensagem sendo respondida
   var verArquivadas = false;  // false = lista normal, true = mostrando só as arquivadas
-  var filtroTipo = 'todos';   // 'todos' | 'prioritaria' (marcadas com a estrela de Fixar)
+  var filtroTipo = 'todos';   // 'todos' | 'naolidas'
+  var soPrioritarias = false; // pílula ★ Prioritárias (marcadas com a estrela de Fixar)
   var novaFotoGrupoDataUrl = null;  // foto escolhida ao criar um grupo novo
   var edicaoGrupoFotoDataUrl = null; // foto escolhida ao editar um grupo existente
 
@@ -1422,7 +1431,8 @@
       if (conversaExcluida(c)) return false;
       var arquivada = !!(tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada);
       if (arquivada !== verArquivadas) return false;
-      if (filtroTipo === 'prioritaria' && !(tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada)) return false;
+      if (soPrioritarias && !(tagsPorConversa[c.id] && tagsPorConversa[c.id].fixada)) return false;
+      if (filtroTipo === 'naolidas' && !((c.naoLidoPor && c.naoLidoPor[myUid]) > 0) && c.id !== activeId) return false;
       var tagIds = (tagsPorConversa[c.id] && tagsPorConversa[c.id].etiquetasIds) || [];
       if (filtroAtivo.length && !filtroAtivo.some(function(id){ return tagIds.indexOf(id) !== -1; })) return false;
       if (!termo) return true;
@@ -1468,14 +1478,15 @@
     var qtdArquivadas = conversas.filter(function(c){
       return !conversaExcluida(c) && tagsPorConversa[c.id] && tagsPorConversa[c.id].arquivada;
     }).length;
-    els.btnVerArquivadas.title = verArquivadas ? 'Ver conversas ativas' : 'Ver arquivadas';
-    els.btnVerArquivadas.classList.toggle('on', verArquivadas);
-    if (!verArquivadas && qtdArquivadas > 0){
-      els.arquivadasBadge.textContent = qtdArquivadas;
-      els.arquivadasBadge.style.display = 'inline-block';
-    } else {
-      els.arquivadasBadge.style.display = 'none';
-    }
+    ['btn-ver-arquivadas', 'btn-arq-celular', 'btn-arq-vazio'].forEach(function(id){
+      var b = document.getElementById(id); if (!b) return;
+      b.title = verArquivadas ? 'Voltar para as conversas ativas' : 'Ver arquivadas';
+      b.classList.toggle('on-arq', verArquivadas);
+      b.firstChild.nodeValue = verArquivadas ? '← Ativas ' : (id === 'btn-arq-vazio' ? 'Ver arquivadas ' : 'Arquivadas ');
+      var q = b.querySelector('.arq-qtd'); if (q) q.textContent = (!verArquivadas && qtdArquivadas > 0) ? '(' + qtdArquivadas + ')' : '';
+    });
+    var bp = document.getElementById('btn-prioritarias');
+    if (bp) { bp.classList.toggle('on', soPrioritarias); bp.setAttribute('aria-pressed', soPrioritarias ? 'true' : 'false'); }
   }
 
   var htmlConvList = '', convListApertada = false, convListPendente = false;
@@ -1499,6 +1510,8 @@
       htmlConvList = '';
       els.convList.innerHTML = '<div class="conv-empty">' + (verArquivadas
         ? 'Nenhuma conversa arquivada.'
+        : filtroTipo === 'naolidas' ? 'Nenhuma conversa não lida.'
+        : soPrioritarias ? 'Nenhuma conversa prioritária. Marque com a estrela (Fixar).'
         : 'Nenhuma conversa ainda. Toque em "+" para começar.') + '</div>';
       return;
     }
@@ -1599,6 +1612,7 @@
     acoesSheet.innerHTML = '<div class="titulo">' + escapeHtml(nome) + '</div>'
       + (naConversa ? '' : '<button type="button" data-op="' + (naoLidas ? 'lida' : 'naolida') + '">' + icoSvg('check', 18) + (naoLidas ? 'Marcar como lida' : 'Marcar como não lida') + '</button>')
       + (naConversa ? '<button type="button" data-op="naolida">' + icoSvg('check', 18) + 'Marcar como não lida</button>' : '')
+      + (naConversa ? '<button type="button" data-op="ver-arquivadas">' + icoSvg('archive', 18) + (verArquivadas ? 'Voltar para as conversas ativas' : 'Ver as conversas arquivadas') + '</button>' : '')
       + (naConversa && c.tipo === 'grupo' ? '<button type="button" data-op="editar">' + icoSvg('tag', 18) + 'Editar grupo</button>' : '')
       + '<button type="button" data-op="fixar">' + icoSvg(prefs.fixada ? 'starFilled' : 'starOutline', 18) + (prefs.fixada ? 'Desafixar' : 'Fixar') + '</button>'
       + '<button type="button" data-op="arquivar">' + icoSvg(prefs.arquivada ? 'unarchive' : 'archive', 18) + (prefs.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>'
@@ -1623,6 +1637,8 @@
           entrarModoSelecao(id);
         } else if (op === 'naolida' || op === 'lida'){
           marcarConversaLida(id, op === 'lida');
+        } else if (op === 'ver-arquivadas'){
+          verArquivadas = !verArquivadas; fecharThreadMobile(); renderConvList();
         } else if (op === 'editar'){
           els.btnEditarGrupo.click();
         }
@@ -1704,10 +1720,11 @@
     });
   }
 
-  els.btnVerArquivadas.addEventListener('click', function(){
-    verArquivadas = !verArquivadas;
-    renderConvList();
+  ['btn-ver-arquivadas', 'btn-arq-celular', 'btn-arq-vazio'].forEach(function(id){
+    var b = document.getElementById(id);
+    if (b) b.addEventListener('click', function(){ verArquivadas = !verArquivadas; renderConvList(); });
   });
+  document.getElementById('btn-prioritarias').addEventListener('click', function(){ soPrioritarias = !soPrioritarias; renderConvList(); });
 
   Array.prototype.forEach.call(els.typeTabs.querySelectorAll('.type-tab'), function(btn){
     btn.addEventListener('click', function(){
